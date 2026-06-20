@@ -1,0 +1,31 @@
+{
+  "name": "@farm/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "next": "15.1.7",
+    "lucide-react": "^0.475.0",
+    "zod": "^3.24.1",
+    "@farm/types": "workspace:*",
+    "@farm/validation": "workspace:*",
+    "axios": "^1.7.9"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.7",
+    "eslint": "^9.21.0",
+    "eslint-config-next": "15.1.7"
+  }
+}

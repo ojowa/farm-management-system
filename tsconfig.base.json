@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@farm/ui/*": ["packages/ui/src/*"],
+      "@farm/types/*": ["packages/types/src/*"],
+      "@farm/utils/*": ["packages/utils/src/*"],
+      "@farm/database/*": ["packages/database/src/*"],
+      "@farm/validation/*": ["packages/validation/src/*"]
+    }
+  }
+}
