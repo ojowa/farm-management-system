@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Expense {
+  id        String @id @default(uuid())
+  farmId    String
+  title     String
+  amount    Float
+  date      DateTime
+  createdAt DateTime @default(now())
+}
+
+model Sale {
+  id        String @id @default(uuid())
+  farmId    String
+  item      String
+  quantity  Float
+  price     Float
+  total     Float
+  date      DateTime
+  createdAt DateTime @default(now())
+}

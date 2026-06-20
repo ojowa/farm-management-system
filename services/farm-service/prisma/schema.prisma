@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  farms     Farm[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Farm {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  location        String?
+  latitude        Float?
+  longitude       Float?
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  fields          Field[]
+  poultryHouses   PoultryHouse[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model Field {
+  id        String @id @default(uuid())
+  farmId    String
+  name      String
+  size      Float
+  farm      Farm @relation(fields: [farmId], references: [id])
+
+  @@index([farmId])
+}
+
+model PoultryHouse {
+  id        String @id @default(uuid())
+  farmId    String
+  name      String
+  capacity  Int
+  farm      Farm @relation(fields: [farmId], references: [id])
+  pens      Pen[]
+
+  @@index([farmId])
+}
+
+model Pen {
+  id              String @id @default(uuid())
+  poultryHouseId  String
+  name            String
+  capacity        Int
+  poultryHouse    PoultryHouse @relation(fields: [poultryHouseId], references: [id])
+
+  @@index([poultryHouseId])
+}

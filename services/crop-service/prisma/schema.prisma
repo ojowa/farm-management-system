@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id    String @id @default(uuid())
+  name  String
+  farms Farm[]
+}
+
+model Farm {
+  id             String @id @default(uuid())
+  organizationId String
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  fields         Field[]
+
+  @@index([organizationId])
+}
+
+model Field {
+  id         String @id @default(uuid())
+  farmId     String
+  name       String
+  size       Float
+  farm       Farm @relation(fields: [farmId], references: [id])
+  cropCycles CropCycle[]
+
+  @@index([farmId])
+}
+
+model Crop {
+  id         String @id @default(uuid())
+  name       String
+  cropCycles CropCycle[]
+}
+
+model CropCycle {
+  id           String @id @default(uuid())
+  fieldId      String
+  cropId       String
+  plantingDate DateTime
+  harvestDate  DateTime?
+  field        Field @relation(fields: [fieldId], references: [id])
+  crop         Crop @relation(fields: [cropId], references: [id])
+}
