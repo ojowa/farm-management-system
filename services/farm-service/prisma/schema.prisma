@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -63,3 +63,4 @@ model Pen {
 
   @@index([poultryHouseId])
 }
+

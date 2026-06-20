@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -109,3 +109,4 @@ model MortalityRecord {
   flock     Flock @relation(fields: [flockId], references: [id])
   createdAt DateTime @default(now())
 }
+

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -26,3 +26,4 @@ model Sale {
   date      DateTime
   createdAt DateTime @default(now())
 }
+

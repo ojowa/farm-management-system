@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -49,3 +49,4 @@ model CropCycle {
   field        Field @relation(fields: [fieldId], references: [id])
   crop         Crop @relation(fields: [cropId], references: [id])
 }
+

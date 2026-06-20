@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -82,3 +82,4 @@ model AuditLog {
   createdAt DateTime @default(now())
   user      User?   @relation(fields: [userId], references: [id])
 }
+

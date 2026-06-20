@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -169,8 +169,8 @@ model Flock {
 
   status          String // Enum-like string (ACTIVE, SOLD, etc)
 
-  farm            Farm @relation(fields: [farmId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  pen             Pen @relation(fields: [penId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  farm            Farm @relation(fields: [farmId], references: [id])
+  pen             Pen @relation(fields: [penId], references: [id])
   breed           Breed @relation(fields: [breedId], references: [id])
 
   feedingRecords   FeedingRecord[]
