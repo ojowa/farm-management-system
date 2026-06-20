@@ -341,6 +341,7 @@ farm-management-system/
 ├── services/
 │   ├── auth-service/
 │   ├── poultry-service/
+│   ├── livestock-service/
 │   ├── crop-service/
 │   ├── inventory-service/
 │   ├── finance-service/
@@ -375,6 +376,7 @@ farm-management-system/
 * Offline data entry
 * Poultry management
 * Crop management
+* livestock management
 * Worker attendance
 * Inventory updates
 * Sync operations
@@ -385,6 +387,7 @@ farm-management-system/
 * Dashboard
 * Poultry
 * Crops
+* livestock
 * Inventory
 * Finance
 * Reports

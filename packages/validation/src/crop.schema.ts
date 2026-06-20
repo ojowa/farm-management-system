@@ -1,8 +1,23 @@
 import { z } from 'zod';
 
 export const createCropSchema = z.object({
-  farmId: z.string().uuid(),
   name: z.string().min(2),
-  variety: z.string().optional(),
-  plantingDate: z.date().or(z.string().datetime()),
+});
+
+export const updateCropSchema = z.object({
+  name: z.string().min(2).optional(),
+});
+
+export const createCropCycleSchema = z.object({
+  fieldId: z.string().uuid(),
+  cropId: z.string().uuid(),
+  plantingDate: z.string().datetime().or(z.date()).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)),
+  harvestDate: z.string().datetime().or(z.date()).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional().nullable(),
+});
+
+export const updateCropCycleSchema = z.object({
+  fieldId: z.string().uuid().optional(),
+  cropId: z.string().uuid().optional(),
+  plantingDate: z.string().datetime().or(z.date()).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional(),
+  harvestDate: z.string().datetime().or(z.date()).or(z.string().regex(/^\d{4}-\d{2}-\d{2}/)).optional().nullable(),
 });

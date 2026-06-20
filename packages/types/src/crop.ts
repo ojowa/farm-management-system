@@ -1,12 +1,36 @@
-// Placeholder for Crop types
 export interface Crop {
   id: string;
-  farmId: string;
   name: string;
-  variety?: string;
+}
+
+export interface CropCycle {
+  id: string;
+  fieldId: string;
+  cropId: string;
   plantingDate: Date;
-  expectedHarvestDate?: Date;
-  status: 'PLANTED' | 'GROWING' | 'HARVESTED' | 'FAILED';
-  createdAt: Date;
-  updatedAt: Date;
+  harvestDate?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface CreateCropRequest {
+  name: string;
+}
+
+export interface UpdateCropRequest {
+  name?: string;
+}
+
+export interface CreateCropCycleRequest {
+  fieldId: string;
+  cropId: string;
+  plantingDate: Date | string;
+  harvestDate?: Date | string | null;
+}
+
+export interface UpdateCropCycleRequest {
+  fieldId?: string;
+  cropId?: string;
+  plantingDate?: Date | string;
+  harvestDate?: Date | string | null;
 }
