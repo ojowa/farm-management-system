@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
-  private proxies = {
+  private proxies: Record<string, string> = {
     '/crops': `http://localhost:${process.env.CROP_SERVICE_PORT || 3001}`,
     '/farms': `http://localhost:${process.env.FARM_SERVICE_PORT || 3003}`,
     '/livestocks': `http://localhost:${process.env.LIVESTOCK_SERVICE_PORT || 3004}`,

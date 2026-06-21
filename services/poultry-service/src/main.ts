@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { poultryRouter } from './modules/poultry/poultry.module';
 
 dotenv.config();
 
@@ -13,6 +14,8 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+
+app.use('/api', poultryRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'poultry-service' });

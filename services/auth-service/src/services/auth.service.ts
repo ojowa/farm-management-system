@@ -117,7 +117,7 @@ export class AuthService {
         organizationId: user.organizationId 
       },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any }
     );
   }
 

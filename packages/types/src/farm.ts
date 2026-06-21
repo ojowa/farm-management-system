@@ -1,13 +1,26 @@
-// Placeholder for Farm types
 export interface Farm {
   id: string;
   organizationId: string;
   name: string;
-  location: string;
-  size: number;
-  sizeUnit: 'ACRE' | 'HECTARE';
-  type: 'CROP' | 'LIVESTOCK' | 'POULTRY' | 'MIXED';
-  ownerId: string;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CreateFarmRequest {
+  organizationId: string;
+  name: string;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface UpdateFarmRequest {
+  organizationId?: string;
+  name?: string;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }

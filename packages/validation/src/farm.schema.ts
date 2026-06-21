@@ -1,9 +1,17 @@
 import { z } from 'zod';
 
 export const createFarmSchema = z.object({
+  organizationId: z.string().uuid(),
   name: z.string().min(2),
-  location: z.string().min(2),
-  size: z.number().positive(),
-  sizeUnit: z.enum(['ACRE', 'HECTARE']),
-  type: z.enum(['CROP', 'LIVESTOCK', 'POULTRY', 'MIXED']),
+  location: z.string().min(2).nullable().optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+});
+
+export const updateFarmSchema = z.object({
+  organizationId: z.string().uuid().optional(),
+  name: z.string().min(2).optional(),
+  location: z.string().min(2).nullable().optional(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
 });
