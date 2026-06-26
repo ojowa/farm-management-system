@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "../../",
+    "baseUrl": "../../"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "../../packages/auth/src/**/*.ts", "../../packages/database/src/**/*.ts", "../../packages/types/src/**/*.ts", "../../packages/validation/src/**/*.ts", "../../packages/utils/src/**/*.ts"]
 }

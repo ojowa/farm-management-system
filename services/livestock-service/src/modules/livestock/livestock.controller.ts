@@ -51,7 +51,8 @@ export class LivestockController {
       await livestockService.deleteLivestock(id);
       res.status(204).send();
     } catch (error: any) {
-      res.status(400).json({ error: error.message || error });
+      res.status(404).json({ error: error.message || error });
     }
   }
 }
+

@@ -61,4 +61,40 @@ export class FarmRepository {
       where: { id },
     });
   }
+
+  // --- Field CRUD ---
+  async createField(data: { farmId: string; name: string; size: number }) {
+    return prisma.field.create({
+      data,
+      include: { farm: true },
+    });
+  }
+
+  async getFieldById(id: string) {
+    return prisma.field.findUnique({
+      where: { id },
+      include: { farm: true },
+    });
+  }
+
+  async getAllFields() {
+    return prisma.field.findMany({
+      include: { farm: true },
+    });
+  }
+
+  async updateField(id: string, data: { farmId?: string; name?: string; size?: number }) {
+    return prisma.field.update({
+      where: { id },
+      data,
+      include: { farm: true },
+    });
+  }
+
+  async deleteField(id: string) {
+    return prisma.field.delete({
+      where: { id },
+    });
+  }
 }
+

@@ -9,19 +9,15 @@ export class LivestockRepository {
     birthDate: Date;
     status: string;
   }) {
-    return prisma.livestock.create({
-      data,
-    });
+    return prisma.livestock.create({ data });
   }
 
   async getLivestockById(id: string) {
-    return prisma.livestock.findUnique({
-      where: { id },
-    });
+    return prisma.livestock.findUnique({ where: { id } });
   }
 
   async getAllLivestock() {
-    return prisma.livestock.findMany();
+    return prisma.livestock.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
   async updateLivestock(
@@ -35,15 +31,15 @@ export class LivestockRepository {
       status?: string;
     }
   ) {
-    return prisma.livestock.update({
-      where: { id },
-      data,
-    });
+    return prisma.livestock.update({ where: { id }, data });
   }
 
   async deleteLivestock(id: string) {
-    return prisma.livestock.delete({
-      where: { id },
-    });
+    return prisma.livestock.delete({ where: { id } });
+  }
+
+  async getFarmById(id: string) {
+    return prisma.farm.findUnique({ where: { id } });
   }
 }
+

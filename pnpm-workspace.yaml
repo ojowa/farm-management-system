@@ -10,3 +10,7 @@ ignoredBuiltDependencies:
   - prisma
   - sharp
   - unrs-resolver
+
+offline: false
+
+storeDir: C:\Users\OJOWA\Documents\Farm Management System\.pnpm-store

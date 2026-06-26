@@ -39,13 +39,16 @@ export class AuthController {
   }
 
   async me(req: Request, res: Response) {
-    // Already handled by existing logic, but ensuring it uses sub from JWT
-    try {
-      const userId = (req as any).user.sub; // Doc says "sub" for user_id
-      // ... same logic
-      res.json({ message: 'Me endpoint' });
-    } catch (error: any) {
-      res.status(404).json({ message: error.message });
+    // `req.user` is populated by `authMiddleware` after the JWT is verified.
+    const user = (req as any).user;
+    if (!user || !user.sub) {
+      return res.status(401).json({ message: 'Unauthenticated' });
     }
+    res.json({
+      id: user.sub,
+      email: user.email,
+      role: user.role,
+      organizationId: user.organizationId,
+    });
   }
 }

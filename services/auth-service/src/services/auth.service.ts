@@ -4,11 +4,14 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { LoginCredentials } from '@farm/types';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '15m') as jwt.SignOptions['expiresIn'];
+
 export class AuthService {
   async login(credentials: LoginCredentials) {
     const user = await prisma.user.findUnique({
       where: { email: credentials.email },
-      include: { 
+      include: {
         organization: true,
         role: {
           include: {
@@ -42,10 +45,10 @@ export class AuthService {
     const refreshToken = await this.generateRefreshToken(user.id);
 
     const { passwordHash, ...userWithoutPassword } = user;
-    return { 
-      accessToken, 
-      refreshToken, 
-      user: userWithoutPassword 
+    return {
+      accessToken,
+      refreshToken,
+      user: userWithoutPassword
     };
   }
 
@@ -67,7 +70,8 @@ export class AuthService {
       const org = await prisma.organization.create({
         data: {
           name: data.organizationName || `${data.firstName}'s Organization`,
-          email: data.email
+          email: data.email,
+          slug: (data.organizationName || `${data.firstName}'s Organization`).replace(/\s+/g, '-').toLowerCase()
         }
       });
       organizationId = org.id;
@@ -101,27 +105,28 @@ export class AuthService {
     const refreshToken = await this.generateRefreshToken(user.id);
 
     const { passwordHash: _, ...userWithoutPassword } = user;
-    return { 
-      accessToken, 
-      refreshToken, 
-      user: userWithoutPassword 
+    return {
+      accessToken,
+      refreshToken,
+      user: userWithoutPassword
     };
   }
 
-  private generateAccessToken(user: any) {
-    return jwt.sign(
-      { 
-        sub: user.id, 
-        email: user.email, 
-        role: user.role.name,
-        organizationId: user.organizationId 
-      },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any }
-    );
+  /**
+   * Sign an access token with the canonical Farm Management payload. Every
+   * downstream service relies on this shape via `@farm/auth`'s `verifyAccessToken`.
+   */
+  private generateAccessToken(user: any): string {
+    const payload = {
+      sub: user.id,
+      email: user.email ?? null,
+      role: user.role.name,
+      organizationId: user.organizationId,
+    };
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   }
 
-  private async generateRefreshToken(userId: string) {
+  private async generateRefreshToken(userId: string): Promise<string> {
     const token = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days

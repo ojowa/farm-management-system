@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/jwt.spec.ts","./src/jwt.ts","./src/roles.ts","./src/express/index.ts","./src/nestjs/index.ts"],"version":"6.0.3"}

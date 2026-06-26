@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Farm Management System",
+    "slug": "farm-management-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#2E7D32"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTabletMode": true,
+      "bundleIdentifier": "com.farmmanagement.mobile",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2E7D32"
+      },
+      "package": "com.farmmanagement.mobile",
+      "versionCode": 1
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "scheme": "farmapp",
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": null
+        }
+      ]
+    ]
+  }
+}

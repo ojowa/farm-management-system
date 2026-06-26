@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
+    "moduleResolution": "node",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -9,13 +10,23 @@
     "ignoreDeprecations": "6.0",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
     "baseUrl": ".",
+    "types": ["node"],
     "paths": {
-      "@farm/ui/*": ["packages/ui/src/*"],
-      "@farm/types/*": ["packages/types/src/*"],
-      "@farm/utils/*": ["packages/utils/src/*"],
-      "@farm/database/*": ["packages/database/src/*"],
-      "@farm/validation/*": ["packages/validation/src/*"]
+      "@farm/ui/*": ["packages/ui/dist/*"],
+      "@farm/types": ["packages/types/dist"],
+      "@farm/types/*": ["packages/types/dist/*"],
+      "@farm/utils": ["packages/utils/dist"],
+      "@farm/utils/*": ["packages/utils/dist/*"],
+      "@farm/database": ["packages/database/dist"],
+      "@farm/database/*": ["packages/database/dist/*"],
+      "@farm/validation": ["packages/validation/dist"],
+      "@farm/validation/*": ["packages/validation/dist/*"],
+      "@farm/auth": ["packages/auth/dist"],
+      "@farm/auth/express": ["packages/auth/dist/express/index"],
+      "@farm/auth/nestjs": ["packages/auth/dist/nestjs/index"]
+
     }
   }
 }

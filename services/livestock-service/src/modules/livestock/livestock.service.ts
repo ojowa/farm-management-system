@@ -4,12 +4,26 @@ import { CreateLivestockRequest, UpdateLivestockRequest } from '@farm/types';
 export class LivestockService {
   private repository = new LivestockRepository();
 
+  private async assertFarmExists(farmId: string) {
+    const farm = await this.repository.getFarmById(farmId);
+    if (!farm) {
+      throw new Error(`Farm with ID ${farmId} not found`);
+    }
+    return farm;
+  }
+
   async createLivestock(data: CreateLivestockRequest) {
+    await this.assertFarmExists(data.farmId);
+
     const birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate;
 
     return this.repository.createLivestock({
-      ...data,
+      farmId: data.farmId,
+      species: data.species,
+      breed: data.breed ?? null,
+      gender: data.gender,
       birthDate,
+      status: data.status,
     });
   }
 
@@ -28,7 +42,15 @@ export class LivestockService {
   async updateLivestock(id: string, data: UpdateLivestockRequest) {
     await this.getLivestockById(id);
 
-    const birthDate = data.birthDate ? (typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate) : undefined;
+    if (data.farmId) {
+      await this.assertFarmExists(data.farmId);
+    }
+
+    const birthDate = data.birthDate
+      ? typeof data.birthDate === 'string'
+        ? new Date(data.birthDate)
+        : data.birthDate
+      : undefined;
 
     return this.repository.updateLivestock(id, {
       ...data,
@@ -41,3 +63,4 @@ export class LivestockService {
     return this.repository.deleteLivestock(id);
   }
 }
+

@@ -10,8 +10,16 @@ datasource db {
 model Organization {
   id        String   @id @default(uuid())
   name      String
-  email     String?
+  slug      String   @unique
+  email     String?  @unique
   phone     String?
+  logo      String?
+  website   String?
+  industry  String?
+
+  subscriptionPlan     String   @default("FREE")
+  subscriptionStatus   String   @default("TRIAL")
+  settings             Json     @default("{}")
 
   users     User[]
   farms     Farm[]
@@ -315,9 +323,9 @@ model SyncQueue {
   entity    String
   entityId  String
   operation String
-  payload   String // Store JSON as string in Postgres or use Json type
+  payload   String
 
-  synced    Boolean @default(false)
+  synced    Boolean  @default(false)
 
   createdAt DateTime @default(now())
 }
@@ -327,9 +335,9 @@ model Livestock {
   farmId    String
   species   String
   breed     String?
-  gender    String   // 'MALE' | 'FEMALE'
+  gender    String
   birthDate DateTime
-  status    String   // 'HEALTHY' | 'SICK' | 'SOLD' | 'DECEASED'
+  status    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -341,7 +349,7 @@ model Notification {
   userId    String
   title     String
   message   String
-  type      String   // 'INFO' | 'WARNING' | 'ALERT'
+  type      String   @default("INFO")
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 

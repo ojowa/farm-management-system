@@ -1,35 +1,17 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import { Server } from 'socket.io';
-import http from 'http';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
-dotenv.config();
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.enableCors();
+  app.useGlobalPipes(new ValidationPipe());
+  app.useWebSocketAdapter(new IoAdapter(app));
 
-const app = express();
-const port = process.env.PORT || 3006;
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-  }
-});
+  const port = process.env.NOTIFICATION_SERVICE_PORT || 3006;
+  await app.listen(port);
+  console.log(`Notification Service is running on: http://localhost:${port}`);
+}
 
-app.use(cors());
-app.use(helmet());
-app.use(morgan('dev'));
-app.use(express.json());
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'notification-service' });
-});
-
-io.on('connection', (socket) => {
-  console.log('a user connected');
-});
-
-server.listen(port, () => {
-  console.log(`Notification service listening at http://localhost:${port}`);
-});
+bootstrap();

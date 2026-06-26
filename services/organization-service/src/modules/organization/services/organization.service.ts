@@ -1,54 +1,48 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Organization, CreateOrganizationRequest } from '@farm/types';
+import { OrganizationRepository } from '../repositories/organization.repository';
 
 @Injectable()
 export class OrganizationService {
-  private organizations: Organization[] = [];
+  constructor(private readonly repository: OrganizationRepository) {}
 
   async create(createDto: CreateOrganizationRequest): Promise<Organization> {
-    const newOrganization: Organization = {
-      id: Math.random().toString(36).substring(7),
-      name: createDto.name,
-      slug: createDto.slug,
-      subscriptionPlan: (createDto.subscriptionPlan as any) || 'FREE',
-      subscriptionStatus: 'TRIAL',
-      settings: {
-        currency: 'USD',
-        timezone: 'UTC',
-        language: 'en',
-        measurementUnit: 'METRIC',
-        dateFormat: 'YYYY-MM-DD',
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.organizations.push(newOrganization);
-    return newOrganization;
+    const existingBySlug = await this.repository.findBySlug(createDto.slug);
+    if (existingBySlug) {
+      throw new ConflictException(`Organization with slug ${createDto.slug} already exists`);
+    }
+
+    const existingByEmail = await this.repository.findBySlug(createDto.adminEmail);
+    if (existingByEmail) {
+      throw new ConflictException(`Organization with email ${createDto.adminEmail} already exists`);
+    }
+
+    return this.repository.create(createDto);
   }
 
   async findOne(id: string): Promise<Organization> {
-    const org = this.organizations.find(o => o.id === id);
+    const org = await this.repository.findById(id);
     if (!org) {
       throw new NotFoundException(`Organization with ID ${id} not found`);
     }
     return org;
   }
 
-  async update(id: string, updateDto: any): Promise<Organization> {
-    const index = this.organizations.findIndex(o => o.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Organization with ID ${id} not found`);
-    }
-    const updatedOrg = {
-      ...this.organizations[index],
-      ...updateDto,
-      updatedAt: new Date(),
-    };
-    this.organizations[index] = updatedOrg;
-    return updatedOrg;
+  async findBySlug(slug: string): Promise<Organization | null> {
+    return this.repository.findBySlug(slug);
+  }
+
+  async update(id: string, updateDto: Partial<Organization>): Promise<Organization> {
+    await this.findOne(id);
+    return this.repository.update(id, updateDto);
   }
 
   async findAll(): Promise<Organization[]> {
-    return this.organizations;
+    return this.repository.findAll();
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.findOne(id);
+    await this.repository.delete(id);
   }
 }

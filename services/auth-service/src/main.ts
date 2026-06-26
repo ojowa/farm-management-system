@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
+import { AuthError } from '@farm/auth';
 
 dotenv.config();
 
@@ -20,6 +21,16 @@ app.use('/auth', authRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'auth-service' });
+});
+
+// Centralized handler for AuthError thrown from `authMiddleware`.
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof AuthError) {
+    return res
+      .status(err.statusCode)
+      .json({ statusCode: err.statusCode, message: err.message });
+  }
+  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
 });
 
 app.listen(port, () => {

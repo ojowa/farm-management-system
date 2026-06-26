@@ -1,22 +1,37 @@
-import { registerRootComponent } from 'expo';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
+import * as SplashScreen from 'expo-splash-screen';
+import { useAppSelector } from './hooks/useAuth';
 
-function App() {
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+function RootLayoutNav() {
+  const { isAuthenticated, mfaRequired } = useAppSelector(
+    (state) => state.auth
+  );
+
   return (
-    <View style={styles.container}>
-      <Text>Farm Management Mobile</Text>
-    </View>
+    <>
+      {/* Navigation will be handled by the root layout */}
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+function App() {
+  useEffect(() => {
+    async function hideSplash() {
+      await SplashScreen.hideAsync();
+    }
+    hideSplash();
+  }, []);
 
-registerRootComponent(App);
+  return (
+    <Provider store={store}>
+      <RootLayoutNav />
+    </Provider>
+  );
+}
+
+export default App;

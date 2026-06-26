@@ -1,13 +1,54 @@
-// Placeholder for Finance types
-export interface Transaction {
+// Finance Type Definitions
+
+export interface Expense {
   id: string;
   farmId: string;
-  type: 'INCOME' | 'EXPENSE';
-  category: string;
+  title: string;
   amount: number;
-  currency: string;
   date: Date;
-  description?: string;
   createdAt: Date;
-  updatedAt: Date;
 }
+
+export interface CreateExpenseRequest {
+  farmId: string;
+  title: string;
+  amount: number;
+  date: Date | string;
+}
+
+export interface UpdateExpenseRequest {
+  farmId?: string;
+  title?: string;
+  amount?: number;
+  date?: Date | string;
+}
+
+export interface Sale {
+  id: string;
+  farmId: string;
+  item: string;
+  quantity: number;
+  price: number;
+  total: number;
+  date: Date;
+  createdAt: Date;
+}
+
+export interface CreateSaleRequest {
+  farmId: string;
+  item: string;
+  quantity: number;
+  price: number;
+  total: number;
+  date: Date | string;
+}
+
+export interface UpdateSaleRequest {
+  farmId?: string;
+  item?: string;
+  quantity?: number;
+  price?: number;
+  total?: number;
+  date?: Date | string;
+}
+

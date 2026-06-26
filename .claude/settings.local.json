@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm --filter @farm/poultry-service build)"
+      "Bash(pnpm --filter @farm/poultry-service build)",
+      "Bash(cd C:UsersOJOWADocumentsFarm Management Systemservicesorganization-service)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma --version)",
+      "Bash(npm install prisma@6.4.1 --save-dev)",
+      "Bash(node node_modules/.bin/prisma generate)",
+      "Bash(npm install prisma@6.4.1 --save-dev --prefer-offline)",
+      "Bash(npx prisma generate --schema=prisma/schema.prisma)",
+      "Bash(npm install @prisma/client@6.4.1 --save)",
+      "Bash(pnpm install)",
+      "Bash(pnpm exec prisma --version)",
+      "Bash(node_modules/.bin/prisma --version)",
+      "Bash(node_modules/.bin/prisma generate)",
+      "Bash(pnpm run *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

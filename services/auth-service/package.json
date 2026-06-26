@@ -18,7 +18,8 @@
     "jsonwebtoken": "^9.0.2",
     "@farm/types": "workspace:*",
     "@farm/database": "workspace:*",
-    "@farm/validation": "workspace:*"
+    "@farm/validation": "workspace:*",
+    "@farm/auth": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

@@ -9,3 +9,4 @@ export * from './inventory';
 export * from './worker';
 export * from './finance';
 export * from './api';
+export * from './notification';

@@ -1,9 +1,13 @@
 {
   "name": "@farm/validation",
   "version": "1.0.0",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "private": true,
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
   "dependencies": {
     "zod": "^3.24.1",
     "@farm/types": "workspace:*"

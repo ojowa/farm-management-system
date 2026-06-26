@@ -24,3 +24,23 @@ export interface UpdateFarmRequest {
   latitude?: number | null;
   longitude?: number | null;
 }
+
+export interface Field {
+  id: string;
+  farmId: string;
+  name: string;
+  size: number;
+}
+
+export interface CreateFieldRequest {
+  farmId: string;
+  name: string;
+  size: number;
+}
+
+export interface UpdateFieldRequest {
+  farmId?: string;
+  name?: string;
+  size?: number;
+}
+

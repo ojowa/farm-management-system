@@ -1,0 +1,1 @@
+{"root":["./src/auth.schema.ts","./src/crop.schema.ts","./src/farm.schema.ts","./src/finance.schema.ts","./src/index.ts","./src/inventory.schema.ts","./src/livestock.schema.ts","./src/notification.schema.ts","./src/organization.schema.ts","./src/poultry.schema.ts","./src/worker.schema.ts"],"version":"6.0.3"}

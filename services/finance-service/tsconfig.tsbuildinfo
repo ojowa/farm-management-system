@@ -1,0 +1,1 @@
+{"root":["./src/main.ts","./src/modules/finance/finance.controller.ts","./src/modules/finance/finance.module.ts","./src/modules/finance/finance.repository.ts","./src/modules/finance/finance.service.ts"],"version":"6.0.3"}

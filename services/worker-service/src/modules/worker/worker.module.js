@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.workerRouter = void 0;
+const express_1 = require("express");
+const worker_controller_1 = require("./worker.controller");
+const express_2 = require("../../../../../packages/auth/src/express/index");
+const router = (0, express_1.Router)();
+const workerController = new worker_controller_1.WorkerController();
+const writeRoles = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
+router.get('/workers', (0, express_2.authMiddleware)({ permission: 'worker.read' }), workerController.getAllWorkers);
+router.get('/workers/:id', (0, express_2.authMiddleware)({ permission: 'worker.read' }), workerController.getWorkerById);
+router.post('/workers', (0, express_2.authMiddleware)({ roles: writeRoles, permission: 'worker.write' }), workerController.createWorker);
+router.put('/workers/:id', (0, express_2.authMiddleware)({ roles: writeRoles, permission: 'worker.write' }), workerController.updateWorker);
+router.delete('/workers/:id', (0, express_2.authMiddleware)({ roles: ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPER_ADMIN'], permission: 'worker.delete' }), workerController.deleteWorker);
+exports.workerRouter = router;
+exports.default = router;

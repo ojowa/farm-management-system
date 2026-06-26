@@ -20,7 +20,10 @@
     "@farm/validation": "workspace:*",
     "lucide-react-native": "^0.475.0",
     "axios": "^1.7.9",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "@reduxjs/toolkit": "^2.0.1",
+    "react-redux": "^9.0.4",
+    "@react-native-async-storage/async-storage": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",

@@ -6,3 +6,6 @@ export * from './livestock.schema';
 export * from './inventory.schema';
 export * from './poultry.schema';
 export * from './worker.schema';
+export * from './finance.schema';
+export * from './notification.schema';
+

@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/auth" },
+    { "path": "./packages/database" },
+    { "path": "./packages/types" },
+    { "path": "./packages/utils" },
+    { "path": "./packages/validation" }
+  ]
+}
