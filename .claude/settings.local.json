@@ -15,7 +15,8 @@
       "Bash(node_modules/.bin/prisma --version)",
       "Bash(node_modules/.bin/prisma generate)",
       "Bash(pnpm run *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git add -A)"
     ]
   }
 }

@@ -27,8 +27,28 @@ export class FarmController {
 
   async getAllFarms(req: Request, res: Response) {
     try {
-      const farms = await farmService.getAllFarms();
-      res.json(farms);
+      // Extract query parameters for filtering, sorting, and pagination
+      const filter: any = {};
+      const sortBy = req.query.sortBy as string || 'createdAt';
+      const sortOrder = (req.query.sortOrder as string || 'desc') === 'asc' ? 'asc' : 'desc';
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      // Build filter object from query parameters
+      if (req.query.organizationId) {
+        filter.organizationId = req.query.organizationId as string;
+      }
+      
+      if (req.query.name) {
+        filter.name = req.query.name as string;
+      }
+      
+      if (req.query.location) {
+        filter.location = req.query.location as string;
+      }
+      
+      const result = await this.farmService.getAllFarms(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -78,8 +98,24 @@ export class FarmController {
 
   async getAllFields(req: Request, res: Response) {
     try {
-      const fields = await farmService.getAllFields();
-      res.json(fields);
+      // Extract query parameters for filtering, sorting, and pagination
+      const filter: any = {};
+      const sortBy = req.query.sortBy as string || 'name';
+      const sortOrder = (req.query.sortOrder as string || 'asc') === 'asc' ? 'asc' : 'desc';
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      // Build filter object from query parameters
+      if (req.query.farmId) {
+        filter.farmId = req.query.farmId as string;
+      }
+      
+      if (req.query.name) {
+        filter.name = req.query.name as string;
+      }
+      
+      const result = await this.farmService.getAllFields(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }

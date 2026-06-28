@@ -1,3 +1,4 @@
-import FarmsScreen from '../../../src/screens/app/FarmsScreen';
+import FarmsScreen from '@/screens/app/FarmsScreen';
 
 export default FarmsScreen;
+

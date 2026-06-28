@@ -6,22 +6,24 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animationEnabled: true,
+        animation: "fade",
       }}
     >
       <Stack.Screen name="login" />
       <Stack.Screen
         name="register"
         options={{
-          animationEnabled: true,
+          animation: "fade",
         }}
       />
       <Stack.Screen
         name="forgot-password"
         options={{
-          animationEnabled: true,
+          animation: "fade",
         }}
       />
     </Stack>
   );
 }
+
+

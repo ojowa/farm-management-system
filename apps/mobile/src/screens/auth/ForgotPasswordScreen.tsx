@@ -233,7 +233,7 @@ export default function ForgotPasswordScreen() {
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>
             {step === 'email'
-              ? 'Enter your email address and we'll send you a code to reset your password'
+              ? 'Enter your email address and we\u2019ll send you a code to reset your password'
               : step === 'code'
               ? 'Enter the code sent to your email and create a new password'
               : 'Your password has been reset'}
@@ -337,3 +337,4 @@ export default function ForgotPasswordScreen() {
     </SafeAreaView>
   );
 }
+

@@ -1,37 +1,47 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+// Standalone App entry. The expo-router layout at app/_layout.tsx is the
+// source of truth for navigation, the persist gate, and the toast host.
+// This component is kept around so imports from earlier bootstrap paths
+// (e.g. tests, storybooks) still resolve to a working tree.
 import { Provider } from 'react-redux';
-import { store } from './store/store';
-import * as SplashScreen from 'expo-splash-screen';
-import { useAppSelector } from './hooks/useAuth';
+import { PersistGate } from 'redux-persist/integration/react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { store, persistor } from './store/store';
+import { colors } from './components/common/UIComponents';
 
-// Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync();
-
-function RootLayoutNav() {
-  const { isAuthenticated, mfaRequired } = useAppSelector(
-    (state) => state.auth
-  );
-
-  return (
-    <>
-      {/* Navigation will be handled by the root layout */}
-    </>
-  );
-}
+const PlaceholderNav: React.FC = () => (
+  <View style={styles.placeholder}>
+    <ActivityIndicator size="large" color={colors.primary} />
+  </View>
+);
 
 function App() {
-  useEffect(() => {
-    async function hideSplash() {
-      await SplashScreen.hideAsync();
-    }
-    hideSplash();
-  }, []);
-
   return (
     <Provider store={store}>
-      <RootLayoutNav />
+      <PersistGate
+        persistor={persistor}
+        loading={
+          <View style={styles.placeholder}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        }
+      >
+        <SafeAreaProvider>
+          <PlaceholderNav />
+        </SafeAreaProvider>
+      </PersistGate>
     </Provider>
   );
 }
 
 export default App;
+
+const styles = StyleSheet.create({
+  placeholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+});

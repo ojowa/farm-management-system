@@ -14,8 +14,39 @@ export class CropRepository {
     });
   }
 
-  async getAllCrops() {
-    return prisma.crop.findMany();
+  async getAllCrops(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 10) {
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+    
+    // Build where clause for filtering
+    const where: any = {};
+    
+    if (filter.name) {
+      where.name = {
+        contains: filter.name,
+        mode: 'insensitive' as const
+      };
+    }
+    
+    // Get total count for pagination
+    const total = await prisma.crop.count({ where });
+    
+    // Get paginated and filtered results
+    const crops = await prisma.crop.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: {
+        [sortBy]: sortOrder
+      },
+    });
+    
+    return {
+      data: crops,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   async updateCrop(id: string, name: string) {

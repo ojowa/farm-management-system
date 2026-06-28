@@ -2,8 +2,17 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "noImplicitAny": false,
+    "ignoreDeprecations": "6.0",
+    "types": ["react-native"],
     "paths": {
       "@/*": ["./src/*"]
     }
-  }
+  },
+  "include": [
+    "src/**/*",
+    "app/**/*",
+    "index.js"
+  ],
+  "exclude": ["src/__tests__/**/*"]
 }

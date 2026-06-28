@@ -1,9 +1,5 @@
-import React from 'react';
+import { redirect } from 'next/navigation';
 
-export default function Page() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold">Farm Management Web</h1>
-    </main>
-  );
+export default function RootPage() {
+  redirect('/dashboard');
 }

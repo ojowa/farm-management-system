@@ -1,3 +1,4 @@
-import SettingsScreen from '../../../src/screens/app/SettingsScreen';
+import SettingsScreen from '@/screens/app/SettingsScreen';
 
 export default SettingsScreen;
+

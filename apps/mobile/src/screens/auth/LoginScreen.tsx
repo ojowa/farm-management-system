@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { TextInputField, Button, colors } from '../../components/common/UIComponents';
+import { useToasts } from '../../hooks/useToasts';
 
 const styles = StyleSheet.create({
   container: {
@@ -80,6 +81,7 @@ const styles = StyleSheet.create({
 export default function LoginScreen() {
   const router = useRouter();
   const { login, loading, error, clearError } = useAuth();
+  const { error: showError } = useToasts();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -114,10 +116,14 @@ export default function LoginScreen() {
     if (!validateForm()) return;
 
     try {
-      await login(email, password);
+      const result: any = await login(email, password);
+      if (result && (result as any).mfaRequired) {
+        showError('Enter the code from your authenticator app to continue.');
+      }
       // Navigation is handled by auth state change
     } catch (err) {
-      // Error is already in state
+      // The error message is already in Redux state; we surface it inline.
+      // Keep the catch so we never get an unhandled promise rejection.
     }
   };
 
@@ -175,7 +181,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>Don't have an account?</Text>
+          <Text style={styles.signupText}>Don\u2019t have an account?</Text>
           <TouchableOpacity
             onPress={() => router.push('/(auth)/register')}
             disabled={loading}

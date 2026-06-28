@@ -1,11 +1,15 @@
 import { FarmRepository } from './farm.repository';
 import { CreateFarmRequest, UpdateFarmRequest, CreateFieldRequest, UpdateFieldRequest } from '@farm/types';
+import { FarmEventService } from './farm.event.service';
 
 export class FarmService {
   private repository = new FarmRepository();
+  private eventService = FarmEventService.getInstance();
 
   async createFarm(data: CreateFarmRequest) {
-    return this.repository.createFarm(data);
+    const farm = await this.repository.createFarm(data);
+    await this.eventService.emitFarmCreatedEvent(farm);
+    return farm;
   }
 
   async getFarmById(id: string) {
@@ -16,24 +20,29 @@ export class FarmService {
     return farm;
   }
 
-  async getAllFarms() {
-    return this.repository.getAllFarms();
+  async getAllFarms(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 10) {
+    return this.repository.getAllFarms(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateFarm(id: string, data: UpdateFarmRequest) {
     await this.getFarmById(id);
-    return this.repository.updateFarm(id, data);
+    const updatedFarm = await this.repository.updateFarm(id, data);
+    await this.eventService.emitFarmUpdatedEvent(updatedFarm);
+    return updatedFarm;
   }
 
   async deleteFarm(id: string) {
     await this.getFarmById(id);
+    await this.eventService.emitFarmDeletedEvent(id);
     return this.repository.deleteFarm(id);
   }
 
   // --- Field Service Methods ---
   async createField(data: CreateFieldRequest) {
     await this.getFarmById(data.farmId);
-    return this.repository.createField(data);
+    const field = await this.repository.createField(data);
+    await this.eventService.emitFarmUpdatedEvent(field.farm);
+    return field;
   }
 
   async getFieldById(id: string) {
@@ -44,8 +53,8 @@ export class FarmService {
     return field;
   }
 
-  async getAllFields() {
-    return this.repository.getAllFields();
+  async getAllFields(filter: any = {}, sortBy: string = 'name', sortOrder: 'asc' | 'desc' = 'asc', page: number = 1, limit: number = 10) {
+    return this.repository.getAllFields(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateField(id: string, data: UpdateFieldRequest) {

@@ -8,6 +8,7 @@ import {
   requestPasswordReset as requestPasswordResetAction,
   resetPassword as resetPasswordAction,
   verifyMFA as verifyMFAAction,
+  restoreSession,
   clearError,
   resetMFA,
 } from '../store/slices/authSlice';
@@ -23,6 +24,7 @@ export const useAuth = () => {
     error,
     mfaRequired,
     mfaSessionToken,
+    bootstrapped,
   } = useSelector((state: RootState) => state.auth);
 
   const login = useCallback(
@@ -78,6 +80,10 @@ export const useAuth = () => {
     dispatch(resetMFA());
   }, [dispatch]);
 
+  const restore = useCallback(async () => {
+    await dispatch(restoreSession());
+  }, [dispatch]);
+
   return {
     user,
     accessToken,
@@ -86,6 +92,7 @@ export const useAuth = () => {
     error,
     mfaRequired,
     mfaSessionToken,
+    bootstrapped,
     login,
     register,
     logout,
@@ -93,11 +100,12 @@ export const useAuth = () => {
     requestReset,
     resetPass,
     verifyMfa,
+    restore,
     clearError: handleClearError,
     resetMFA: handleResetMFA,
   };
 };
 
 export const useAppDispatch = () => useDispatch<AppDispatch>();
-export const useAppSelector = (selector: (state: RootState) => any) =>
+export const useAppSelector = <T,>(selector: (state: RootState) => T): T =>
   useSelector(selector);

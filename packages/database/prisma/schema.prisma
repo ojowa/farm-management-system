@@ -102,6 +102,8 @@ model Farm {
   location        String?
   latitude        Float?
   longitude       Float?
+  size            Float    @default(0)
+  status          String   @default("active")
 
   organization    Organization @relation(fields: [organizationId], references: [id])
 
@@ -245,6 +247,8 @@ model CropCycle {
 
   plantingDate  DateTime
   harvestDate   DateTime?
+  health        Int    @default(100)
+  status        String @default("growing")
 
   field         Field @relation(fields: [fieldId], references: [id])
   crop          Crop @relation(fields: [cropId], references: [id])

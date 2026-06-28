@@ -1,8 +1,8 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
-import { useAppSelector } from '../../../src/hooks/useAuth';
-import { colors } from '../../../src/components/common/UIComponents';
+import { useAppSelector } from '@/hooks/useAuth';
+import { colors } from '@/components/common/UIComponents';
 
 export default function AppLayout() {
   const isAuthenticated = useAppSelector(
@@ -83,3 +83,5 @@ export default function AppLayout() {
     </Tabs>
   );
 }
+
+

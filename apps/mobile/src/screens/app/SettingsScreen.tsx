@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -8,34 +8,27 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, Button, colors } from '../../components/common/UIComponents';
+import { useAppTheme } from '../../theme/ThemeContext';
+import {
+  registerForPushNotifications,
+  sendTokenToServer,
+  unregisterFromNotifications,
+  getNotificationPermissions,
+  setupNotificationListeners,
+} from '../../services/notifications';
+import { useAppSelector } from '../../hooks/useAuth';
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  header: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  profileSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  header: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 20 },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF' },
+  content: { paddingHorizontal: 20, paddingVertical: 16 },
+  profileSection: { alignItems: 'center', marginBottom: 32 },
   avatar: {
     width: 80,
     height: 80,
@@ -45,22 +38,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: colors.textLight,
-    marginBottom: 8,
-  },
+  avatarImage: { width: 80, height: 80, borderRadius: 40 },
+  avatarText: { fontSize: 32, fontWeight: '700', color: '#FFFFFF' },
+  userName: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  userEmail: { fontSize: 14, color: colors.textLight, marginBottom: 8 },
   userRole: {
     fontSize: 12,
     backgroundColor: colors.light,
@@ -78,9 +59,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginTop: 20,
   },
-  settingItem: {
-    marginBottom: 12,
-  },
+  settingItem: { marginBottom: 12 },
   settingItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -88,80 +67,83 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  settingItemText: {
-    flex: 1,
+  settingItemText: { flex: 1 },
+  settingItemTitle: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 2 },
+  settingItemDescription: { fontSize: 12, color: colors.textLight },
+  settingItemRight: { flexDirection: 'row', alignItems: 'center' },
+  settingItemValue: { fontSize: 12, color: colors.primary, fontWeight: '500', marginRight: 8 },
+  divider: { height: 1, backgroundColor: colors.light, marginVertical: 16 },
+  offlineQueueBadge: {
+    backgroundColor: colors.warning,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
   },
-  settingItemTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 2,
-  },
-  settingItemDescription: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  settingItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingItemValue: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '500',
-    marginRight: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.light,
-    marginVertical: 16,
-  },
-  dangerButton: {
-    borderColor: colors.error,
-    marginTop: 24,
-  },
-  actionContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 32,
-  },
-  actionButton: {
-    flex: 1,
-  },
+  offlineQueueText: { fontSize: 10, color: '#FFFFFF', fontWeight: '700' },
+  actionContainer: { flexDirection: 'row', gap: 12, marginTop: 20, marginBottom: 32 },
+  actionButton: { flex: 1 },
 });
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [offlineMode, setOfflineMode] = useState(false);
+  const { mode, setMode, isDark } = useAppTheme();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const offlineQueueCount = useAppSelector((s: any) => s.sync?.offlineQueue?.length ?? 0);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', onPress: () => {} },
-        {
-          text: 'Logout',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
-          },
-          style: 'destructive',
-        },
-      ]
-    );
+  useEffect(() => {
+    checkNotificationStatus();
+    const cleanup = setupNotificationListeners();
+    return cleanup;
+  }, []);
+
+  const checkNotificationStatus = async () => {
+    const enabled = await getNotificationPermissions();
+    setNotificationsEnabled(enabled);
   };
 
-  const handleChangePassword = () => {
-    Alert.alert(
-      'Change Password',
-      'Redirecting to password change...',
-      [{ text: 'OK', onPress: () => router.push('/settings/change-password') }]
-    );
+  const handleNotificationsToggle = async (value: boolean) => {
+    setLoadingNotifications(true);
+    try {
+      if (value) {
+        const token = await registerForPushNotifications();
+        if (token) {
+          await sendTokenToServer(token);
+          setNotificationsEnabled(true);
+        } else {
+          Alert.alert(
+            'Notifications',
+            'Please enable notifications in your device settings to receive farm alerts.'
+          );
+          setNotificationsEnabled(false);
+        }
+      } else {
+        await unregisterFromNotifications();
+        setNotificationsEnabled(false);
+      }
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  const handleDarkModeToggle = (value: boolean) => {
+    setMode(value ? 'dark' : 'light');
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', onPress: () => {} },
+      {
+        text: 'Logout',
+        onPress: async () => {
+          await logout();
+          router.replace('/(auth)/login');
+        },
+        style: 'destructive',
+      },
+    ]);
   };
 
   const getInitials = () => {
@@ -177,16 +159,17 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
-          </View>
+          {user?.avatar ? (
+            <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            </View>
+          )}
           <Text style={styles.userName}>{user?.fullName || 'User'}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
-          <Text style={styles.userRole}>
-            {user?.role || 'Farmer'}
-          </Text>
+          <Text style={styles.userRole}>{user?.role || 'Farmer'}</Text>
         </View>
 
         <Button
@@ -197,34 +180,22 @@ export default function SettingsScreen() {
 
         <View style={styles.divider} />
 
-        {/* Account Section */}
         <Text style={styles.sectionTitle}>Account</Text>
 
         <Card style={styles.settingItem}>
           <TouchableOpacity
             style={styles.settingItemRow}
-            onPress={handleChangePassword}
+            onPress={() => Alert.alert(
+              'Change Password',
+              'Please visit the web dashboard at farmhub.com/settings/security to change your password.',
+              [{ text: 'OK' }]
+            )}
+            accessibilityRole="button"
+            accessibilityLabel="Change Password"
           >
             <View style={styles.settingItemText}>
               <Text style={styles.settingItemTitle}>Change Password</Text>
-              <Text style={styles.settingItemDescription}>
-                Update your account password
-              </Text>
-            </View>
-            <Text style={{ fontSize: 18 }}>→</Text>
-          </TouchableOpacity>
-        </Card>
-
-        <Card style={styles.settingItem}>
-          <TouchableOpacity
-            style={styles.settingItemRow}
-            onPress={() => router.push('/settings/security')}
-          >
-            <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Security & Privacy</Text>
-              <Text style={styles.settingItemDescription}>
-                Manage your security settings
-              </Text>
+              <Text style={styles.settingItemDescription}>Update your account password</Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
@@ -232,23 +203,22 @@ export default function SettingsScreen() {
 
         <View style={styles.divider} />
 
-        {/* Preferences Section */}
         <Text style={styles.sectionTitle}>Preferences</Text>
 
         <Card style={styles.settingItem}>
           <View style={styles.settingItemRow}>
             <View style={styles.settingItemText}>
               <Text style={styles.settingItemTitle}>Push Notifications</Text>
-              <Text style={styles.settingItemDescription}>
-                Receive farm alerts and updates
-              </Text>
+              <Text style={styles.settingItemDescription}>Receive farm alerts and updates</Text>
             </View>
             <View style={styles.settingItemRight}>
               <Switch
-                value={notifications}
-                onValueChange={setNotifications}
+                value={notificationsEnabled}
+                onValueChange={handleNotificationsToggle}
                 trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={notifications ? colors.success : colors.light}
+                thumbColor={notificationsEnabled ? colors.success : colors.light}
+                disabled={loadingNotifications}
+                accessibilityLabel="Toggle push notifications"
               />
             </View>
           </View>
@@ -258,56 +228,54 @@ export default function SettingsScreen() {
           <View style={styles.settingItemRow}>
             <View style={styles.settingItemText}>
               <Text style={styles.settingItemTitle}>Dark Mode</Text>
-              <Text style={styles.settingItemDescription}>
-                Use dark theme (coming soon)
-              </Text>
+              <Text style={styles.settingItemDescription}>Switch between light and dark themes</Text>
             </View>
             <View style={styles.settingItemRight}>
               <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
+                value={isDark}
+                onValueChange={handleDarkModeToggle}
                 trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={darkMode ? colors.success : colors.light}
-                disabled
+                thumbColor={isDark ? colors.success : colors.light}
+                accessibilityLabel="Toggle dark mode"
               />
             </View>
           </View>
         </Card>
 
-        <Card style={styles.settingItem}>
-          <View style={styles.settingItemRow}>
-            <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Offline Mode</Text>
-              <Text style={styles.settingItemDescription}>
-                Sync data when online
-              </Text>
+        {offlineQueueCount > 0 && (
+          <Card style={styles.settingItem}>
+            <View style={styles.settingItemRow}>
+              <View style={styles.settingItemText}>
+                <Text style={styles.settingItemTitle}>Offline Changes</Text>
+                <Text style={styles.settingItemDescription}>
+                  Pending changes will sync when online
+                </Text>
+              </View>
+              <View style={styles.offlineQueueBadge}>
+                <Text style={styles.offlineQueueText}>{offlineQueueCount}</Text>
+              </View>
             </View>
-            <View style={styles.settingItemRight}>
-              <Switch
-                value={offlineMode}
-                onValueChange={setOfflineMode}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={offlineMode ? colors.success : colors.light}
-              />
-            </View>
-          </View>
-        </Card>
+          </Card>
+        )}
 
         <View style={styles.divider} />
 
-        {/* Support Section */}
         <Text style={styles.sectionTitle}>Support</Text>
 
         <Card style={styles.settingItem}>
           <TouchableOpacity
             style={styles.settingItemRow}
-            onPress={() => Alert.alert('Help', 'Opening help center...')}
+            onPress={() => Alert.alert(
+              'Help Center',
+              'Visit farmhub.com/help for FAQs, tutorials, and troubleshooting guides.',
+              [{ text: 'OK' }]
+            )}
+            accessibilityRole="button"
+            accessibilityLabel="Help Center"
           >
             <View style={styles.settingItemText}>
               <Text style={styles.settingItemTitle}>Help Center</Text>
-              <Text style={styles.settingItemDescription}>
-                FAQs and troubleshooting
-              </Text>
+              <Text style={styles.settingItemDescription}>FAQs and troubleshooting</Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
@@ -316,13 +284,17 @@ export default function SettingsScreen() {
         <Card style={styles.settingItem}>
           <TouchableOpacity
             style={styles.settingItemRow}
-            onPress={() => Alert.alert('Contact', 'Opening contact form...')}
+            onPress={() => Alert.alert(
+              'Contact Support',
+              'Email: support@farmhub.com\nPhone: +1 (555) 123-4567\n\nOur team is available Mon–Fri, 9 AM – 6 PM.',
+              [{ text: 'Close' }]
+            )}
+            accessibilityRole="button"
+            accessibilityLabel="Contact Support"
           >
             <View style={styles.settingItemText}>
               <Text style={styles.settingItemTitle}>Contact Support</Text>
-              <Text style={styles.settingItemDescription}>
-                Send us a message
-              </Text>
+              <Text style={styles.settingItemDescription}>Send us a message</Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
@@ -331,13 +303,13 @@ export default function SettingsScreen() {
         <Card style={styles.settingItem}>
           <TouchableOpacity
             style={styles.settingItemRow}
-            onPress={() => Alert.alert('About', 'FarmHub v1.0.0\n© 2024')}
+            onPress={() => Alert.alert('About', 'Farm Management System v1.0.0\n\n© 2024 FarmHub. All rights reserved.\n\nBuilt for modern agriculture.')}
+            accessibilityRole="button"
+            accessibilityLabel="About Farm Management System"
           >
             <View style={styles.settingItemText}>
               <Text style={styles.settingItemTitle}>About</Text>
-              <Text style={styles.settingItemDescription}>
-                App version and credits
-              </Text>
+              <Text style={styles.settingItemDescription}>App version and credits</Text>
             </View>
             <Text style={styles.settingItemValue}>v1.0.0</Text>
             <Text style={{ fontSize: 18 }}>→</Text>
@@ -346,7 +318,6 @@ export default function SettingsScreen() {
 
         <View style={styles.divider} />
 
-        {/* Logout */}
         <View style={styles.actionContainer}>
           <Button
             title="Logout"

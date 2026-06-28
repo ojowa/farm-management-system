@@ -10,7 +10,7 @@ import {
   TextStyle,
 } from 'react-native';
 
-const colors = {
+const colorsRaw = {
   primary: '#2E7D32',
   secondary: '#1976D2',
   success: '#4CAF50',
@@ -21,8 +21,11 @@ const colors = {
   dark: '#212121',
   border: '#BDBDBD',
   text: '#424242',
-  textLight: '#757575',
-};
+  textLight: '#616161',
+} as const;
+
+type Palette = typeof colorsRaw;
+const palette: Palette = colorsRaw;
 
 const styles = StyleSheet.create({
   inputContainer: {
@@ -32,22 +35,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-    color: colors.text,
+    color: palette.text,
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: palette.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: colors.text,
+    color: palette.text,
   },
   inputFocused: {
-    borderColor: colors.primary,
+    borderColor: palette.primary,
   },
   errorText: {
-    color: colors.error,
+    color: palette.error,
     fontSize: 12,
     marginTop: 4,
   },
@@ -60,13 +63,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   buttonPrimary: {
-    backgroundColor: colors.primary,
+    backgroundColor: palette.primary,
   },
   buttonSecondary: {
-    backgroundColor: colors.secondary,
+    backgroundColor: palette.secondary,
   },
   buttonDisabled: {
-    backgroundColor: colors.light,
+    backgroundColor: palette.light,
   },
   buttonText: {
     fontSize: 16,
@@ -74,7 +77,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   buttonTextDisabled: {
-    color: colors.textLight,
+    color: palette.textLight,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -95,7 +98,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   chipPrimary: {
-    backgroundColor: colors.primary,
+    backgroundColor: palette.primary,
   },
   chipText: {
     color: '#FFFFFF',
@@ -115,6 +118,7 @@ export interface InputProps {
   editable?: boolean;
   containerStyle?: ViewStyle;
   style?: TextStyle;
+  accessibilityLabel?: string;
 }
 
 export const TextInputField: React.FC<InputProps> = ({
@@ -128,17 +132,18 @@ export const TextInputField: React.FC<InputProps> = ({
   editable = true,
   containerStyle,
   style,
+  accessibilityLabel,
 }) => {
   const [focused, setFocused] = React.useState(false);
 
   return (
     <View style={[styles.inputContainer, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         style={[
           styles.input,
-          focused && styles.inputFocused,
-          !editable && { backgroundColor: colors.light },
+          focused ? styles.inputFocused : null,
+          !editable ? { backgroundColor: palette.light } : null,
           style,
         ]}
         placeholder={placeholder}
@@ -149,9 +154,12 @@ export const TextInputField: React.FC<InputProps> = ({
         editable={editable}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        placeholderTextColor={colors.textLight}
+        placeholderTextColor={palette.textLight}
+        accessibilityLabel={accessibilityLabel || label || placeholder}
+        accessibilityRole="text"
+        accessibilityState={{ disabled: !editable }}
       />
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
     </View>
   );
 };
@@ -165,6 +173,7 @@ export interface ButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
+  accessibilityLabel?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -176,6 +185,7 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
   icon,
+  accessibilityLabel,
 }) => {
   const isDisabled = disabled || loading;
 
@@ -183,29 +193,33 @@ export const Button: React.FC<ButtonProps> = ({
     <TouchableOpacity
       style={[
         styles.button,
-        variant === 'primary' && styles.buttonPrimary,
-        variant === 'secondary' && styles.buttonSecondary,
-        isDisabled && styles.buttonDisabled,
+        variant === 'primary' ? styles.buttonPrimary : null,
+        variant === 'secondary' ? styles.buttonSecondary : null,
+        isDisabled ? styles.buttonDisabled : null,
         style,
       ]}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={isDisabled ? colors.textLight : '#FFFFFF'}
+          color={isDisabled ? palette.textLight : '#FFFFFF'}
+          accessibilityLabel="Loading"
         />
       ) : (
         <>
-          {icon && icon}
+          {icon ? icon : null}
           <Text
             style={[
               styles.buttonText,
-              isDisabled && styles.buttonTextDisabled,
+              isDisabled ? styles.buttonTextDisabled : null,
               textStyle,
-              icon && { marginLeft: 8 },
+              icon ? { marginLeft: 8 } : null,
             ]}
           >
             {title}
@@ -220,47 +234,59 @@ export interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
   onPress?: () => void;
+  accessibilityLabel?: string;
 }
 
-export const Card: React.FC<CardProps> = ({ children, style, onPress }) => {
+export const Card: React.FC<CardProps> = ({ children, style, onPress, accessibilityLabel }) => {
   if (onPress) {
     return (
       <TouchableOpacity
         style={[styles.card, style]}
         onPress={onPress}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
       >
         {children}
       </TouchableOpacity>
     );
   }
 
-  return <View style={[styles.card, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, style]} accessibilityRole="summary">
+      {children}
+    </View>
+  );
 };
 
 export interface ChipProps {
   label: string;
   onPress?: () => void;
   variant?: 'primary' | 'secondary';
+  selected?: boolean;
 }
 
 export const Chip: React.FC<ChipProps> = ({
   label,
   onPress,
   variant = 'primary',
+  selected,
 }) => {
   return (
     <TouchableOpacity
       style={[
         styles.chip,
-        variant === 'primary' && styles.chipPrimary,
+        variant === 'primary' ? styles.chipPrimary : null,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
     >
       <Text style={styles.chipText}>{label}</Text>
     </TouchableOpacity>
   );
 };
 
-export const colors as const;
+export const colors = palette;

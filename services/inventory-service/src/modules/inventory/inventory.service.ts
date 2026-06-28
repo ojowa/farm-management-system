@@ -30,8 +30,8 @@ export class InventoryService {
     return item;
   }
 
-  async getAllInventoryItems() {
-    return this.repository.getAllInventoryItems();
+  async getAllInventoryItems(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 10) {
+    return this.repository.getAllInventoryItems(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateInventoryItem(id: string, data: UpdateInventoryItemRequest) {

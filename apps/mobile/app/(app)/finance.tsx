@@ -1,3 +1,4 @@
-import FinanceScreen from '../../../src/screens/app/FinanceScreen';
+import FinanceScreen from '@/screens/app/FinanceScreen';
 
 export default FinanceScreen;
+

@@ -1,14 +1,32 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authAPI } from '../../services/api';
+import { authAPI, registerForceLogoutHandler } from '../../services/api';
+import { clearAllStorage } from '../../utils/storage';
+import { describeApiError } from '../../utils/apiError';
+
+// Persisted token keys. Keep these in sync with utils/storage.ts so the
+// store owns the durable secret material and the storage helper owns the
+// bulk-clean contract.
+export const ACCESS_TOKEN_KEY = 'accessToken';
+export const REFRESH_TOKEN_KEY = 'refreshToken';
+export const USER_KEY = 'user';
+export const MFA_SESSION_KEY = 'mfaSessionToken';
 
 export interface User {
   id: string;
   email: string;
-  fullName: string;
-  role: string;
+  firstName: string;
+  lastName: string;
+  fullName: string; // derived: `${firstName} ${lastName}`
+  role: string; // role name string
+  roleId: string;
   organizationId: string;
   permissions: string[];
+  avatar?: string;
+  isActive?: boolean;
+  lastLoginAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthState {
@@ -21,6 +39,10 @@ export interface AuthState {
   mfaRequired: boolean;
   mfaSessionToken: string | null;
   lastLoginAt: string | null;
+  // Indicates whether restoreSession has run yet. Until that completes we
+  // intentionally treat the user as signed-out so the splash screen stays
+  // up while we check persisted credentials.
+  bootstrapped: boolean;
 }
 
 const initialState: AuthState = {
@@ -33,6 +55,7 @@ const initialState: AuthState = {
   mfaRequired: false,
   mfaSessionToken: null,
   lastLoginAt: null,
+  bootstrapped: false,
 };
 
 // Async thunks
@@ -43,7 +66,7 @@ export const login = createAsyncThunk(
       const response = await authAPI.login(credentials);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed');
+      return rejectWithValue(describeApiError(error, 'Login failed'));
     }
   }
 );
@@ -55,10 +78,17 @@ export const register = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await authAPI.register(data);
+      const [firstName, ...rest] = data.fullName.trim().split(' ');
+      const lastName = rest.join(' ') || firstName;
+      const response = await authAPI.register({
+        email: data.email,
+        password: data.password,
+        firstName,
+        lastName,
+      });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed');
+      return rejectWithValue(describeApiError(error, 'Registration failed'));
     }
   }
 );
@@ -70,7 +100,7 @@ export const refreshAccessToken = createAsyncThunk(
       const response = await authAPI.refreshToken({ refreshToken });
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Token refresh failed');
+      return rejectWithValue(describeApiError(error, 'Token refresh failed'));
     }
   }
 );
@@ -82,7 +112,7 @@ export const requestPasswordReset = createAsyncThunk(
       await authAPI.requestPasswordReset({ email });
       return 'Password reset email sent';
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Password reset request failed');
+      return rejectWithValue(describeApiError(error, 'Password reset request failed'));
     }
   }
 );
@@ -97,7 +127,7 @@ export const resetPassword = createAsyncThunk(
       await authAPI.resetPassword(data);
       return 'Password reset successful';
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Password reset failed');
+      return rejectWithValue(describeApiError(error, 'Password reset failed'));
     }
   }
 );
@@ -112,7 +142,7 @@ export const verifyMFA = createAsyncThunk(
       const response = await authAPI.verifyMFA(data);
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'MFA verification failed');
+      return rejectWithValue(describeApiError(error, 'MFA verification failed'));
     }
   }
 );
@@ -121,9 +151,13 @@ export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('refreshToken');
-      await AsyncStorage.removeItem('user');
+      // Best-effort server-side logout (token may already be expired)
+      try {
+        await authAPI.logout();
+      } catch {
+        // Ignore server errors — local cleanup is what matters
+      }
+      await clearAllStorage();
       return null;
     } catch (error: any) {
       return rejectWithValue('Logout failed');
@@ -136,20 +170,49 @@ export const restoreSession = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const [accessToken, refreshToken, userStr] = await Promise.all([
-        AsyncStorage.getItem('accessToken'),
-        AsyncStorage.getItem('refreshToken'),
-        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem(ACCESS_TOKEN_KEY),
+        AsyncStorage.getItem(REFRESH_TOKEN_KEY),
+        AsyncStorage.getItem(USER_KEY),
       ]);
 
       if (!accessToken || !userStr) {
-        return null;
+        // No persisted session: leave the user signed-out but mark the
+        // bootstrap as complete so the UI can render the login screen.
+        return { authenticated: false } as const;
+      }
+
+      let user: User;
+      try {
+        const raw = JSON.parse(userStr) as any;
+        // Re-normalize in case the shape changed between app versions
+        user = {
+          id: raw.id,
+          email: raw.email,
+          firstName: raw.firstName ?? '',
+          lastName: raw.lastName ?? '',
+          fullName: raw.fullName ?? `${raw.firstName ?? ''} ${raw.lastName ?? ''}`.trim(),
+          role: typeof raw.role === 'object' ? raw.role?.name ?? 'USER' : raw.role ?? 'USER',
+          roleId: raw.roleId ?? (typeof raw.role === 'object' ? raw.role?.id : '') ?? '',
+          organizationId: raw.organizationId ?? '',
+          permissions: raw.permissions ?? (typeof raw.role === 'object' ? raw.role?.permissions ?? [] : []),
+          avatar: raw.avatar,
+          isActive: raw.isActive,
+          lastLoginAt: raw.lastLoginAt,
+          createdAt: raw.createdAt,
+          updatedAt: raw.updatedAt,
+        };
+      } catch {
+        // Corrupt user blob: drop it and force a fresh login.
+        await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
+        return { authenticated: false } as const;
       }
 
       return {
+        authenticated: true,
         accessToken,
         refreshToken,
-        user: JSON.parse(userStr),
-      };
+        user,
+      } as const;
     } catch (error) {
       return rejectWithValue('Session restore failed');
     }
@@ -225,6 +288,10 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.user = null;
+      state.mfaRequired = false;
+      state.mfaSessionToken = null;
+      state.lastLoginAt = null;
+      state.loading = false;
     });
 
     // Verify MFA
@@ -257,16 +324,29 @@ const authSlice = createSlice({
       state.error = null;
       state.mfaRequired = false;
       state.mfaSessionToken = null;
+      state.lastLoginAt = null;
     });
 
     // Restore Session
+    builder.addCase(restoreSession.pending, (state) => {
+      state.loading = true;
+    });
     builder.addCase(restoreSession.fulfilled, (state, action) => {
-      if (action.payload) {
-        state.accessToken = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
+      state.loading = false;
+      state.bootstrapped = true;
+      if (action.payload.authenticated) {
+        state.accessToken = action.payload.accessToken ?? null;
+        state.refreshToken = action.payload.refreshToken ?? null;
         state.user = action.payload.user;
         state.isAuthenticated = true;
+      } else {
+        state.isAuthenticated = false;
       }
+    });
+    builder.addCase(restoreSession.rejected, (state) => {
+      state.loading = false;
+      state.bootstrapped = true;
+      state.isAuthenticated = false;
     });
 
     // Password Reset Requests
@@ -299,15 +379,58 @@ const authSlice = createSlice({
 export const { clearError, resetMFA } = authSlice.actions;
 export default authSlice.reducer;
 
-// Helper function to save tokens
-async function saveTokens(payload: any) {
+// Register a force-logout handler so the API interceptor can trigger a
+// global logout when a refresh token is no longer valid.
+registerForceLogoutHandler(() => {
+  storeDispatch(logout());
+});
+
+// Lazy reference to the store's dispatch — set once from the store module.
+let storeDispatch: any = null;
+export function setStoreDispatch(dispatch: any) {
+  storeDispatch = dispatch;
+}
+
+// Helper function to save tokens. Centralized so the keys stay in sync
+// with the bootstrap reducer above.
+async function saveTokens(payload: {
+  accessToken?: string;
+  refreshToken?: string;
+  user?: any;
+}) {
+  if (!payload?.accessToken || !payload.user) return;
   try {
+    const raw = payload.user;
+    // Normalize: backend returns firstName/lastName + role object; we derive
+    // a flat `fullName` and extract role name + permissions for the UI.
+    const user: User = {
+      id: raw.id,
+      email: raw.email,
+      firstName: raw.firstName ?? '',
+      lastName: raw.lastName ?? '',
+      fullName: raw.fullName ?? `${raw.firstName ?? ''} ${raw.lastName ?? ''}`.trim(),
+      role: typeof raw.role === 'object' ? raw.role?.name ?? 'USER' : raw.role ?? 'USER',
+      roleId: raw.roleId ?? raw.role?.id ?? '',
+      organizationId: raw.organizationId ?? '',
+      permissions: typeof raw.role === 'object' ? (raw.role?.permissions ?? []) : [],
+      avatar: raw.avatar,
+      isActive: raw.isActive,
+      lastLoginAt: raw.lastLoginAt,
+      createdAt: raw.createdAt,
+      updatedAt: raw.updatedAt,
+    };
     await Promise.all([
-      AsyncStorage.setItem('accessToken', payload.accessToken),
-      AsyncStorage.setItem('refreshToken', payload.refreshToken || ''),
-      AsyncStorage.setItem('user', JSON.stringify(payload.user)),
+      AsyncStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken),
+      AsyncStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken ?? ''),
+      AsyncStorage.setItem(USER_KEY, JSON.stringify(user)),
     ]);
   } catch (error) {
-    console.error('Failed to save tokens:', error);
+    // We can't recover from a write failure, but we don't want to crash
+    // the UI either. The next mutation will retry; otherwise the user will
+    // be prompted to sign in again on next launch.
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to persist tokens:', error);
+    }
   }
 }

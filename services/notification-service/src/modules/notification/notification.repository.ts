@@ -1,74 +1,92 @@
-import { prisma } from '@farm/database';
-import { Notification, CreateNotificationRequest, NotificationType } from '@farm/types';
-
-const asType = (type: NotificationType | string | undefined): NotificationType => {
-  const allowed: NotificationType[] = ['INFO', 'WARNING', 'ALERT', 'SUCCESS'];
-  return (allowed.includes(type as NotificationType) ? (type as NotificationType) : 'INFO');
-};
+import { Notification, CreateNotificationRequest, UpdateNotificationRequest } from '@farm/types';
+import { NotificationGateway } from './notification.gateway';
+import { Prisma } from '@farm/database';
 
 export class NotificationRepository {
-  async create(data: CreateNotificationRequest): Promise<Notification> {
-    return prisma.notification.create({
+  async create(createDto: CreateNotificationRequest): Promise<Notification> {
+    const notification = await prisma.notification.create({
       data: {
-        userId: data.userId,
-        title: data.title,
-        message: data.message,
-        type: asType(data.type),
+        userId: createDto.userId,
+        title: createDto.title,
+        message: createDto.message,
+        type: createDto.type,
+        link: createDto.link || null, // Add support for link field
+        isRead: createDto.isRead || false,
+        entityType: createDto.entityType,
+        entityId: createDto.entityId,
       },
-    }) as Promise<Notification>;
+      include: {
+        user: true,
+      },
+    });
+    return notification;
   }
 
   async findById(id: string): Promise<Notification | null> {
     return prisma.notification.findUnique({
       where: { id },
-    }) as Promise<Notification | null>;
+      include: { user: true },
+    });
   }
 
   async findByUserId(
     userId: string,
-    options?: { unreadOnly?: boolean; limit?: number; offset?: number },
+    options?: { unreadOnly?: boolean; limit?: number; offset?: number }
   ): Promise<Notification[]> {
+    const where: any = { userId };
+    if (options?.unreadOnly) {
+      where.isRead = false;
+    }
+
     return prisma.notification.findMany({
-      where: {
-        userId,
-        ...(options?.unreadOnly && { read: false }),
-      },
+      where,
+      include: { user: true },
       orderBy: { createdAt: 'desc' },
-      take: options?.limit,
-      skip: options?.offset,
-    }) as Promise<Notification[]>;
+      take: options?.limit || 10,
+      skip: options?.offset || 0,
+    });
   }
 
   async findAll(options?: { limit?: number; offset?: number }): Promise<Notification[]> {
     return prisma.notification.findMany({
+      include: { user: true },
       orderBy: { createdAt: 'desc' },
       take: options?.limit,
       skip: options?.offset,
-    }) as Promise<Notification[]>;
+    });
   }
 
-  async update(id: string, data: Partial<Notification>): Promise<Notification> {
+  async update(id: string, updateDto: Partial<Notification>): Promise<Notification> {
     return prisma.notification.update({
       where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date(),
-      },
-    }) as Promise<Notification>;
+      data: updateDto,
+      include: { user: true },
+    });
   }
 
   async markAsRead(id: string): Promise<Notification> {
-    return prisma.notification.update({
+    const gateway = new NotificationGateway();
+    const notification = await prisma.notification.update({
       where: { id },
-      data: { read: true },
-    }) as Promise<Notification>;
+      data: { isRead: true },
+      include: { user: true },
+    });
+    
+    // Emit real-time event for notification update
+    gateway.sendToUser(notification.userId, 'notification:read', notification);
+    
+    return notification;
   }
 
   async markAllAsRead(userId: string): Promise<number> {
     const result = await prisma.notification.updateMany({
-      where: { userId, read: false },
-      data: { read: true },
+      where: { 
+        userId,
+        isRead: false,
+      },
+      data: { isRead: true },
     });
+    
     return result.count;
   }
 
@@ -80,7 +98,10 @@ export class NotificationRepository {
 
   async countUnread(userId: string): Promise<number> {
     return prisma.notification.count({
-      where: { userId, read: false },
+      where: {
+        userId,
+        isRead: false,
+      },
     });
   }
 }

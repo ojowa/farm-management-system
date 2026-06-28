@@ -6,6 +6,8 @@ export const createFarmSchema = z.object({
   location: z.string().min(2).nullable().optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
+  size: z.number().min(0).optional().default(0),
+  status: z.string().optional().default('active'),
 });
 
 export const updateFarmSchema = z.object({
@@ -14,6 +16,8 @@ export const updateFarmSchema = z.object({
   location: z.string().min(2).nullable().optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
+  size: z.number().min(0).optional(),
+  status: z.string().optional(),
 });
 
 export const createFieldSchema = z.object({

@@ -35,8 +35,8 @@ export class LivestockService {
     return livestock;
   }
 
-  async getAllLivestock() {
-    return this.repository.getAllLivestock();
+  async getAllLivestock(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 10) {
+    return this.repository.getAllLivestock(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateLivestock(id: string, data: UpdateLivestockRequest) {

@@ -1,5 +1,5 @@
-import MFAVerificationScreen from '../../src/screens/auth/MFAVerificationScreen';
-import { useAppSelector } from '../../src/hooks/useAuth';
+import MFAVerificationScreen from '@/screens/auth/MFAVerificationScreen';
+import { useAppSelector } from '@/hooks/useAuth';
 
 export default function MFAScreen() {
   const { mfaSessionToken } = useAppSelector((state) => state.auth);
@@ -10,3 +10,5 @@ export default function MFAScreen() {
 
   return <MFAVerificationScreen mfaSessionToken={mfaSessionToken} />;
 }
+
+
