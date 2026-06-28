@@ -48,14 +48,20 @@ export class ReportingService {
     return farm;
   };
 
-  async getAllReports(organizationId: string) {
+  async getAllReports(organizationId: string, filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = { entity: 'report' };
+
     const reports = await prisma.syncQueue.findMany({
-      where: { entity: 'report' },
-      orderBy: { createdAt: 'desc' },
+      where,
+      orderBy: { [sortBy]: sortOrder },
+      skip,
+      take: limit,
     });
 
+    const total = await prisma.syncQueue.count({ where });
+
     // syncQueue lacks organizationId in schema; enforce tenant isolation by filtering payload.farmId.
-    // Optimize by avoiding per-report farm lookups (N+1).
     const payloadByReportId = new Map<string, { farmId?: string }>();
     const distinctFarmIds = new Set<string>();
 
@@ -75,7 +81,7 @@ export class ReportingService {
       }
     }
 
-    if (distinctFarmIds.size === 0) return [];
+    if (distinctFarmIds.size === 0) return { data: [], total: 0, page, totalPages: 0 };
 
     const allowedFarms = await prisma.farm.findMany({
       where: {
@@ -87,11 +93,13 @@ export class ReportingService {
 
     const allowedFarmIdSet = new Set(allowedFarms.map((f) => f.id));
 
-    return reports.filter((r) => {
+    const filtered = reports.filter((r) => {
       const p = payloadByReportId.get(r.id);
       const farmId = p?.farmId;
       return !!farmId && allowedFarmIdSet.has(farmId);
     });
+
+    return { data: filtered, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async getReportById(id: string, organizationId: string) {

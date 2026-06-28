@@ -28,8 +28,15 @@ export class CropController {
 
   async getAllCrops(req: Request, res: Response) {
     try {
-      const crops = await cropService.getAllCrops();
-      res.json(crops);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.name) filter.name = req.query.name as string;
+
+      const result = await cropService.getAllCrops(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -79,8 +86,17 @@ export class CropController {
 
   async getAllCropCycles(req: Request, res: Response) {
     try {
-      const cycles = await cropService.getAllCropCycles();
-      res.json(cycles);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.fieldId) filter.fieldId = req.query.fieldId as string;
+      if (req.query.cropId) filter.cropId = req.query.cropId as string;
+      if (req.query.status) filter.status = req.query.status as string;
+
+      const result = await cropService.getAllCropCycles(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }

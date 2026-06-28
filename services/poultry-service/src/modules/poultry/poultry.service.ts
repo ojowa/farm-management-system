@@ -32,8 +32,8 @@ export class PoultryService {
     return house;
   }
 
-  async getAllPoultryHouses() {
-    return this.repository.getAllPoultryHouses();
+  async getAllPoultryHouses(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllPoultryHouses(filter, sortBy, sortOrder, page, limit);
   }
 
   async updatePoultryHouse(id: string, data: UpdatePoultryHouseRequest) {
@@ -61,8 +61,8 @@ export class PoultryService {
     return pen;
   }
 
-  async getAllPens() {
-    return this.repository.getAllPens();
+  async getAllPens(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllPens(filter, sortBy, sortOrder, page, limit);
   }
 
   async updatePen(id: string, data: UpdatePenRequest) {
@@ -91,8 +91,8 @@ export class PoultryService {
     return breed;
   }
 
-  async getAllBreeds() {
-    return this.repository.getAllBreeds();
+  async getAllBreeds(filter: any = {}, sortBy: string = 'name', sortOrder: 'asc' | 'desc' = 'asc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllBreeds(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateBreed(id: string, data: UpdateBreedRequest) {
@@ -127,8 +127,8 @@ export class PoultryService {
     return flock;
   }
 
-  async getAllFlocks() {
-    return this.repository.getAllFlocks();
+  async getAllFlocks(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllFlocks(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateFlock(id: string, data: UpdateFlockRequest) {
@@ -171,8 +171,8 @@ export class PoultryService {
     return record;
   }
 
-  async getAllFeedingRecords() {
-    return this.repository.getAllFeedingRecords();
+  async getAllFeedingRecords(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllFeedingRecords(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateFeedingRecord(id: string, data: UpdateFeedingRecordRequest) {
@@ -210,8 +210,8 @@ export class PoultryService {
     return record;
   }
 
-  async getAllVaccinationRecords() {
-    return this.repository.getAllVaccinationRecords();
+  async getAllVaccinationRecords(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllVaccinationRecords(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateVaccinationRecord(id: string, data: UpdateVaccinationRecordRequest) {
@@ -261,8 +261,8 @@ export class PoultryService {
     return record;
   }
 
-  async getAllMortalityRecords() {
-    return this.repository.getAllMortalityRecords();
+  async getAllMortalityRecords(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllMortalityRecords(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateMortalityRecord(id: string, data: UpdateMortalityRecordRequest) {

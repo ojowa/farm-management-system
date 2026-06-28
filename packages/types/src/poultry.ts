@@ -176,3 +176,40 @@ export interface PoultryBatch {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Medication Types
+
+export interface Medication {
+  id: string;
+  flockId: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  startDate: Date;
+  endDate?: Date | null;
+  notes?: string | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateMedicationRequest {
+  flockId: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  startDate: Date | string;
+  endDate?: Date | string | null;
+  notes?: string | null;
+}
+
+export interface UpdateMedicationRequest {
+  flockId?: string;
+  name?: string;
+  dosage?: string;
+  frequency?: string;
+  startDate?: Date | string;
+  endDate?: Date | string | null;
+  notes?: string | null;
+  status?: string;
+}

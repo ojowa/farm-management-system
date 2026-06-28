@@ -27,8 +27,17 @@ export class InventoryController {
 
   async getAllInventoryItems(req: Request, res: Response) {
     try {
-      const items = await inventoryService.getAllInventoryItems();
-      res.json(items);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.farmId) filter.farmId = req.query.farmId as string;
+      if (req.query.category) filter.category = req.query.category as string;
+      if (req.query.search) filter.search = req.query.search as string;
+
+      const result = await inventoryService.getAllInventoryItems(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }

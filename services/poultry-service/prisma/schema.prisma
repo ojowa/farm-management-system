@@ -72,6 +72,7 @@ model Flock {
   feedingRecords     FeedingRecord[]
   vaccinationRecords VaccinationRecord[]
   mortalityRecords   MortalityRecord[]
+  medications        Medication[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -108,5 +109,23 @@ model MortalityRecord {
   date      DateTime
   flock     Flock @relation(fields: [flockId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Medication {
+  id          String    @id @default(uuid())
+  flockId     String
+  name        String
+  dosage      String
+  frequency   String
+  startDate   DateTime
+  endDate     DateTime?
+  notes       String?
+  status      String    @default("ACTIVE")
+  flock       Flock     @relation(fields: [flockId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([flockId])
+  @@index([status])
 }
 

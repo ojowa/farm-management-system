@@ -33,8 +33,16 @@ export class FinanceController {
 
   async getAllExpenses(req: Request, res: Response) {
     try {
-      const expenses = await financeService.getAllExpenses();
-      res.json(expenses);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'date';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.farmId) filter.farmId = req.query.farmId as string;
+      if (req.query.search) filter.search = req.query.search as string;
+
+      const result = await financeService.getAllExpenses(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -84,8 +92,16 @@ export class FinanceController {
 
   async getAllSales(req: Request, res: Response) {
     try {
-      const sales = await financeService.getAllSales();
-      res.json(sales);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'date';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.farmId) filter.farmId = req.query.farmId as string;
+      if (req.query.search) filter.search = req.query.search as string;
+
+      const result = await financeService.getAllSales(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }

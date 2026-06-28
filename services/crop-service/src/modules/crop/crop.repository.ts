@@ -93,13 +93,26 @@ export class CropRepository {
     });
   }
 
-  async getAllCropCycles() {
-    return prisma.cropCycle.findMany({
-      include: {
-        crop: true,
-        field: true,
-      },
-    });
+  async getAllCropCycles(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (filter.fieldId) where.fieldId = filter.fieldId;
+    if (filter.cropId) where.cropId = filter.cropId;
+    if (filter.status) where.status = filter.status;
+
+    const [data, total] = await Promise.all([
+      prisma.cropCycle.findMany({
+        where,
+        include: { crop: true, field: true },
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: limit,
+      }),
+      prisma.cropCycle.count({ where }),
+    ]);
+
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateCropCycle(

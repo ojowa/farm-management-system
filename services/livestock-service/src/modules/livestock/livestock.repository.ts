@@ -16,8 +16,31 @@ export class LivestockRepository {
     return prisma.livestock.findUnique({ where: { id } });
   }
 
-  async getAllLivestock() {
-    return prisma.livestock.findMany({ orderBy: { createdAt: 'desc' } });
+  async getAllLivestock(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (filter.farmId) where.farmId = filter.farmId;
+    if (filter.species) where.species = filter.species;
+    if (filter.status) where.status = filter.status;
+    if (filter.search) {
+      where.OR = [
+        { species: { contains: filter.search, mode: 'insensitive' } },
+        { breed: { contains: filter.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.livestock.findMany({
+        where,
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: limit,
+      }),
+      prisma.livestock.count({ where }),
+    ]);
+
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateLivestock(

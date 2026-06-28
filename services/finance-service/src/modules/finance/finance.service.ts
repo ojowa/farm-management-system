@@ -39,8 +39,8 @@ export class FinanceService {
     return expense;
   }
 
-  async getAllExpenses() {
-    return this.repository.getAllExpenses();
+  async getAllExpenses(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllExpenses(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateExpense(id: string, data: UpdateExpenseRequest) {
@@ -80,8 +80,8 @@ export class FinanceService {
     return sale;
   }
 
-  async getAllSales() {
-    return this.repository.getAllSales();
+  async getAllSales(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.repository.getAllSales(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateSale(id: string, data: UpdateSaleRequest) {

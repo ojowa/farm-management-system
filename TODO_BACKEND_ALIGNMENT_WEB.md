@@ -128,33 +128,33 @@ All entity endpoints now support pagination via query params with proper respons
 > The sections below will be made precise after we inspect API routes/controllers/gateways.
 
 ### farms-service
-- [ ] Add list query params support (filters: status; pagination; sorting)
-- [ ] Update response to `{data,total,page,totalPages}`
+- [x] Add list query params support (filters: organizationId, name, location; pagination; sorting)
+- [x] Update response to `{data,total,page,totalPages}`
 - [ ] Emit realtime events on create/update/delete
 
 ### crop-service
-- [ ] Add list query params support (filters: farmId; status/health if supported)
-- [ ] Update response envelope
+- [x] Add list query params support (filters: name, fieldId, cropId, status; pagination; sorting)
+- [x] Update response envelope
 - [ ] Emit realtime events
 
 ### livestock-service
-- [ ] Add list query params support (filters: type; optional farm filter)
-- [ ] Update response envelope
+- [x] Add list query params support (filters: farmId, species, status, search; pagination; sorting)
+- [x] Update response envelope
 - [ ] Emit realtime events
 
 ### poultry-service
-- [ ] Add list query params support
-- [ ] Add list endpoints for submodules used by web (egg production, feeding, vaccination, mortality)
+- [x] Add list query params support (all 7 endpoints: poultryHouses, pens, breeds, flocks, feedingRecords, vaccinationRecords, mortalityRecords)
+- [x] Add list endpoints for submodules used by web (egg production, feeding, vaccination, mortality)
 - [ ] Emit realtime events
 
 ### inventory-service
-- [ ] Add list query params support
-- [ ] Update response envelope
+- [x] Add list query params support (filters: farmId, category, search; pagination; sorting)
+- [x] Update response envelope
 - [ ] Emit realtime events
 
 ### finance-service / reporting-service
-- [ ] Confirm finance/report endpoints needed by web are query-param capable (if required)
-- [ ] Update response envelope if lists are paginated
+- [x] Confirm finance/report endpoints needed by web are query-param capable (if required)
+- [x] Update response envelope if lists are paginated
 - [ ] Emit realtime events if web expects updates
 
 ### notification-service
@@ -169,7 +169,7 @@ All entity endpoints now support pagination via query params with proper respons
 ---
 
 ## Definition of Done (alignment)
-- [ ] Every web list page that currently does client-side filtering/pagination has a backend equivalent option.
+- [x] Every web list page that currently does client-side filtering/pagination has a backend equivalent option.
 - [ ] List pages receive realtime updates (create/update/delete) without manual refresh.
 - [ ] Notification deep links work end-to-end.
 - [ ] Medication module works fully with backend CRUD endpoints.

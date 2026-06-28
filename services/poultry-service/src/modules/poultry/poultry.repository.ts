@@ -15,10 +15,17 @@ export class PoultryRepository {
     });
   }
 
-  async getAllPoultryHouses() {
-    return prisma.poultryHouse.findMany({
-      include: { pens: true },
-    });
+  async getAllPoultryHouses(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.farmId) where.farmId = filter.farmId;
+    if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' as const };
+
+    const [data, total] = await Promise.all([
+      prisma.poultryHouse.findMany({ where, include: { pens: true }, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.poultryHouse.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updatePoultryHouse(id: string, data: { farmId?: string; name?: string; capacity?: number }) {
@@ -48,10 +55,17 @@ export class PoultryRepository {
     });
   }
 
-  async getAllPens() {
-    return prisma.pen.findMany({
-      include: { poultryHouse: true },
-    });
+  async getAllPens(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.poultryHouseId) where.poultryHouseId = filter.poultryHouseId;
+    if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' as const };
+
+    const [data, total] = await Promise.all([
+      prisma.pen.findMany({ where, include: { poultryHouse: true }, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.pen.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updatePen(id: string, data: { poultryHouseId?: string; name?: string; capacity?: number }) {
@@ -80,8 +94,17 @@ export class PoultryRepository {
     });
   }
 
-  async getAllBreeds() {
-    return prisma.breed.findMany();
+  async getAllBreeds(filter: any = {}, sortBy: string = 'name', sortOrder: 'asc' | 'desc' = 'asc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' as const };
+    if (filter.birdType) where.birdType = filter.birdType;
+
+    const [data, total] = await Promise.all([
+      prisma.breed.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.breed.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateBreed(id: string, data: { name?: string; birdType?: string }) {
@@ -134,14 +157,24 @@ export class PoultryRepository {
     });
   }
 
-  async getAllFlocks() {
-    return prisma.flock.findMany({
-      include: {
-        farm: true,
-        pen: true,
-        breed: true,
-      },
-    });
+  async getAllFlocks(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.farmId) where.farmId = filter.farmId;
+    if (filter.penId) where.penId = filter.penId;
+    if (filter.breedId) where.breedId = filter.breedId;
+    if (filter.status) where.status = filter.status;
+    if (filter.search) {
+      where.OR = [
+        { batchCode: { contains: filter.search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.flock.findMany({ where, include: { farm: true, pen: true, breed: true }, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.flock.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateFlock(
@@ -191,10 +224,17 @@ export class PoultryRepository {
     });
   }
 
-  async getAllFeedingRecords() {
-    return prisma.feedingRecord.findMany({
-      include: { flock: true },
-    });
+  async getAllFeedingRecords(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.flockId) where.flockId = filter.flockId;
+    if (filter.feedType) where.feedType = { contains: filter.feedType, mode: 'insensitive' as const };
+
+    const [data, total] = await Promise.all([
+      prisma.feedingRecord.findMany({ where, include: { flock: true }, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.feedingRecord.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateFeedingRecord(
@@ -229,10 +269,17 @@ export class PoultryRepository {
     });
   }
 
-  async getAllVaccinationRecords() {
-    return prisma.vaccinationRecord.findMany({
-      include: { flock: true },
-    });
+  async getAllVaccinationRecords(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.flockId) where.flockId = filter.flockId;
+    if (filter.vaccine) where.vaccine = { contains: filter.vaccine, mode: 'insensitive' as const };
+
+    const [data, total] = await Promise.all([
+      prisma.vaccinationRecord.findMany({ where, include: { flock: true }, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.vaccinationRecord.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateVaccinationRecord(
@@ -267,10 +314,16 @@ export class PoultryRepository {
     });
   }
 
-  async getAllMortalityRecords() {
-    return prisma.mortalityRecord.findMany({
-      include: { flock: true },
-    });
+  async getAllMortalityRecords(filter: any = {}, sortBy: string = 'date', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filter.flockId) where.flockId = filter.flockId;
+
+    const [data, total] = await Promise.all([
+      prisma.mortalityRecord.findMany({ where, include: { flock: true }, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.mortalityRecord.count({ where }),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async updateMortalityRecord(

@@ -27,8 +27,18 @@ export class LivestockController {
 
   async getAllLivestock(req: Request, res: Response) {
     try {
-      const livestock = await livestockService.getAllLivestock();
-      res.json(livestock);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.farmId) filter.farmId = req.query.farmId as string;
+      if (req.query.species) filter.species = req.query.species as string;
+      if (req.query.status) filter.status = req.query.status as string;
+      if (req.query.search) filter.search = req.query.search as string;
+
+      const result = await livestockService.getAllLivestock(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }

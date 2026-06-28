@@ -111,3 +111,26 @@ export const poultryBatchSchema = z.object({
   quantity: z.number().positive(),
   arrivalDate: z.date().or(z.string().datetime()),
 });
+
+// Medication schemas
+
+export const createMedicationSchema = z.object({
+  flockId: z.string().uuid(),
+  name: z.string().min(2),
+  dosage: z.string().min(1),
+  frequency: z.string().min(1),
+  startDate: dateSchema,
+  endDate: dateSchema.optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export const updateMedicationSchema = z.object({
+  flockId: z.string().uuid().optional(),
+  name: z.string().min(2).optional(),
+  dosage: z.string().min(1).optional(),
+  frequency: z.string().min(1).optional(),
+  startDate: dateSchema.optional(),
+  endDate: dateSchema.optional().nullable(),
+  notes: z.string().optional().nullable(),
+  status: z.enum(['ACTIVE', 'COMPLETED', 'CANCELLED']).optional(),
+});

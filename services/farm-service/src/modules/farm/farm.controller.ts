@@ -47,7 +47,7 @@ export class FarmController {
         filter.location = req.query.location as string;
       }
       
-      const result = await this.farmService.getAllFarms(filter, sortBy, sortOrder, page, limit);
+      const result = await farmService.getAllFarms(filter, sortBy, sortOrder, page, limit);
       res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
@@ -114,7 +114,7 @@ export class FarmController {
         filter.name = req.query.name as string;
       }
       
-      const result = await this.farmService.getAllFields(filter, sortBy, sortOrder, page, limit);
+      const result = await farmService.getAllFields(filter, sortBy, sortOrder, page, limit);
       res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });

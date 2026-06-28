@@ -17,8 +17,8 @@ export class CropService {
     return crop;
   }
 
-  async getAllCrops() {
-    return this.cropRepository.getAllCrops();
+  async getAllCrops(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.cropRepository.getAllCrops(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateCrop(id: string, data: UpdateCropRequest) {
@@ -58,8 +58,8 @@ export class CropService {
     return cycle;
   }
 
-  async getAllCropCycles() {
-    return this.cropRepository.getAllCropCycles();
+  async getAllCropCycles(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
+    return this.cropRepository.getAllCropCycles(filter, sortBy, sortOrder, page, limit);
   }
 
   async updateCropCycle(id: string, data: UpdateCropCycleRequest) {

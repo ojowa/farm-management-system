@@ -43,8 +43,16 @@ export class PoultryController {
 
   async getAllPoultryHouses(req: Request, res: Response) {
     try {
-      const houses = await poultryService.getAllPoultryHouses();
-      res.json(houses);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.farmId) filter.farmId = req.query.farmId as string;
+      if (req.query.name) filter.name = req.query.name as string;
+
+      const result = await poultryService.getAllPoultryHouses(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -94,8 +102,16 @@ export class PoultryController {
 
   async getAllPens(req: Request, res: Response) {
     try {
-      const pens = await poultryService.getAllPens();
-      res.json(pens);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.poultryHouseId) filter.poultryHouseId = req.query.poultryHouseId as string;
+      if (req.query.name) filter.name = req.query.name as string;
+
+      const result = await poultryService.getAllPens(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -145,8 +161,16 @@ export class PoultryController {
 
   async getAllBreeds(req: Request, res: Response) {
     try {
-      const breeds = await poultryService.getAllBreeds();
-      res.json(breeds);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'name';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'asc';
+      const filter: any = {};
+      if (req.query.name) filter.name = req.query.name as string;
+      if (req.query.birdType) filter.birdType = req.query.birdType as string;
+
+      const result = await poultryService.getAllBreeds(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -196,8 +220,19 @@ export class PoultryController {
 
   async getAllFlocks(req: Request, res: Response) {
     try {
-      const flocks = await poultryService.getAllFlocks();
-      res.json(flocks);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'createdAt';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.farmId) filter.farmId = req.query.farmId as string;
+      if (req.query.penId) filter.penId = req.query.penId as string;
+      if (req.query.breedId) filter.breedId = req.query.breedId as string;
+      if (req.query.status) filter.status = req.query.status as string;
+      if (req.query.search) filter.search = req.query.search as string;
+
+      const result = await poultryService.getAllFlocks(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -247,8 +282,16 @@ export class PoultryController {
 
   async getAllFeedingRecords(req: Request, res: Response) {
     try {
-      const records = await poultryService.getAllFeedingRecords();
-      res.json(records);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'date';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.flockId) filter.flockId = req.query.flockId as string;
+      if (req.query.feedType) filter.feedType = req.query.feedType as string;
+
+      const result = await poultryService.getAllFeedingRecords(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -298,8 +341,16 @@ export class PoultryController {
 
   async getAllVaccinationRecords(req: Request, res: Response) {
     try {
-      const records = await poultryService.getAllVaccinationRecords();
-      res.json(records);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'date';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.flockId) filter.flockId = req.query.flockId as string;
+      if (req.query.vaccine) filter.vaccine = req.query.vaccine as string;
+
+      const result = await poultryService.getAllVaccinationRecords(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
@@ -349,8 +400,15 @@ export class PoultryController {
 
   async getAllMortalityRecords(req: Request, res: Response) {
     try {
-      const records = await poultryService.getAllMortalityRecords();
-      res.json(records);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'date';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
+      const filter: any = {};
+      if (req.query.flockId) filter.flockId = req.query.flockId as string;
+
+      const result = await poultryService.getAllMortalityRecords(filter, sortBy, sortOrder, page, limit);
+      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message || error });
     }
