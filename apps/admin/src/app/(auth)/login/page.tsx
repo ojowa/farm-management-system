@@ -116,7 +116,7 @@ export default function LoginPage() {
                 <span className="text-sm">Remember me</span>
               </Label>
               <Link
-                href="/(auth)/forgot-password"
+                href="/forgot-password"
                 className="text-sm text-primary hover:underline"
               >
                 Forgot password?
@@ -137,7 +137,7 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
-            <Link href="/(auth)/register" className="text-primary hover:underline font-medium">
+            <Link href="/register" className="text-primary hover:underline font-medium">
               Create one
             </Link>
           </p>

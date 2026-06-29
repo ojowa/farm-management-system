@@ -79,12 +79,12 @@ describe('Login Page Integration', () => {
   it('has link to register page', () => {
     render(<LoginPage />);
     const registerLink = screen.getByText('Create one');
-    expect(registerLink).toHaveAttribute('href', '/(auth)/register');
+    expect(registerLink).toHaveAttribute('href', '/register');
   });
 
   it('has link to forgot password', () => {
     render(<LoginPage />);
     const forgotLink = screen.getByText('Forgot password?');
-    expect(forgotLink).toHaveAttribute('href', '/(auth)/forgot-password');
+    expect(forgotLink).toHaveAttribute('href', '/forgot-password');
   });
 });

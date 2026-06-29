@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('mfaSessionToken');
         document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
         document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        window.location.href = '/(auth)/login';
+        window.location.href = '/login';
       }
       processQueue(refreshError, null);
       return Promise.reject(refreshError);

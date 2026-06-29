@@ -85,10 +85,10 @@ export default function ResetPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <Button variant="outline" onClick={() => router.push('/(auth)/forgot-password')} className="w-full">
+            <Button variant="outline" onClick={() => router.push('/forgot-password')} className="w-full">
               Request New Link
             </Button>
-            <Button variant="ghost" onClick={() => router.push('/(auth)/login')} className="w-full">
+            <Button variant="ghost" onClick={() => router.push('/login')} className="w-full">
               Back to Login
             </Button>
           </CardContent>
@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <Button onClick={() => router.push('/(auth)/login')} className="w-full" size="lg">
+            <Button onClick={() => router.push('/login')} className="w-full" size="lg">
               <Lock className="mr-2 h-4 w-4" />
               Sign In
             </Button>
@@ -187,7 +187,7 @@ export default function ResetPasswordPage() {
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground">
             Remember your password?{' '}
-            <Link href="/(auth)/login" className="text-primary hover:underline font-medium">
+            <Link href="/login" className="text-primary hover:underline font-medium">
               Sign in
             </Link>
           </p>

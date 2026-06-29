@@ -122,7 +122,7 @@ export default function MFAPage() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('mfaSessionToken');
     }
-    router.push('/(auth)/login');
+    router.push('/login');
   };
 
   return (

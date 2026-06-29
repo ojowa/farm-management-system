@@ -72,7 +72,7 @@ export default function RegisterPage() {
         title: 'Account created!',
         message: 'Your organization has been set up. Please sign in.',
       });
-      router.push('/(auth)/login');
+      router.push('/login');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Registration failed. Please try again.';
       toast({
@@ -297,7 +297,7 @@ export default function RegisterPage() {
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link href="/(auth)/login" className="text-primary hover:underline font-medium">
+            <Link href="/login" className="text-primary hover:underline font-medium">
               Sign in
             </Link>
           </p>

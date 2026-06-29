@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => router.push('/(auth)/login')}
+                onClick={() => router.push('/login')}
                 className="w-full"
               >
                 Back to Login
@@ -142,7 +142,7 @@ export default function ForgotPasswordPage() {
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground">
             Remember your password?{' '}
-            <Link href="/(auth)/login" className="text-primary hover:underline font-medium">
+            <Link href="/login" className="text-primary hover:underline font-medium">
               Sign in
             </Link>
           </p>

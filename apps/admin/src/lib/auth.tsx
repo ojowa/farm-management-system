@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (e.key === 'accessToken' && !e.newValue) {
         clearAllAuth();
         setUser(null);
-        router.push('/(auth)/login');
+        router.push('/login');
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await authAPI.login({ email, password });
     if (data.mfaRequired) {
       localStorage.setItem('mfaSessionToken', data.mfaSessionToken);
-      router.push('/(auth)/mfa');
+      router.push('/mfa');
       return;
     }
     localStorage.setItem('accessToken', data.accessToken);
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { await authAPI.logout(); } catch { /* best effort */ }
     clearAllAuth();
     setUser(null);
-    router.push('/(auth)/login');
+    router.push('/login');
   }, [router]);
 
   const updateProfile = useCallback(async (data: Partial<User>) => {

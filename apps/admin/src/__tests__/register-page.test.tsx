@@ -101,6 +101,6 @@ describe('Register Page Integration', () => {
   it('has link to login page', () => {
     render(<RegisterPage />);
     const loginLink = screen.getByText('Sign in');
-    expect(loginLink).toHaveAttribute('href', '/(auth)/login');
+    expect(loginLink).toHaveAttribute('href', '/login');
   });
 });
