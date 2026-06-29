@@ -6,7 +6,10 @@ export interface Notification {
   title: string;
   message: string;
   type: NotificationType;
-  read: boolean;
+  link?: string;
+  isRead: boolean;
+  entityType?: string;
+  entityId?: string;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -16,11 +19,15 @@ export interface CreateNotificationRequest {
   title: string;
   message: string;
   type?: NotificationType;
+  link?: string;
+  entityType?: string;
+  entityId?: string;
 }
 
 export interface UpdateNotificationRequest {
   title?: string;
   message?: string;
   type?: NotificationType;
-  read?: boolean;
+  link?: string;
+  isRead?: boolean;
 }

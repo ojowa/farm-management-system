@@ -34,17 +34,23 @@ export default function DashboardPage() {
 
     async function load() {
       try {
-        const [farmsRes, cropsRes, livestockRes, financeRes] = await Promise.allSettled([
+        const [farmsRes, cropsRes, livestockRes, expensesRes, salesRes] = await Promise.allSettled([
           farmsAPI.list(),
           cropsAPI.list(),
           livestockAPI.list(),
-          financeAPI.list(),
+          financeAPI.listExpenses(),
+          financeAPI.listSales(),
         ]);
 
         const farms = farmsRes.status === 'fulfilled' ? (farmsRes.value.data.farms || farmsRes.value.data || []) : [];
         const crops = cropsRes.status === 'fulfilled' ? (cropsRes.value.data.crops || cropsRes.value.data || []) : [];
         const livestock = livestockRes.status === 'fulfilled' ? (livestockRes.value.data.animals || livestockRes.value.data || []) : [];
-        const transactions = financeRes.status === 'fulfilled' ? (financeRes.value.data.transactions || financeRes.value.data || []) : [];
+        const expenses = expensesRes.status === 'fulfilled' ? (expensesRes.value.data.expenses || expensesRes.value.data || []) : [];
+        const sales = salesRes.status === 'fulfilled' ? (salesRes.value.data.sales || salesRes.value.data || []) : [];
+        const transactions = [
+          ...expenses.map((e: any) => ({ ...e, type: 'expense' })),
+          ...sales.map((s: any) => ({ ...s, type: 'income' })),
+        ];
 
         const totalRevenue = transactions
           .filter((t: any) => t.type === 'income')

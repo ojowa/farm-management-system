@@ -373,6 +373,9 @@ model Notification {
   title     String
   message   String
   type      String   @default("INFO")
+  link      String?
+  entityType String?
+  entityId   String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 

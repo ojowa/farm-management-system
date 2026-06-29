@@ -15,8 +15,11 @@ import authReducer, {
 const mockUser = {
   id: 'u1',
   email: 'test@farm.com',
+  firstName: 'Test',
+  lastName: 'Farmer',
   fullName: 'Test Farmer',
   role: 'farmer',
+  roleId: 'role1',
   organizationId: 'org1',
   permissions: ['farms.read'],
 };

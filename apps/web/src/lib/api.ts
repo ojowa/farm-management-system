@@ -140,98 +140,106 @@ export const workersAPI = {
 };
 
 export const financeAPI = {
-  list: (params?: any) => apiClient.get('/finance', { params }),
-  get: (id: string) => apiClient.get(`/finance/${id}`),
-  create: (data: any) => apiClient.post('/finance', data),
-  update: (id: string, data: any) => apiClient.put(`/finance/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/finance/${id}`),
-  getReports: (params?: any) => apiClient.get('/finance/reports', { params }),
+  listExpenses: (params?: any) => apiClient.get('/finance/expenses', { params }),
+  getExpense: (id: string) => apiClient.get(`/finance/expenses/${id}`),
+  createExpense: (data: any) => apiClient.post('/finance/expenses', data),
+  updateExpense: (id: string, data: any) => apiClient.put(`/finance/expenses/${id}`, data),
+  deleteExpense: (id: string) => apiClient.delete(`/finance/expenses/${id}`),
+  listSales: (params?: any) => apiClient.get('/finance/sales', { params }),
+  getSale: (id: string) => apiClient.get(`/finance/sales/${id}`),
+  createSale: (data: any) => apiClient.post('/finance/sales', data),
+  updateSale: (id: string, data: any) => apiClient.put(`/finance/sales/${id}`, data),
+  deleteSale: (id: string) => apiClient.delete(`/finance/sales/${id}`),
 };
 
 export const reportsAPI = {
-  list: (params?: any) => apiClient.get('/reports', { params }),
-  get: (id: string) => apiClient.get(`/reports/${id}`),
+  list: (params?: any) => apiClient.get('/reporting/reports', { params }),
+  get: (id: string) => apiClient.get(`/reporting/reports/${id}`),
+  create: (data: any) => apiClient.post('/reporting/reports', data),
+  generate: (templateId: string) => apiClient.post('/reporting/reports/generate', { templateId }),
+  update: (id: string, data: any) => apiClient.put(`/reporting/reports/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/reporting/reports/${id}`),
 };
 
 // ── Poultry sub-modules ────────────────────────────────────────────────
 export const poultryHousesAPI = {
-  list: (params?: any) => apiClient.get('/poultry-houses', { params }),
-  get: (id: string) => apiClient.get(`/poultry-houses/${id}`),
-  create: (data: any) => apiClient.post('/poultry-houses', data),
-  update: (id: string, data: any) => apiClient.put(`/poultry-houses/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/poultry-houses/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/poultry-houses', { params }),
+  get: (id: string) => apiClient.get(`/poultry/poultry-houses/${id}`),
+  create: (data: any) => apiClient.post('/poultry/poultry-houses', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/poultry-houses/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/poultry-houses/${id}`),
 };
 
 export const pensAPI = {
-  list: (params?: any) => apiClient.get('/pens', { params }),
-  get: (id: string) => apiClient.get(`/pens/${id}`),
-  create: (data: any) => apiClient.post('/pens', data),
-  update: (id: string, data: any) => apiClient.put(`/pens/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/pens/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/pens', { params }),
+  get: (id: string) => apiClient.get(`/poultry/pens/${id}`),
+  create: (data: any) => apiClient.post('/poultry/pens', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/pens/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/pens/${id}`),
 };
 
 export const breedsAPI = {
-  list: (params?: any) => apiClient.get('/breeds', { params }),
-  get: (id: string) => apiClient.get(`/breeds/${id}`),
-  create: (data: any) => apiClient.post('/breeds', data),
-  update: (id: string, data: any) => apiClient.put(`/breeds/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/breeds/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/breeds', { params }),
+  get: (id: string) => apiClient.get(`/poultry/breeds/${id}`),
+  create: (data: any) => apiClient.post('/poultry/breeds', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/breeds/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/breeds/${id}`),
 };
 
 export const flocksAPI = {
-  list: (params?: any) => apiClient.get('/flocks', { params }),
-  get: (id: string) => apiClient.get(`/flocks/${id}`),
-  create: (data: any) => apiClient.post('/flocks', data),
-  update: (id: string, data: any) => apiClient.put(`/flocks/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/flocks/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/flocks', { params }),
+  get: (id: string) => apiClient.get(`/poultry/flocks/${id}`),
+  create: (data: any) => apiClient.post('/poultry/flocks', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/flocks/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/flocks/${id}`),
 };
 
 export const feedingRecordsAPI = {
-  list: (params?: any) => apiClient.get('/feeding-records', { params }),
-  get: (id: string) => apiClient.get(`/feeding-records/${id}`),
-  create: (data: any) => apiClient.post('/feeding-records', data),
-  update: (id: string, data: any) => apiClient.put(`/feeding-records/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/feeding-records/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/feeding-records', { params }),
+  get: (id: string) => apiClient.get(`/poultry/feeding-records/${id}`),
+  create: (data: any) => apiClient.post('/poultry/feeding-records', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/feeding-records/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/feeding-records/${id}`),
 };
 
 export const vaccinationRecordsAPI = {
-  list: (params?: any) => apiClient.get('/vaccination-records', { params }),
-  get: (id: string) => apiClient.get(`/vaccination-records/${id}`),
-  create: (data: any) => apiClient.post('/vaccination-records', data),
-  update: (id: string, data: any) => apiClient.put(`/vaccination-records/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/vaccination-records/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/vaccination-records', { params }),
+  get: (id: string) => apiClient.get(`/poultry/vaccination-records/${id}`),
+  create: (data: any) => apiClient.post('/poultry/vaccination-records', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/vaccination-records/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/vaccination-records/${id}`),
 };
 
 export const mortalityRecordsAPI = {
-  list: (params?: any) => apiClient.get('/mortality-records', { params }),
-  get: (id: string) => apiClient.get(`/mortality-records/${id}`),
-  create: (data: any) => apiClient.post('/mortality-records', data),
-  update: (id: string, data: any) => apiClient.put(`/mortality-records/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/mortality-records/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/mortality-records', { params }),
+  get: (id: string) => apiClient.get(`/poultry/mortality-records/${id}`),
+  create: (data: any) => apiClient.post('/poultry/mortality-records', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/mortality-records/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/mortality-records/${id}`),
 };
 
 export const eggProductionAPI = {
-  list: (params?: any) => apiClient.get('/egg-production', { params }),
-  get: (id: string) => apiClient.get(`/egg-production/${id}`),
-  create: (data: any) => apiClient.post('/egg-production', data),
-  update: (id: string, data: any) => apiClient.put(`/egg-production/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/egg-production/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/egg-production', { params }),
+  get: (id: string) => apiClient.get(`/poultry/egg-production/${id}`),
+  create: (data: any) => apiClient.post('/poultry/egg-production', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/egg-production/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/egg-production/${id}`),
 };
 
 export const medicationAPI = {
-  list: (params?: any) => apiClient.get('/medications', { params }),
-  get: (id: string) => apiClient.get(`/medications/${id}`),
-  create: (data: any) => apiClient.post('/medications', data),
-  update: (id: string, data: any) => apiClient.put(`/medications/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/medications/${id}`),
+  list: (params?: any) => apiClient.get('/poultry/medications', { params }),
+  get: (id: string) => apiClient.get(`/poultry/medications/${id}`),
+  create: (data: any) => apiClient.post('/poultry/medications', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/medications/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/medications/${id}`),
 };
 
-export const salesAPI = {
-  list: (params?: any) => apiClient.get('/sales', { params }),
-  get: (id: string) => apiClient.get(`/sales/${id}`),
-  create: (data: any) => apiClient.post('/sales', data),
-  update: (id: string, data: any) => apiClient.put(`/sales/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/sales/${id}`),
+export const poultrySalesAPI = {
+  list: (params?: any) => apiClient.get('/poultry/sales', { params }),
+  get: (id: string) => apiClient.get(`/poultry/sales/${id}`),
+  create: (data: any) => apiClient.post('/poultry/sales', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/sales/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/sales/${id}`),
 };
 
 export const notificationsAPI = {

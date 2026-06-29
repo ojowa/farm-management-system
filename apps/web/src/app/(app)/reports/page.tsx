@@ -24,8 +24,16 @@ export default function ReportsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await financeAPI.list();
-        const txns = data.transactions || data || [];
+        const [expensesRes, salesRes] = await Promise.allSettled([
+          financeAPI.listExpenses(),
+          financeAPI.listSales(),
+        ]);
+        const expensesList = expensesRes.status === 'fulfilled' ? (expensesRes.value.data.expenses || expensesRes.value.data || []) : [];
+        const salesList = salesRes.status === 'fulfilled' ? (salesRes.value.data.sales || salesRes.value.data || []) : [];
+        const txns = [
+          ...expensesList.map((e: any) => ({ ...e, type: 'expense' })),
+          ...salesList.map((s: any) => ({ ...s, type: 'income' })),
+        ];
         setTransactions(txns);
         const income = txns.filter((t: Transaction) => t.type === 'income').reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);
         const expense = txns.filter((t: Transaction) => t.type === 'expense').reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);

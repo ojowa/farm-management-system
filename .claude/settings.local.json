@@ -16,7 +16,11 @@
       "Bash(node_modules/.bin/prisma generate)",
       "Bash(pnpm run *)",
       "Bash(npx tsc *)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(git commit:*)",
+      "Bash(git push origin main)",
+      "Bash(cd /Users/OJOWA/Documents/Farm Management System/apps/mobile)",
+      "Bash(npm test -- --coverage)"
     ]
   }
 }

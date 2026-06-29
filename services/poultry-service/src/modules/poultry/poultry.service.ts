@@ -15,13 +15,16 @@ import {
   CreateMortalityRecordRequest,
   UpdateMortalityRecordRequest
 } from '@farm/types';
+import { emitPoultryEvent } from '../../../../../shared-services/events/event-emitter';
 
 export class PoultryService {
   private repository = new PoultryRepository();
 
   // --- PoultryHouse Service Methods ---
   async createPoultryHouse(data: CreatePoultryHouseRequest) {
-    return this.repository.createPoultryHouse(data);
+    const house = await this.repository.createPoultryHouse(data);
+    await emitPoultryEvent('created', house);
+    return house;
   }
 
   async getPoultryHouseById(id: string) {
@@ -38,19 +41,25 @@ export class PoultryService {
 
   async updatePoultryHouse(id: string, data: UpdatePoultryHouseRequest) {
     await this.getPoultryHouseById(id);
-    return this.repository.updatePoultryHouse(id, data);
+    const house = await this.repository.updatePoultryHouse(id, data);
+    await emitPoultryEvent('updated', house);
+    return house;
   }
 
   async deletePoultryHouse(id: string) {
     await this.getPoultryHouseById(id);
-    return this.repository.deletePoultryHouse(id);
+    await this.repository.deletePoultryHouse(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- Pen Service Methods ---
   async createPen(data: CreatePenRequest) {
     // Validate PoultryHouse exists
     await this.getPoultryHouseById(data.poultryHouseId);
-    return this.repository.createPen(data);
+    const pen = await this.repository.createPen(data);
+    await emitPoultryEvent('created', pen);
+    return pen;
   }
 
   async getPenById(id: string) {
@@ -70,17 +79,23 @@ export class PoultryService {
     if (data.poultryHouseId) {
       await this.getPoultryHouseById(data.poultryHouseId);
     }
-    return this.repository.updatePen(id, data);
+    const pen = await this.repository.updatePen(id, data);
+    await emitPoultryEvent('updated', pen);
+    return pen;
   }
 
   async deletePen(id: string) {
     await this.getPenById(id);
-    return this.repository.deletePen(id);
+    await this.repository.deletePen(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- Breed Service Methods ---
   async createBreed(data: CreateBreedRequest) {
-    return this.repository.createBreed(data);
+    const breed = await this.repository.createBreed(data);
+    await emitPoultryEvent('created', breed);
+    return breed;
   }
 
   async getBreedById(id: string) {
@@ -97,12 +112,16 @@ export class PoultryService {
 
   async updateBreed(id: string, data: UpdateBreedRequest) {
     await this.getBreedById(id);
-    return this.repository.updateBreed(id, data);
+    const breed = await this.repository.updateBreed(id, data);
+    await emitPoultryEvent('updated', breed);
+    return breed;
   }
 
   async deleteBreed(id: string) {
     await this.getBreedById(id);
-    return this.repository.deleteBreed(id);
+    await this.repository.deleteBreed(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- Flock Service Methods ---
@@ -113,10 +132,12 @@ export class PoultryService {
 
     const arrivalDate = typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate;
 
-    return this.repository.createFlock({
+    const flock = await this.repository.createFlock({
       ...data,
       arrivalDate,
     });
+    await emitPoultryEvent('created', flock);
+    return flock;
   }
 
   async getFlockById(id: string) {
@@ -142,25 +163,31 @@ export class PoultryService {
 
     const arrivalDate = data.arrivalDate ? (typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate) : undefined;
 
-    return this.repository.updateFlock(id, {
+    const flock = await this.repository.updateFlock(id, {
       ...data,
       arrivalDate,
     });
+    await emitPoultryEvent('updated', flock);
+    return flock;
   }
 
   async deleteFlock(id: string) {
     await this.getFlockById(id);
-    return this.repository.deleteFlock(id);
+    await this.repository.deleteFlock(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- FeedingRecord Service Methods ---
   async createFeedingRecord(data: CreateFeedingRecordRequest) {
     await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
-    return this.repository.createFeedingRecord({
+    const record = await this.repository.createFeedingRecord({
       ...data,
       date,
     });
+    await emitPoultryEvent('created', record);
+    return record;
   }
 
   async getFeedingRecordById(id: string) {
@@ -181,25 +208,31 @@ export class PoultryService {
       await this.getFlockById(data.flockId);
     }
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
-    return this.repository.updateFeedingRecord(id, {
+    const record = await this.repository.updateFeedingRecord(id, {
       ...data,
       date,
     });
+    await emitPoultryEvent('updated', record);
+    return record;
   }
 
   async deleteFeedingRecord(id: string) {
     await this.getFeedingRecordById(id);
-    return this.repository.deleteFeedingRecord(id);
+    await this.repository.deleteFeedingRecord(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- VaccinationRecord Service Methods ---
   async createVaccinationRecord(data: CreateVaccinationRecordRequest) {
     await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
-    return this.repository.createVaccinationRecord({
+    const record = await this.repository.createVaccinationRecord({
       ...data,
       date,
     });
+    await emitPoultryEvent('created', record);
+    return record;
   }
 
   async getVaccinationRecordById(id: string) {
@@ -220,15 +253,19 @@ export class PoultryService {
       await this.getFlockById(data.flockId);
     }
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
-    return this.repository.updateVaccinationRecord(id, {
+    const record = await this.repository.updateVaccinationRecord(id, {
       ...data,
       date,
     });
+    await emitPoultryEvent('updated', record);
+    return record;
   }
 
   async deleteVaccinationRecord(id: string) {
     await this.getVaccinationRecordById(id);
-    return this.repository.deleteVaccinationRecord(id);
+    await this.repository.deleteVaccinationRecord(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- MortalityRecord Service Methods ---
@@ -250,6 +287,7 @@ export class PoultryService {
     const updatedCount = flock.currentCount - data.count;
     await this.repository.updateFlock(flock.id, { currentCount: updatedCount });
 
+    await emitPoultryEvent('created', record);
     return record;
   }
 
@@ -288,6 +326,7 @@ export class PoultryService {
       await this.repository.updateFlock(flock.id, { currentCount: updatedCount });
     }
 
+    await emitPoultryEvent('updated', record);
     return record;
   }
 
@@ -299,6 +338,8 @@ export class PoultryService {
     const updatedCount = flock.currentCount + record.count;
     await this.repository.updateFlock(flock.id, { currentCount: updatedCount });
 
-    return this.repository.deleteMortalityRecord(id);
+    await this.repository.deleteMortalityRecord(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 }

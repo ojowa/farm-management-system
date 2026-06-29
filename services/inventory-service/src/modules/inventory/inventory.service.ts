@@ -1,5 +1,6 @@
 import { InventoryRepository } from './inventory.repository';
 import { CreateInventoryItemRequest, UpdateInventoryItemRequest } from '@farm/types';
+import { emitInventoryEvent } from '../../../../../shared-services/events/event-emitter';
 
 export class InventoryService {
   private repository = new InventoryRepository();
@@ -13,13 +14,15 @@ export class InventoryService {
 
   async createInventoryItem(data: CreateInventoryItemRequest) {
     await this.assertFarmExists(data.farmId);
-    return this.repository.createInventoryItem({
+    const item = await this.repository.createInventoryItem({
       farmId: data.farmId,
       name: data.name,
       category: data.category,
       quantity: data.quantity,
       unit: data.unit,
     });
+    await emitInventoryEvent('created', item);
+    return item;
   }
 
   async getInventoryItemById(id: string) {
@@ -39,12 +42,16 @@ export class InventoryService {
     if (data.farmId) {
       await this.assertFarmExists(data.farmId);
     }
-    return this.repository.updateInventoryItem(id, data);
+    const item = await this.repository.updateInventoryItem(id, data);
+    await emitInventoryEvent('updated', item);
+    return item;
   }
 
   async deleteInventoryItem(id: string) {
     await this.getInventoryItemById(id);
-    return this.repository.deleteInventoryItem(id);
+    await this.repository.deleteInventoryItem(id);
+    await emitInventoryEvent('deleted', { id });
+    return { deleted: true };
   }
 }
 

@@ -8,13 +8,16 @@ datasource db {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
-  message   String
-  type      String   // 'INFO' | 'WARNING' | 'ALERT'
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  title      String
+  message    String
+  type       String   // 'INFO' | 'WARNING' | 'ALERT' | 'SUCCESS'
+  link       String?
+  isRead     Boolean  @default(false)
+  entityType String?
+  entityId   String?
+  createdAt  DateTime @default(now())
 
   @@index([userId])
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { salesAPI, farmsAPI } from '@/lib/api';
+import { poultrySalesAPI, farmsAPI } from '@/lib/api';
 import { Button, Modal, Input, Select, TextArea } from '@/components/ui';
 import DataTable from '@/components/DataTable';
 import Pagination from '@/components/Pagination';
@@ -30,7 +30,7 @@ export default function SalesPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [sRes, farmsRes] = await Promise.all([salesAPI.list(), farmsAPI.list()]);
+      const [sRes, farmsRes] = await Promise.all([poultrySalesAPI.list(), farmsAPI.list()]);
       setSales(sRes.data.sales || sRes.data || []);
       setFarms(farmsRes.data.farms || farmsRes.data || []);
     } catch { /* ignore */ }
@@ -63,7 +63,7 @@ export default function SalesPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await salesAPI.create({ ...form, quantity: Number(form.quantity), totalPrice: Number(form.totalPrice) });
+      await poultrySalesAPI.create({ ...form, quantity: Number(form.quantity), totalPrice: Number(form.totalPrice) });
       success('Sale recorded');
       setShowAdd(false);
       setForm({ productType: 'eggs', productName: '', quantity: '', unit: 'kg', totalPrice: '', buyerName: '', farmId: '', date: '', notes: '' });

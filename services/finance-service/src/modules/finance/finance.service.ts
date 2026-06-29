@@ -5,6 +5,7 @@ import {
   CreateSaleRequest,
   UpdateSaleRequest,
 } from '@farm/types';
+import { emitFinanceEvent } from '../../../../../shared-services/events/event-emitter';
 
 export class FinanceService {
   private repository = new FinanceRepository();
@@ -23,12 +24,14 @@ export class FinanceService {
   // --- Expense ---
   async createExpense(data: CreateExpenseRequest) {
     await this.assertFarmExists(data.farmId);
-    return this.repository.createExpense({
+    const expense = await this.repository.createExpense({
       farmId: data.farmId,
       title: data.title,
       amount: data.amount,
       date: this.toDate(data.date),
     });
+    await emitFinanceEvent('created', expense);
+    return expense;
   }
 
   async getExpenseById(id: string) {
@@ -48,21 +51,25 @@ export class FinanceService {
     if (data.farmId) {
       await this.assertFarmExists(data.farmId);
     }
-    return this.repository.updateExpense(id, {
+    const expense = await this.repository.updateExpense(id, {
       ...data,
       date: data.date ? this.toDate(data.date) : undefined,
     });
+    await emitFinanceEvent('updated', expense);
+    return expense;
   }
 
   async deleteExpense(id: string) {
     await this.getExpenseById(id);
-    return this.repository.deleteExpense(id);
+    await this.repository.deleteExpense(id);
+    await emitFinanceEvent('deleted', { id });
+    return { deleted: true };
   }
 
   // --- Sale ---
   async createSale(data: CreateSaleRequest) {
     await this.assertFarmExists(data.farmId);
-    return this.repository.createSale({
+    const sale = await this.repository.createSale({
       farmId: data.farmId,
       item: data.item,
       quantity: data.quantity,
@@ -70,6 +77,8 @@ export class FinanceService {
       total: data.total,
       date: this.toDate(data.date),
     });
+    await emitFinanceEvent('created', sale);
+    return sale;
   }
 
   async getSaleById(id: string) {
@@ -89,15 +98,19 @@ export class FinanceService {
     if (data.farmId) {
       await this.assertFarmExists(data.farmId);
     }
-    return this.repository.updateSale(id, {
+    const sale = await this.repository.updateSale(id, {
       ...data,
       date: data.date ? this.toDate(data.date) : undefined,
     });
+    await emitFinanceEvent('updated', sale);
+    return sale;
   }
 
   async deleteSale(id: string) {
     await this.getSaleById(id);
-    return this.repository.deleteSale(id);
+    await this.repository.deleteSale(id);
+    await emitFinanceEvent('deleted', { id });
+    return { deleted: true };
   }
 }
 

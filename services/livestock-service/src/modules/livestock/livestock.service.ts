@@ -1,5 +1,6 @@
 import { LivestockRepository } from './livestock.repository';
 import { CreateLivestockRequest, UpdateLivestockRequest } from '@farm/types';
+import { emitLivestockEvent } from '../../../../../shared-services/events/event-emitter';
 
 export class LivestockService {
   private repository = new LivestockRepository();
@@ -17,7 +18,7 @@ export class LivestockService {
 
     const birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate;
 
-    return this.repository.createLivestock({
+    const livestock = await this.repository.createLivestock({
       farmId: data.farmId,
       species: data.species,
       breed: data.breed ?? null,
@@ -25,6 +26,8 @@ export class LivestockService {
       birthDate,
       status: data.status,
     });
+    await emitLivestockEvent('created', livestock);
+    return livestock;
   }
 
   async getLivestockById(id: string) {
@@ -52,15 +55,19 @@ export class LivestockService {
         : data.birthDate
       : undefined;
 
-    return this.repository.updateLivestock(id, {
+    const livestock = await this.repository.updateLivestock(id, {
       ...data,
       birthDate,
     });
+    await emitLivestockEvent('updated', livestock);
+    return livestock;
   }
 
   async deleteLivestock(id: string) {
     await this.getLivestockById(id);
-    return this.repository.deleteLivestock(id);
+    await this.repository.deleteLivestock(id);
+    await emitLivestockEvent('deleted', { id });
+    return { deleted: true };
   }
 }
 

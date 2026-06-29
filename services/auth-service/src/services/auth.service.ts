@@ -1,5 +1,5 @@
 import { prisma } from '@farm/database';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { LoginCredentials } from '@farm/types';

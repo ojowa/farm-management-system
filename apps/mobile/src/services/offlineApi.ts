@@ -111,21 +111,21 @@ export const offlinePoultryAPI = {
   get: (id: string) => poultryAPI.get(id),
   create: (data: any) => {
     if (!isOnline()) {
-      queueWrite('poultry', 'POST', '/poultry', data);
+      queueWrite('poultry', 'POST', '/poultry/flocks', data);
       return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
     }
     return poultryAPI.create(data);
   },
   update: (id: string, data: any) => {
     if (!isOnline()) {
-      queueWrite('poultry', 'PUT', `/poultry/${id}`, data);
+      queueWrite('poultry', 'PUT', `/poultry/flocks/${id}`, data);
       return Promise.resolve({ data: { ...data, id } } as any);
     }
     return poultryAPI.update(id, data);
   },
   delete: (id: string) => {
     if (!isOnline()) {
-      queueWrite('poultry', 'DELETE', `/poultry/${id}`);
+      queueWrite('poultry', 'DELETE', `/poultry/flocks/${id}`);
       return Promise.resolve({ data: { success: true } } as any);
     }
     return poultryAPI.delete(id);
@@ -137,21 +137,23 @@ export const offlineFinanceAPI = {
   get: (id: string) => financeAPI.get(id),
   create: (data: any) => {
     if (!isOnline()) {
-      queueWrite('finance', 'POST', '/finance', data);
+      const endpoint = data.type === 'income' ? '/finance/sales' : '/finance/expenses';
+      queueWrite('finance', 'POST', endpoint, data);
       return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
     }
     return financeAPI.create(data);
   },
   update: (id: string, data: any) => {
     if (!isOnline()) {
-      queueWrite('finance', 'PUT', `/finance/${id}`, data);
+      const endpoint = data.type === 'income' ? `/finance/sales/${id}` : `/finance/expenses/${id}`;
+      queueWrite('finance', 'PUT', endpoint, data);
       return Promise.resolve({ data: { ...data, id } } as any);
     }
     return financeAPI.update(id, data);
   },
   delete: (id: string) => {
     if (!isOnline()) {
-      queueWrite('finance', 'DELETE', `/finance/${id}`);
+      queueWrite('finance', 'DELETE', `/finance/expenses/${id}`);
       return Promise.resolve({ data: { success: true } } as any);
     }
     return financeAPI.delete(id);

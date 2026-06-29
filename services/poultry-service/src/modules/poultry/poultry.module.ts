@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { PoultryController } from './poultry.controller';
+import { MedicationController } from './medication.controller';
 import { authMiddleware } from '@farm/auth/express';
 
 const router = Router();
 const poultryController = new PoultryController();
+const medicationController = new MedicationController();
 
 const writeRoles = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
 const vetRoles = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'VETERINARIAN', 'SUPER_ADMIN'];
@@ -57,6 +59,13 @@ router.get('/mortality-records/:id', authMiddleware({ permission: 'poultry.read'
 router.post('/mortality-records', authMiddleware({ roles: writeRoles, permission: 'poultry.write' }), poultryController.createMortalityRecord);
 router.put('/mortality-records/:id', authMiddleware({ roles: writeRoles, permission: 'poultry.write' }), poultryController.updateMortalityRecord);
 router.delete('/mortality-records/:id', authMiddleware({ roles: writeRoles, permission: 'poultry.delete' }), poultryController.deleteMortalityRecord);
+
+// Medication routes
+router.get('/medications', authMiddleware({ permission: 'poultry.read' }), medicationController.getAllMedications);
+router.get('/medications/:id', authMiddleware({ permission: 'poultry.read' }), medicationController.getMedicationById);
+router.post('/medications', authMiddleware({ roles: vetRoles, permission: 'poultry.write' }), medicationController.createMedication);
+router.put('/medications/:id', authMiddleware({ roles: vetRoles, permission: 'poultry.write' }), medicationController.updateMedication);
+router.delete('/medications/:id', authMiddleware({ roles: deleteRoles, permission: 'poultry.delete' }), medicationController.deleteMedication);
 
 export const poultryRouter = router;
 export default router;

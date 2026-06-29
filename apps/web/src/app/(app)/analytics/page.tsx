@@ -11,13 +11,18 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [farms, crops, livestock, finance] = await Promise.allSettled([
-          farmsAPI.list(), cropsAPI.list(), livestockAPI.list(), financeAPI.list(),
+        const [farms, crops, livestock, expenses, sales] = await Promise.allSettled([
+          farmsAPI.list(), cropsAPI.list(), livestockAPI.list(), financeAPI.listExpenses(), financeAPI.listSales(),
         ]);
         const farmsList = farms.status === 'fulfilled' ? (farms.value.data.farms || farms.value.data || []) : [];
         const cropsList = crops.status === 'fulfilled' ? (crops.value.data.crops || crops.value.data || []) : [];
         const livestockList = livestock.status === 'fulfilled' ? (livestock.value.data.animals || livestock.value.data || []) : [];
-        const txns = finance.status === 'fulfilled' ? (finance.value.data.transactions || finance.value.data || []) : [];
+        const expensesList = expenses.status === 'fulfilled' ? (expenses.value.data.expenses || expenses.value.data || []) : [];
+        const salesList = sales.status === 'fulfilled' ? (sales.value.data.sales || sales.value.data || []) : [];
+        const txns = [
+          ...expensesList.map((e: any) => ({ ...e, type: 'expense' })),
+          ...salesList.map((s: any) => ({ ...s, type: 'income' })),
+        ];
 
         const cropStatus = cropsList.reduce((acc: any, c: any) => { acc[c.status] = (acc[c.status] || 0) + 1; return acc; }, {});
         const animalStatus = livestockList.reduce((acc: any, a: any) => { acc[a.status] = (acc[a.status] || 0) + 1; return acc; }, {});

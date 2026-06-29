@@ -265,13 +265,13 @@ const POULTRY_STATUS_MAP: Record<string, string> = {
 };
 
 export const poultryAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/flocks', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/flocks/${id}`),
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/flocks', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/flocks/${id}`),
   create: (data: any) => {
     const { store } = require('../store/store');
     const orgId = store?.getState?.()?.auth?.user?.organizationId;
     const qty = Number(data.quantity) || 0;
-    return apiClient.axiosInstance.post('/flocks', {
+    return apiClient.axiosInstance.post('/poultry/flocks', {
       organizationId: orgId,
       farmId: data.farmId,
       penId: data.penId || '00000000-0000-0000-0000-000000000000',
@@ -285,16 +285,16 @@ export const poultryAPI = {
     });
   },
   update: (id: string, data: any) =>
-    apiClient.axiosInstance.put(`/flocks/${id}`, {
+    apiClient.axiosInstance.put(`/poultry/flocks/${id}`, {
       batchCode: data.name,
       currentCount: Number(data.quantity) || undefined,
       status: POULTRY_STATUS_MAP[data.health] || undefined,
       penId: data.penId || undefined,
       breedId: data.breedId || undefined,
     }),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/flocks/${id}`),
-  listPens: (params?: any) => apiClient.axiosInstance.get('/pens', { params }),
-  listBreeds: (params?: any) => apiClient.axiosInstance.get('/breeds', { params }),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/flocks/${id}`),
+  listPens: (params?: any) => apiClient.axiosInstance.get('/poultry/pens', { params }),
+  listBreeds: (params?: any) => apiClient.axiosInstance.get('/poultry/breeds', { params }),
 };
 
 /** Helper to get the first available farm ID from the backend. */
@@ -313,19 +313,23 @@ export const financeAPI = {
   /** Fetches both expenses and sales, merges into a single list. */
   list: async (params?: any) => {
     const [expensesRes, salesRes] = await Promise.all([
-      apiClient.axiosInstance.get('/expenses', { params }),
-      apiClient.axiosInstance.get('/sales', { params }),
+      apiClient.axiosInstance.get('/finance/expenses', { params }),
+      apiClient.axiosInstance.get('/finance/sales', { params }),
     ]);
     const expenses = Array.isArray(expensesRes.data) ? expensesRes.data : [];
     const sales = Array.isArray(salesRes.data) ? salesRes.data : [];
     return { data: [...expenses, ...sales] };
   },
-  get: (id: string) => apiClient.axiosInstance.get(`/expenses/${id}`).catch(() => apiClient.axiosInstance.get(`/sales/${id}`)),
+  listExpenses: (params?: any) => apiClient.axiosInstance.get('/finance/expenses', { params }),
+  listSales: (params?: any) => apiClient.axiosInstance.get('/finance/sales', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/finance/expenses/${id}`).catch(() => apiClient.axiosInstance.get(`/finance/sales/${id}`)),
+  getExpense: (id: string) => apiClient.axiosInstance.get(`/finance/expenses/${id}`),
+  getSale: (id: string) => apiClient.axiosInstance.get(`/finance/sales/${id}`),
   create: async (data: any) => {
     const farmId = await getDefaultFarmId();
     if (data.type === 'income') {
       const amount = Math.abs(Number(data.amount) || 0);
-      return apiClient.axiosInstance.post('/sales', {
+      return apiClient.axiosInstance.post('/finance/sales', {
         farmId,
         item: data.title,
         quantity: 1,
@@ -334,31 +338,46 @@ export const financeAPI = {
         date: data.date,
       });
     }
-    return apiClient.axiosInstance.post('/expenses', {
+    return apiClient.axiosInstance.post('/finance/expenses', {
       farmId,
       title: data.title,
       amount: Math.abs(Number(data.amount) || 0),
       date: data.date,
     });
   },
+  createExpense: (data: any) => apiClient.axiosInstance.post('/finance/expenses', data),
+  createSale: (data: any) => apiClient.axiosInstance.post('/finance/sales', data),
   update: async (id: string, data: any) => {
     if (data.type === 'income') {
       const amount = Math.abs(Number(data.amount) || 0);
-      return apiClient.axiosInstance.put(`/sales/${id}`, {
+      return apiClient.axiosInstance.put(`/finance/sales/${id}`, {
         item: data.title,
         price: amount,
         total: amount,
         date: data.date,
       });
     }
-    return apiClient.axiosInstance.put(`/expenses/${id}`, {
+    return apiClient.axiosInstance.put(`/finance/expenses/${id}`, {
       title: data.title,
       amount: Math.abs(Number(data.amount) || 0),
       date: data.date,
     });
   },
-  delete: (id: string) => apiClient.axiosInstance.delete(`/expenses/${id}`).catch(() => apiClient.axiosInstance.delete(`/sales/${id}`)),
-  getReports: (params?: any) => apiClient.axiosInstance.get('/finance/reports', { params }),
+  updateExpense: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/expenses/${id}`, data),
+  updateSale: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/sales/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/finance/expenses/${id}`).catch(() => apiClient.axiosInstance.delete(`/finance/sales/${id}`)),
+  deleteExpense: (id: string) => apiClient.axiosInstance.delete(`/finance/expenses/${id}`),
+  deleteSale: (id: string) => apiClient.axiosInstance.delete(`/finance/sales/${id}`),
+  getReports: (params?: any) => apiClient.axiosInstance.get('/reporting/reports', { params }),
+};
+
+export const reportsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/reporting/reports', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/reporting/reports/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/reporting/reports', data),
+  generate: (templateId: string) => apiClient.axiosInstance.post('/reporting/reports/generate', { templateId }),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/reporting/reports/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/reporting/reports/${id}`),
 };
 
 export const inventoryAPI = {
@@ -375,4 +394,61 @@ export const workersAPI = {
   create: (data: any) => apiClient.axiosInstance.post('/workers', data),
   update: (id: string, data: any) => apiClient.axiosInstance.put(`/workers/${id}`, data),
   delete: (id: string) => apiClient.axiosInstance.delete(`/workers/${id}`),
+};
+
+export const poultryHousesAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/poultry-houses', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/poultry-houses/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/poultry/poultry-houses', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/poultry-houses/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/poultry-houses/${id}`),
+};
+
+export const feedingRecordsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/feeding-records', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/feeding-records/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/poultry/feeding-records', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/feeding-records/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/feeding-records/${id}`),
+};
+
+export const vaccinationRecordsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/vaccination-records', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/vaccination-records/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/poultry/vaccination-records', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/vaccination-records/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/vaccination-records/${id}`),
+};
+
+export const mortalityRecordsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/mortality-records', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/mortality-records/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/poultry/mortality-records', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/mortality-records/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/mortality-records/${id}`),
+};
+
+export const eggProductionAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/egg-production', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/egg-production/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/poultry/egg-production', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/egg-production/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/egg-production/${id}`),
+};
+
+export const medicationAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/poultry/medications', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/poultry/medications/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/poultry/medications', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/medications/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/medications/${id}`),
+};
+
+export const organizationsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/organizations', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/organizations/${id}`),
+  getBySlug: (slug: string) => apiClient.axiosInstance.get(`/organizations/slug/${slug}`),
+  create: (data: any) => apiClient.axiosInstance.post('/organizations', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/organizations/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/organizations/${id}`),
 };

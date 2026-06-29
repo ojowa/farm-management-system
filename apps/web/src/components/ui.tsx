@@ -114,3 +114,109 @@ export function EmptyState({ icon, title, description, action }: { icon?: string
     </div>
   );
 }
+
+export function StatsCard({ icon, label, value, trend, trendValue, className = '' }: { icon: React.ReactNode; label: string; value: string | number; trend?: 'up' | 'down' | 'neutral'; trendValue?: string; className?: string }) {
+  const trendColors = { up: 'text-green-600', down: 'text-red-600', neutral: 'text-gray-500' };
+  const trendIcons = { up: '↑', down: '↓', neutral: '→' };
+  return (
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">{icon}</div>
+        <div className="flex-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+        </div>
+        {trend && trendValue && (
+          <div className={`text-sm font-medium ${trendColors[trend]}`}>
+            <span>{trendIcons[trend]}</span> {trendValue}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmLabel = 'Confirm', variant = 'danger' }: { open: boolean; onClose: () => void; onConfirm: () => void; title: string; message: string; confirmLabel?: string; variant?: 'danger' | 'warning' }) {
+  if (!open) return null;
+  const btnColors = { danger: 'bg-red-600 hover:bg-red-700', warning: 'bg-yellow-600 hover:bg-yellow-700' };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose} role="alertdialog" aria-modal="true" aria-label={title}>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
+          <button onClick={() => { onConfirm(); onClose(); }} className={`px-4 py-2 text-sm font-medium text-white rounded-lg ${btnColors[variant]}`}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function Breadcrumb({ items }: { items: { label: string; href?: string }[] }) {
+  return (
+    <nav className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-4" aria-label="Breadcrumb">
+      {items.map((item, i) => (
+        <span key={i} className="flex items-center gap-1">
+          {i > 0 && <span className="text-gray-300 dark:text-gray-600">/</span>}
+          {item.href ? (
+            <a href={item.href} className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{item.label}</a>
+          ) : (
+            <span className="text-gray-900 dark:text-white font-medium">{item.label}</span>
+          )}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between mb-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{title}</h1>
+        {description && <p className="text-gray-500 dark:text-gray-400 mt-1">{description}</p>}
+      </div>
+      {actions && <div className="flex gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function DateRangePicker({ value, onChange, presets }: { value: { from: string; to: string }; onChange: (range: { from: string; to: string }) => void; presets?: { label: string; from: string; to: string }[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input type="date" value={value.from} onChange={(e) => onChange({ ...value, from: e.target.value })} className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+      <span className="text-gray-500">to</span>
+      <input type="date" value={value.to} onChange={(e) => onChange({ ...value, to: e.target.value })} className="px-3 py-2 border rounded-lg text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
+      {presets && (
+        <div className="flex gap-1 ml-2">
+          {presets.map((p) => (
+            <button key={p.label} onClick={() => onChange({ from: p.from, to: p.to })} className="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">{p.label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Alert({ type = 'info', title, children, onClose }: { type?: 'info' | 'success' | 'warning' | 'error'; title?: string; children: React.ReactNode; onClose?: () => void }) {
+  const styles = {
+    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300',
+    success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300',
+    warning: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300',
+    error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300',
+  };
+  return (
+    <div className={`border rounded-lg p-4 ${styles[type]}`} role="alert">
+      <div className="flex items-start justify-between">
+        <div>
+          {title && <h4 className="font-semibold mb-1">{title}</h4>}
+          <div className="text-sm">{children}</div>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="ml-4 text-current opacity-70 hover:opacity-100" aria-label="Close">×</button>
+        )}
+      </div>
+    </div>
+  );
+}

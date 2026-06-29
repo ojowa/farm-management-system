@@ -24,6 +24,7 @@ export class ProxyMiddleware implements NestMiddleware {
     '/reporting': `http://localhost:${process.env.REPORTING_SERVICE_PORT || 3009}`,
     '/organizations': `http://localhost:${process.env.ORGANIZATION_SERVICE_PORT || 3010}`,
     '/inventory': `http://localhost:${process.env.INVENTORY_SERVICE_PORT || 3011}`,
+    '/medications': `http://localhost:${process.env.MEDICATION_SERVICE_PORT || 3012}`,
   };
 
   use(req: Request, res: Response, next: NextFunction) {

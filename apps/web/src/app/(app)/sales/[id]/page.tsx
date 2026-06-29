@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { salesAPI } from '@/lib/api';
+import { poultrySalesAPI } from '@/lib/api';
 import { Card, Button, Modal, Input, Select, TextArea } from '@/components/ui';
 import { useToasts } from '@/lib/toasts';
 
@@ -18,7 +18,7 @@ export default function SaleDetailPage() {
 
   const load = async () => {
     try {
-      const { data } = await salesAPI.get(id);
+      const { data } = await poultrySalesAPI.get(id);
       const s = data.sale || data;
       setSale(s);
       setForm({
@@ -36,7 +36,7 @@ export default function SaleDetailPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await salesAPI.update(id, { ...form, quantity: Number(form.quantity), totalPrice: Number(form.totalPrice) });
+      await poultrySalesAPI.update(id, { ...form, quantity: Number(form.quantity), totalPrice: Number(form.totalPrice) });
       success('Sale updated');
       setShowEdit(false);
       load();
@@ -46,7 +46,7 @@ export default function SaleDetailPage() {
 
   const handleDelete = async () => {
     if (!confirm('Delete this sale?')) return;
-    try { await salesAPI.delete(id); success('Deleted'); router.push('/sales'); }
+    try { await poultrySalesAPI.delete(id); success('Deleted'); router.push('/sales'); }
     catch (err: any) { toastError(err.response?.data?.message || 'Failed to delete'); }
   };
 

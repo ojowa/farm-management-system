@@ -4,6 +4,7 @@ import {
   CreateMedicationRequest,
   UpdateMedicationRequest,
 } from '@farm/types';
+import { emitPoultryEvent } from '../../../../../shared-services/events/event-emitter';
 
 export class MedicationService {
   private repository = new MedicationRepository();
@@ -17,11 +18,13 @@ export class MedicationService {
       ? typeof data.endDate === 'string' ? new Date(data.endDate) : data.endDate
       : null;
 
-    return this.repository.create({
+    const medication = await this.repository.create({
       ...data,
       startDate,
       endDate,
     });
+    await emitPoultryEvent('created', medication);
+    return medication;
   }
 
   async getById(id: string) {
@@ -48,15 +51,19 @@ export class MedicationService {
       ? (data.endDate ? (typeof data.endDate === 'string' ? new Date(data.endDate) : data.endDate) : null)
       : undefined;
 
-    return this.repository.update(id, {
+    const medication = await this.repository.update(id, {
       ...data,
       startDate,
       endDate,
     });
+    await emitPoultryEvent('updated', medication);
+    return medication;
   }
 
   async delete(id: string) {
     await this.getById(id);
-    return this.repository.delete(id);
+    await this.repository.delete(id);
+    await emitPoultryEvent('deleted', { id });
+    return { deleted: true };
   }
 }

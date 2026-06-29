@@ -7,10 +7,10 @@
   "dependencies": {
     "@prisma/client": "^6.4.1",
     "@farm/types": "workspace:*",
-    "bcrypt": "^5.1.1"
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
-    "@types/bcrypt": "^5.0.2",
+
     "prisma": "^6.4.1",
     "typescript": "^6.0.3"
   }

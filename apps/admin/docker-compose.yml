@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api-gateway:3001
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_SOCKET_URL=http://api-gateway:3001
+    depends_on:
+      - api-gateway
+    networks:
+      - farm-network
+
+  api-gateway:
+    image: farm/api-gateway:latest
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/farm
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    networks:
+      - farm-network
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=farm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - farm-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - farm-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  farm-network:
+    driver: bridge

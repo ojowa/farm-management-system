@@ -9,7 +9,7 @@ import { AuthError } from '@farm/auth';
 dotenv.config();
 
 const app = express();
-const port = process.env.CROP_SERVICE_PORT || 3001;
+const port = process.env.CROP_SERVICE_PORT || 3012;
 
 app.use(cors());
 app.use(helmet());
