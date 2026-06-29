@@ -23,6 +23,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){var a=['bis_skin_checked','bis_register'];function r(el){for(var k=0;k<a.length;k++)el.removeAttribute(a[k]);}function c(e){var s=e.querySelectorAll('*');for(var i=0;i<s.length;i++)r(s[i]);}var o=new MutationObserver(function(m){for(var i=0;i<m.length;i++){var n=m[i].addedNodes;for(var j=0;j<n.length;j++){if(n[j].nodeType===1){r(n[j]);c(n[j]);}}}});if(document.body){c(document.body);}o.observe(document.documentElement,{childList:true,subtree:true});})();
+            `,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning>
         <ThemeProvider>
           <ToastProvider>
