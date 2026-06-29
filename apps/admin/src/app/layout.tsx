@@ -5,9 +5,9 @@ import { ToastProvider } from '@/lib/toasts';
 import { SocketProvider } from '@/lib/socket';
 import { ThemeProvider } from '@/lib/theme';
 import { NotificationProvider } from '@/lib/notifications';
-import AppLayout from '@/components/AppLayout';
-import ReconnectingBanner from '@/components/ReconnectingBanner';
-import OfflineBanner from '@/components/OfflineBanner';
+import { AppLayout } from '@/components/AppLayout';
+import { ReconnectingBanner } from '@/components/ReconnectingBanner';
+import { OfflineBanner } from '@/components/OfflineBanner';
 
 export const dynamic = 'force-dynamic';
 
