@@ -5,7 +5,9 @@ import { prisma } from '@farm/database';
 import jwt from 'jsonwebtoken';
 
 const authService = new AuthService();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// Lazy evaluation: process.env.JWT_SECRET is not set when this module is first
+// loaded because dotenv.config() runs in main.ts *after* all require() calls.
+const getJWTSecret = () => process.env.JWT_SECRET || 'secret';
 
 export class AuthController {
   async login(req: Request, res: Response) {
@@ -161,12 +163,12 @@ export class AuthController {
           organizationId,
           permissions,
         },
-        JWT_SECRET,
+        getJWTSecret(),
         { expiresIn: '1h' }
       );
       const refreshToken = jwt.sign(
         { sub: fullUser.id, type: 'refresh' },
-        JWT_SECRET,
+        getJWTSecret(),
         { expiresIn: '7d' }
       );
 

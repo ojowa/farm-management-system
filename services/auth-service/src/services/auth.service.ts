@@ -4,7 +4,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { LoginCredentials } from '@farm/types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+// Lazy evaluation: process.env.JWT_SECRET is not set when this module is first
+// loaded because dotenv.config() runs in main.ts *after* all require() calls.
+const getJWTSecret = () => process.env.JWT_SECRET || 'secret';
 const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN || '15m') as jwt.SignOptions['expiresIn'];
 
 export class AuthService {
@@ -127,7 +129,7 @@ export class AuthService {
       role: user.role.name,
       organizationId: user.organizationId,
     };
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return jwt.sign(payload, getJWTSecret(), { expiresIn: JWT_EXPIRES_IN });
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import rolesRoutes from './routes/roles.routes';
@@ -10,7 +11,7 @@ import adminRoutes from './routes/admin.routes';
 import orgAdminRoutes from './routes/org-admin.routes';
 import { AuthError } from '@farm/auth';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const app = express();
 const port = process.env.AUTH_SERVICE_PORT || 4001;

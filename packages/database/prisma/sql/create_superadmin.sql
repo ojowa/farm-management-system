@@ -7,6 +7,8 @@ VALUES ('platform-org', 'Farm Management Platform', 'platform', 'platform@farm.c
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Create super admin user (password: superadmin123)
+-- NOTE: The seed script (pnpm seed) also creates this user automatically.
+-- This SQL is for manual setup without running the seed.
 INSERT INTO "User" (id, "organizationId", "firstName", "lastName", email, "passwordHash", "roleId", "isActive", "createdAt", "updatedAt")
 SELECT
   '00000000-0000-0000-0000-000000000001',
@@ -14,7 +16,7 @@ SELECT
   'Super',
   'Admin',
   'superadmin@farm.com',
-  '$2a$12$yR/M8xLJp7HSj0UPDsajTePUyxjXAJ/eJNUTI90KpIV7bZfIVHzaO',
+  '$2a$12$R0lN1lnbrZ91YaEwFum1Seor9pgUni3G398h6Wf3.4.7WtbLTzvfW',
   r.id,
   true,
   NOW(),

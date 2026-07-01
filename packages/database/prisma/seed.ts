@@ -160,7 +160,7 @@ async function main() {
     },
   })
 
-  // 5. Create Admin User with a known password so the seed is usable
+  // 5. Create Admin User (ORGANIZATION_OWNER) with a known password so the seed is usable
   const passwordHash = await bcrypt.hash('admin1234', 12)
   await prisma.user.upsert({
     where: { email: 'admin@farm.com' },
@@ -172,6 +172,22 @@ async function main() {
       email: 'admin@farm.com',
       passwordHash,
       roleId: ownerRole.id,
+    },
+  })
+
+  // 6. Create SUPER_ADMIN user (superadmin@farm.com / superadmin123)
+  const superAdminRole = createdRoles.find(r => r.name === 'SUPER_ADMIN')!
+  const superAdminPasswordHash = await bcrypt.hash('superadmin123', 12)
+  await prisma.user.upsert({
+    where: { email: 'superadmin@farm.com' },
+    update: {},
+    create: {
+      organizationId: org.id,
+      firstName: 'Super',
+      lastName: 'Admin',
+      email: 'superadmin@farm.com',
+      passwordHash: superAdminPasswordHash,
+      roleId: superAdminRole.id,
     },
   })
 
