@@ -15,6 +15,13 @@ interface UseFetchResult<T> {
 }
 
 const cache = new Map<string, { data: any; timestamp: number }>();
+const MAX_CACHE_SIZE = 100;
+
+function evictOldestEntry() {
+  if (cache.size <= MAX_CACHE_SIZE) return;
+  const oldestKey = cache.keys().next().value;
+  if (oldestKey !== undefined) cache.delete(oldestKey);
+}
 
 export function useFetch<T>(
   key: string,
@@ -44,6 +51,7 @@ export function useFetch<T>(
       if (!mountedRef.current) return;
       const d = res.data as any;
       setData(d);
+      evictOldestEntry();
       cache.set(key, { data: d, timestamp: Date.now() });
     } catch (err: any) {
       if (!mountedRef.current) return;

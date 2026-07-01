@@ -34,6 +34,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { cropFormSchema } from '@/lib/validation';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Crop {
   id: string;
@@ -56,6 +57,7 @@ const PAGE_SIZE = 10;
 
 export default function CropsPage() {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -184,10 +186,12 @@ export default function CropsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Crops</h1>
           <p className="text-muted-foreground">Manage your crop cycles</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Crop
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Crop
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -250,7 +254,7 @@ export default function CropsPage() {
                 ? 'No crops match your filters.'
                 : 'No crops yet. Create your first crop!'}
             </p>
-            {!search && !statusFilter && (
+            {!search && !statusFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Crop
@@ -325,24 +329,28 @@ export default function CropsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              router.push(`/crops/${crop.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(crop.id, crop.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                           {!readOnly && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                router.push(`/crops/${crop.id}/edit`)
+                              }
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {!readOnly && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(crop.id, crop.name)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -364,7 +372,7 @@ export default function CropsPage() {
       </Card>
 
       {/* Add Crop Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Crop">
+      {!readOnly && <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Crop">
         <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">
@@ -438,7 +446,7 @@ export default function CropsPage() {
             </Button>
           </div>
         </form>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }

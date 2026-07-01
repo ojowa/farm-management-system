@@ -5,16 +5,18 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { financeRouter } from './modules/finance/finance.module';
 import { AuthError } from '@farm/auth';
+import { rlsMiddleware } from '@farm/database';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.FINANCE_SERVICE_PORT || 3007;
+const port = process.env.FINANCE_SERVICE_PORT || 4006;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(rlsMiddleware);
 
 app.use('/api', financeRouter);
 

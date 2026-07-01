@@ -23,6 +23,8 @@ model Organization {
 
   users     User[]
   farms     Farm[]
+  memberships UserOrganization[]
+  roles      Role[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -34,11 +36,13 @@ model User {
 
   firstName       String
   lastName        String
+  middleName      String?
   email           String?  @unique
   phone           String?  @unique
 
   passwordHash    String
   roleId          String
+  avatar          String?
 
   isActive        Boolean  @default(true)
   lastLoginAt     DateTime?
@@ -48,6 +52,7 @@ model User {
 
   refreshTokens   RefreshToken[]
   auditLogs       AuditLog[]
+  memberships     UserOrganization[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -55,19 +60,51 @@ model User {
   @@index([organizationId])
 }
 
-model Role {
-  id          String @id @default(uuid())
-  name        String @unique
+model UserOrganization {
+  id              String   @id @default(uuid())
+  userId          String
+  organizationId  String
+  roleInOrg       String   @default("WORKER")
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
 
-  permissions RolePermission[]
-  users       User[]
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model Role {
+  id             String @id @default(uuid())
+  name           String
+  description    String?
+  isSystem       Boolean @default(false)
+  organizationId String?
+
+  permissions    RolePermission[]
+  users          User[]
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
 }
 
 model Permission {
   id          String @id @default(uuid())
   name        String @unique
+  description String?
+  category    String?
 
   roles       RolePermission[]
+
+  createdAt   DateTime @default(now())
 }
 
 model RolePermission {
@@ -380,4 +417,231 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  platform  String   // "web", "ios", "android"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([token])
+  @@index([active])
+}
+
+model Task {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String?
+  title          String
+  description    String?
+  priority       String   @default("MEDIUM")
+  status         String   @default("PENDING")
+
+  assignedToId   String?
+  assignedToName String?
+  createdById    String?
+  createdByName  String?
+
+  dueDate        DateTime?
+  completedAt    DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([assignedToId])
+  @@index([status])
+}
+
+model LeaveType {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  daysPerYear    Int      @default(0)
+  isPaid         Boolean  @default(true)
+  isActive       Boolean  @default(true)
+
+  leaveRequests  LeaveRequest[]
+  leaveBalances  LeaveBalance[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model LeaveRequest {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  leaveTypeId    String
+  startDate      DateTime
+  endDate        DateTime
+  days           Int
+  reason         String?
+  status         String   @default("PENDING")
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectionReason String?
+
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+}
+
+model LeaveBalance {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  leaveTypeId    String
+  year           Int
+  totalDays      Int      @default(0)
+  usedDays       Int      @default(0)
+
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, leaveTypeId, year])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// ── Phase 2: Duty Roster ──────────────────────────────────
+
+model Shift {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  startTime      String   // "08:00"
+  endTime        String   // "16:00"
+  color          String?  @default("#3B82F6")
+  isActive       Boolean  @default(true)
+
+  assignments    ShiftAssignment[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model ShiftAssignment {
+  id             String   @id @default(uuid())
+  organizationId String
+  shiftId        String
+  userId         String
+  date           DateTime // date only (no time)
+  notes          String?
+
+  shift          Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@unique([shiftId, userId, date])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([date])
+}
+
+// ── Phase 3: Internal Messaging ───────────────────────────
+
+model Message {
+  id             String   @id @default(uuid())
+  organizationId String
+  senderId       String
+  senderName     String
+  subject        String
+  body           String
+  priority       String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+
+  recipients     MessageRecipient[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model MessageRecipient {
+  id             String   @id @default(uuid())
+  messageId      String
+  recipientId    String
+  recipientName  String
+  organizationId String
+  isRead         Boolean  @default(false)
+  readAt         DateTime?
+
+  message        Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@unique([messageId, recipientId])
+  @@index([recipientId])
+  @@index([organizationId])
+  @@index([isRead])
+}
+
+// ── Phase 4: Correspondence ───────────────────────────────
+
+model Correspondence {
+  id              String   @id @default(uuid())
+  organizationId  String
+  referenceNumber String   @unique
+  title           String
+  type            String   // INCOMING, OUTGOING, INTERNAL
+  category        String   @default("OTHER") // MEMO, LETTER, REPORT, NOTICE, OTHER
+  from            String?  // sender/originator
+  to              String?  // recipient/destination
+  content         String?
+  status          String   @default("DRAFT") // DRAFT, SENT, RECEIVED, ARCHIVED
+  priority        String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  receivedDate    DateTime?
+  createdById     String
+  createdByName   String
+  archivedAt      DateTime?
+
+  attachments     CorrespondenceAttachment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([type])
+  @@index([createdById])
+}
+
+model CorrespondenceAttachment {
+  id              String   @id @default(uuid())
+  correspondenceId String
+  fileName        String
+  fileSize        Int
+  fileUrl         String
+  fileType        String?
+  uploadedById    String
+  organizationId  String
+
+  correspondence  Correspondence @relation(fields: [correspondenceId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([correspondenceId])
+  @@index([organizationId])
 }

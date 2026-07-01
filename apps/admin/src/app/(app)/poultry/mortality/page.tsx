@@ -32,6 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { mortalityRecordFormSchema } from '@/lib/validation';
 
 interface MortalityRecord {
@@ -52,6 +53,7 @@ interface Flock {
 const PAGE_SIZE = 10;
 
 export default function MortalityPage() {
+  const readOnly = useReadOnly();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -171,10 +173,12 @@ export default function MortalityPage() {
           <h1 className="text-3xl font-bold tracking-tight">Mortality Records</h1>
           <p className="text-muted-foreground">Track bird mortality in your flocks</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Record
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Record
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -221,7 +225,7 @@ export default function MortalityPage() {
                 ? 'No mortality records match your search.'
                 : 'No mortality records yet. Add your first record!'}
             </p>
-            {!search && (
+            {!search && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Record
@@ -267,22 +271,26 @@ export default function MortalityPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => router.push(`/poultry/mortality/${record.id}/edit`)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(record.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => router.push(`/poultry/mortality/${record.id}/edit`)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(record.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -303,8 +311,9 @@ export default function MortalityPage() {
         )}
       </Card>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Mortality Record">
-        <form onSubmit={handleAdd} className="space-y-4">
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Mortality Record">
+          <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">
               Flock <span className="text-destructive">*</span>
@@ -371,8 +380,9 @@ export default function MortalityPage() {
               Create Record
             </Button>
           </div>
-        </form>
-      </Dialog>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

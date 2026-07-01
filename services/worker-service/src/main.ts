@@ -4,19 +4,23 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { workerRouter } from './modules/worker/worker.module';
+import { taskRouter } from './modules/task/task.module';
 import { AuthError } from '@farm/auth';
+import { rlsMiddleware } from '@farm/database';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.WORKER_SERVICE_PORT || 3008;
+const port = process.env.WORKER_SERVICE_PORT || 4007;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(rlsMiddleware);
 
 app.use('/api', workerRouter);
+app.use('/api', taskRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'worker-service' });

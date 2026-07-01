@@ -32,6 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { inventoryFormSchema } from '@/lib/validation';
 
 interface InventoryItem {
@@ -49,6 +50,7 @@ const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -173,10 +175,12 @@ export default function InventoryPage() {
           <Link href="/inventory/adjustments">
             <Button variant="outline">Adjustments</Button>
           </Link>
-          <Button onClick={() => setShowAdd(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => setShowAdd(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          )}
         </div>
       </div>
 
@@ -236,7 +240,7 @@ export default function InventoryPage() {
                 ? 'No inventory items match your filters.'
                 : 'No inventory items yet. Add your first item!'}
             </p>
-            {!search && !categoryFilter && (
+            {!search && !categoryFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Item
@@ -290,24 +294,28 @@ export default function InventoryPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              router.push(`/inventory/${item.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(item.id, item.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  router.push(`/inventory/${item.id}/edit`)
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(item.id, item.name)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -329,87 +337,89 @@ export default function InventoryPage() {
       </Card>
 
       {/* Add Inventory Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Inventory Item">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Item Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="e.g. Fertilizer, Seeds, Tools"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            {formErrors.name && (
-              <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Category <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="e.g. Feed, Seeds, Tools, Chemicals"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-            />
-            {formErrors.category && (
-              <p className="text-sm text-destructive mt-1">{formErrors.category}</p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Inventory Item">
+          <form onSubmit={handleAdd} className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Quantity <span className="text-destructive">*</span>
+                Item Name <span className="text-destructive">*</span>
               </label>
               <Input
-                type="number"
-                placeholder="0"
-                min="0"
-                value={form.quantity}
-                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                placeholder="e.g. Fertilizer, Seeds, Tools"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
-              {formErrors.quantity && (
-                <p className="text-sm text-destructive mt-1">{formErrors.quantity}</p>
+              {formErrors.name && (
+                <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
               )}
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Unit</label>
+              <label className="text-sm font-medium mb-1 block">
+                Category <span className="text-destructive">*</span>
+              </label>
               <Input
-                placeholder="kg, bags, litres"
-                value={form.unit}
-                onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                placeholder="e.g. Feed, Seeds, Tools, Chemicals"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
               />
+              {formErrors.category && (
+                <p className="text-sm text-destructive mt-1">{formErrors.category}</p>
+              )}
             </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Farm <span className="text-destructive">*</span>
-            </label>
-            <Select
-              placeholder="Select a farm"
-              options={farms.map((f) => ({ value: f.id, label: f.name }))}
-              value={form.farmId}
-              onChange={(e) => setForm({ ...form, farmId: e.target.value })}
-            />
-            {formErrors.farmId && (
-              <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
-            )}
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAdd(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Create Item
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Quantity <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  value={form.quantity}
+                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                />
+                {formErrors.quantity && (
+                  <p className="text-sm text-destructive mt-1">{formErrors.quantity}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Unit</label>
+                <Input
+                  placeholder="kg, bags, litres"
+                  value={form.unit}
+                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select a farm"
+                options={farms.map((f) => ({ value: f.id, label: f.name }))}
+                value={form.farmId}
+                onChange={(e) => setForm({ ...form, farmId: e.target.value })}
+              />
+              {formErrors.farmId && (
+                <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={saving}>
+                Create Item
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

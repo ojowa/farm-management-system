@@ -36,6 +36,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 
 interface Transaction {
@@ -58,6 +59,7 @@ const PAGE_SIZE = 10;
 export default function TransactionsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -69,6 +71,7 @@ export default function TransactionsPage() {
     amount: '',
     quantity: '',
     price: '',
+    total: '',
     date: '',
     farmId: '',
   });
@@ -199,7 +202,7 @@ export default function TransactionsPage() {
         toast({ type: 'success', title: 'Sale recorded successfully' });
       }
       setShowAdd(false);
-      setForm({ title: '', item: '', amount: '', quantity: '', price: '', date: '', farmId: '' });
+      setForm({ title: '', item: '', amount: '', quantity: '', price: '', total: '', date: '', farmId: '' });
       clearFetchCache('finance');
       refetch();
     } catch (err: any) {
@@ -250,10 +253,12 @@ export default function TransactionsPage() {
             All expenses and sales in one place
           </p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Transaction
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Transaction
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -315,7 +320,7 @@ export default function TransactionsPage() {
                 ? 'No transactions match your filters.'
                 : 'No transactions yet. Add your first transaction!'}
             </p>
-            {!search && !typeFilter && (
+            {!search && !typeFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Transaction
@@ -374,24 +379,28 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              router.push(`/finance/transactions/${tx.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(tx.id, tx.type)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  router.push(`/finance/transactions/${tx.id}/edit`)
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(tx.id, tx.type)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

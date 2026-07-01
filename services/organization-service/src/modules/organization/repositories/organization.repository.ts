@@ -1,4 +1,4 @@
-import { prisma } from '@farm/database';
+import { scopedPrisma as prisma } from '@farm/database';
 import { Organization, CreateOrganizationRequest, OrganizationSettings } from '@farm/types';
 
 const asPlan = (plan: string | undefined): 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE' => {

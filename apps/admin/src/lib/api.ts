@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -9,12 +9,17 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor — attach access token
+// Request interceptor — attach access token + org override for SUPER_ADMIN
 apiClient.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // For SUPER_ADMIN: send selected org if set
+    const selectedOrg = localStorage.getItem('admin_selected_org');
+    if (selectedOrg) {
+      config.headers['x-selected-organization'] = selectedOrg;
     }
   }
   return config;
@@ -261,4 +266,45 @@ export const notificationsAPI = {
   markAsRead: (id: string) => apiClient.put(`/notifications/${id}/read`),
   markAllAsRead: (userId: string) => apiClient.put(`/notifications/user/${userId}/read-all`),
   delete: (id: string) => apiClient.delete(`/notifications/${id}`),
+};
+
+export const rolesAPI = {
+  list: (params?: any) => apiClient.get('/roles', { params }),
+  get: (id: string) => apiClient.get(`/roles/${id}`),
+  create: (data: { name: string; description?: string; permissionIds?: string[] }) => apiClient.post('/roles', data),
+  update: (id: string, data: { name?: string; description?: string }) => apiClient.put(`/roles/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/roles/${id}`),
+  setPermissions: (id: string, permissionIds: string[]) => apiClient.post(`/roles/${id}/permissions`, { permissionIds }),
+};
+
+export const permissionsAPI = {
+  list: () => apiClient.get('/permissions'),
+  create: (data: { name: string; description?: string; category?: string }) => apiClient.post('/permissions', data),
+  delete: (id: string) => apiClient.delete(`/permissions/${id}`),
+};
+
+export const adminAPI = {
+  listOrganizations: (params?: any) => apiClient.get('/admin/organizations', { params }),
+  getOrganization: (id: string) => apiClient.get(`/admin/organizations/${id}`),
+  updateSubscription: (id: string, data: { subscriptionPlan?: string; subscriptionStatus?: string }) => apiClient.put(`/admin/organizations/${id}/subscription`, data),
+  getOrganizationUsers: (id: string) => apiClient.get(`/admin/organizations/${id}/users`),
+  toggleUserActive: (userId: string) => apiClient.put(`/admin/organizations/users/${userId}/toggle-active`),
+};
+
+export const orgAdminAPI = {
+  getOrganization: () => apiClient.get('/org-admin/me'),
+  updateOrganization: (data: any) => apiClient.put('/org-admin/me', data),
+  listUsers: () => apiClient.get('/org-admin/users'),
+  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string }) =>
+    apiClient.post('/org-admin/users', data),
+  updateUser: (userId: string, data: any) => apiClient.put(`/org-admin/users/${userId}`, data),
+  removeUser: (userId: string) => apiClient.delete(`/org-admin/users/${userId}`),
+  // Role management
+  listRoles: () => apiClient.get('/org-admin/roles'),
+  getRole: (id: string) => apiClient.get(`/org-admin/roles/${id}`),
+  createRole: (data: { name: string; description?: string; permissionIds?: string[] }) =>
+    apiClient.post('/org-admin/roles', data),
+  updateRole: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) =>
+    apiClient.put(`/org-admin/roles/${id}`, data),
+  deleteRole: (id: string) => apiClient.delete(`/org-admin/roles/${id}`),
 };

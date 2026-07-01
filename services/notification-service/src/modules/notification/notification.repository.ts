@@ -1,6 +1,6 @@
 import { Notification, CreateNotificationRequest, UpdateNotificationRequest } from '@farm/types';
 import { NotificationGateway } from './notification.gateway';
-import { prisma } from '@farm/database';
+import { scopedPrisma as prisma } from '@farm/database';
 
 function mapNotification(row: any): Notification {
   return {

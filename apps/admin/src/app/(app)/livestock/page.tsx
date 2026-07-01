@@ -33,6 +33,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { livestockFormSchema } from '@/lib/validation';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Livestock {
   id: string;
@@ -56,6 +57,7 @@ const PAGE_SIZE = 10;
 export default function LivestockPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -180,10 +182,12 @@ export default function LivestockPage() {
           <h1 className="text-3xl font-bold tracking-tight">Livestock</h1>
           <p className="text-muted-foreground">Manage your livestock inventory</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Livestock
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Livestock
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -244,7 +248,7 @@ export default function LivestockPage() {
                 ? 'No livestock match your filters.'
                 : 'No livestock yet. Add your first animal!'}
             </p>
-            {!search && !statusFilter && (
+            {!search && !statusFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Livestock
@@ -313,26 +317,30 @@ export default function LivestockPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              router.push(`/livestock/${animal.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() =>
-                              handleDelete(animal.id, `${animal.species} (${animal.breed || 'N/A'})`)
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  router.push(`/livestock/${animal.id}/edit`)
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() =>
+                                  handleDelete(animal.id, `${animal.species} (${animal.breed || 'N/A'})`)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -353,95 +361,97 @@ export default function LivestockPage() {
         )}
       </Card>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Livestock">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Species <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="e.g. Cattle, Goat, Sheep"
-              value={form.species}
-              onChange={(e) => setForm({ ...form, species: e.target.value })}
-            />
-            {formErrors.species && (
-              <p className="text-sm text-destructive mt-1">{formErrors.species}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Breed</label>
-            <Input
-              placeholder="e.g. Holstein, Angus"
-              value={form.breed}
-              onChange={(e) => setForm({ ...form, breed: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Gender <span className="text-destructive">*</span>
-            </label>
-            <Select
-              placeholder="Select gender"
-              options={[
-                { value: 'Male', label: 'Male' },
-                { value: 'Female', label: 'Female' },
-              ]}
-              value={form.gender}
-              onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            />
-            {formErrors.gender && (
-              <p className="text-sm text-destructive mt-1">{formErrors.gender}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Farm <span className="text-destructive">*</span>
-            </label>
-            <Select
-              placeholder="Select a farm"
-              options={farms.map((f) => ({ value: f.id, label: f.name }))}
-              value={form.farmId}
-              onChange={(e) => setForm({ ...form, farmId: e.target.value })}
-            />
-            {formErrors.farmId && (
-              <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Birth Date</label>
-            <Input
-              type="date"
-              value={form.birthDate}
-              onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Status</label>
-            <Select
-              placeholder="Select status"
-              options={[
-                { value: 'active', label: 'Active' },
-                { value: 'sold', label: 'Sold' },
-                { value: 'deceased', label: 'Deceased' },
-              ]}
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAdd(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Create Livestock
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Livestock">
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Species <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="e.g. Cattle, Goat, Sheep"
+                value={form.species}
+                onChange={(e) => setForm({ ...form, species: e.target.value })}
+              />
+              {formErrors.species && (
+                <p className="text-sm text-destructive mt-1">{formErrors.species}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Breed</label>
+              <Input
+                placeholder="e.g. Holstein, Angus"
+                value={form.breed}
+                onChange={(e) => setForm({ ...form, breed: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Gender <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select gender"
+                options={[
+                  { value: 'Male', label: 'Male' },
+                  { value: 'Female', label: 'Female' },
+                ]}
+                value={form.gender}
+                onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              />
+              {formErrors.gender && (
+                <p className="text-sm text-destructive mt-1">{formErrors.gender}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select a farm"
+                options={farms.map((f) => ({ value: f.id, label: f.name }))}
+                value={form.farmId}
+                onChange={(e) => setForm({ ...form, farmId: e.target.value })}
+              />
+              {formErrors.farmId && (
+                <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Birth Date</label>
+              <Input
+                type="date"
+                value={form.birthDate}
+                onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Status</label>
+              <Select
+                placeholder="Select status"
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'sold', label: 'Sold' },
+                  { value: 'deceased', label: 'Deceased' },
+                ]}
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={saving}>
+                Create Livestock
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

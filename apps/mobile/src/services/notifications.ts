@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 
 const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:3000/api';
+  'http://localhost:4000';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({

@@ -29,7 +29,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+    const url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
 
     const socket = io(url, {
       autoConnect: true,

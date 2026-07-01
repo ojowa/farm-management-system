@@ -8,7 +8,7 @@ declare const process: { env?: Record<string, string | undefined> } | undefined;
 
 const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:3000/api';
+  'http://localhost:4000';
 
 // ── Force-logout callback ─────────────────────────────────────────────
 // The Redux store registers a callback here so the interceptor can trigger
@@ -132,7 +132,7 @@ export const apiClient = new APIClient();
 export const authAPI = {
   login: (credentials: { email: string; password: string }) =>
     apiClient.axiosInstance.post('/auth/login', credentials),
-  register: (data: { email: string; password: string; firstName: string; lastName: string }) =>
+  register: (data: { email: string; password: string; firstName: string; lastName: string; middleName?: string }) =>
     apiClient.axiosInstance.post('/auth/register', data),
   refreshToken: (data: { refreshToken: string }) =>
     apiClient.axiosInstance.post('/auth/refresh', data),
@@ -451,4 +451,76 @@ export const organizationsAPI = {
   create: (data: any) => apiClient.axiosInstance.post('/organizations', data),
   update: (id: string, data: any) => apiClient.axiosInstance.put(`/organizations/${id}`, data),
   delete: (id: string) => apiClient.axiosInstance.delete(`/organizations/${id}`),
+};
+
+export const orgAdminAPI = {
+  getOrganization: () => apiClient.axiosInstance.get('/org-admin/me'),
+  updateOrganization: (data: any) => apiClient.axiosInstance.put('/org-admin/me', data),
+  listUsers: () => apiClient.axiosInstance.get('/org-admin/users'),
+  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string }) =>
+    apiClient.axiosInstance.post('/org-admin/users', data),
+  updateUser: (userId: string, data: any) => apiClient.axiosInstance.put(`/org-admin/users/${userId}`, data),
+  removeUser: (userId: string) => apiClient.axiosInstance.delete(`/org-admin/users/${userId}`),
+  listRoles: () => apiClient.axiosInstance.get('/org-admin/roles'),
+  getRole: (id: string) => apiClient.axiosInstance.get(`/org-admin/roles/${id}`),
+  createRole: (data: { name: string; description?: string; permissionIds?: string[] }) =>
+    apiClient.axiosInstance.post('/org-admin/roles', data),
+  updateRole: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) =>
+    apiClient.axiosInstance.put(`/org-admin/roles/${id}`, data),
+  deleteRole: (id: string) => apiClient.axiosInstance.delete(`/org-admin/roles/${id}`),
+};
+
+export const tasksAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/tasks', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/tasks/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/tasks', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/tasks/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/tasks/${id}`),
+};
+
+export const leaveAPI = {
+  types: () => apiClient.axiosInstance.get('/leave/types'),
+  requests: (params?: any) => apiClient.axiosInstance.get('/leave/requests', { params }),
+  balance: (params?: any) => apiClient.axiosInstance.get('/leave/balance', { params }),
+  createRequest: (data: any) => apiClient.axiosInstance.post('/leave/requests', data),
+  approve: (id: string) => apiClient.axiosInstance.put(`/leave/requests/${id}/approve`),
+  reject: (id: string, data?: any) => apiClient.axiosInstance.put(`/leave/requests/${id}/reject`, data),
+  cancel: (id: string) => apiClient.axiosInstance.put(`/leave/requests/${id}/cancel`),
+};
+
+export const rosterAPI = {
+  listShifts: () => apiClient.axiosInstance.get('/shifts'),
+  createShift: (data: any) => apiClient.axiosInstance.post('/shifts', data),
+  updateShift: (id: string, data: any) => apiClient.axiosInstance.put(`/shifts/${id}`, data),
+  deleteShift: (id: string) => apiClient.axiosInstance.delete(`/shifts/${id}`),
+  listAssignments: (params?: any) => apiClient.axiosInstance.get('/shift-assignments', { params }),
+  createAssignment: (data: any) => apiClient.axiosInstance.post('/shift-assignments', data),
+  deleteAssignment: (id: string) => apiClient.axiosInstance.delete(`/shift-assignments/${id}`),
+};
+
+export const messagesAPI = {
+  inbox: () => apiClient.axiosInstance.get('/messages/inbox'),
+  sent: () => apiClient.axiosInstance.get('/messages/sent'),
+  unreadCount: () => apiClient.axiosInstance.get('/messages/unread-count'),
+  get: (id: string) => apiClient.axiosInstance.get(`/messages/${id}`),
+  send: (data: any) => apiClient.axiosInstance.post('/messages', data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/messages/${id}`),
+};
+
+export const correspondenceAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/correspondence', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/correspondence/${id}`),
+  stats: () => apiClient.axiosInstance.get('/correspondence/stats'),
+  create: (data: any) => apiClient.axiosInstance.post('/correspondence', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/correspondence/${id}`, data),
+  archive: (id: string) => apiClient.axiosInstance.put(`/correspondence/${id}/archive`),
+  unarchive: (id: string) => apiClient.axiosInstance.put(`/correspondence/${id}/unarchive`),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/correspondence/${id}`),
+};
+
+export const notificationsAPI = {
+  list: (userId: string, params?: any) => apiClient.axiosInstance.get(`/notifications/user/${userId}`, { params }),
+  unreadCount: (userId: string) => apiClient.axiosInstance.get(`/notifications/user/${userId}/unread-count`),
+  markAsRead: (id: string) => apiClient.axiosInstance.put(`/notifications/${id}/read`),
+  markAllAsRead: (userId: string) => apiClient.axiosInstance.put(`/notifications/user/${userId}/read-all`),
 };

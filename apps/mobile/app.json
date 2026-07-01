@@ -35,7 +35,7 @@
       [
         "expo-router",
         {
-          "origin": null
+          "origin": "https://localhost:8081"
         }
       ]
     ]

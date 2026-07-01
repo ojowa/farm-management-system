@@ -21,7 +21,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
+    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000', {
       auth: { token: localStorage.getItem('accessToken') },
       transports: ['websocket', 'polling'],
       reconnection: true,

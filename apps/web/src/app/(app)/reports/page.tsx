@@ -31,8 +31,8 @@ export default function ReportsPage() {
         const expensesList = expensesRes.status === 'fulfilled' ? (expensesRes.value.data.expenses || expensesRes.value.data || []) : [];
         const salesList = salesRes.status === 'fulfilled' ? (salesRes.value.data.sales || salesRes.value.data || []) : [];
         const txns = [
-          ...expensesList.map((e: any) => ({ ...e, type: 'expense' })),
-          ...salesList.map((s: any) => ({ ...s, type: 'income' })),
+          ...expensesList.map((e: any) => ({ ...e, type: 'expense', amount: Number(e.amount) || 0 })),
+          ...salesList.map((s: any) => ({ ...s, type: 'income', amount: Number(s.amount || s.totalPrice) || 0 })),
         ];
         setTransactions(txns);
         const income = txns.filter((t: Transaction) => t.type === 'income').reduce((s: number, t: Transaction) => s + Math.abs(t.amount), 0);

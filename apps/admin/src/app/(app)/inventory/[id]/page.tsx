@@ -22,6 +22,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface InventoryItem {
   id: string;
@@ -38,6 +39,7 @@ interface InventoryItem {
 export default function InventoryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
 
   const {
@@ -118,17 +120,21 @@ export default function InventoryDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/inventory/${id}/edit`)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+            {!readOnly && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/inventory/${id}/edit`)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

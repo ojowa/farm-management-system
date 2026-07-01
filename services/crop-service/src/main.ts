@@ -5,16 +5,18 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { cropRouter } from './modules/crop/crop.module';
 import { AuthError } from '@farm/auth';
+import { rlsMiddleware } from '@farm/database';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.CROP_SERVICE_PORT || 3012;
+const port = process.env.CROP_SERVICE_PORT || 4011;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(rlsMiddleware);
 
 app.use('/api', cropRouter);
 

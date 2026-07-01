@@ -7,9 +7,13 @@ import { authAPI } from '@/lib/api';
 interface User {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
   fullName: string;
   role: string;
   organizationId: string;
+  organizationName?: string;
   permissions: string[];
   avatar?: string;
 }
@@ -27,7 +31,8 @@ interface AuthContextValue {
 function setCookie(name: string, value: string, days: number) {
   if (typeof document === 'undefined') return;
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax${secure}`;
 }
 
 function deleteCookie(name: string) {
@@ -41,7 +46,7 @@ function clearAuthCookies() {
 }
 
 function setAuthCookies(accessToken: string, refreshToken: string) {
-  setCookie('accessToken', accessToken, 7);
+  setCookie('accessToken', accessToken, 1);
   setCookie('refreshToken', refreshToken, 30);
 }
 
@@ -63,6 +68,22 @@ const AuthContext = createContext<AuthContextValue>({
   updateProfile: async () => {},
 });
 
+function buildUser(raw: any): User {
+  return {
+    id: raw.id,
+    email: raw.email,
+    firstName: raw.firstName || '',
+    lastName: raw.lastName || '',
+    middleName: raw.middleName || undefined,
+    fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
+    role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
+    organizationId: raw.organizationId,
+    organizationName: raw.organization?.name || undefined,
+    permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
+    avatar: raw.avatar,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,8 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { data } = await authAPI.getProfile();
-      setUser(data.user || data);
-      localStorage.setItem('user', JSON.stringify(data.user || data));
+      const userObj = buildUser(data.user || data);
+      setUser(userObj);
+      localStorage.setItem('user', JSON.stringify(userObj));
     } catch {
       clearAllAuth();
       setUser(null);
@@ -109,11 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/mfa');
       return;
     }
+    const userObj = buildUser(data.user);
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('user', JSON.stringify(userObj));
     setAuthCookies(data.accessToken, data.refreshToken);
-    setUser(data.user);
+    setUser(userObj);
     router.push('/');
   }, [router]);
 

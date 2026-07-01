@@ -6,16 +6,18 @@ import dotenv from 'dotenv';
 import { farmRouter } from './modules/farm/farm.module';
 import { authMiddleware } from '@farm/auth/express';
 import { AuthError } from '@farm/auth';
+import { rlsMiddleware } from '@farm/database';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.FARM_SERVICE_PORT || 3003;
+const port = process.env.FARM_SERVICE_PORT || 4002;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(rlsMiddleware);
 
 app.use('/api', farmRouter);
 

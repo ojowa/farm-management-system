@@ -1,4 +1,4 @@
-import { prisma } from '@farm/database';
+import { scopedPrisma as prisma } from '@farm/database';
 
 export class WorkerRepository {
   async createWorker(data: { farmId: string; name: string; role: string }) {

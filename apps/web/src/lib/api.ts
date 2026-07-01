@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('mfaSessionToken');
         document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
         document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        window.location.href = '/(auth)/login';
+        window.location.href = '/login';
       }
       processQueue(refreshError, null);
       return Promise.reject(refreshError);
@@ -84,7 +84,12 @@ export const authAPI = {
   register: (data: any) => apiClient.post('/auth/register', data),
   logout: () => apiClient.post('/auth/logout'),
   getProfile: () => apiClient.get('/auth/profile'),
-  updateProfile: (data: any) => apiClient.put('/auth/profile', data),
+  updateProfile: (data: any) => {
+    const isFormData = data instanceof FormData;
+    return apiClient.put('/auth/profile', data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
+  },
   refreshToken: (data: { refreshToken: string }) => apiClient.post('/auth/refresh', data),
   verifyMFA: (data: { mfaSessionToken: string; code: string }) => apiClient.post('/auth/verify-mfa', data),
   requestPasswordReset: (data: { email: string }) => apiClient.post('/auth/forgot-password', data),
@@ -242,10 +247,67 @@ export const poultrySalesAPI = {
   delete: (id: string) => apiClient.delete(`/poultry/sales/${id}`),
 };
 
-export const notificationsAPI = {
-  list: (userId: string, params?: any) => apiClient.get(`/notifications/user/${userId}`, { params }),
-  getUnreadCount: (userId: string) => apiClient.get(`/notifications/user/${userId}/unread-count`),
-  markAsRead: (id: string) => apiClient.put(`/notifications/${id}/read`),
-  markAllAsRead: (userId: string) => apiClient.put(`/notifications/user/${userId}/read-all`),
-  delete: (id: string) => apiClient.delete(`/notifications/${id}`),
+// Notifications API is defined in ./notifications.ts with proper types
+
+export const orgAdminAPI = {
+  getOrganization: () => apiClient.get('/org-admin/me'),
+  updateOrganization: (data: any) => apiClient.put('/org-admin/me', data),
+  listUsers: () => apiClient.get('/org-admin/users'),
+  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string; phone?: string }) =>
+    apiClient.post('/org-admin/users', data),
+  updateUser: (userId: string, data: any) => apiClient.put(`/org-admin/users/${userId}`, data),
+  removeUser: (userId: string) => apiClient.delete(`/org-admin/users/${userId}`),
+  // Role management
+  listRoles: () => apiClient.get('/org-admin/roles'),
+  getRole: (id: string) => apiClient.get(`/org-admin/roles/${id}`),
+  createRole: (data: { name: string; description?: string; permissionIds?: string[] }) =>
+    apiClient.post('/org-admin/roles', data),
+  updateRole: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) =>
+    apiClient.put(`/org-admin/roles/${id}`, data),
+  deleteRole: (id: string) => apiClient.delete(`/org-admin/roles/${id}`),
+};
+
+export const myOrgsAPI = {
+  list: () => apiClient.get('/auth/my-organizations'),
+  switch: (organizationId: string) => apiClient.post('/auth/switch-organization', { organizationId }),
+};
+
+export const rosterAPI = {
+  listShifts: () => apiClient.get('/shifts'),
+  createShift: (data: { name: string; startTime: string; endTime: string; color?: string }) =>
+    apiClient.post('/shifts', data),
+  updateShift: (id: string, data: any) => apiClient.put(`/shifts/${id}`, data),
+  deleteShift: (id: string) => apiClient.delete(`/shifts/${id}`),
+  listAssignments: (params?: { startDate?: string; endDate?: string; userId?: string }) =>
+    apiClient.get('/shift-assignments', { params }),
+  createAssignment: (data: { shiftId: string; userId: string; date: string; notes?: string }) =>
+    apiClient.post('/shift-assignments', data),
+  bulkAssign: (assignments: Array<{ shiftId: string; userId: string; date: string; notes?: string }>) =>
+    apiClient.post('/shift-assignments/bulk', { assignments }),
+  deleteAssignment: (id: string) => apiClient.delete(`/shift-assignments/${id}`),
+};
+
+export const messagesAPI = {
+  inbox: () => apiClient.get('/messages/inbox'),
+  sent: () => apiClient.get('/messages/sent'),
+  unreadCount: () => apiClient.get('/messages/unread-count'),
+  get: (id: string) => apiClient.get(`/messages/${id}`),
+  send: (data: { subject: string; body: string; recipientIds: string[]; priority?: string }) =>
+    apiClient.post('/messages', data),
+  delete: (id: string) => apiClient.delete(`/messages/${id}`),
+};
+
+export const correspondenceAPI = {
+  list: (params?: { status?: string; type?: string; category?: string; archived?: string }) =>
+    apiClient.get('/correspondence', { params }),
+  get: (id: string) => apiClient.get(`/correspondence/${id}`),
+  stats: () => apiClient.get('/correspondence/stats'),
+  create: (data: any) => apiClient.post('/correspondence', data),
+  update: (id: string, data: any) => apiClient.put(`/correspondence/${id}`, data),
+  archive: (id: string) => apiClient.put(`/correspondence/${id}/archive`),
+  unarchive: (id: string) => apiClient.put(`/correspondence/${id}/unarchive`),
+  delete: (id: string) => apiClient.delete(`/correspondence/${id}`),
+  addAttachment: (id: string, data: { fileName: string; fileSize: number; fileUrl: string; fileType?: string }) =>
+    apiClient.post(`/correspondence/${id}/attachments`, data),
+  removeAttachment: (attachmentId: string) => apiClient.delete(`/correspondence/attachments/${attachmentId}`),
 };

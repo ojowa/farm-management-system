@@ -1,15 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const crypto = require('crypto');
-
-function hashPassword(password) {
-  return new Promise((resolve, reject) => {
-    const salt = crypto.randomBytes(16).toString('hex');
-    crypto.scrypt(password, salt, 64, (err, derivedKey) => {
-      if (err) reject(err);
-      resolve(salt + ':' + derivedKey.toString('hex'));
-    });
-  });
-}
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
@@ -102,7 +92,7 @@ async function main() {
     create: { id: 'default-org-id', name: 'Default Farm Organization', slug: 'default-farm', email: 'admin@farm.com' },
   });
 
-  const passwordHash = await hashPassword('admin1234');
+  const passwordHash = await bcrypt.hash('admin1234', 12);
   await prisma.user.upsert({
     where: { email: 'admin@farm.com' },
     update: {},

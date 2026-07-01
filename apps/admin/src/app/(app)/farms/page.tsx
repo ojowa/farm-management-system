@@ -35,6 +35,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { farmFormSchema } from '@/lib/validation';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Farm {
   id: string;
@@ -52,6 +53,7 @@ const PAGE_SIZE = 10;
 export default function FarmsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -161,10 +163,12 @@ export default function FarmsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Farms</h1>
           <p className="text-muted-foreground">Manage your farm properties</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Farm
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Farm
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -226,7 +230,7 @@ export default function FarmsPage() {
                 ? 'No farms match your filters.'
                 : 'No farms yet. Create your first farm!'}
             </p>
-            {!search && !statusFilter && (
+            {!search && !statusFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Farm
@@ -296,24 +300,28 @@ export default function FarmsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              router.push(`/farms/${farm.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(farm.id, farm.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  router.push(`/farms/${farm.id}/edit`)
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(farm.id, farm.name)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -335,68 +343,70 @@ export default function FarmsPage() {
       </Card>
 
       {/* Add Farm Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Farm">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Farm Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="My Farm"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            {formErrors.name && (
-              <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Location</label>
-            <Input
-              placeholder="City, Country"
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Size (acres)
-            </label>
-            <Input
-              type="number"
-              placeholder="100"
-              value={form.size}
-              onChange={(e) => setForm({ ...form, size: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Description
-            </label>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Brief description of your farm..."
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              rows={3}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAdd(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Create Farm
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Farm">
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="My Farm"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              {formErrors.name && (
+                <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Location</label>
+              <Input
+                placeholder="City, Country"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Size (acres)
+              </label>
+              <Input
+                type="number"
+                placeholder="100"
+                value={form.size}
+                onChange={(e) => setForm({ ...form, size: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Description
+              </label>
+              <textarea
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Brief description of your farm..."
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={saving}>
+                Create Farm
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

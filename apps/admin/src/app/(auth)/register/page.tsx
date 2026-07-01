@@ -40,7 +40,9 @@ export default function RegisterPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      fullName: '',
+      firstName: '',
+      lastName: '',
+      middleName: '',
       organizationName: '',
     },
     mode: 'onChange',
@@ -111,22 +113,53 @@ export default function RegisterPage() {
   const renderStep2 = () => (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="fullName">Full Name</Label>
+        <Label htmlFor="firstName">First Name</Label>
         <Input
-          id="fullName"
+          id="firstName"
           type="text"
-          placeholder="John Doe"
-          autoComplete="name"
-          {...register('fullName')}
+          placeholder="John"
+          autoComplete="given-name"
+          {...register('firstName')}
           disabled={isLoading}
-          aria-invalid={!!errors.fullName}
-          aria-describedby={errors.fullName ? 'full-name-error' : undefined}
+          aria-invalid={!!errors.firstName}
+          aria-describedby={errors.firstName ? 'first-name-error' : undefined}
         />
-        {errors.fullName && (
-          <p id="full-name-error" className="text-sm text-destructive" role="alert">
-            {errors.fullName.message}
+        {errors.firstName && (
+          <p id="first-name-error" className="text-sm text-destructive" role="alert">
+            {errors.firstName.message}
           </p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="lastName">Last Name (Surname)</Label>
+        <Input
+          id="lastName"
+          type="text"
+          placeholder="Doe"
+          autoComplete="family-name"
+          {...register('lastName')}
+          disabled={isLoading}
+          aria-invalid={!!errors.lastName}
+          aria-describedby={errors.lastName ? 'last-name-error' : undefined}
+        />
+        {errors.lastName && (
+          <p id="last-name-error" className="text-sm text-destructive" role="alert">
+            {errors.lastName.message}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="middleName">Middle Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
+        <Input
+          id="middleName"
+          type="text"
+          placeholder="Optional"
+          autoComplete="additional-name"
+          {...register('middleName')}
+          disabled={isLoading}
+        />
       </div>
 
       <div className="space-y-2">

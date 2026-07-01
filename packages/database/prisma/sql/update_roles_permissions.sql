@@ -1,0 +1,62 @@
+UPDATE "Role" SET
+  "description" = CASE "name"
+    WHEN 'SUPER_ADMIN' THEN 'Full platform access across all organizations'
+    WHEN 'SUPPORT_ADMIN' THEN 'Read-only platform access for support staff'
+    WHEN 'ORGANIZATION_OWNER' THEN 'Full control over own organization, users, and billing'
+    WHEN 'FARM_MANAGER' THEN 'Manage farms, crops, livestock, poultry, and inventory'
+    WHEN 'ACCOUNTANT' THEN 'View and manage financial records and reports'
+    WHEN 'SUPERVISOR' THEN 'Supervise farm operations, crops, and workers'
+    WHEN 'VETERINARIAN' THEN 'Manage livestock and poultry health records'
+    WHEN 'WORKER' THEN 'Read-only access to farm data and notifications'
+  END,
+  "isSystem" = true
+WHERE "name" IN ('SUPER_ADMIN', 'SUPPORT_ADMIN', 'ORGANIZATION_OWNER', 'FARM_MANAGER', 'ACCOUNTANT', 'SUPERVISOR', 'VETERINARIAN', 'WORKER');
+
+UPDATE "Permission" SET
+  "category" = CASE
+    WHEN "name" LIKE 'farm.%' THEN 'Farm'
+    WHEN "name" LIKE 'crop.%' THEN 'Crop'
+    WHEN "name" LIKE 'livestock.%' THEN 'Livestock'
+    WHEN "name" LIKE 'poultry.%' THEN 'Poultry'
+    WHEN "name" LIKE 'inventory.%' THEN 'Inventory'
+    WHEN "name" LIKE 'finance.%' THEN 'Finance'
+    WHEN "name" LIKE 'worker.%' THEN 'Worker'
+    WHEN "name" LIKE 'notification.%' THEN 'Notification'
+    WHEN "name" LIKE 'reporting.%' THEN 'Reporting'
+    WHEN "name" LIKE 'organization.%' THEN 'Organization'
+    WHEN "name" LIKE 'users.%' THEN 'Administration'
+    WHEN "name" LIKE 'billing.%' THEN 'Administration'
+  END,
+  "description" = CASE "name"
+    WHEN 'farm.read' THEN 'View farms and farm details'
+    WHEN 'farm.write' THEN 'Create and edit farms'
+    WHEN 'farm.delete' THEN 'Delete farms'
+    WHEN 'crop.read' THEN 'View crops and crop cycles'
+    WHEN 'crop.write' THEN 'Create and edit crops'
+    WHEN 'crop.delete' THEN 'Delete crops'
+    WHEN 'livestock.read' THEN 'View livestock records'
+    WHEN 'livestock.write' THEN 'Create and edit livestock'
+    WHEN 'livestock.delete' THEN 'Delete livestock records'
+    WHEN 'poultry.read' THEN 'View poultry flocks and records'
+    WHEN 'poultry.write' THEN 'Create and edit poultry data'
+    WHEN 'poultry.delete' THEN 'Delete poultry records'
+    WHEN 'inventory.read' THEN 'View inventory items'
+    WHEN 'inventory.write' THEN 'Create and edit inventory'
+    WHEN 'inventory.delete' THEN 'Delete inventory items'
+    WHEN 'finance.read' THEN 'View expenses, sales, and financial data'
+    WHEN 'finance.write' THEN 'Create and edit financial records'
+    WHEN 'finance.delete' THEN 'Delete financial records'
+    WHEN 'worker.read' THEN 'View worker profiles'
+    WHEN 'worker.write' THEN 'Create and edit workers'
+    WHEN 'worker.delete' THEN 'Delete worker records'
+    WHEN 'notification.read' THEN 'View notifications'
+    WHEN 'notification.write' THEN 'Manage notification preferences'
+    WHEN 'reporting.read' THEN 'View reports and analytics'
+    WHEN 'reporting.write' THEN 'Create and export reports'
+    WHEN 'organization.read' THEN 'View organization settings'
+    WHEN 'organization.write' THEN 'Edit organization settings'
+    WHEN 'organization.delete' THEN 'Delete organization'
+    WHEN 'organization.manage' THEN 'Manage organization membership and settings'
+    WHEN 'users.manage' THEN 'Manage users within the organization'
+    WHEN 'billing.manage' THEN 'Manage subscription and billing'
+  END;

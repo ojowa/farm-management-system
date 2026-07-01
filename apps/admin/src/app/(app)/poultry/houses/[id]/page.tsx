@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface PoultryHouse {
   id: string;
@@ -33,6 +34,7 @@ interface PoultryHouse {
 }
 
 export default function PoultryHouseDetailPage() {
+  const readOnly = useReadOnly();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
@@ -117,17 +119,21 @@ export default function PoultryHouseDetailPage() {
             <Badge variant={house.status === 'active' ? 'success' : 'secondary'}>
               {house.status || 'active'}
             </Badge>
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/poultry/houses/${id}/edit`)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+            {!readOnly && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/poultry/houses/${id}/edit`)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -5,9 +5,9 @@ declare const process: { env?: Record<string, string | undefined> } | undefined;
 
 const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:3000/api';
+  'http://localhost:4000';
 
-const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+const SOCKET_URL = API_BASE_URL;
 
 export type RealtimeEvent =
   | 'farm.created'

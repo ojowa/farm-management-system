@@ -16,10 +16,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/lib/toasts';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 export default function NewTransactionPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
+
+  React.useEffect(() => {
+    if (readOnly) router.replace('/finance');
+  }, [readOnly, router]);
+
   const [type, setType] = useState<'expense' | 'sale'>('expense');
   const [form, setForm] = useState({
     title: '',

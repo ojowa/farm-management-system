@@ -12,12 +12,18 @@ type Entity =
   | 'worker'
   | 'sale'
   | 'expense'
+  | 'finance'
   | 'flock'
   | 'feeding'
+  | 'feedingRecord'
   | 'vaccination'
+  | 'vaccinationRecord'
   | 'mortality'
+  | 'mortalityRecord'
   | 'egg-production'
+  | 'eggProduction'
   | 'medication'
+  | 'poultryHouse'
   | 'notification';
 type Action = 'created' | 'updated' | 'deleted';
 

@@ -6,16 +6,18 @@ import dotenv from 'dotenv';
 import { poultryRouter } from './modules/poultry/poultry.module';
 import { medicationRouter } from './modules/poultry/medication.module';
 import { AuthError } from '@farm/auth';
+import { rlsMiddleware } from '@farm/database';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.POULTRY_SERVICE_PORT || 3005;
+const port = process.env.POULTRY_SERVICE_PORT || 4004;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(rlsMiddleware);
 
 app.use('/api', poultryRouter);
 app.use('/api', medicationRouter);

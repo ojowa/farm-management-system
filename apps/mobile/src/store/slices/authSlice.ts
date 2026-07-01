@@ -21,6 +21,7 @@ export interface User {
   role: string; // role name string
   roleId: string;
   organizationId: string;
+  organizationName?: string;
   permissions: string[];
   avatar?: string;
   isActive?: boolean;
@@ -194,6 +195,7 @@ export const restoreSession = createAsyncThunk(
           role: typeof raw.role === 'object' ? raw.role?.name ?? 'USER' : raw.role ?? 'USER',
           roleId: raw.roleId ?? (typeof raw.role === 'object' ? raw.role?.id : '') ?? '',
           organizationId: raw.organizationId ?? '',
+          organizationName: raw.organizationName ?? raw.organization?.name ?? undefined,
           permissions: raw.permissions ?? (typeof raw.role === 'object' ? raw.role?.permissions ?? [] : []),
           avatar: raw.avatar,
           isActive: raw.isActive,
@@ -412,6 +414,7 @@ async function saveTokens(payload: {
       role: typeof raw.role === 'object' ? raw.role?.name ?? 'USER' : raw.role ?? 'USER',
       roleId: raw.roleId ?? raw.role?.id ?? '',
       organizationId: raw.organizationId ?? '',
+      organizationName: raw.organizationName ?? raw.organization?.name ?? undefined,
       permissions: typeof raw.role === 'object' ? (raw.role?.permissions ?? []) : [],
       avatar: raw.avatar,
       isActive: raw.isActive,

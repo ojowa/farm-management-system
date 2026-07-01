@@ -2,7 +2,7 @@
 const nextConfig = {
   transpilePackages: ['@farm/types', '@farm/validation'],
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     remotePatterns: [
@@ -13,12 +13,7 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/:path*`,
-      },
-    ];
+    return [];
   },
 };
 

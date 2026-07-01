@@ -11,10 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/lib/toasts';
 import { farmFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 export default function NewFarmPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
+
+  if (readOnly) {
+    router.push('/farms');
+    return null;
+  }
   const [form, setForm] = useState({
     name: '',
     location: '',

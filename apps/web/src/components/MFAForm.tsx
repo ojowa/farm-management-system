@@ -19,7 +19,7 @@ export default function MFAForm() {
     try {
       const mfaSessionToken = localStorage.getItem('mfaSessionToken');
       if (!mfaSessionToken) {
-        router.push('/(auth)/login');
+        router.push('/login');
         return;
       }
       const { data } = await authAPI.verifyMFA({ mfaSessionToken, code });
@@ -27,7 +27,11 @@ export default function MFAForm() {
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       localStorage.setItem('user', JSON.stringify(data.user));
-      router.push('/');
+      const days = 7;
+      const expires = new Date(Date.now() + days * 864e5).toUTCString();
+      document.cookie = `accessToken=${encodeURIComponent(data.accessToken)}; expires=${expires}; path=/; SameSite=Lax`;
+      document.cookie = `refreshToken=${encodeURIComponent(data.refreshToken)}; expires=${new Date(Date.now() + 30 * 864e5).toUTCString()}; path=/; SameSite=Lax`;
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid code');
     } finally {

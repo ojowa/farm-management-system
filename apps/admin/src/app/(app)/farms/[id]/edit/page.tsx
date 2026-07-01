@@ -12,11 +12,18 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { farmFormSchema } from '@/lib/validation';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 export default function EditFarmPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
+
+  if (readOnly) {
+    router.push('/farms');
+    return null;
+  }
 
   const {
     data: farmData,

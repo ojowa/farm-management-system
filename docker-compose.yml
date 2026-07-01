@@ -1,24 +1,65 @@
-version: '3.9'
+version: "3.9"
 
 services:
   postgres:
-    image: postgres:16
-    container_name: farm_postgres
-    restart: always
+    image: postgres:16-alpine
+    container_name: farm-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: farm_db
+      POSTGRES_PASSWORD: Aarinola
+      POSTGRES_DB: FMS
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  redis:
-    image: redis:7
-    container_name: farm_redis
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1
+    container_name: farm-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Connection to PostgreSQL
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: FMS
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: Aarinola
+
+      # Pool settings
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: 20
+      MAX_CLIENT_CONN: 200
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+
+      # Timeouts
+      SERVER_CONNECT_TIMEOUT: 5
+      SERVER_IDLE_TIMEOUT: 600
+      CLIENT_IDLE_TIMEOUT: 0
+
+      # Logging
+      LOG_CONNECTIONS: 0
+      LOG_DISCONNECTIONS: 0
+      LOG_POOLER_ERRORS: 1
+      VERBOSE: 0
+
+      # Auth
+      AUTH_TYPE: scram-sha-256
+      AUTH_FILE: /etc/pgbouncer/userlist.txt
     ports:
-      - "6379:6379"
+      - "6432:5432"
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
 
 volumes:
-  pgdata:
+  postgres_data:

@@ -12,11 +12,13 @@ import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { workerFormSchema } from '@/lib/validation';
 
 export default function EditWorkerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
 
   const {
@@ -32,6 +34,11 @@ export default function EditWorkerPage() {
 
   const worker = workerData?.data;
   const farms = farmsData?.data || [];
+
+  if (readOnly) {
+    router.push('/workers');
+    return null;
+  }
 
   const [form, setForm] = useState({ name: '', role: '', farmId: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});

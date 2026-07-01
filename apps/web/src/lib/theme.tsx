@@ -41,7 +41,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(initial);
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => { if (theme === 'system') applyTheme('system'); };
+    const handler = () => {
+      const current = localStorage.getItem('theme') as Theme | null;
+      if ((current || 'system') === 'system') applyTheme('system');
+    };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);

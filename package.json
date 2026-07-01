@@ -18,13 +18,16 @@
   "devDependencies": {
     "@types/node": "^22.19.21",
     "turbo": "^2.9.14",
-    "typescript": "^6.0.3"
+    "typescript": "~5.8.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@scarf/scarf",
       "core-js",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "@types/react": "18.3.31"
+    }
   }
 }

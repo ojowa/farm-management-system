@@ -14,9 +14,11 @@ import { useToast } from '@/lib/toasts';
 import { useFetch } from '@/hooks/useFetch';
 import { workerFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 export default function NewWorkerPage() {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
   const [form, setForm] = useState({ name: '', role: '', farmId: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -29,6 +31,11 @@ export default function NewWorkerPage() {
   );
 
   const farms = farmsData?.data || [];
+
+  if (readOnly) {
+    router.push('/workers');
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

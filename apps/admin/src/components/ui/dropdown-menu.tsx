@@ -53,10 +53,7 @@ const DropdownMenuItem = forwardRef<HTMLButtonElement, React.ButtonHTMLAttribute
         inset && 'pl-8',
         className
       )}
-      onClick={(e) => {
-        onClick?.(e);
-        if (!e.defaultPrevented) setTimeout(() => {}, 0);
-      }}
+      onClick={onClick}
       {...props}
     >
       {children}

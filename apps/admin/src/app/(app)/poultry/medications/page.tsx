@@ -32,6 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { medicationFormSchema } from '@/lib/validation';
 
 interface Medication {
@@ -55,6 +56,7 @@ interface Flock {
 const PAGE_SIZE = 10;
 
 export default function MedicationsPage() {
+  const readOnly = useReadOnly();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -195,10 +197,12 @@ export default function MedicationsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Medications</h1>
           <p className="text-muted-foreground">Track medications for your flocks</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Medication
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Medication
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -259,7 +263,7 @@ export default function MedicationsPage() {
                 ? 'No medications match your filters.'
                 : 'No medications yet. Add your first medication!'}
             </p>
-            {!search && !statusFilter && (
+            {!search && !statusFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Medication
@@ -304,22 +308,26 @@ export default function MedicationsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => router.push(`/poultry/medications/${med.id}/edit`)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(med.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => router.push(`/poultry/medications/${med.id}/edit`)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(med.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -340,8 +348,9 @@ export default function MedicationsPage() {
         )}
       </Card>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Medication">
-        <form onSubmit={handleAdd} className="space-y-4">
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Medication">
+          <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">
               Flock <span className="text-destructive">*</span>
@@ -423,8 +432,9 @@ export default function MedicationsPage() {
               Create Medication
             </Button>
           </div>
-        </form>
-      </Dialog>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

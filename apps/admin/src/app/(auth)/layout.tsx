@@ -10,12 +10,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <ThemeProvider>
       <ToastProvider>
         <div className="min-h-screen flex">
           {/* Left side - branding (desktop only) */}

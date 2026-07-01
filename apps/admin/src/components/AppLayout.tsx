@@ -7,12 +7,14 @@ import { NotificationCenter } from './NotificationCenter';
 import { cn } from '@/lib/utils';
 import { Menu, X, User, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
 
@@ -61,11 +63,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   {user?.email}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setUserMenuOpen(false)}>
+                <DropdownMenuItem onClick={() => { router.push('/settings'); setUserMenuOpen(false); }}>
                   <User className="h-4 w-4 mr-2" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setUserMenuOpen(false)}>
+                <DropdownMenuItem onClick={() => { router.push('/settings'); setUserMenuOpen(false); }}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings
                 </DropdownMenuItem>

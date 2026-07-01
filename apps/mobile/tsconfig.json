@@ -3,7 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "noImplicitAny": false,
-    "ignoreDeprecations": "6.0",
+    "skipLibCheck": true,
     "types": ["react-native"],
     "paths": {
       "@/*": ["./src/*"]

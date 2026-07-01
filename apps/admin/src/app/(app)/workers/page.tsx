@@ -32,6 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { workerFormSchema } from '@/lib/validation';
 
 interface Worker {
@@ -47,6 +48,7 @@ const PAGE_SIZE = 10;
 
 export default function WorkersPage() {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -165,10 +167,12 @@ export default function WorkersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Workers</h1>
           <p className="text-muted-foreground">Manage your farm workers</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Worker
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Worker
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -227,7 +231,7 @@ export default function WorkersPage() {
                 ? 'No workers match your filters.'
                 : 'No workers yet. Add your first worker!'}
             </p>
-            {!search && !roleFilter && (
+            {!search && !roleFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Worker
@@ -282,24 +286,28 @@ export default function WorkersPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() =>
-                              router.push(`/workers/${worker.id}/edit`)
-                            }
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(worker.id, worker.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  router.push(`/workers/${worker.id}/edit`)
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(worker.id, worker.name)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -321,62 +329,64 @@ export default function WorkersPage() {
       </Card>
 
       {/* Add Worker Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Worker">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Worker Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="e.g. John Doe"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            {formErrors.name && (
-              <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Role <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="e.g. Farm Manager, Field Worker"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-            />
-            {formErrors.role && (
-              <p className="text-sm text-destructive mt-1">{formErrors.role}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Farm <span className="text-destructive">*</span>
-            </label>
-            <Select
-              placeholder="Select a farm"
-              options={farms.map((f) => ({ value: f.id, label: f.name }))}
-              value={form.farmId}
-              onChange={(e) => setForm({ ...form, farmId: e.target.value })}
-            />
-            {formErrors.farmId && (
-              <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
-            )}
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAdd(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Create Worker
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Worker">
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Worker Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="e.g. John Doe"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              {formErrors.name && (
+                <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Role <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="e.g. Farm Manager, Field Worker"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+              />
+              {formErrors.role && (
+                <p className="text-sm text-destructive mt-1">{formErrors.role}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select a farm"
+                options={farms.map((f) => ({ value: f.id, label: f.name }))}
+                value={form.farmId}
+                onChange={(e) => setForm({ ...form, farmId: e.target.value })}
+              />
+              {formErrors.farmId && (
+                <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={saving}>
+                Create Worker
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -57,8 +57,24 @@ export class AuthController {
   @Get('profile')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ description: 'Authenticated user' })
-  getProfile(@Request() req: any) {
-    return req.user;
+  async getProfile(@Request() req: any) {
+    return this.authService.getProfile(req.user, req.headers.authorization);
+  }
+
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
+  @ApiBearerAuth('access-token')
+  @Get('my-organizations')
+  @ApiOperation({ summary: 'List organizations the current user belongs to' })
+  async myOrganizations(@Request() req: any) {
+    return this.authService.myOrganizations(req.user, req.headers.authorization);
+  }
+
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
+  @ApiBearerAuth('access-token')
+  @Post('switch-organization')
+  @ApiOperation({ summary: 'Switch active organization' })
+  async switchOrganization(@Request() req: any, @Body() body: { organizationId: string }) {
+    return this.authService.switchOrganization(req.user, body.organizationId, req.headers.authorization);
   }
 }
 

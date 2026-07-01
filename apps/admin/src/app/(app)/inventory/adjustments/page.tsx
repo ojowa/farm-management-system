@@ -21,6 +21,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface InventoryItem {
   id: string;
@@ -41,6 +42,7 @@ interface Adjustment {
 
 export default function StockAdjustmentsPage() {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
   const [type, setType] = useState<'in' | 'out' | 'transfer'>('in');
   const [inventoryItemId, setInventoryItemId] = useState('');
@@ -118,99 +120,101 @@ export default function StockAdjustmentsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Adjustment Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>New Adjustment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Adjustment Type
-                </label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={type === 'in' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setType('in')}
-                  >
-                    <Plus className="mr-1 h-4 w-4" />
-                    Stock In
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={type === 'out' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setType('out')}
-                  >
-                    <Minus className="mr-1 h-4 w-4" />
-                    Stock Out
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={type === 'transfer' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setType('transfer')}
-                  >
-                    <ArrowRightLeft className="mr-1 h-4 w-4" />
-                    Transfer
-                  </Button>
+        {!readOnly && (
+          <Card>
+            <CardHeader>
+              <CardTitle>New Adjustment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Adjustment Type
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={type === 'in' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setType('in')}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      Stock In
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={type === 'out' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setType('out')}
+                    >
+                      <Minus className="mr-1 h-4 w-4" />
+                      Stock Out
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={type === 'transfer' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setType('transfer')}
+                    >
+                      <ArrowRightLeft className="mr-1 h-4 w-4" />
+                      Transfer
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Inventory Item <span className="text-destructive">*</span>
-                </label>
-                <Select
-                  placeholder="Select an item"
-                  options={items.map((item) => ({
-                    value: item.id,
-                    label: `${item.name} (${item.quantity} ${item.unit || ''})`,
-                  }))}
-                  value={inventoryItemId}
-                  onChange={(e) => setInventoryItemId(e.target.value)}
-                />
-              </div>
-
-              {selectedItem && (
-                <div className="rounded-lg border p-3 bg-muted/50">
-                  <p className="text-sm text-muted-foreground">Current Stock</p>
-                  <p className="text-lg font-semibold">
-                    {selectedItem.quantity} {selectedItem.unit || 'units'}
-                  </p>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Inventory Item <span className="text-destructive">*</span>
+                  </label>
+                  <Select
+                    placeholder="Select an item"
+                    options={items.map((item) => ({
+                      value: item.id,
+                      label: `${item.name} (${item.quantity} ${item.unit || ''})`,
+                    }))}
+                    value={inventoryItemId}
+                    onChange={(e) => setInventoryItemId(e.target.value)}
+                  />
                 </div>
-              )}
 
-              <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Quantity <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
+                {selectedItem && (
+                  <div className="rounded-lg border p-3 bg-muted/50">
+                    <p className="text-sm text-muted-foreground">Current Stock</p>
+                    <p className="text-lg font-semibold">
+                      {selectedItem.quantity} {selectedItem.unit || 'units'}
+                    </p>
+                  </div>
+                )}
 
-              <div>
-                <label className="text-sm font-medium mb-1 block">Notes</label>
-                <Input
-                  placeholder="Optional reason for adjustment..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Quantity <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="1"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                </div>
 
-              <Button type="submit" loading={saving} className="w-full">
-                {type === 'in' ? 'Add Stock' : type === 'out' ? 'Remove Stock' : 'Transfer Stock'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Notes</label>
+                  <Input
+                    placeholder="Optional reason for adjustment..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+
+                <Button type="submit" loading={saving} className="w-full">
+                  {type === 'in' ? 'Add Stock' : type === 'out' ? 'Remove Stock' : 'Transfer Stock'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Info */}
         <Card>

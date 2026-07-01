@@ -32,6 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Sale {
   id: string;
@@ -48,6 +49,7 @@ interface Sale {
 const PAGE_SIZE = 10;
 
 export default function SalesPage() {
+  const readOnly = useReadOnly();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -166,10 +168,12 @@ export default function SalesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Sales</h1>
           <p className="text-muted-foreground">Track poultry product sales</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Sale
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Sale
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -262,7 +266,7 @@ export default function SalesPage() {
                 ? 'No sales match your search.'
                 : 'No sales yet. Record your first sale!'}
             </p>
-            {!search && (
+            {!search && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Sale
@@ -312,22 +316,26 @@ export default function SalesPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => router.push(`/poultry/sales/${sale.id}/edit`)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(sale.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => router.push(`/poultry/sales/${sale.id}/edit`)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(sale.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -348,8 +356,9 @@ export default function SalesPage() {
         )}
       </Card>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Record Sale">
-        <form onSubmit={handleAdd} className="space-y-4">
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Record Sale">
+          <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">
               Item <span className="text-destructive">*</span>
@@ -424,8 +433,9 @@ export default function SalesPage() {
               Record Sale
             </Button>
           </div>
-        </form>
-      </Dialog>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

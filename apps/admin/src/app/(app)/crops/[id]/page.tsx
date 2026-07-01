@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Crop {
   id: string;
@@ -38,6 +39,7 @@ interface Crop {
 export default function CropDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const readOnly = useReadOnly();
   const { toast } = useToast();
 
   const {
@@ -129,17 +131,21 @@ export default function CropDetailPage() {
             >
               {crop.status || 'active'}
             </Badge>
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/crops/${id}/edit`)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/crops/${id}/edit`)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
+            {!readOnly && (
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>

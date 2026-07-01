@@ -33,6 +33,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { poultryHouseFormSchema } from '@/lib/validation';
 
 interface PoultryHouse {
@@ -53,6 +54,7 @@ interface Farm {
 const PAGE_SIZE = 10;
 
 export default function PoultryHousesPage() {
+  const readOnly = useReadOnly();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -169,10 +171,12 @@ export default function PoultryHousesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Poultry Houses</h1>
           <p className="text-muted-foreground">Manage your poultry houses</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add House
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add House
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -232,7 +236,7 @@ export default function PoultryHousesPage() {
                 ? 'No houses match your filters.'
                 : 'No poultry houses yet. Create your first house!'}
             </p>
-            {!search && !statusFilter && (
+            {!search && !statusFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add House
@@ -289,22 +293,26 @@ export default function PoultryHousesPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => router.push(`/poultry/houses/${house.id}/edit`)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(house.id, house.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => router.push(`/poultry/houses/${house.id}/edit`)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(house.id, house.name)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -325,8 +333,9 @@ export default function PoultryHousesPage() {
         )}
       </Card>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Poultry House">
-        <form onSubmit={handleAdd} className="space-y-4">
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Poultry House">
+          <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">
               House Name <span className="text-destructive">*</span>
@@ -375,8 +384,9 @@ export default function PoultryHousesPage() {
               Create House
             </Button>
           </div>
-        </form>
-      </Dialog>
-    </div>
+          </form>
+        </Dialog>
+      )}
+      </div>
   );
 }

@@ -14,14 +14,14 @@ vi.mock('next/navigation', () => ({
 }));
 
 function middleware(accessToken: string | undefined, pathname: string) {
-  const isAuthPage = pathname.startsWith('/(auth)/login') || pathname.startsWith('/(auth)/mfa') || pathname.startsWith('/(auth)/register');
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/mfa') || pathname.startsWith('/register');
 
   if (isAuthPage && accessToken) {
     return { redirect: '/' };
   }
 
   if (!isAuthPage && !accessToken) {
-    return { redirect: '/(auth)/login' };
+    return { redirect: '/login' };
   }
 
   return { redirect: null };
@@ -29,28 +29,28 @@ function middleware(accessToken: string | undefined, pathname: string) {
 
 describe('Auth middleware', () => {
   it('redirects authenticated users away from auth pages', () => {
-    const result = middleware('some-token', '/(auth)/login');
+    const result = middleware('some-token', '/login');
     expect(result.redirect).toBe('/');
   });
 
   it('redirects authenticated users away from MFA page', () => {
-    const result = middleware('some-token', '/(auth)/mfa');
+    const result = middleware('some-token', '/mfa');
     expect(result.redirect).toBe('/');
   });
 
   it('redirects authenticated users away from register page', () => {
-    const result = middleware('some-token', '/(auth)/register');
+    const result = middleware('some-token', '/register');
     expect(result.redirect).toBe('/');
   });
 
   it('redirects unauthenticated users to login', () => {
     const result = middleware(undefined, '/farms');
-    expect(result.redirect).toBe('/(auth)/login');
+    expect(result.redirect).toBe('/login');
   });
 
   it('redirects unauthenticated users from root to login', () => {
     const result = middleware(undefined, '/');
-    expect(result.redirect).toBe('/(auth)/login');
+    expect(result.redirect).toBe('/login');
   });
 
   it('allows authenticated users to access app pages', () => {
@@ -64,12 +64,12 @@ describe('Auth middleware', () => {
   });
 
   it('allows unauthenticated users to access auth pages', () => {
-    const result = middleware(undefined, '/(auth)/login');
+    const result = middleware(undefined, '/login');
     expect(result.redirect).toBeNull();
   });
 
   it('allows unauthenticated users to access register', () => {
-    const result = middleware(undefined, '/(auth)/register');
+    const result = middleware(undefined, '/register');
     expect(result.redirect).toBeNull();
   });
 });

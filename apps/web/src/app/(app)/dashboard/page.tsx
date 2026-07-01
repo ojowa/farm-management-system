@@ -28,7 +28,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.push('/(auth)/login');
+      router.push('/login');
       return;
     }
 
@@ -71,7 +71,7 @@ export default function DashboardPage() {
     load();
   }, [user, authLoading, router]);
 
-  if (authLoading || loading) return <LoadingSpinner size="lg" />;
+  if (authLoading) return <LoadingSpinner size="lg" />;
 
   return (
     <div>
@@ -101,7 +101,7 @@ export default function DashboardPage() {
               { label: 'Add Farm', href: '/farms', icon: '🏡' },
               { label: 'Add Crop', href: '/crops', icon: '🌾' },
               { label: 'Add Livestock', href: '/livestock', icon: '🐄' },
-              { label: 'Record Transaction', href: '/reports', icon: '💰' },
+              { label: 'Record Transaction', href: '/sales', icon: '💰' },
             ].map((action) => (
               <button
                 key={action.label}

@@ -22,6 +22,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Farm {
   id: string;
@@ -39,6 +40,7 @@ export default function FarmDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
 
   const {
     data: farmData,
@@ -121,17 +123,21 @@ export default function FarmDetailPage() {
             <Badge variant={farm.status === 'active' ? 'success' : 'secondary'}>
               {farm.status || 'active'}
             </Badge>
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/farms/${id}/edit`)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
+            {!readOnly && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/farms/${id}/edit`)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

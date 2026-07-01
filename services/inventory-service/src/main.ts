@@ -5,16 +5,18 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { inventoryRouter } from './modules/inventory/inventory.module';
 import { AuthError } from '@farm/auth';
+import { rlsMiddleware } from '@farm/database';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.INVENTORY_SERVICE_PORT || 3011;
+const port = process.env.INVENTORY_SERVICE_PORT || 4010;
 
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(rlsMiddleware);
 
 app.use('/api', inventoryRouter);
 

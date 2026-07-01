@@ -53,7 +53,7 @@ export class MedicationService {
     // If medication has a flockId, include flock details
     if (medication.flockId) {
       try {
-        const flockResponse = await fetch(`http://localhost:3004/livestocks/${medication.flockId}`);
+        const flockResponse = await fetch(`http://localhost:4003/livestocks/${medication.flockId}`);
         const flock = await flockResponse.json();
         return { ...medication, flockDetails: flock };
       } catch (error) {
@@ -67,7 +67,7 @@ export class MedicationService {
   async createMedicationForFlock(flockId: string, medicationData: CreateMedicationRequest): Promise<Medication> {
     // Validate that flock exists
     try {
-      const flockResponse = await fetch(`http://localhost:3004/livestocks/${flockId}`);
+      const flockResponse = await fetch(`http://localhost:4003/livestocks/${flockId}`);
       if (!flockResponse.ok) {
         throw new NotFoundException(`Flock with ID ${flockId} not found`);
       }

@@ -9,6 +9,9 @@ import {
   Switch,
   Alert,
   Image,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,6 +25,7 @@ import {
   setupNotificationListeners,
 } from '../../services/notifications';
 import { useAppSelector } from '../../hooks/useAuth';
+import { orgAdminAPI } from '../../services/api';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -51,6 +55,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     fontWeight: '500',
     overflow: 'hidden',
+  },
+  userOrg: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 16,
@@ -93,11 +102,84 @@ export default function SettingsScreen() {
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const offlineQueueCount = useAppSelector((s: any) => s.sync?.offlineQueue?.length ?? 0);
 
+  // Role management
+  const [roles, setRoles] = useState<any[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [editingRole, setEditingRole] = useState<any>(null);
+  const [roleName, setRoleName] = useState('');
+  const [roleDesc, setRoleDesc] = useState('');
+  const [roleSaving, setRoleSaving] = useState(false);
+
+  const canManageRoles = ['SUPER_ADMIN', 'SUPPORT_ADMIN', 'ORGANIZATION_OWNER'].includes(user?.role || '');
+
   useEffect(() => {
     checkNotificationStatus();
     const cleanup = setupNotificationListeners();
+    if (canManageRoles) loadRoles();
     return cleanup;
   }, []);
+
+  const loadRoles = async () => {
+    setRolesLoading(true);
+    try {
+      const res = await orgAdminAPI.listRoles();
+      setRoles(res.data);
+    } catch { /* ignore */ }
+    finally { setRolesLoading(false); }
+  };
+
+  const openRoleModal = (role?: any) => {
+    if (role) {
+      setEditingRole(role);
+      setRoleName(role.name);
+      setRoleDesc(role.description || '');
+    } else {
+      setEditingRole(null);
+      setRoleName('');
+      setRoleDesc('');
+    }
+    setShowRoleModal(true);
+  };
+
+  const handleSaveRole = async () => {
+    if (!roleName.trim()) {
+      Alert.alert('Error', 'Role name is required');
+      return;
+    }
+    setRoleSaving(true);
+    try {
+      if (editingRole) {
+        await orgAdminAPI.updateRole(editingRole.id, { name: roleName.trim(), description: roleDesc.trim() || undefined });
+        Alert.alert('Success', 'Role updated');
+      } else {
+        await orgAdminAPI.createRole({ name: roleName.trim(), description: roleDesc.trim() || undefined });
+        Alert.alert('Success', 'Role created');
+      }
+      setShowRoleModal(false);
+      await loadRoles();
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.message || 'Failed to save role');
+    } finally { setRoleSaving(false); }
+  };
+
+  const handleDeleteRole = (role: any) => {
+    Alert.alert('Delete Role', `Delete "${role.name}"? Users with this role will need to be reassigned.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await orgAdminAPI.deleteRole(role.id);
+            await loadRoles();
+          } catch (err: any) {
+            Alert.alert('Error', err?.response?.data?.message || 'Failed to delete role');
+          }
+        },
+      },
+    ]);
+  };
 
   const checkNotificationStatus = async () => {
     const enabled = await getNotificationPermissions();
@@ -170,6 +252,9 @@ export default function SettingsScreen() {
           <Text style={styles.userName}>{user?.fullName || 'User'}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
           <Text style={styles.userRole}>{user?.role || 'Farmer'}</Text>
+          {user?.organizationName && (
+            <Text style={styles.userOrg}>{user.organizationName}</Text>
+          )}
         </View>
 
         <Button
@@ -202,6 +287,50 @@ export default function SettingsScreen() {
         </Card>
 
         <View style={styles.divider} />
+
+        {canManageRoles && (
+          <>
+            <Text style={styles.sectionTitle}>Role Management</Text>
+            <Card style={styles.settingItem}>
+              <View style={styles.settingItemRow}>
+                <View style={styles.settingItemText}>
+                  <Text style={styles.settingItemTitle}>Custom Roles</Text>
+                  <Text style={styles.settingItemDescription}>
+                    {rolesLoading ? 'Loading...' : `${roles.length} roles (${roles.filter(r => !r.isSystem).length} custom)`}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => openRoleModal()}>
+                  <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>+ New</Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
+            {!rolesLoading && roles.filter(r => !r.isSystem).length > 0 && (
+              <Card style={styles.settingItem}>
+                {roles.filter(r => !r.isSystem).map((role) => (
+                  <View key={role.id}>
+                    <View style={styles.settingItemRow}>
+                      <View style={styles.settingItemText}>
+                        <Text style={styles.settingItemTitle}>{role.name}</Text>
+                        <Text style={styles.settingItemDescription}>
+                          {role._count?.users || 0} users · {role.permissions?.length || 0} permissions
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity onPress={() => openRoleModal(role)}>
+                          <Text style={{ color: colors.primary, fontSize: 12 }}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteRole(role)}>
+                          <Text style={{ color: colors.error, fontSize: 12 }}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            )}
+            <View style={styles.divider} />
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Preferences</Text>
 
@@ -327,6 +456,40 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
+
+      <Modal visible={showRoleModal} animationType="slide" transparent>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '60%' }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16 }}>{editingRole ? 'Edit Role' : 'New Role'}</Text>
+            <TextInput
+              value={roleName}
+              onChangeText={setRoleName}
+              placeholder="Role name (e.g. Farm Supervisor)"
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 }}
+            />
+            <TextInput
+              value={roleDesc}
+              onChangeText={setRoleDesc}
+              placeholder="Description (optional)"
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 14 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Button
+                title="Cancel"
+                onPress={() => setShowRoleModal(false)}
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={roleSaving ? 'Saving...' : editingRole ? 'Update' : 'Create'}
+                onPress={handleSaveRole}
+                disabled={roleSaving}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

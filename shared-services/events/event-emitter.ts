@@ -5,7 +5,7 @@ export interface RealtimeEvent {
   timestamp?: string;
 }
 
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'http://localhost:3000';
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'http://localhost:4000';
 
 export async function emitRealtimeEvent(event: Omit<RealtimeEvent, 'timestamp'>): Promise<void> {
   const payload: RealtimeEvent = {

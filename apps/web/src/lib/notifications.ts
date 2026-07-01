@@ -22,4 +22,8 @@ export const notificationsAPI = {
     apiClient.put<{ count: number }>(`/notifications/user/${userId}/read-all`),
   delete: (id: string) =>
     apiClient.delete(`/notifications/${id}`),
+  registerDeviceToken: (token: string, platform: 'web' | 'ios' | 'android' = 'web') =>
+    apiClient.post('/devices/tokens', { token, platform }),
+  unregisterDeviceToken: (token: string) =>
+    apiClient.delete('/devices/tokens', { data: { token } }),
 };

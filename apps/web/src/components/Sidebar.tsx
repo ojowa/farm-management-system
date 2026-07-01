@@ -1,59 +1,86 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { usePermission } from '@/lib/usePermission';
 
 const NAV_SECTIONS = [
   {
     title: 'Overview',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+      { href: '/dashboard', label: 'Dashboard', icon: '📊', permission: null },
     ],
   },
   {
     title: 'Farm Management',
     items: [
-      { href: '/farms', label: 'Farms', icon: '🏡' },
-      { href: '/crops', label: 'Crops', icon: '🌾' },
-      { href: '/livestock', label: 'Livestock', icon: '🐄' },
-      { href: '/workers', label: 'Workers', icon: '👷' },
+      { href: '/farms', label: 'Farms', icon: '🏡', permission: 'farm.read' },
+      { href: '/crops', label: 'Crops', icon: '🌾', permission: 'crop.read' },
+      { href: '/livestock', label: 'Livestock', icon: '🐄', permission: 'livestock.read' },
+      { href: '/workers', label: 'Workers', icon: '👷', permission: 'worker.read' },
+      { href: '/tasks', label: 'Tasks', icon: '✅', permission: 'task.read' },
     ],
   },
   {
     title: 'Poultry',
     items: [
-      { href: '/poultry', label: 'Poultry', icon: '🐔' },
-      { href: '/flocks', label: 'Flocks', icon: '🐦' },
-      { href: '/feeding', label: 'Feeding', icon: '🍖' },
-      { href: '/vaccinations', label: 'Vaccinations', icon: '💉' },
-      { href: '/mortality', label: 'Mortality', icon: '📉' },
-      { href: '/egg-production', label: 'Egg Production', icon: '🥚' },
-      { href: '/medications', label: 'Medications', icon: '💊' },
+      { href: '/poultry', label: 'Poultry', icon: '🐔', permission: 'poultry.read' },
+      { href: '/flocks', label: 'Flocks', icon: '🐦', permission: 'poultry.read' },
+      { href: '/feeding', label: 'Feeding', icon: '🍖', permission: 'poultry.read' },
+      { href: '/vaccinations', label: 'Vaccinations', icon: '💉', permission: 'poultry.read' },
+      { href: '/mortality', label: 'Mortality', icon: '📉', permission: 'poultry.read' },
+      { href: '/egg-production', label: 'Egg Production', icon: '🥚', permission: 'poultry.read' },
+      { href: '/medications', label: 'Medications', icon: '💊', permission: 'poultry.read' },
     ],
   },
   {
     title: 'Operations',
     items: [
-      { href: '/inventory', label: 'Inventory', icon: '📦' },
-      { href: '/sales', label: 'Sales', icon: '💰' },
-      { href: '/reports', label: 'Finance', icon: '📈' },
-      { href: '/analytics', label: 'Analytics', icon: '📉' },
+      { href: '/inventory', label: 'Inventory', icon: '📦', permission: 'inventory.read' },
+      { href: '/sales', label: 'Sales', icon: '💰', permission: 'finance.read' },
+      { href: '/reports', label: 'Finance', icon: '📈', permission: 'finance.read' },
+      { href: '/analytics', label: 'Analytics', icon: '📉', permission: 'reporting.read' },
+    ],
+  },
+  {
+    title: 'HR',
+    items: [
+      { href: '/hr/leave', label: 'My Leave', icon: '🏖️', permission: 'leave.read' },
+      { href: '/hr/leave/approvals', label: 'Leave Approvals', icon: '✅', permission: 'leave.approve' },
+      { href: '/hr/leave/types', label: 'Leave Types', icon: '📋', permission: 'leave.write' },
+      { href: '/roster', label: 'Duty Roster', icon: '📅', permission: 'roster.read' },
+    ],
+  },
+  {
+    title: 'Communication',
+    items: [
+      { href: '/messages', label: 'Messages', icon: '✉️', permission: 'messaging.read' },
+      { href: '/correspondence', label: 'Correspondence', icon: '📄', permission: 'correspondence.read' },
     ],
   },
   {
     title: 'Account',
     items: [
-      { href: '/settings', label: 'Settings', icon: '⚙️' },
+      { href: '/settings', label: 'Settings', icon: '⚙️', permission: null },
     ],
   },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, myOrganizations, switchOrganization } = useAuth();
+  const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
+  const [orgs, setOrgs] = useState<any[]>([]);
+  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      myOrganizations().then(setOrgs).catch(() => {});
+    }
+  }, [user, myOrganizations]);
 
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0 shrink-0 transition-all duration-200`}>
@@ -65,37 +92,67 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-2 space-y-4 overflow-y-auto">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.title}>
-            {!collapsed && (
-              <p className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{section.title}</p>
-            )}
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      active
-                        ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                    } ${collapsed ? 'justify-center' : ''}`}
-                  >
-                    <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    {!collapsed && item.label}
-                  </Link>
-                );
-              })}
+        {NAV_SECTIONS.map((section) => {
+          const visibleItems = section.items.filter((item) => !item.permission || hasPermission(item.permission));
+          if (visibleItems.length === 0) return null;
+          return (
+            <div key={section.title}>
+              {!collapsed && (
+                <p className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{section.title}</p>
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      title={collapsed ? item.label : undefined}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        active
+                          ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                      } ${collapsed ? 'justify-center' : ''}`}
+                    >
+                      <span className="text-lg flex-shrink-0">{item.icon}</span>
+                      {!collapsed && item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {!collapsed && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          {orgs.length > 1 && (
+            <div className="mb-3 relative">
+              <button
+                onClick={() => setShowOrgSwitcher(!showOrgSwitcher)}
+                className="w-full text-left px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              >
+                <span className="text-gray-500 dark:text-gray-400 text-xs">Organization</span>
+                <p className="font-medium text-gray-900 dark:text-white truncate">{user?.organizationName || 'Select org'}</p>
+              </button>
+              {showOrgSwitcher && (
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                  {orgs.map((org) => (
+                    <button
+                      key={org.id}
+                      onClick={() => { switchOrganization(org.id); setShowOrgSwitcher(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
+                        org.id === user?.organizationId ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {org.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center text-green-700 dark:text-green-400 font-semibold text-sm">
               {user?.fullName?.[0] || user?.email?.[0]?.toUpperCase() || '?'}

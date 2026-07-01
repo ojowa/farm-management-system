@@ -32,6 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 import { feedingRecordFormSchema } from '@/lib/validation';
 
 interface FeedingRecord {
@@ -53,6 +54,7 @@ interface Flock {
 const PAGE_SIZE = 10;
 
 export default function FeedingPage() {
+  const readOnly = useReadOnly();
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -172,10 +174,12 @@ export default function FeedingPage() {
           <h1 className="text-3xl font-bold tracking-tight">Feeding Records</h1>
           <p className="text-muted-foreground">Track feed consumption for your flocks</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Record
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowAdd(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Record
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -222,7 +226,7 @@ export default function FeedingPage() {
                 ? 'No feeding records match your search.'
                 : 'No feeding records yet. Add your first record!'}
             </p>
-            {!search && (
+            {!search && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Record
@@ -266,22 +270,26 @@ export default function FeedingPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => router.push(`/poultry/feeding/${record.id}/edit`)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(record.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!readOnly && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => router.push(`/poultry/feeding/${record.id}/edit`)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDelete(record.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -302,8 +310,9 @@ export default function FeedingPage() {
         )}
       </Card>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Feeding Record">
-        <form onSubmit={handleAdd} className="space-y-4">
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Feeding Record">
+          <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="text-sm font-medium mb-1 block">
               Flock <span className="text-destructive">*</span>
@@ -370,8 +379,9 @@ export default function FeedingPage() {
               Create Record
             </Button>
           </div>
-        </form>
-      </Dialog>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

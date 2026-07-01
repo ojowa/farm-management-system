@@ -3,15 +3,34 @@ import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { useAppSelector } from '@/hooks/useAuth';
 import { colors } from '@/components/common/UIComponents';
+import { usePermission } from '@/hooks/usePermission';
+
+const TAB_CONFIG = [
+  { name: 'index', title: 'Home', icon: '🏠', permission: null },
+  { name: 'farms', title: 'Farms', icon: '🌾', permission: 'farm.read' },
+  { name: 'crops', title: 'Crops', icon: '🌱', permission: 'crop.read' },
+  { name: 'livestock', title: 'Livestock', icon: '🐄', permission: 'livestock.read' },
+  { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'task.read' },
+  { name: 'roster', title: 'Roster', icon: '📅', permission: 'roster.read' },
+  { name: 'messages', title: 'Messages', icon: '✉️', permission: 'messaging.read' },
+  { name: 'correspondence', title: 'Docs', icon: '📄', permission: 'correspondence.read' },
+  { name: 'leave', title: 'Leave', icon: '🏖️', permission: 'leave.read' },
+  { name: 'notifications', title: 'Alerts', icon: '🔔', permission: 'notification.read' },
+  { name: 'finance', title: 'Finance', icon: '💰', permission: 'finance.read' },
+  { name: 'settings', title: 'Settings', icon: '⚙️', permission: null },
+];
 
 export default function AppLayout() {
   const isAuthenticated = useAppSelector(
     (state) => state.auth.isAuthenticated
   );
+  const { hasPermission } = usePermission();
 
   if (!isAuthenticated) {
     return null;
   }
+
+  const visibleTabs = TAB_CONFIG.filter((tab) => !tab.permission || hasPermission(tab.permission));
 
   return (
     <Tabs
@@ -32,56 +51,17 @@ export default function AppLayout() {
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>🏠</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="farms"
-        options={{
-          title: 'Farms',
-          tabBarLabel: 'Farms',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>🌾</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="crops"
-        options={{
-          title: 'Crops',
-          tabBarLabel: 'Crops',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>🌱</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="livestock"
-        options={{
-          title: 'Livestock',
-          tabBarLabel: 'Livestock',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>🐄</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="finance"
-        options={{
-          title: 'Finance',
-          tabBarLabel: 'Finance',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>💰</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>⚙️</Text>,
-        }}
-      />
+      {visibleTabs.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.title,
+            tabBarLabel: tab.title,
+            tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>{tab.icon}</Text>,
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
-
-

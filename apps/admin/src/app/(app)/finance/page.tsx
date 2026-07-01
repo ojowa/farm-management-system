@@ -33,6 +33,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Transaction {
   id: string;
@@ -55,6 +56,7 @@ interface FinanceSummary {
 export default function FinancePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
 
   const {
     data: expensesData,
@@ -131,18 +133,22 @@ export default function FinancePage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Link href="/finance/transactions/new">
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Expense
-            </Button>
-          </Link>
-          <Link href="/finance/transactions/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Sale
-            </Button>
-          </Link>
+          {!readOnly && (
+            <>
+              <Link href="/finance/transactions/new">
+                <Button variant="outline">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Expense
+                </Button>
+              </Link>
+              <Link href="/finance/transactions/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Sale
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -222,18 +228,22 @@ export default function FinancePage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Link href="/finance/transactions/new">
-              <Button variant="outline">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Expense
-              </Button>
-            </Link>
-            <Link href="/finance/transactions/new">
-              <Button variant="outline">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Sale
-              </Button>
-            </Link>
+            {!readOnly && (
+              <>
+                <Link href="/finance/transactions/new">
+                  <Button variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Expense
+                  </Button>
+                </Link>
+                <Link href="/finance/transactions/new">
+                  <Button variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Sale
+                  </Button>
+                </Link>
+              </>
+            )}
             <Link href="/finance/transactions">
               <Button variant="outline">
                 <DollarSign className="mr-2 h-4 w-4" />

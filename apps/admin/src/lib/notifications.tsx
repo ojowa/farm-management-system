@@ -5,6 +5,7 @@ import { useSocket } from './socket';
 import { useAuth } from './auth';
 import { Bell, X } from 'lucide-react';
 import { useToast } from './toasts';
+import { notificationsAPI } from './api';
 
 export interface Notification {
   id: string;
@@ -39,10 +40,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
     try {
-      // In a real app, this would call the API
-      // const { data } = await notificationsAPI.list(user.id);
-      // setNotifications(data.notifications);
-      // setUnreadCount(data.notifications.filter((n: Notification) => !n.read).length);
+      const { data } = await notificationsAPI.list(user.id, { limit: 50 });
+      setNotifications(data);
+      setUnreadCount(data.filter((n: Notification) => !n.read).length);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -51,24 +51,40 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const markAsRead = useCallback(async (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await notificationsAPI.markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   }, []);
 
   const markAllAsRead = useCallback(async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    setUnreadCount(0);
-  }, []);
+    if (!user) return;
+    try {
+      await notificationsAPI.markAllAsRead(user.id);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+    }
+  }, [user]);
 
   const deleteNotification = useCallback(async (id: string) => {
-    setNotifications((prev) => {
-      const notif = prev.find((n) => n.id === id);
-      const newUnread = notif && !notif.read ? 1 : 0;
-      setUnreadCount((c) => Math.max(0, c - newUnread));
-      return prev.filter((n) => n.id !== id);
-    });
+    try {
+      await notificationsAPI.delete(id);
+      setNotifications((prev) => {
+        const notif = prev.find((n) => n.id === id);
+        const newUnread = notif && !notif.read ? 1 : 0;
+        setUnreadCount((c) => Math.max(0, c - newUnread));
+        return prev.filter((n) => n.id !== id);
+      });
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+    }
   }, []);
 
   useEffect(() => {

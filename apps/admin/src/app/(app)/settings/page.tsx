@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/toasts';
 import { useAuth } from '@/lib/auth';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 type Tab = 'profile' | 'organization' | 'notifications' | 'security' | 'integrations';
 
@@ -42,12 +43,13 @@ const tabs: { id: Tab; label: string; icon: React.ElementType; description: stri
 export default function SettingsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const readOnly = useReadOnly();
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [saving, setSaving] = useState(false);
 
   // Profile state
   const [profile, setProfile] = useState({
-    name: user?.name || '',
+    name: user?.fullName || '',
     email: user?.email || '',
     phone: '',
   });
@@ -287,10 +289,12 @@ export default function SettingsPage() {
                 <User className="h-10 w-10 text-primary" />
               </div>
               <div>
-                <Button variant="outline" size="sm">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Photo
-                </Button>
+                {!readOnly && (
+                  <Button variant="outline" size="sm">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Photo
+                  </Button>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                   JPG, PNG up to 2MB
                 </p>
@@ -344,10 +348,12 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={handleProfileSave} loading={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Profile
-              </Button>
+              {!readOnly && (
+                <Button onClick={handleProfileSave} loading={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Profile
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -382,10 +388,12 @@ export default function SettingsPage() {
                   <Upload className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <div>
-                  <Button variant="outline" size="sm">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Logo
-                  </Button>
+                  {!readOnly && (
+                    <Button variant="outline" size="sm">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Logo
+                    </Button>
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     PNG, JPG up to 2MB. Recommended 256x256px.
                   </p>
@@ -448,10 +456,12 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={handleOrgSave} loading={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Organization
-              </Button>
+              {!readOnly && (
+                <Button onClick={handleOrgSave} loading={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Organization
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -479,60 +489,64 @@ export default function SettingsPage() {
                   { key: 'pushNotifications', label: 'Push Notifications', description: 'Receive push notifications in your browser' },
                   { key: 'inAppNotifications', label: 'In-App Notifications', description: 'Show notifications within the application' },
                 ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{item.label}</p>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{item.label}</p>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      </div>
+                      <ToggleSwitch
+                        enabled={notifications[item.key as keyof typeof notifications]}
+                        onToggle={() => {
+                          if (readOnly) return;
+                          setNotifications({
+                            ...notifications,
+                            [item.key]: !notifications[item.key as keyof typeof notifications],
+                          });
+                        }}
+                      />
                     </div>
-                    <ToggleSwitch
-                      enabled={notifications[item.key as keyof typeof notifications]}
-                      onToggle={() =>
-                        setNotifications({
-                          ...notifications,
-                          [item.key]: !notifications[item.key as keyof typeof notifications],
-                        })
-                      }
-                    />
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Alert Types */}
-            <div>
-              <h3 className="text-sm font-semibold mb-4">Alert Types</h3>
-              <div className="space-y-3">
-                {[
-                  { key: 'weeklyReport', label: 'Weekly Summary Report', description: 'Get a weekly summary of farm activity' },
-                  { key: 'lowStockAlerts', label: 'Low Stock Alerts', description: 'Alert when supplies run low' },
-                  { key: 'weatherAlerts', label: 'Weather Alerts', description: 'Notifications about severe weather conditions' },
-                  { key: 'taskReminders', label: 'Task Reminders', description: 'Reminders for upcoming farm tasks' },
-                  { key: 'harvestAlerts', label: 'Harvest Alerts', description: 'Notifications when crops are ready for harvest' },
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{item.label}</p>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    </div>
-                    <ToggleSwitch
-                      enabled={notifications[item.key as keyof typeof notifications]}
-                      onToggle={() =>
-                        setNotifications({
-                          ...notifications,
-                          [item.key]: !notifications[item.key as keyof typeof notifications],
-                        })
-                      }
-                    />
+              {/* Alert Types */}
+              <div>
+                <h3 className="text-sm font-semibold mb-4">Alert Types</h3>
+                <div className="space-y-3">
+                  {[
+                    { key: 'weeklyReport', label: 'Weekly Summary Report', description: 'Get a weekly summary of farm activity' },
+                    { key: 'lowStockAlerts', label: 'Low Stock Alerts', description: 'Alert when supplies run low' },
+                    { key: 'weatherAlerts', label: 'Weather Alerts', description: 'Notifications about severe weather conditions' },
+                    { key: 'taskReminders', label: 'Task Reminders', description: 'Reminders for upcoming farm tasks' },
+                    { key: 'harvestAlerts', label: 'Harvest Alerts', description: 'Notifications when crops are ready for harvest' },
+                  ].map((item) => (
+                    <div key={item.key} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{item.label}</p>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      </div>
+                      <ToggleSwitch
+                        enabled={notifications[item.key as keyof typeof notifications]}
+                        onToggle={() => {
+                          if (readOnly) return;
+                          setNotifications({
+                            ...notifications,
+                            [item.key]: !notifications[item.key as keyof typeof notifications],
+                          });
+                        }}
+                      />
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={handleNotificationsSave} loading={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                Save Preferences
-              </Button>
+              {!readOnly && (
+                <Button onClick={handleNotificationsSave} loading={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Preferences
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -608,10 +622,12 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="flex justify-end pt-2">
-                <Button onClick={handleSecuritySave} loading={saving}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Update Password
-                </Button>
+                {!readOnly && (
+                  <Button onClick={handleSecuritySave} loading={saving}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Update Password
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -654,6 +670,7 @@ export default function SettingsPage() {
                   <Button
                     variant={security.twoFactorEnabled ? 'outline' : 'default'}
                     size="sm"
+                    disabled={readOnly}
                     onClick={() => {
                       setSecurity({ ...security, twoFactorEnabled: !security.twoFactorEnabled });
                       toast({
@@ -689,10 +706,12 @@ export default function SettingsPage() {
                   Manage API keys for external service connections
                 </CardDescription>
               </div>
-              <Button size="sm" onClick={() => setShowNewKeyForm(!showNewKeyForm)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Key
-              </Button>
+              {!readOnly && (
+                <Button size="sm" onClick={() => setShowNewKeyForm(!showNewKeyForm)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Key
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="p-6">
               {/* New Key Form */}
@@ -801,15 +820,20 @@ export default function SettingsPage() {
                         <div className="flex items-center gap-2">
                           <ToggleSwitch
                             enabled={apiKey.enabled}
-                            onToggle={() => handleToggleApiKey(apiKey.id)}
+                            onToggle={() => {
+                              if (readOnly) return;
+                              handleToggleApiKey(apiKey.id);
+                            }}
                           />
-                          <button
-                            onClick={() => handleDeleteApiKey(apiKey.id)}
-                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {!readOnly && (
+                            <button
+                              onClick={() => handleDeleteApiKey(apiKey.id)}
+                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -854,6 +878,7 @@ export default function SettingsPage() {
                     <Button
                       variant={service.connected ? 'outline' : 'default'}
                       size="sm"
+                      disabled={readOnly}
                       onClick={() => {
                         toast({
                           type: 'success',

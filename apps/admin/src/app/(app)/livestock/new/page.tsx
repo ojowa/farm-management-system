@@ -12,10 +12,17 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
 import { livestockFormSchema } from '@/lib/validation';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { useReadOnly } from '@/lib/useReadOnly';
 
 export default function NewLivestockPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const readOnly = useReadOnly();
+
+  if (readOnly) {
+    router.push('/livestock');
+    return null;
+  }
   const [form, setForm] = useState({
     species: '',
     breed: '',

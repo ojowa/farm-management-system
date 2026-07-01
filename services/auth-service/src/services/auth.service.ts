@@ -63,33 +63,37 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(data.password, 12);
 
+    let firstName = data.firstName;
+    let lastName = data.lastName;
+
     let organizationId = data.organizationId;
     let roleName = data.role || 'WORKER';
 
     if (!organizationId) {
       const org = await prisma.organization.create({
         data: {
-          name: data.organizationName || `${data.firstName}'s Organization`,
+          name: data.organizationName || `${firstName}'s Organization`,
           email: data.email,
-          slug: (data.organizationName || `${data.firstName}'s Organization`).replace(/\s+/g, '-').toLowerCase()
+          slug: (data.organizationName || `${firstName}'s Organization`).replace(/\s+/g, '-').toLowerCase()
         }
       });
       organizationId = org.id;
       roleName = 'ORGANIZATION_OWNER'; // First user is owner
     }
 
-    const role = await prisma.role.findUnique({
-      where: { name: roleName }
+    const role = await prisma.role.findFirst({
+      where: { name: roleName, organizationId: null }
     });
 
     if (!role) {
-      throw new Error(`Role ${roleName} not found`);
+      throw new Error(`Role ${roleName} not found in database. Please run the seed script first.`);
     }
 
     const user = await prisma.user.create({
       data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
+        firstName,
+        lastName: lastName || '',
+        middleName: data.middleName || null,
         email: data.email,
         passwordHash,
         roleId: role.id,

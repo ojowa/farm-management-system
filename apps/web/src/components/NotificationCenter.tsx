@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useSocketContext } from '@/lib/socket';
 import { notificationsAPI, Notification } from '@/lib/notifications';
+import { usePushNotifications, initializePushNotifications } from '@/lib/pushNotifications';
 
 const TYPE_COLORS: Record<string, string> = {
   INFO: 'bg-blue-100 text-blue-800',
@@ -28,8 +29,16 @@ export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
+
+  const {
+    isSupported: pushSupported,
+    permission: pushPermission,
+    requestPermission: requestPushPermission,
+    registerDevice,
+  } = usePushNotifications();
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
@@ -51,6 +60,21 @@ export default function NotificationCenter() {
     fetchNotifications();
     return () => { mountedRef.current = false; };
   }, [fetchNotifications]);
+
+  // Initialize push notifications
+  useEffect(() => {
+    if (pushSupported && pushPermission === 'default') {
+      setShowPushPrompt(true);
+    }
+  }, [pushSupported, pushPermission]);
+
+  // Initialize service worker and subscription
+  useEffect(() => {
+    if (pushPermission === 'granted') {
+      const cleanup = initializePushNotifications(registerDevice);
+      return cleanup;
+    }
+  }, [pushPermission, registerDevice]);
 
   useEffect(() => {
     if (!socket || !connected) return;
@@ -118,6 +142,16 @@ export default function NotificationCenter() {
     if (notification.link) router.push(notification.link);
   };
 
+  const handleEnablePush = async () => {
+    const result = await requestPushPermission();
+    setShowPushPrompt(false);
+    if (result === 'granted') {
+      // Re-initialize push notifications
+      const cleanup = initializePushNotifications(registerDevice);
+      return () => cleanup();
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -148,6 +182,29 @@ export default function NotificationCenter() {
               </button>
             )}
           </div>
+
+          {/* Push Notification Permission Prompt */}
+          {showPushPrompt && pushSupported && pushPermission === 'default' && (
+            <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                Enable push notifications to stay updated
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEnablePush}
+                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700"
+                >
+                  Enable
+                </button>
+                <button
+                  onClick={() => setShowPushPrompt(false)}
+                  className="px-3 py-1 text-blue-600 dark:text-blue-300 text-xs hover:underline"
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-y-auto flex-1">
             {loading && notifications.length === 0 ? (
