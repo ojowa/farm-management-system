@@ -2,6 +2,16 @@ import axios from 'axios';
 
 const PLATFORM_API_URL = process.env.NEXT_PUBLIC_PLATFORM_API_URL || 'http://localhost:4020';
 
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function setAuthCookies(accessToken: string, refreshToken: string) {
+  setCookie('console_accessToken', accessToken, 1);
+  setCookie('console_refreshToken', refreshToken, 7);
+}
+
 export const platformClient = axios.create({
   baseURL: PLATFORM_API_URL,
   timeout: 15000,
@@ -39,9 +49,12 @@ platformClient.interceptors.response.use(
       const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('console_refreshToken') : null;
       if (!refreshToken) throw new Error('No refresh token');
       const { data } = await axios.post(`${PLATFORM_API_URL}/auth/refresh`, { refreshToken });
-      localStorage.setItem('console_accessToken', data.accessToken);
-      processQueue(null, data.accessToken);
-      original.headers.Authorization = `Bearer ${data.accessToken}`;
+      const { accessToken, refreshToken: newRefresh } = data;
+      localStorage.setItem('console_accessToken', accessToken);
+      localStorage.setItem('console_refreshToken', newRefresh);
+      setAuthCookies(accessToken, newRefresh);
+      processQueue(null, accessToken);
+      original.headers.Authorization = `Bearer ${accessToken}`;
       return platformClient(original);
     } catch (refreshError) {
       if (typeof window !== 'undefined') {
