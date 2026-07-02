@@ -3,6 +3,16 @@ import axios from 'axios';
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function setAuthCookies(accessToken: string, refreshToken: string) {
+  setCookie('accessToken', accessToken, 1);
+  setCookie('refreshToken', refreshToken, 30);
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
@@ -61,6 +71,7 @@ apiClient.interceptors.response.use(
 
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', newRefresh);
+      setAuthCookies(accessToken, newRefresh);
 
       processQueue(null, accessToken);
       original.headers.Authorization = `Bearer ${accessToken}`;
