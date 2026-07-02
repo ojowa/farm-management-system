@@ -8,15 +8,27 @@ import { farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
 import { farmFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { useReadOnly } from '@/lib/useReadOnly';
+import { useAuth } from '@/lib/auth';
+
+const ALL_FARM_TYPES = [
+  { value: 'CROP', label: 'Crop' },
+  { value: 'LIVESTOCK', label: 'Livestock' },
+  { value: 'POULTRY', label: 'Poultry' },
+  { value: 'DAIRY', label: 'Dairy' },
+  { value: 'AQUACULTURE', label: 'Aquaculture' },
+];
 
 export default function NewFarmPage() {
   const router = useRouter();
   const { toast } = useToast();
   const readOnly = useReadOnly();
+  const { user } = useAuth();
+  const allowedFarmTypes = user?.planFeatures?.farmTypes;
 
   if (readOnly) {
     router.push('/farms');
@@ -24,6 +36,7 @@ export default function NewFarmPage() {
   }
   const [form, setForm] = useState({
     name: '',
+    farmType: '',
     location: '',
     size: '',
     description: '',
@@ -47,6 +60,7 @@ export default function NewFarmPage() {
     try {
       await farmsAPI.create({
         name: form.name,
+        farmType: form.farmType,
         location: form.location,
         size: form.size ? Number(form.size) : undefined,
         description: form.description,
@@ -98,6 +112,24 @@ export default function NewFarmPage() {
               />
               {errors.name && (
                 <p className="text-sm text-destructive mt-1">{errors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm Type <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select farm type"
+                options={allowedFarmTypes ? ALL_FARM_TYPES.filter(t => allowedFarmTypes.includes(t.value)) : ALL_FARM_TYPES}
+                value={form.farmType}
+                onChange={(e) => {
+                  setForm({ ...form, farmType: e.target.value });
+                  if (errors.farmType) setErrors({ ...errors, farmType: '' });
+                }}
+              />
+              {errors.farmType && (
+                <p className="text-sm text-destructive mt-1">{errors.farmType}</p>
               )}
             </div>
 

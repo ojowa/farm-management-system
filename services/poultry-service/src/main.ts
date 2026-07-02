@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import { poultryRouter } from './modules/poultry/poultry.module';
 import { medicationRouter } from './modules/poultry/medication.module';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config();
 
@@ -19,8 +19,8 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(rlsMiddleware);
 
-app.use('/api', poultryRouter);
-app.use('/api', medicationRouter);
+app.use('/api', featureFlagGuard('poultry.enabled'), poultryRouter);
+app.use('/api', featureFlagGuard('poultry.enabled'), medicationRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'poultry-service' });

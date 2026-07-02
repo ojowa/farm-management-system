@@ -11,4 +11,5 @@ export const registerSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   middleName: z.string().optional(),
+  organizationName: z.string().min(1, 'Organization name is required'),
 });

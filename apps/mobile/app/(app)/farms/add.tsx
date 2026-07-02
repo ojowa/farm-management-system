@@ -16,6 +16,7 @@ import { farmsAPI } from '../../../src/services/api';
 import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
 import { useToasts } from '../../../src/hooks/useToasts';
 import { describeApiError } from '../../../src/utils/apiError';
+import { useAppSelector } from '../../../src/hooks/useAuth';
 
 const styles = StyleSheet.create({
   container: {
@@ -77,6 +78,7 @@ const styles = StyleSheet.create({
 
 interface FormData {
   name: string;
+  farmType: string;
   location: string;
   size: string;
   crops: string;
@@ -86,6 +88,7 @@ interface FormData {
 
 interface FormErrors {
   name?: string;
+  farmType?: string;
   location?: string;
   size?: string;
   crops?: string;
@@ -95,9 +98,14 @@ interface FormErrors {
 export default function AddFarmScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
+  const user = useAppSelector((s) => s.auth.user);
+  const allowedFarmTypes = user?.planFeatures?.farmTypes;
+  const ALL_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] as const;
+  const farmTypes = allowedFarmTypes ? ALL_TYPES.filter((t) => allowedFarmTypes.includes(t)) : ALL_TYPES;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: '',
+    farmType: '',
     location: '',
     size: '',
     crops: '',
@@ -111,6 +119,10 @@ export default function AddFarmScreen() {
 
     if (!formData.name.trim()) {
       newErrors.name = 'Farm name is required';
+    }
+
+    if (!formData.farmType) {
+      newErrors.farmType = 'Farm type is required';
     }
 
     if (!formData.location.trim()) {
@@ -144,6 +156,7 @@ export default function AddFarmScreen() {
     try {
       const farmData = {
         name: formData.name.trim(),
+        farmType: formData.farmType,
         location: formData.location.trim(),
         size: Number(formData.size),
         crops: formData.crops.trim() ? Number(formData.crops) : 0,
@@ -196,6 +209,41 @@ export default function AddFarmScreen() {
               onChangeText={(value) => updateFormData('name', value)}
               error={errors.name}
             />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Farm Type *</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+              {farmTypes.map((type) => {
+                const isSelected = formData.farmType === type;
+                const colors: Record<string, { bg: string; text: string }> = {
+                  CROP: { bg: '#DCFCE7', text: '#166534' },
+                  LIVESTOCK: { bg: '#FEF3C7', text: '#92400E' },
+                  POULTRY: { bg: '#FFEDD5', text: '#9A3412' },
+                  DAIRY: { bg: '#DBEAFE', text: '#1E40AF' },
+                  AQUACULTURE: { bg: '#CFFAFE', text: '#155E75' },
+                };
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    onPress={() => updateFormData('farmType', type)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                      borderWidth: isSelected ? 2 : 1,
+                      borderColor: isSelected ? colors[type].text : '#D1D5DB',
+                      backgroundColor: isSelected ? colors[type].bg : '#F9FAFB',
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '600' : '400', color: isSelected ? colors[type].text : '#6B7280' }}>
+                      {type.charAt(0) + type.slice(1).toLowerCase()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {errors.farmType && <Text style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>{errors.farmType}</Text>}
           </View>
 
           <View style={styles.formGroup}>

@@ -16,6 +16,9 @@ interface User {
   organizationName?: string;
   permissions: string[];
   avatar?: string;
+  subscriptionPlan?: string;
+  subscriptionStatus?: string;
+  planFeatures?: { modules: string[]; farmTypes: string[] };
 }
 
 interface AuthContextValue {
@@ -85,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const { data } = await authAPI.getProfile();
       const raw = data.user || data;
+      const org = raw.organization;
+      const planFeatures = org?.subscriptionPlanRef?.features;
       const userObj: User = {
         id: raw.id,
         email: raw.email,
@@ -94,9 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
         role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
         organizationId: raw.organizationId,
-        organizationName: raw.organization?.name || undefined,
+        organizationName: org?.name || undefined,
         permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
         avatar: raw.avatar,
+        subscriptionPlan: org?.subscriptionPlan || undefined,
+        subscriptionStatus: org?.subscriptionStatus || undefined,
+        planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
       };
       setUser(userObj);
       localStorage.setItem('user', JSON.stringify(userObj));
@@ -150,6 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     const raw = data.user;
+    const org = raw.organization;
+    const planFeatures = org?.subscriptionPlanRef?.features;
     const userObj: User = {
       id: raw.id,
       email: raw.email,
@@ -161,6 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       organizationId: raw.organizationId,
       permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
       avatar: raw.avatar,
+      subscriptionPlan: org?.subscriptionPlan || undefined,
+      subscriptionStatus: org?.subscriptionStatus || undefined,
+      planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
     };
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
@@ -185,6 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchOrganization = useCallback(async (organizationId: string) => {
     const { data } = await myOrgsAPI.switch(organizationId);
     const raw = data.user;
+    const org = raw.organization;
+    const planFeatures = org?.subscriptionPlanRef?.features;
     const userObj: User = {
       id: raw.id,
       email: raw.email,
@@ -194,9 +209,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
       role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
       organizationId: raw.organizationId,
-      organizationName: raw.organization?.name || undefined,
+      organizationName: org?.name || undefined,
       permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
       avatar: raw.avatar,
+      subscriptionPlan: org?.subscriptionPlan || undefined,
+      subscriptionStatus: org?.subscriptionStatus || undefined,
+      planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
     };
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);

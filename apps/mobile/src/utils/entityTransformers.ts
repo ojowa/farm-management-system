@@ -11,6 +11,7 @@ export interface RawFarm {
   id: string;
   organizationId: string;
   name: string;
+  farmType: string;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -26,6 +27,7 @@ export interface RawFarm {
 export interface MobileFarm {
   id: string;
   name: string;
+  farmType: string;
   location: string;
   size: number;
   crops: number;
@@ -36,14 +38,14 @@ export interface MobileFarm {
 export function transformFarm(raw: RawFarm): MobileFarm {
   const fields = raw.fields ?? [];
   const poultryHouses = raw.poultryHouses ?? [];
-  // Use backend size if set, otherwise compute from fields
   const size = raw.size ?? fields.reduce((sum, f) => sum + (f.size ?? 0), 0);
   return {
     id: raw.id,
     name: raw.name,
+    farmType: raw.farmType ?? 'CROP',
     location: raw.location ?? 'No location',
     size,
-    crops: 0, // requires separate crop-cycle query
+    crops: 0,
     animals: poultryHouses.reduce((sum, h) => sum + (h.capacity ?? 0), 0),
     status: (raw.status as 'active' | 'inactive') ?? 'active',
   };

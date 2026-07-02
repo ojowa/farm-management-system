@@ -44,6 +44,7 @@ export interface UIState {
   selectedLivestockId: string | null;
   filters: {
     farms: 'all' | 'active' | 'inactive';
+    farmType: string;
     crops: CropsFilters;
     livestock: LivestockFilters;
     finance: FinanceFilters;
@@ -71,6 +72,7 @@ const initialState: UIState = {
   selectedLivestockId: null,
   filters: {
     farms: 'all',
+    farmType: 'all',
     crops: { status: 'all', farmId: null, healthMin: null, healthMax: null },
     livestock: { type: 'all', farmId: null },
     finance: { type: 'all', category: null, dateFrom: null, dateTo: null },
@@ -110,6 +112,10 @@ const uiSlice = createSlice({
     },
     setFarmsFilter: (state, action: PayloadAction<UIState['filters']['farms']>) => {
       state.filters.farms = action.payload;
+      state.pagination.farms = { ...defaultPagination() };
+    },
+    setFarmTypeFilter: (state, action: PayloadAction<string>) => {
+      state.filters.farmType = action.payload;
       state.pagination.farms = { ...defaultPagination() };
     },
     setCropsFilter: (state, action: PayloadAction<Partial<CropsFilters>>) => {
@@ -155,6 +161,7 @@ export const {
   setSelectedCropId,
   setSelectedLivestockId,
   setFarmsFilter,
+  setFarmTypeFilter,
   setCropsFilter,
   setLivestockFilter,
   setFinanceFilter,

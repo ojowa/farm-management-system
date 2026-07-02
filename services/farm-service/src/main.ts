@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import { farmRouter } from './modules/farm/farm.module';
 import { authMiddleware } from '@farm/auth/express';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(rlsMiddleware);
 
-app.use('/api', farmRouter);
+app.use('/api', featureFlagGuard('farm.enabled'), farmRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'farm-service' });

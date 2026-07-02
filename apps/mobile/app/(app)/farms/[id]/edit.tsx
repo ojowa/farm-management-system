@@ -95,12 +95,29 @@ interface FormErrors {
 interface FarmData {
   id: string;
   name: string;
+  farmType: string;
   location: string;
   size: number;
   crops: number;
   animals: number;
   status: 'active' | 'inactive';
 }
+
+const FARM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  CROP: { bg: '#DCFCE7', text: '#166534' },
+  LIVESTOCK: { bg: '#FEF3C7', text: '#92400E' },
+  POULTRY: { bg: '#FFEDD5', text: '#9A3412' },
+  DAIRY: { bg: '#DBEAFE', text: '#1E40AF' },
+  AQUACULTURE: { bg: '#CFFAFE', text: '#155E75' },
+};
+
+const FARM_TYPE_LABELS: Record<string, string> = {
+  CROP: 'Crop',
+  LIVESTOCK: 'Livestock',
+  POULTRY: 'Poultry',
+  DAIRY: 'Dairy',
+  AQUACULTURE: 'Aquaculture',
+};
 
 export default function EditFarmScreen() {
   const router = useRouter();
@@ -275,6 +292,18 @@ export default function EditFarmScreen() {
               onChangeText={(value) => updateFormData('name', value)}
               error={errors.name}
             />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Farm Type</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <View style={{ backgroundColor: FARM_TYPE_COLORS[farm?.farmType]?.bg || '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: FARM_TYPE_COLORS[farm?.farmType]?.text || '#6B7280' }}>
+                  {FARM_TYPE_LABELS[farm?.farmType || ''] || farm?.farmType || 'Unknown'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: '#9CA3AF' }}>Cannot be changed after creation</Text>
+            </View>
           </View>
 
           <View style={styles.formGroup}>

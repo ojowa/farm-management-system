@@ -17,8 +17,8 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  fullName: string; // derived: `${firstName} ${lastName}`
-  role: string; // role name string
+  fullName: string;
+  role: string;
   roleId: string;
   organizationId: string;
   organizationName?: string;
@@ -28,6 +28,9 @@ export interface User {
   lastLoginAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  subscriptionPlan?: string;
+  subscriptionStatus?: string;
+  planFeatures?: { modules: string[]; farmTypes: string[] };
 }
 
 export interface AuthState {
@@ -403,8 +406,8 @@ async function saveTokens(payload: {
   if (!payload?.accessToken || !payload.user) return;
   try {
     const raw = payload.user;
-    // Normalize: backend returns firstName/lastName + role object; we derive
-    // a flat `fullName` and extract role name + permissions for the UI.
+    const org = raw.organization;
+    const planFeatures = org?.subscriptionPlanRef?.features;
     const user: User = {
       id: raw.id,
       email: raw.email,
@@ -414,13 +417,16 @@ async function saveTokens(payload: {
       role: typeof raw.role === 'object' ? raw.role?.name ?? 'USER' : raw.role ?? 'USER',
       roleId: raw.roleId ?? raw.role?.id ?? '',
       organizationId: raw.organizationId ?? '',
-      organizationName: raw.organizationName ?? raw.organization?.name ?? undefined,
+      organizationName: raw.organizationName ?? org?.name ?? undefined,
       permissions: typeof raw.role === 'object' ? (raw.role?.permissions ?? []) : [],
       avatar: raw.avatar,
       isActive: raw.isActive,
       lastLoginAt: raw.lastLoginAt,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
+      subscriptionPlan: org?.subscriptionPlan || undefined,
+      subscriptionStatus: org?.subscriptionStatus || undefined,
+      planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
     };
     await Promise.all([
       AsyncStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken),

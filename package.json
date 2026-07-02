@@ -17,6 +17,7 @@
   "packageManager": "pnpm@10.27.0",
   "devDependencies": {
     "@types/node": "^22.19.21",
+    "tsx": "^4.22.4",
     "turbo": "^2.9.14",
     "typescript": "~5.8.3"
   },

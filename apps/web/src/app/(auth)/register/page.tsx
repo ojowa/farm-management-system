@@ -10,6 +10,7 @@ export default function RegisterPage() {
     lastName: '',
     middleName: '',
     email: '',
+    organizationName: '',
     password: '',
     confirmPassword: '',
   });
@@ -23,6 +24,14 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return;
     }
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!formData.organizationName.trim()) {
+      setError('Organization name is required');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -32,8 +41,9 @@ export default function RegisterPage() {
         middleName: formData.middleName || undefined,
         email: formData.email,
         password: formData.password,
+        organizationName: formData.organizationName,
       });
-      router.push('/login')
+      router.push('/login');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -86,6 +96,18 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               placeholder="Optional"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.organizationName}
+              onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Your farm or company name"
             />
           </div>
 

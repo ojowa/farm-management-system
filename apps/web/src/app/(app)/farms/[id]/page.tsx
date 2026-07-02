@@ -6,6 +6,22 @@ import { farmsAPI } from '@/lib/api';
 import { Card, Button, Input, TextArea, Modal } from '@/components/ui';
 import { useToasts } from '@/lib/toasts';
 
+const FARM_TYPE_COLORS: Record<string, string> = {
+  CROP: 'bg-green-100 text-green-800',
+  LIVESTOCK: 'bg-amber-100 text-amber-800',
+  POULTRY: 'bg-orange-100 text-orange-800',
+  DAIRY: 'bg-blue-100 text-blue-800',
+  AQUACULTURE: 'bg-cyan-100 text-cyan-800',
+};
+
+const FARM_TYPE_LABELS: Record<string, string> = {
+  CROP: 'Crop',
+  LIVESTOCK: 'Livestock',
+  POULTRY: 'Poultry',
+  DAIRY: 'Dairy',
+  AQUACULTURE: 'Aquaculture',
+};
+
 export default function FarmDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -75,7 +91,17 @@ export default function FarmDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <Card>
+          <p className="text-sm text-gray-500">Type</p>
+          <p className="text-lg font-semibold">
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              FARM_TYPE_COLORS[farm.farmType] || 'bg-gray-100 text-gray-800'
+            }`}>
+              {FARM_TYPE_LABELS[farm.farmType] || farm.farmType || 'Unknown'}
+            </span>
+          </p>
+        </Card>
         <Card><p className="text-sm text-gray-500">Size</p><p className="text-lg font-semibold">{farm.size ? `${farm.size} ${farm.sizeUnit || 'acres'}` : '—'}</p></Card>
         <Card><p className="text-sm text-gray-500">Location</p><p className="text-lg font-semibold">{farm.location || '—'}</p></Card>
         <Card><p className="text-sm text-gray-500">Created</p><p className="text-lg font-semibold">{new Date(farm.createdAt).toLocaleDateString()}</p></Card>

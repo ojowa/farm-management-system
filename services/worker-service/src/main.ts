@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import { workerRouter } from './modules/worker/worker.module';
 import { taskRouter } from './modules/task/task.module';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config();
 
@@ -19,8 +19,8 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(rlsMiddleware);
 
-app.use('/api', workerRouter);
-app.use('/api', taskRouter);
+app.use('/api', featureFlagGuard('worker.enabled'), workerRouter);
+app.use('/api', featureFlagGuard('task.enabled'), taskRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'worker-service' });

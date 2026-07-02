@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '@farm/auth/express';
 import { prisma } from '@farm/database';
+import { subscriptionLimitGuard } from '@farm/database';
 
 const router = Router();
 
@@ -101,7 +102,7 @@ router.get('/users', orgAccess, async (req: Request, res: Response) => {
 });
 
 // POST /org-admin/users - Invite/add user to current user's organization
-router.post('/users', orgAccess, async (req: Request, res: Response) => {
+router.post('/users', orgAccess, subscriptionLimitGuard('users'), async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     if (!orgId) {

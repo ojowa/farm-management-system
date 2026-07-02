@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
+const farmTypeEnum = z.enum(['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE']);
+
 export const createFarmSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().min(2),
+  farmType: farmTypeEnum,
   location: z.string().min(2).nullable().optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -13,6 +16,7 @@ export const createFarmSchema = z.object({
 export const updateFarmSchema = z.object({
   organizationId: z.string().uuid().optional(),
   name: z.string().min(2).optional(),
+  farmType: farmTypeEnum.optional(),
   location: z.string().min(2).nullable().optional(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
@@ -31,4 +35,3 @@ export const updateFieldSchema = z.object({
   name: z.string().min(2).optional(),
   size: z.number().positive().optional(),
 });
-

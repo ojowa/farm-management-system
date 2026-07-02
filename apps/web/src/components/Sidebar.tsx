@@ -10,60 +10,60 @@ const NAV_SECTIONS = [
   {
     title: 'Overview',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: '📊', permission: null },
+      { href: '/dashboard', label: 'Dashboard', icon: '📊', permission: null, module: null },
     ],
   },
   {
     title: 'Farm Management',
     items: [
-      { href: '/farms', label: 'Farms', icon: '🏡', permission: 'farm.read' },
-      { href: '/crops', label: 'Crops', icon: '🌾', permission: 'crop.read' },
-      { href: '/livestock', label: 'Livestock', icon: '🐄', permission: 'livestock.read' },
-      { href: '/workers', label: 'Workers', icon: '👷', permission: 'worker.read' },
-      { href: '/tasks', label: 'Tasks', icon: '✅', permission: 'task.read' },
+      { href: '/farms', label: 'Farms', icon: '🏡', permission: 'farm.read', module: 'farm' },
+      { href: '/crops', label: 'Crops', icon: '🌾', permission: 'crop.read', module: 'crop' },
+      { href: '/livestock', label: 'Livestock', icon: '🐄', permission: 'livestock.read', module: 'livestock' },
+      { href: '/workers', label: 'Workers', icon: '👷', permission: 'worker.read', module: 'worker' },
+      { href: '/tasks', label: 'Tasks', icon: '✅', permission: 'task.read', module: 'task' },
     ],
   },
   {
     title: 'Poultry',
     items: [
-      { href: '/poultry', label: 'Poultry', icon: '🐔', permission: 'poultry.read' },
-      { href: '/flocks', label: 'Flocks', icon: '🐦', permission: 'poultry.read' },
-      { href: '/feeding', label: 'Feeding', icon: '🍖', permission: 'poultry.read' },
-      { href: '/vaccinations', label: 'Vaccinations', icon: '💉', permission: 'poultry.read' },
-      { href: '/mortality', label: 'Mortality', icon: '📉', permission: 'poultry.read' },
-      { href: '/egg-production', label: 'Egg Production', icon: '🥚', permission: 'poultry.read' },
-      { href: '/medications', label: 'Medications', icon: '💊', permission: 'poultry.read' },
+      { href: '/poultry', label: 'Poultry', icon: '🐔', permission: 'poultry.read', module: 'poultry' },
+      { href: '/flocks', label: 'Flocks', icon: '🐦', permission: 'poultry.read', module: 'poultry' },
+      { href: '/feeding', label: 'Feeding', icon: '🍖', permission: 'poultry.read', module: 'poultry' },
+      { href: '/vaccinations', label: 'Vaccinations', icon: '💉', permission: 'poultry.read', module: 'poultry' },
+      { href: '/mortality', label: 'Mortality', icon: '📉', permission: 'poultry.read', module: 'poultry' },
+      { href: '/egg-production', label: 'Egg Production', icon: '🥚', permission: 'poultry.read', module: 'poultry' },
+      { href: '/medications', label: 'Medications', icon: '💊', permission: 'poultry.read', module: 'poultry' },
     ],
   },
   {
     title: 'Operations',
     items: [
-      { href: '/inventory', label: 'Inventory', icon: '📦', permission: 'inventory.read' },
-      { href: '/sales', label: 'Sales', icon: '💰', permission: 'finance.read' },
-      { href: '/reports', label: 'Finance', icon: '📈', permission: 'finance.read' },
-      { href: '/analytics', label: 'Analytics', icon: '📉', permission: 'reporting.read' },
+      { href: '/inventory', label: 'Inventory', icon: '📦', permission: 'inventory.read', module: 'inventory' },
+      { href: '/sales', label: 'Sales', icon: '💰', permission: 'finance.read', module: 'finance' },
+      { href: '/reports', label: 'Finance', icon: '📈', permission: 'finance.read', module: 'finance' },
+      { href: '/analytics', label: 'Analytics', icon: '📉', permission: 'reporting.read', module: 'reporting' },
     ],
   },
   {
     title: 'HR',
     items: [
-      { href: '/hr/leave', label: 'My Leave', icon: '🏖️', permission: 'leave.read' },
-      { href: '/hr/leave/approvals', label: 'Leave Approvals', icon: '✅', permission: 'leave.approve' },
-      { href: '/hr/leave/types', label: 'Leave Types', icon: '📋', permission: 'leave.write' },
-      { href: '/roster', label: 'Duty Roster', icon: '📅', permission: 'roster.read' },
+      { href: '/hr/leave', label: 'My Leave', icon: '🏖️', permission: 'leave.read', module: 'leave' },
+      { href: '/hr/leave/approvals', label: 'Leave Approvals', icon: '✅', permission: 'leave.approve', module: 'leave' },
+      { href: '/hr/leave/types', label: 'Leave Types', icon: '📋', permission: 'leave.write', module: 'leave' },
+      { href: '/roster', label: 'Duty Roster', icon: '📅', permission: 'roster.read', module: 'roster' },
     ],
   },
   {
     title: 'Communication',
     items: [
-      { href: '/messages', label: 'Messages', icon: '✉️', permission: 'messaging.read' },
-      { href: '/correspondence', label: 'Correspondence', icon: '📄', permission: 'correspondence.read' },
+      { href: '/messages', label: 'Messages', icon: '✉️', permission: 'messaging.read', module: 'messaging' },
+      { href: '/correspondence', label: 'Correspondence', icon: '📄', permission: 'correspondence.read', module: 'correspondence' },
     ],
   },
   {
     title: 'Account',
     items: [
-      { href: '/settings', label: 'Settings', icon: '⚙️', permission: null },
+      { href: '/settings', label: 'Settings', icon: '⚙️', permission: null, module: null },
     ],
   },
 ];
@@ -93,7 +93,11 @@ export default function Sidebar() {
 
       <nav className="flex-1 p-2 space-y-4 overflow-y-auto">
         {NAV_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter((item) => !item.permission || hasPermission(item.permission));
+          const visibleItems = section.items.filter((item) => {
+            if (item.permission && !hasPermission(item.permission)) return false;
+            if (item.module && user?.planFeatures?.modules && !user.planFeatures.modules.includes(item.module)) return false;
+            return true;
+          });
           if (visibleItems.length === 0) return null;
           return (
             <div key={section.title}>

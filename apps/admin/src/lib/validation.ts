@@ -42,6 +42,9 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const farmFormSchema = z.object({
   name: z.string().min(1, 'Farm name is required'),
+  farmType: z.enum(['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'], {
+    required_error: 'Farm type is required',
+  }),
   location: z.string().optional(),
   size: z.string().optional(),
   description: z.string().optional(),

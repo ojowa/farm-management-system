@@ -23,7 +23,7 @@ const TYPE_ICONS: Record<string, string> = {
 
 export default function NotificationCenter() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { socket, connected } = useSocketContext();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -56,10 +56,11 @@ export default function NotificationCenter() {
   }, [user?.id]);
 
   useEffect(() => {
+    if (authLoading) return;
     mountedRef.current = true;
     fetchNotifications();
     return () => { mountedRef.current = false; };
-  }, [fetchNotifications]);
+  }, [authLoading, fetchNotifications]);
 
   // Initialize push notifications
   useEffect(() => {

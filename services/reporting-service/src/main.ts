@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 
 dotenv.config();
@@ -23,7 +23,7 @@ app.use(rlsMiddleware);
 // CRUD for reporting artifacts is implemented in a dedicated router.
 import reportingRouter from './modules/reporting/reporting.router';
 
-app.use('/api', reportingRouter);
+app.use('/api', featureFlagGuard('reporting.enabled'), reportingRouter);
 
 
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {

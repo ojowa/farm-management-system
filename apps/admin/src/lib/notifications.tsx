@@ -31,7 +31,7 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { socket, isConnected, on } = useSocket();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -88,8 +88,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
     fetchNotifications();
-  }, [fetchNotifications]);
+  }, [authLoading, fetchNotifications]);
 
   useEffect(() => {
     if (!isConnected || !socket) return;

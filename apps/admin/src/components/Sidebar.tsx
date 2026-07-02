@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { adminAPI } from '@/lib/api';
+import { usePermission } from '@/lib/usePermission';
 import {
   LayoutDashboard,
   Users,
@@ -29,25 +30,26 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Organizations', href: '/organizations', icon: Building2, adminOnly: true },
-  { name: 'Users', href: '/users', icon: UserCog, adminOnly: true },
-  { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true },
-  { name: 'Farms', href: '/farms', icon: Home },
-  { name: 'Crops', href: '/crops', icon: Sprout },
-  { name: 'Livestock', href: '/livestock', icon: Beef },
-  { name: 'Poultry', href: '/poultry', icon: Egg },
-  { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Workers', href: '/workers', icon: Users },
-  { name: 'Finance', href: '/finance', icon: DollarSign },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: null, permission: null },
+  { name: 'Organizations', href: '/organizations', icon: Building2, adminOnly: true, module: null, permission: null },
+  { name: 'Users', href: '/users', icon: UserCog, adminOnly: true, module: null, permission: 'users.manage' },
+  { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true, module: null, permission: null },
+  { name: 'Farms', href: '/farms', icon: Home, module: 'farm', permission: 'farm.read' },
+  { name: 'Crops', href: '/crops', icon: Sprout, module: 'crop', permission: 'crop.read' },
+  { name: 'Livestock', href: '/livestock', icon: Beef, module: 'livestock', permission: 'livestock.read' },
+  { name: 'Poultry', href: '/poultry', icon: Egg, module: 'poultry', permission: 'poultry.read' },
+  { name: 'Inventory', href: '/inventory', icon: Package, module: 'inventory', permission: 'inventory.read' },
+  { name: 'Workers', href: '/workers', icon: Users, module: 'worker', permission: 'worker.read' },
+  { name: 'Finance', href: '/finance', icon: DollarSign, module: 'finance', permission: 'finance.read' },
+  { name: 'Reports', href: '/reports', icon: BarChart3, module: 'reporting', permission: 'reporting.read' },
+  { name: 'Settings', href: '/settings', icon: Settings, module: null, permission: null },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
   const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -90,6 +92,8 @@ export function Sidebar() {
 
   const filteredNav = navigation.filter((item) => {
     if (item.adminOnly && !isSuperAdmin) return false;
+    if (item.module && user?.planFeatures?.modules && !user.planFeatures.modules.includes(item.module)) return false;
+    if (item.permission && !hasPermission(item.permission)) return false;
     return true;
   });
 

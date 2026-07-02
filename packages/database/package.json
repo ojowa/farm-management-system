@@ -4,6 +4,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "private": true,
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^6.4.1",
     "@farm/types": "workspace:*",

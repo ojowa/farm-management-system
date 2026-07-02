@@ -4,6 +4,7 @@ export class FarmRepository {
   async createFarm(data: {
     organizationId: string;
     name: string;
+    farmType: string;
     location?: string | null;
     latitude?: number | null;
     longitude?: number | null;
@@ -28,52 +29,48 @@ export class FarmRepository {
   }
 
   async getAllFarms(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 10) {
-    // Calculate skip for pagination
     const skip = (page - 1) * limit;
-    
-    // Build where clause for filtering
     const where: any = {};
-    
+
     if (filter.organizationId) {
       where.organizationId = filter.organizationId;
     }
-    
+
+    if (filter.farmType) {
+      where.farmType = filter.farmType;
+    }
+
     if (filter.name) {
       where.name = {
         contains: filter.name,
-        mode: 'insensitive' as const
+        mode: 'insensitive' as const,
       };
     }
-    
+
     if (filter.location) {
       where.location = {
         contains: filter.location,
-        mode: 'insensitive' as const
+        mode: 'insensitive' as const,
       };
     }
-    
-    // Get total count for pagination
+
     const total = await prisma.farm.count({ where });
-    
-    // Get paginated and filtered results
     const farms = await prisma.farm.findMany({
       where,
       skip,
       take: limit,
-      orderBy: {
-        [sortBy]: sortOrder
-      },
+      orderBy: { [sortBy]: sortOrder },
       include: {
         fields: true,
         poultryHouses: true,
       },
     });
-    
+
     return {
       data: farms,
       total,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -82,6 +79,7 @@ export class FarmRepository {
     data: {
       organizationId?: string;
       name?: string;
+      farmType?: string;
       location?: string | null;
       latitude?: number | null;
       longitude?: number | null;
@@ -119,42 +117,34 @@ export class FarmRepository {
   }
 
   async getAllFields(filter: any = {}, sortBy: string = 'name', sortOrder: 'asc' | 'desc' = 'asc', page: number = 1, limit: number = 10) {
-    // Calculate skip for pagination
     const skip = (page - 1) * limit;
-    
-    // Build where clause for filtering
     const where: any = {};
-    
+
     if (filter.farmId) {
       where.farmId = filter.farmId;
     }
-    
+
     if (filter.name) {
       where.name = {
         contains: filter.name,
-        mode: 'insensitive' as const
+        mode: 'insensitive' as const,
       };
     }
-    
-    // Get total count for pagination
+
     const total = await prisma.field.count({ where });
-    
-    // Get paginated and filtered results
     const fields = await prisma.field.findMany({
       where,
       skip,
       take: limit,
-      orderBy: {
-        [sortBy]: sortOrder
-      },
+      orderBy: { [sortBy]: sortOrder },
       include: { farm: true },
     });
-    
+
     return {
       data: fields,
       total,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -172,4 +162,3 @@ export class FarmRepository {
     });
   }
 }
-

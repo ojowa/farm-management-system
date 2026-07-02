@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { FarmController } from './farm.controller';
 import { authMiddleware } from '@farm/auth/express';
+import { subscriptionLimitGuard, farmTypeGuard } from '@farm/database';
 
 const router = Router();
 const farmController = new FarmController();
@@ -19,6 +20,8 @@ router.get(
 router.post(
   '/farms',
   authMiddleware({ roles: ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPER_ADMIN'], permission: 'farm.write' }),
+  subscriptionLimitGuard('farms'),
+  farmTypeGuard,
   farmController.createFarm,
 );
 router.put(

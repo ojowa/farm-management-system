@@ -18,7 +18,7 @@ import { useToasts } from '../../hooks/useToasts';
 import { describeApiError } from '../../utils/apiError';
 import { extractArray, extractTotal } from '../../utils/responseParser';
 import { transformFarm, RawFarm } from '../../utils/entityTransformers';
-import { setFarmsFilter, setSelectedFarmId } from '../../store/slices/uiSlice';
+import { setFarmsFilter, setFarmTypeFilter, setSelectedFarmId } from '../../store/slices/uiSlice';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
 interface Farm {
   id: string;
   name: string;
+  farmType: string;
   location: string;
   size: number;
   crops: number;
@@ -110,6 +111,22 @@ interface Farm {
 }
 
 type FarmFilter = 'all' | 'active' | 'inactive';
+
+const FARM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  CROP: { bg: '#DCFCE7', text: '#166534' },
+  LIVESTOCK: { bg: '#FEF3C7', text: '#92400E' },
+  POULTRY: { bg: '#FFEDD5', text: '#9A3412' },
+  DAIRY: { bg: '#DBEAFE', text: '#1E40AF' },
+  AQUACULTURE: { bg: '#CFFAFE', text: '#155E75' },
+};
+
+const FARM_TYPE_LABELS: Record<string, string> = {
+  CROP: 'Crop',
+  LIVESTOCK: 'Livestock',
+  POULTRY: 'Poultry',
+  DAIRY: 'Dairy',
+  AQUACULTURE: 'Aquaculture',
+};
 
 const keyExtractor = (item: Farm) => item.id;
 
@@ -197,8 +214,10 @@ export default function FarmsScreen() {
   }, [page, loadingMore, hasMore, loading, fetchFarms]);
 
   const filteredFarms = useMemo(() => farms.filter((farm) => {
-    if (filter === 'active') return farm.status === 'active';
-    if (filter === 'inactive') return farm.status === 'inactive';
+    if (filter === 'active' && farm.status !== 'active') return false;
+    if (filter === 'inactive' && farm.status !== 'inactive') return false;
+    const farmTypeFilter = useAppSelector((s) => s.ui.filters.farmType);
+    if (farmTypeFilter && farmTypeFilter !== 'all' && farm.farmType !== farmTypeFilter) return false;
     return true;
   }), [farms, filter]);
 
@@ -260,7 +279,14 @@ export default function FarmsScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.farmCardContent}>
-          <Text style={styles.farmName}>{farm.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Text style={styles.farmName}>{farm.name}</Text>
+            <View style={{ backgroundColor: FARM_TYPE_COLORS[farm.farmType]?.bg || '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+              <Text style={{ fontSize: 10, fontWeight: '600', color: FARM_TYPE_COLORS[farm.farmType]?.text || '#6B7280' }}>
+                {FARM_TYPE_LABELS[farm.farmType] || farm.farmType}
+              </Text>
+            </View>
+          </View>
           <Text style={styles.farmLocation}>📍 {farm.location}</Text>
           <View style={styles.farmStats}>
             <View style={styles.farmStat}>

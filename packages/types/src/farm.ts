@@ -1,7 +1,11 @@
+export const FARM_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] as const;
+export type FarmType = typeof FARM_TYPES[number];
+
 export interface Farm {
   id: string;
   organizationId: string;
   name: string;
+  farmType: FarmType;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -12,6 +16,7 @@ export interface Farm {
 export interface CreateFarmRequest {
   organizationId: string;
   name: string;
+  farmType: FarmType;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -20,6 +25,7 @@ export interface CreateFarmRequest {
 export interface UpdateFarmRequest {
   organizationId?: string;
   name?: string;
+  farmType?: FarmType;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -43,4 +49,3 @@ export interface UpdateFieldRequest {
   name?: string;
   size?: number;
 }
-

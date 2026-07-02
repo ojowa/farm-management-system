@@ -13,6 +13,11 @@ import {
   Pencil,
   Trash2,
   Eye,
+  Tractor,
+  Beef,
+  Egg,
+  Droplets,
+  Fish,
 } from 'lucide-react';
 import { farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -37,9 +42,20 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { farmFormSchema } from '@/lib/validation';
 import { useReadOnly } from '@/lib/useReadOnly';
 
+const FARM_TYPES = [
+  { value: 'CROP', label: 'Crop', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Tractor },
+  { value: 'LIVESTOCK', label: 'Livestock', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Beef },
+  { value: 'POULTRY', label: 'Poultry', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Egg },
+  { value: 'DAIRY', label: 'Dairy', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Droplets },
+  { value: 'AQUACULTURE', label: 'Aquaculture', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Fish },
+];
+
+const FARM_TYPE_MAP = Object.fromEntries(FARM_TYPES.map((t) => [t.value, t]));
+
 interface Farm {
   id: string;
   name: string;
+  farmType: string;
   location?: string;
   size?: number;
   sizeUnit?: string;
@@ -56,9 +72,10 @@ export default function FarmsPage() {
   const readOnly = useReadOnly();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [farmTypeFilter, setFarmTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', location: '', size: '', description: '' });
+  const [form, setForm] = useState({ name: '', farmType: '', location: '', size: '', description: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -97,8 +114,11 @@ export default function FarmsPage() {
     if (statusFilter) {
       result = result.filter((f) => f.status === statusFilter);
     }
+    if (farmTypeFilter) {
+      result = result.filter((f) => f.farmType === farmTypeFilter);
+    }
     return result;
-  }, [farms, search, statusFilter]);
+  }, [farms, search, statusFilter, farmTypeFilter]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -119,13 +139,14 @@ export default function FarmsPage() {
     try {
       await farmsAPI.create({
         name: form.name,
+        farmType: form.farmType,
         location: form.location,
         size: form.size ? Number(form.size) : undefined,
         description: form.description,
       });
       toast({ type: 'success', title: 'Farm created successfully' });
       setShowAdd(false);
-      setForm({ name: '', location: '', size: '', description: '' });
+      setForm({ name: '', farmType: '', location: '', size: '', description: '' });
       clearFetchCache('farms');
       refetch();
     } catch (err: any) {
@@ -153,6 +174,16 @@ export default function FarmsPage() {
         message: err.response?.data?.message || 'An error occurred',
       });
     }
+  };
+
+  const getFarmTypeBadge = (farmType: string) => {
+    const config = FARM_TYPE_MAP[farmType];
+    if (!config) return <Badge variant="secondary">{farmType}</Badge>;
+    return (
+      <Badge className={config.color}>
+        {config.label}
+      </Badge>
+    );
   };
 
   return (
@@ -188,6 +219,15 @@ export default function FarmsPage() {
               />
             </div>
             <Select
+              placeholder="All types"
+              options={FARM_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+              value={farmTypeFilter}
+              onChange={(e) => {
+                setFarmTypeFilter(e.target.value);
+                setPage(1);
+              }}
+            />
+            <Select
               placeholder="All statuses"
               options={[
                 { value: 'active', label: 'Active' },
@@ -199,13 +239,14 @@ export default function FarmsPage() {
                 setPage(1);
               }}
             />
-            {(search || statusFilter) && (
+            {(search || statusFilter || farmTypeFilter) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearch('');
                   setStatusFilter('');
+                  setFarmTypeFilter('');
                   setPage(1);
                 }}
               >
@@ -226,11 +267,11 @@ export default function FarmsPage() {
           <CardContent className="p-12 text-center">
             <Home className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
-              {search || statusFilter
+              {search || statusFilter || farmTypeFilter
                 ? 'No farms match your filters.'
                 : 'No farms yet. Create your first farm!'}
             </p>
-            {!search && !statusFilter && !readOnly && (
+            {!search && !statusFilter && !farmTypeFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Farm
@@ -244,6 +285,7 @@ export default function FarmsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Status</TableHead>
@@ -261,6 +303,7 @@ export default function FarmsPage() {
                       <TableCell>
                         <span className="font-medium">{farm.name}</span>
                       </TableCell>
+                      <TableCell>{getFarmTypeBadge(farm.farmType)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <MapPin className="h-3 w-3" />
@@ -357,6 +400,20 @@ export default function FarmsPage() {
               />
               {formErrors.name && (
                 <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm Type <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select farm type"
+                options={FARM_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                value={form.farmType}
+                onChange={(e) => setForm({ ...form, farmType: e.target.value })}
+              />
+              {formErrors.farmType && (
+                <p className="text-sm text-destructive mt-1">{formErrors.farmType}</p>
               )}
             </div>
             <div>

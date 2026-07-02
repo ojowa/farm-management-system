@@ -11,10 +11,12 @@ import { useToasts } from '@/lib/toasts';
 import { useRealtime } from '@/hooks/useRealtime';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { farmFormSchema } from '@/lib/validation';
+import { useAuth } from '@/lib/auth';
 
 interface Farm {
   id: string;
   name: string;
+  farmType?: string;
   location?: string;
   size?: number;
   sizeUnit?: string;
@@ -23,19 +25,50 @@ interface Farm {
   createdAt: string;
 }
 
+const FARM_TYPE_COLORS: Record<string, string> = {
+  CROP: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  LIVESTOCK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  POULTRY: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  DAIRY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  AQUACULTURE: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
+};
+
+const FARM_TYPE_LABELS: Record<string, string> = {
+  CROP: 'Crop',
+  LIVESTOCK: 'Livestock',
+  POULTRY: 'Poultry',
+  DAIRY: 'Dairy',
+  AQUACULTURE: 'Aquaculture',
+};
+
+const FARM_TYPE_OPTIONS = [
+  { value: 'CROP', label: 'Crop' },
+  { value: 'LIVESTOCK', label: 'Livestock' },
+  { value: 'POULTRY', label: 'Poultry' },
+  { value: 'DAIRY', label: 'Dairy' },
+  { value: 'AQUACULTURE', label: 'Aquaculture' },
+];
+
 const PAGE_SIZE = 10;
 
 export default function FarmsPage() {
   const router = useRouter();
   const { success, error: toastError } = useToasts();
+  const { user } = useAuth();
+  const allowedFarmTypes = user?.planFeatures?.farmTypes;
+  const farmTypeOptions = useMemo(() =>
+    allowedFarmTypes ? FARM_TYPE_OPTIONS.filter(t => allowedFarmTypes.includes(t.value)) : FARM_TYPE_OPTIONS,
+    [allowedFarmTypes]
+  );
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', location: '', size: '', description: '' });
+  const [form, setForm] = useState({ name: '', farmType: '', location: '', size: '', description: '' });
   const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [farmTypeFilter, setFarmTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const { errors, validate, clearErrors } = useFormValidation(farmFormSchema);
 
@@ -57,7 +90,7 @@ export default function FarmsPage() {
   }, []);
   useRealtime('farm', handleRealtimeEvent);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, farmTypeFilter]);
 
   const filtered = useMemo(() => {
     let result = farms;
@@ -70,8 +103,11 @@ export default function FarmsPage() {
     if (statusFilter) {
       result = result.filter((f) => f.status === statusFilter);
     }
+    if (farmTypeFilter) {
+      result = result.filter((f) => f.farmType === farmTypeFilter);
+    }
     return result;
-  }, [farms, search, statusFilter]);
+  }, [farms, search, statusFilter, farmTypeFilter]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -81,10 +117,10 @@ export default function FarmsPage() {
     if (!validate(form)) return;
     setSaving(true);
     try {
-      await farmsAPI.create({ name: form.name, location: form.location, size: form.size ? Number(form.size) : undefined, description: form.description });
+      await farmsAPI.create({ name: form.name, farmType: form.farmType, location: form.location, size: form.size ? Number(form.size) : undefined, description: form.description });
       success('Farm created');
       setShowAdd(false);
-      setForm({ name: '', location: '', size: '', description: '' });
+      setForm({ name: '', farmType: '', location: '', size: '', description: '' });
       clearErrors();
       load();
     } catch (err: any) {
@@ -115,20 +151,36 @@ export default function FarmsPage() {
               { value: 'inactive', label: 'Inactive' },
             ],
           },
+          {
+            key: 'farmType',
+            label: 'All types',
+            options: farmTypeOptions,
+          },
         ]}
-        filterValues={{ status: statusFilter }}
-        onFilterChange={(_key, val) => setStatusFilter(val)}
-        onClear={() => { setSearch(''); setStatusFilter(''); }}
+        filterValues={{ status: statusFilter, farmType: farmTypeFilter }}
+        onFilterChange={(key, val) => {
+          if (key === 'status') setStatusFilter(val);
+          if (key === 'farmType') setFarmTypeFilter(val);
+        }}
+        onClear={() => { setSearch(''); setStatusFilter(''); setFarmTypeFilter(''); }}
       />
 
       <DataTable
         data={paginated}
         loading={loading}
-        emptyMessage={search || statusFilter ? 'No farms match your filters.' : 'No farms yet. Create your first farm!'}
+        emptyMessage={search || statusFilter || farmTypeFilter ? 'No farms match your filters.' : 'No farms yet. Create your first farm!'}
         emptyIcon="🌾"
         onRowClick={(farm) => router.push(`/farms/${farm.id}`)}
         columns={[
           { key: 'name', label: 'Name', render: (f) => <span className="font-medium">{f.name}</span> },
+          { key: 'farmType', label: 'Type', render: (f) => {
+            const type = f.farmType || 'CROP';
+            return (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${FARM_TYPE_COLORS[type] || 'bg-gray-100 text-gray-800'}`}>
+                {FARM_TYPE_LABELS[type] || type}
+              </span>
+            );
+          }},
           { key: 'location', label: 'Location' },
           { key: 'size', label: 'Size', render: (f) => f.size ? `${f.size} ${f.sizeUnit || 'acres'}` : '—' },
           { key: 'createdAt', label: 'Created', render: (f) => new Date(f.createdAt).toLocaleDateString() },
@@ -147,6 +199,20 @@ export default function FarmsPage() {
       <Modal open={showAdd} onClose={() => { setShowAdd(false); clearErrors(); }} title="Add Farm">
         <form onSubmit={handleAdd}>
           <Input label="Farm Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="My Farm" error={errors.name} />
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Farm Type *</label>
+            <select
+              value={form.farmType}
+              onChange={(e) => setForm({ ...form, farmType: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select type</option>
+              {farmTypeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            {errors.farmType && <p className="text-red-500 text-xs mt-1">{errors.farmType}</p>}
+          </div>
           <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="City, Country" />
           <Input label="Size" type="number" value={form.size} onChange={(e) => setForm({ ...form, size: e.target.value })} placeholder="100" />
           <TextArea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />

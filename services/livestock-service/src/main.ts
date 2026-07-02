@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { livestockRouter } from './modules/livestock/livestock.module';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config();
 
@@ -18,7 +18,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(rlsMiddleware);
 
-app.use('/api', livestockRouter);
+app.use('/api', featureFlagGuard('livestock.enabled'), livestockRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'livestock-service' });

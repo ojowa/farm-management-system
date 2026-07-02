@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { cropRouter } from './modules/crop/crop.module';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config();
 
@@ -18,7 +18,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(rlsMiddleware);
 
-app.use('/api', cropRouter);
+app.use('/api', featureFlagGuard('crop.enabled'), cropRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'crop-service' });

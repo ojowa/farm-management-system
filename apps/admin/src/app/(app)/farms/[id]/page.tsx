@@ -13,6 +13,9 @@ import {
   Sprout,
   Beef,
   Egg,
+  Droplets,
+  Fish,
+  Tractor,
 } from 'lucide-react';
 import { farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -24,9 +27,18 @@ import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { useReadOnly } from '@/lib/useReadOnly';
 
+const FARM_TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  CROP: { label: 'Crop', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Tractor },
+  LIVESTOCK: { label: 'Livestock', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Beef },
+  POULTRY: { label: 'Poultry', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Egg },
+  DAIRY: { label: 'Dairy', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Droplets },
+  AQUACULTURE: { label: 'Aquaculture', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Fish },
+};
+
 interface Farm {
   id: string;
   name: string;
+  farmType: string;
   location?: string;
   size?: number;
   sizeUnit?: string;
@@ -98,6 +110,9 @@ export default function FarmDetailPage() {
     );
   }
 
+  const typeConfig = FARM_TYPE_CONFIG[farm.farmType];
+  const TypeIcon = typeConfig?.icon || Tractor;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -111,7 +126,15 @@ export default function FarmDetailPage() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{farm.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">{farm.name}</h1>
+              {typeConfig && (
+                <Badge className={typeConfig.color}>
+                  <TypeIcon className="mr-1 h-3 w-3" />
+                  {typeConfig.label}
+                </Badge>
+              )}
+            </div>
             {farm.location && (
               <div className="flex items-center gap-1 text-muted-foreground mt-1">
                 <MapPin className="h-4 w-4" />
@@ -243,5 +266,3 @@ export default function FarmDetailPage() {
     </div>
   );
 }
-
-

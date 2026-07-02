@@ -16,6 +16,9 @@ interface User {
   organizationName?: string;
   permissions: string[];
   avatar?: string;
+  subscriptionPlan?: string;
+  subscriptionStatus?: string;
+  planFeatures?: { modules: string[]; farmTypes: string[] };
 }
 
 interface AuthContextValue {
@@ -69,6 +72,8 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 function buildUser(raw: any): User {
+  const org = raw.organization;
+  const planFeatures = org?.subscriptionPlanRef?.features;
   return {
     id: raw.id,
     email: raw.email,
@@ -78,9 +83,12 @@ function buildUser(raw: any): User {
     fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
     role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
     organizationId: raw.organizationId,
-    organizationName: raw.organization?.name || undefined,
+    organizationName: org?.name || undefined,
     permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
     avatar: raw.avatar,
+    subscriptionPlan: org?.subscriptionPlan || undefined,
+    subscriptionStatus: org?.subscriptionStatus || undefined,
+    planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
   };
 }
 

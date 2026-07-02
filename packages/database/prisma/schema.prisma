@@ -19,12 +19,15 @@ model Organization {
 
   subscriptionPlan     String   @default("FREE")
   subscriptionStatus   String   @default("TRIAL")
+  subscriptionPlanId   String?
   settings             Json     @default("{}")
 
   users     User[]
   farms     Farm[]
   memberships UserOrganization[]
   roles      Role[]
+  featureOverrides FeatureFlagOverride[]
+  subscriptionPlanRef SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -53,6 +56,7 @@ model User {
   refreshTokens   RefreshToken[]
   auditLogs       AuditLog[]
   memberships     UserOrganization[]
+  sessions        UserSession[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -136,6 +140,7 @@ model Farm {
   organizationId  String
 
   name            String
+  farmType        String   // CROP, LIVESTOCK, POULTRY, DAIRY, AQUACULTURE
   location        String?
   latitude        Float?
   longitude       Float?
@@ -152,6 +157,7 @@ model Farm {
   updatedAt       DateTime @updatedAt
 
   @@index([organizationId])
+  @@index([farmType])
 }
 
 model Field {
@@ -644,4 +650,124 @@ model CorrespondenceAttachment {
 
   @@index([correspondenceId])
   @@index([organizationId])
+}
+
+// ── Platform Console: Feature Flags ───────────────────────
+
+model FeatureFlag {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  name          String
+  description   String?
+  category      String   @default("core")
+  defaultValue  Boolean  @default(true)
+  isEnabled     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orgOverrides  FeatureFlagOverride[]
+}
+
+model FeatureFlagOverride {
+  id              String      @id @default(uuid())
+  featureFlagId   String
+  organizationId  String
+  isEnabled       Boolean
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  featureFlag     FeatureFlag  @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([featureFlagId, organizationId])
+  @@index([organizationId])
+}
+
+// ── Platform Console: Subscriptions ───────────────────────
+
+model SubscriptionPlan {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  displayName   String
+  description   String?
+  price         Decimal  @default(0)
+  currency      String   @default("USD")
+  billingCycle  String   @default("MONTHLY")
+  maxUsers      Int      @default(5)
+  maxFarms      Int      @default(1)
+  maxStorage    Int      @default(100)
+  features      Json     @default("[]")
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  organizations Organization[]
+}
+
+// ── Platform Console: User Sessions ───────────────────────
+
+model UserSession {
+  id          String   @id @default(uuid())
+  userId      String
+  app         String
+  deviceInfo  Json?
+  ipAddress   String?
+  isActive    Boolean  @default(true)
+  loginAt     DateTime @default(now())
+  lastActive  DateTime @default(now())
+  logoutAt    DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([app])
+  @@index([isActive])
+}
+
+// ── Platform Console: System Health ───────────────────────
+
+model SystemHealth {
+  id          String   @id @default(uuid())
+  serviceName String
+  status      String   @default("healthy")
+  uptime      Int      @default(0)
+  memoryUsage Json?
+  lastCheck   DateTime @default(now())
+  metadata    Json?
+
+  @@unique([serviceName])
+  @@index([status])
+  @@index([lastCheck])
+}
+
+// ── Platform Console: Broadcasts ──────────────────────────
+
+model Broadcast {
+  id          String   @id @default(uuid())
+  title       String
+  message     String
+  type        String   @default("INFO")
+  targetOrgs  String[] @default([])
+  isActive    Boolean  @default(true)
+  startsAt    DateTime @default(now())
+  expiresAt   DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([startsAt])
+}
+
+// ── Platform Console: Platform Config ─────────────────────
+
+model PlatformConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  category    String   @default("general")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

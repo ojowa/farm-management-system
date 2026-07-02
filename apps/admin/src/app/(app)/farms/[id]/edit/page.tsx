@@ -3,16 +3,34 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Info } from 'lucide-react';
 import { farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { farmFormSchema } from '@/lib/validation';
 import { useReadOnly } from '@/lib/useReadOnly';
+
+const FARM_TYPES = [
+  { value: 'CROP', label: 'Crop' },
+  { value: 'LIVESTOCK', label: 'Livestock' },
+  { value: 'POULTRY', label: 'Poultry' },
+  { value: 'DAIRY', label: 'Dairy' },
+  { value: 'AQUACULTURE', label: 'Aquaculture' },
+];
+
+const FARM_TYPE_BADGES: Record<string, string> = {
+  CROP: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  LIVESTOCK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  POULTRY: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  DAIRY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  AQUACULTURE: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
+};
 
 export default function EditFarmPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,7 +72,7 @@ export default function EditFarmPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = farmFormSchema.safeParse(form);
+    const result = farmFormSchema.safeParse({ ...form, farmType: farm?.farmType || 'CROP' });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
@@ -109,6 +127,8 @@ export default function EditFarmPage() {
     );
   }
 
+  const farmTypeLabel = FARM_TYPES.find((t) => t.value === farm.farmType)?.label || farm.farmType;
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
@@ -123,6 +143,22 @@ export default function EditFarmPage() {
         <h1 className="text-3xl font-bold tracking-tight">Edit Farm</h1>
         <p className="text-muted-foreground">Update {farm.name}</p>
       </div>
+
+      {/* Farm Type (Read-Only) */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium">Farm Type</label>
+            <Badge className={FARM_TYPE_BADGES[farm.farmType] || 'bg-gray-100 text-gray-800'}>
+              {farmTypeLabel}
+            </Badge>
+            <div className="flex items-center gap-1 text-muted-foreground text-sm ml-auto">
+              <Info className="h-4 w-4" />
+              Farm type cannot be changed after creation
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Form */}
       <Card>

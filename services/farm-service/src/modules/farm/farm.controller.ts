@@ -38,11 +38,15 @@ export class FarmController {
       if (req.query.organizationId) {
         filter.organizationId = req.query.organizationId as string;
       }
-      
+
+      if (req.query.farmType) {
+        filter.farmType = req.query.farmType as string;
+      }
+
       if (req.query.name) {
         filter.name = req.query.name as string;
       }
-      
+
       if (req.query.location) {
         filter.location = req.query.location as string;
       }

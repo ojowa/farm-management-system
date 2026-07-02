@@ -6,6 +6,30 @@ import { useAuth } from '@/lib/auth';
 import { farmsAPI, cropsAPI, livestockAPI, financeAPI } from '@/lib/api';
 import { Card, LoadingSpinner } from '@/components/ui';
 
+const FARM_TYPE_LABELS: Record<string, string> = {
+  CROP: 'Crop',
+  LIVESTOCK: 'Livestock',
+  POULTRY: 'Poultry',
+  DAIRY: 'Dairy',
+  AQUACULTURE: 'Aquaculture',
+};
+
+const FARM_TYPE_BG: Record<string, string> = {
+  CROP: 'bg-green-100',
+  LIVESTOCK: 'bg-amber-100',
+  POULTRY: 'bg-orange-100',
+  DAIRY: 'bg-blue-100',
+  AQUACULTURE: 'bg-cyan-100',
+};
+
+const FARM_TYPE_TEXT: Record<string, string> = {
+  CROP: 'text-green-800',
+  LIVESTOCK: 'text-amber-800',
+  POULTRY: 'text-orange-800',
+  DAIRY: 'text-blue-800',
+  AQUACULTURE: 'text-cyan-800',
+};
+
 interface KPI {
   label: string;
   value: string | number;
@@ -23,6 +47,7 @@ export default function DashboardPage() {
     { label: 'Livestock', value: '—', icon: '🐄', color: 'bg-blue-50 text-blue-700' },
     { label: 'Revenue', value: '—', icon: '💰', color: 'bg-purple-50 text-purple-700' },
   ]);
+  const [farmTypeBreakdown, setFarmTypeBreakdown] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,6 +87,13 @@ export default function DashboardPage() {
           { label: 'Livestock', value: livestock.length, icon: '🐄', color: 'bg-blue-50 text-blue-700' },
           { label: 'Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: '💰', color: 'bg-purple-50 text-purple-700' },
         ]);
+
+        const typeBreakdown: Record<string, number> = {};
+        farms.forEach((f: any) => {
+          const type = f.farmType || 'CROP';
+          typeBreakdown[type] = (typeBreakdown[type] || 0) + 1;
+        });
+        setFarmTypeBreakdown(typeBreakdown);
       } catch {
         // KPIs remain as '—' on error
       } finally {
@@ -92,6 +124,22 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {Object.keys(farmTypeBreakdown).length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Farm Types</h2>
+          <div className="flex flex-wrap gap-3">
+            {Object.entries(farmTypeBreakdown).map(([type, count]) => (
+              <div key={type} className={`flex items-center gap-2 px-4 py-2 rounded-lg ${FARM_TYPE_BG[type] || 'bg-gray-100'}`}>
+                <span className={`text-sm font-medium ${FARM_TYPE_TEXT[type] || 'text-gray-700'}`}>
+                  {FARM_TYPE_LABELS[type] || type}
+                </span>
+                <span className={`text-xs font-bold ${FARM_TYPE_TEXT[type] || 'text-gray-500'}`}>{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

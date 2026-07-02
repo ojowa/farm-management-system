@@ -11,7 +11,7 @@ import { shiftAssignmentsRouter } from './routes/shiftAssignments';
 import { messagesRouter } from './routes/messages';
 import { correspondenceRouter } from './routes/correspondence';
 import { AuthError } from '@farm/auth';
-import { rlsMiddleware } from '@farm/database';
+import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config();
 
@@ -24,13 +24,14 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(rlsMiddleware);
 
-app.use('/leave/types', leaveTypesRouter);
-app.use('/leave/requests', leaveRequestsRouter);
-app.use('/leave/balance', leaveBalanceRouter);
-app.use('/shifts', shiftsRouter);
-app.use('/shift-assignments', shiftAssignmentsRouter);
-app.use('/messages', messagesRouter);
-app.use('/correspondence', correspondenceRouter);
+// Feature-flagged routes
+app.use('/leave/types', featureFlagGuard('leave.enabled'), leaveTypesRouter);
+app.use('/leave/requests', featureFlagGuard('leave.enabled'), leaveRequestsRouter);
+app.use('/leave/balance', featureFlagGuard('leave.enabled'), leaveBalanceRouter);
+app.use('/shifts', featureFlagGuard('roster.enabled'), shiftsRouter);
+app.use('/shift-assignments', featureFlagGuard('roster.enabled'), shiftAssignmentsRouter);
+app.use('/messages', featureFlagGuard('messaging.enabled'), messagesRouter);
+app.use('/correspondence', featureFlagGuard('correspondence.enabled'), correspondenceRouter);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'hr-service' });

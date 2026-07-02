@@ -157,6 +157,7 @@ export const farmsAPI = {
     return apiClient.axiosInstance.post('/farms', {
       organizationId: orgId,
       name: data.name,
+      farmType: data.farmType,
       location: data.location || null,
       size: Number(data.size) || 0,
       status: data.status || 'active',
