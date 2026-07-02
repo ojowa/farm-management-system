@@ -3,12 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
 import { workerRouter } from './modules/worker/worker.module';
 import { taskRouter } from './modules/task/task.module';
 import { AuthError } from '@farm/auth';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const app = express();
 const port = process.env.WORKER_SERVICE_PORT || 4007;

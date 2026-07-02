@@ -3,11 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
 import { financeRouter } from './modules/finance/finance.module';
 import { AuthError } from '@farm/auth';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const app = express();
 const port = process.env.FINANCE_SERVICE_PORT || 4006;
