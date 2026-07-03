@@ -1,17 +1,8 @@
 import axios from 'axios';
+import { getAccessToken, setAccessToken, setRefreshToken, clearAllAuthStorage, setAuthCookies, clearAuthCookies } from '@farm/auth';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-function setCookie(name: string, value: string, days: number) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
-
-function setAuthCookies(accessToken: string, refreshToken: string) {
-  setCookie('accessToken', accessToken, 7);
-  setCookie('refreshToken', refreshToken, 30);
-}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -22,7 +13,7 @@ export const apiClient = axios.create({
 // Request interceptor — attach access token
 apiClient.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -64,21 +55,17 @@ apiClient.interceptors.response.use(
       const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
       const { accessToken, refreshToken: newRefresh } = data;
 
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', newRefresh);
-      setAuthCookies(accessToken, newRefresh);
+      setAccessToken(accessToken);
+      setRefreshToken(newRefresh);
+      setAuthCookies(accessToken, newRefresh, { accessDays: 1 });
 
       processQueue(null, accessToken);
       original.headers.Authorization = `Bearer ${accessToken}`;
       return apiClient(original);
     } catch (refreshError) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        localStorage.removeItem('mfaSessionToken');
-        document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-        document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        clearAllAuthStorage();
+        clearAuthCookies();
         window.location.href = '/login';
       }
       processQueue(refreshError, null);

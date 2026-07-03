@@ -3,6 +3,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { platformAuthAPI } from '@/lib/api';
+import {
+  setCookie,
+  deleteCookie,
+  getUser,
+  setUser as setUserStorage,
+  clearAllAuthStorage,
+} from '@farm/auth';
 
 interface ConsoleUser {
   id: string;
@@ -30,16 +37,23 @@ const AuthContext = createContext<AuthContextValue>({
   logout: () => {},
 });
 
-function setCookie(name: string, value: string, days: number) {
-  if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax${secure}`;
+const CONSOLE_PREFIX = 'console_';
+
+function setConsoleCookies(accessToken: string, refreshToken: string) {
+  setCookie(`${CONSOLE_PREFIX}accessToken`, accessToken, 1);
+  setCookie(`${CONSOLE_PREFIX}refreshToken`, refreshToken, 7);
 }
 
-function deleteCookie(name: string) {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+function clearConsoleCookies() {
+  deleteCookie(`${CONSOLE_PREFIX}accessToken`);
+  deleteCookie(`${CONSOLE_PREFIX}refreshToken`);
+}
+
+function clearConsoleAuth() {
+  localStorage.removeItem('console_accessToken');
+  localStorage.removeItem('console_refreshToken');
+  localStorage.removeItem('console_user');
+  clearConsoleCookies();
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,22 +67,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token) { setUser(null); return; }
       const { data } = await platformAuthAPI.me();
       setUser(data);
-      localStorage.setItem('console_user', JSON.stringify(data));
+      setUserStorage(data, 'console_user');
     } catch {
-      localStorage.removeItem('console_accessToken');
-      localStorage.removeItem('console_refreshToken');
-      localStorage.removeItem('console_user');
-      deleteCookie('console_accessToken');
-      deleteCookie('console_refreshToken');
+      clearConsoleAuth();
       setUser(null);
     }
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('console_user');
-    if (stored) { try { setUser(JSON.parse(stored)); } catch { /* ignore */ } }
+    const stored = getUser<ConsoleUser>('console_user');
+    if (stored) { setUser(stored); }
     refreshUser().finally(() => setLoading(false));
-  }, [refreshUser]);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'console_accessToken' && !e.newValue) {
+        clearConsoleAuth();
+        setUser(null);
+        router.push('/login');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [refreshUser, router]);
 
   const login = useCallback(async (email: string, password: string) => {
     const { data } = await platformAuthAPI.login({ email, password });
@@ -79,19 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     localStorage.setItem('console_accessToken', data.accessToken);
     localStorage.setItem('console_refreshToken', data.refreshToken);
-    localStorage.setItem('console_user', JSON.stringify(u));
-    setCookie('console_accessToken', data.accessToken, 1);
-    setCookie('console_refreshToken', data.refreshToken, 7);
+    setUserStorage(u, 'console_user');
+    setConsoleCookies(data.accessToken, data.refreshToken);
     setUser(u);
     router.push('/dashboard');
   }, [router]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('console_accessToken');
-    localStorage.removeItem('console_refreshToken');
-    localStorage.removeItem('console_user');
-    deleteCookie('console_accessToken');
-    deleteCookie('console_refreshToken');
+    clearConsoleAuth();
     setUser(null);
     router.push('/login');
   }, [router]);

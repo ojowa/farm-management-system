@@ -19,7 +19,7 @@ import {
   JwtAuthGuard,
   Roles,
   Permission,
-} from '@farm/auth';
+} from '@farm/auth/nestjs';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard, AuthorizationGuard)

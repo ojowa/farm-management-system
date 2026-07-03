@@ -98,7 +98,13 @@ router.post('/refresh', async (req: Request, res: Response) => {
       { expiresIn: '15m' }
     );
 
-    res.json({ accessToken: newAccessToken });
+    const newRefreshToken = jwt.sign(
+      { sub: user.id, type: 'refresh' },
+      getJWTSecret(),
+      { expiresIn: '7d' }
+    );
+
+    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (error) {
     res.status(401).json({ statusCode: 401, message: 'Invalid or expired refresh token' });
   }

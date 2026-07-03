@@ -15,6 +15,10 @@
     "./nestjs": {
       "types": "./dist/nestjs/index.d.ts",
       "default": "./dist/nestjs/index.js"
+    },
+    "./rn": {
+      "types": "./dist/rn.d.ts",
+      "default": "./dist/rn.js"
     }
   },
   "private": true,

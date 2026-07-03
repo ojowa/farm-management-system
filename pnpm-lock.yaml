@@ -26,6 +26,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@farm/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@farm/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -238,6 +241,9 @@ importers:
 
   apps/console:
     dependencies:
+      '@farm/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       axios:
         specifier: ^1.7.9
         version: 1.18.0
@@ -296,6 +302,9 @@ importers:
       '@babel/runtime':
         specifier: ^8.0.0
         version: 8.0.0
+      '@farm/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@farm/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -378,6 +387,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@farm/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@farm/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -2376,7 +2388,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@0.22.28':
     resolution: {integrity: sha512-lvt72KNitGuixYD2l3SZmRKVu2G4zJpmg5V7WfUBNpmUU5oODBw/6qmiJ6kSLAlfDozscUk+BBGknBBzxUrwrA==}

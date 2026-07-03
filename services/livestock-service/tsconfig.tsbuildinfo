@@ -1,1 +1,0 @@
-{"root":["./src/main.ts","./src/modules/livestock/livestock.controller.ts","./src/modules/livestock/livestock.module.ts","./src/modules/livestock/livestock.repository.ts","./src/modules/livestock/livestock.service.ts"],"version":"6.0.3"}

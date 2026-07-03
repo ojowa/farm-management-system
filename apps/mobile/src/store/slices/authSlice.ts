@@ -3,14 +3,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI, registerForceLogoutHandler } from '../../services/api';
 import { clearAllStorage } from '../../utils/storage';
 import { describeApiError } from '../../utils/apiError';
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  USER_KEY,
+  MFA_SESSION_KEY,
+} from '@farm/auth/rn';
 
-// Persisted token keys. Keep these in sync with utils/storage.ts so the
-// store owns the durable secret material and the storage helper owns the
-// bulk-clean contract.
-export const ACCESS_TOKEN_KEY = 'accessToken';
-export const REFRESH_TOKEN_KEY = 'refreshToken';
-export const USER_KEY = 'user';
-export const MFA_SESSION_KEY = 'mfaSessionToken';
+// Persisted token keys. Re-exported from @farm/auth/rn for backward compat.
+export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, MFA_SESSION_KEY };
 
 export interface User {
   id: string;

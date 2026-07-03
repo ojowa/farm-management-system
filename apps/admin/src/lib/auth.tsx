@@ -3,6 +3,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { authAPI } from '@/lib/api';
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  getAccessToken,
+  setAccessToken,
+  getRefreshToken,
+  setRefreshToken,
+  getUser,
+  setUser as setUserStorage,
+  setMfaToken,
+  clearAllAuthStorage,
+} from '@farm/auth';
 
 interface User {
   id: string;
@@ -31,46 +43,6 @@ interface AuthContextValue {
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
-function setCookie(name: string, value: string, days: number) {
-  if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax${secure}`;
-}
-
-function deleteCookie(name: string) {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-}
-
-function clearAuthCookies() {
-  deleteCookie('accessToken');
-  deleteCookie('refreshToken');
-}
-
-function setAuthCookies(accessToken: string, refreshToken: string) {
-  setCookie('accessToken', accessToken, 1);
-  setCookie('refreshToken', refreshToken, 30);
-}
-
-function clearAllAuth() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-  localStorage.removeItem('mfaSessionToken');
-  clearAuthCookies();
-}
-
-const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  loading: true,
-  isAuthenticated: false,
-  login: async () => {},
-  logout: async () => {},
-  refreshUser: async () => {},
-  updateProfile: async () => {},
-});
-
 function buildUser(raw: any): User {
   const org = raw.organization;
   const planFeatures = org?.subscriptionPlanRef?.features;
@@ -88,9 +60,21 @@ function buildUser(raw: any): User {
     avatar: raw.avatar,
     subscriptionPlan: org?.subscriptionPlan || undefined,
     subscriptionStatus: org?.subscriptionStatus || undefined,
-    planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
+    planFeatures: planFeatures
+      ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] }
+      : { modules: ['farm', 'crop', 'task', 'leave', 'roster', 'basic_reporting'], farmTypes: ['CROP'] },
   };
 }
+
+const AuthContext = createContext<AuthContextValue>({
+  user: null,
+  loading: true,
+  isAuthenticated: false,
+  login: async () => {},
+  logout: async () => {},
+  refreshUser: async () => {},
+  updateProfile: async () => {},
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -99,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = getAccessToken();
       if (!token) {
         setUser(null);
         return;
@@ -107,23 +91,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await authAPI.getProfile();
       const userObj = buildUser(data.user || data);
       setUser(userObj);
-      localStorage.setItem('user', JSON.stringify(userObj));
+      setUserStorage(userObj);
     } catch {
-      clearAllAuth();
       setUser(null);
     }
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
+    const stored = getUser<User>();
+    const token = getAccessToken();
+
     if (stored) {
-      try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+      setUser(stored);
     }
-    refreshUser().finally(() => setLoading(false));
+
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    // Show cached user immediately if available, refresh silently in background
+    if (stored) {
+      setLoading(false);
+      refreshUser();
+    } else {
+      refreshUser().finally(() => setLoading(false));
+    }
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'accessToken' && !e.newValue) {
-        clearAllAuth();
+        clearAllAuthStorage();
+        clearAuthCookies();
         setUser(null);
         router.push('/login');
       }
@@ -135,22 +133,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const { data } = await authAPI.login({ email, password });
     if (data.mfaRequired) {
-      localStorage.setItem('mfaSessionToken', data.mfaSessionToken);
+      setMfaToken(data.mfaSessionToken);
       router.push('/mfa');
       return;
     }
     const userObj = buildUser(data.user);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(userObj));
-    setAuthCookies(data.accessToken, data.refreshToken);
+    setAccessToken(data.accessToken);
+    setRefreshToken(data.refreshToken);
+    setUserStorage(userObj);
+    setAuthCookies(data.accessToken, data.refreshToken, { accessDays: 1 });
     setUser(userObj);
     router.push('/');
   }, [router]);
 
   const logout = useCallback(async () => {
     try { await authAPI.logout(); } catch { /* best effort */ }
-    clearAllAuth();
+    clearAllAuthStorage();
+    clearAuthCookies();
     setUser(null);
     router.push('/login');
   }, [router]);

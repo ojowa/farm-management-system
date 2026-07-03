@@ -1,1 +1,0 @@
-{"root":["./src/main.ts","./src/modules/inventory/inventory.controller.ts","./src/modules/inventory/inventory.module.ts","./src/modules/inventory/inventory.repository.ts","./src/modules/inventory/inventory.service.ts"],"version":"6.0.3"}

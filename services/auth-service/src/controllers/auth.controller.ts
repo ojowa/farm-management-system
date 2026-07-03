@@ -59,7 +59,11 @@ export class AuthController {
               },
             },
           },
-          organization: true,
+          organization: {
+            include: {
+              subscriptionPlanRef: true,
+            },
+          },
         },
       });
       if (!fullUser) {
@@ -95,7 +99,11 @@ export class AuthController {
               },
             },
           },
-          organization: true,
+          organization: {
+            include: {
+              subscriptionPlanRef: true,
+            },
+          },
         },
       });
       const { passwordHash, ...userWithoutPassword } = updated;
@@ -127,6 +135,19 @@ export class AuthController {
     }
   }
 
+  async logout(req: Request, res: Response) {
+    const user = (req as any).user;
+    if (!user || !user.sub) {
+      return res.status(401).json({ message: 'Unauthenticated' });
+    }
+    try {
+      await authService.logout(user.sub);
+      res.json({ message: 'Logged out successfully' });
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to logout' });
+    }
+  }
+
   async switchOrganization(req: Request, res: Response) {
     const user = (req as any).user;
     if (!user || !user.sub) {
@@ -148,7 +169,11 @@ export class AuthController {
         where: { id: user.sub },
         include: {
           role: { include: { permissions: { include: { permission: true } } } },
-          organization: true,
+          organization: {
+            include: {
+              subscriptionPlanRef: true,
+            },
+          },
         },
       });
       if (!fullUser) return res.status(404).json({ message: 'User not found' });
@@ -164,7 +189,7 @@ export class AuthController {
           permissions,
         },
         getJWTSecret(),
-        { expiresIn: '1h' }
+        { expiresIn: '15m' }
       );
       const refreshToken = jwt.sign(
         { sub: fullUser.id, type: 'refresh' },
@@ -180,7 +205,10 @@ export class AuthController {
       const { passwordHash, ...userWithoutPassword } = fullUser;
       // Override the org fields with the switched org
       (userWithoutPassword as any).organizationId = organizationId;
-      (userWithoutPassword as any).organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+      (userWithoutPassword as any).organization = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        include: { subscriptionPlanRef: true },
+      });
 
       res.json({ user: userWithoutPassword, accessToken, refreshToken });
     } catch (error: any) {

@@ -1,15 +1,12 @@
 import axios from 'axios';
+import { setCookie, deleteCookie } from '@farm/auth';
 
 const PLATFORM_API_URL = process.env.NEXT_PUBLIC_PLATFORM_API_URL || 'http://localhost:4020';
+const CONSOLE_PREFIX = 'console_';
 
-function setCookie(name: string, value: string, days: number) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
-
-function setAuthCookies(accessToken: string, refreshToken: string) {
-  setCookie('console_accessToken', accessToken, 1);
-  setCookie('console_refreshToken', refreshToken, 7);
+function setConsoleCookies(accessToken: string, refreshToken: string) {
+  setCookie(`${CONSOLE_PREFIX}accessToken`, accessToken, 1);
+  setCookie(`${CONSOLE_PREFIX}refreshToken`, refreshToken, 7);
 }
 
 export const platformClient = axios.create({
@@ -51,8 +48,8 @@ platformClient.interceptors.response.use(
       const { data } = await axios.post(`${PLATFORM_API_URL}/auth/refresh`, { refreshToken });
       const { accessToken, refreshToken: newRefresh } = data;
       localStorage.setItem('console_accessToken', accessToken);
-      localStorage.setItem('console_refreshToken', newRefresh);
-      setAuthCookies(accessToken, newRefresh);
+      if (newRefresh) localStorage.setItem('console_refreshToken', newRefresh);
+      setConsoleCookies(accessToken, newRefresh || refreshToken);
       processQueue(null, accessToken);
       original.headers.Authorization = `Bearer ${accessToken}`;
       return platformClient(original);
@@ -61,6 +58,8 @@ platformClient.interceptors.response.use(
         localStorage.removeItem('console_accessToken');
         localStorage.removeItem('console_refreshToken');
         localStorage.removeItem('console_user');
+        deleteCookie('console_accessToken');
+        deleteCookie('console_refreshToken');
         window.location.href = '/login';
       }
       processQueue(refreshError, null);

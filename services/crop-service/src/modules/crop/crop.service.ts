@@ -1,6 +1,6 @@
 import { CropRepository } from './crop.repository';
 import { CreateCropRequest, CreateCropCycleRequest, UpdateCropRequest, UpdateCropCycleRequest } from '@farm/types';
-import { emitCropEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitCropEvent } from '@farm/utils';
 
 export class CropService {
   private cropRepository = new CropRepository();

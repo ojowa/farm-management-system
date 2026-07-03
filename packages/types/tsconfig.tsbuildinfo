@@ -1,1 +1,0 @@
-{"root":["./src/api.ts","./src/auth.ts","./src/crop.ts","./src/farm.ts","./src/finance.ts","./src/index.ts","./src/inventory.ts","./src/livestock.ts","./src/notification.ts","./src/organization.ts","./src/poultry.ts","./src/user.ts","./src/worker.ts"],"version":"6.0.3"}

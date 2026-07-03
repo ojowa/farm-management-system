@@ -5,18 +5,95 @@ import { Sidebar } from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationCenter } from './NotificationCenter';
 import { cn } from '@/lib/utils';
-import { Menu, X, User, LogOut, Settings } from 'lucide-react';
+import { Menu, X, User, LogOut, Settings, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
+function getRequiredModule(pathname: string): string | null {
+  if (pathname.startsWith('/farms')) return 'farm';
+  if (pathname.startsWith('/crops')) return 'crop';
+  if (pathname.startsWith('/livestock')) return 'livestock';
+  if (pathname.startsWith('/poultry')) return 'poultry';
+  if (pathname.startsWith('/inventory')) return 'inventory';
+  if (pathname.startsWith('/workers')) return 'worker';
+  if (pathname.startsWith('/finance')) return 'finance';
+  if (pathname.startsWith('/reports')) return 'reporting';
+  return null;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+
+  // Check subscription status
+  const isSuspended = user?.subscriptionStatus === 'SUSPENDED' && user?.role !== 'SUPER_ADMIN' && user?.role !== 'SUPPORT_ADMIN';
+  if (isSuspended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-8 text-center backdrop-blur-sm bg-opacity-80 dark:bg-opacity-80 transition-all transform duration-300">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner animate-pulse">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Subscription Suspended</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm leading-relaxed">
+            Your organization's subscription has been suspended. Please contact your system administrator or support to reactivate your access.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => logout()}
+              variant="destructive"
+              className="w-full py-2.5 px-4 font-medium rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none"
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check module plan allowance
+  const requiredModule = getRequiredModule(pathname);
+  const isModuleAllowed = !requiredModule ||
+    (user?.planFeatures?.modules && user.planFeatures.modules.includes(requiredModule)) ||
+    user?.role === 'SUPER_ADMIN' || user?.role === 'SUPPORT_ADMIN';
+
+  if (!isModuleAllowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-8 text-center backdrop-blur-sm bg-opacity-80 dark:bg-opacity-80 transition-all transform duration-300">
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:bg-blue-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner animate-pulse">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upgrade Required</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm leading-relaxed">
+            The <strong className="text-blue-600 dark:text-blue-400">{requiredModule?.toUpperCase()}</strong> module is not included in your current subscription plan ({user?.subscriptionPlan || 'FREE'}). Please upgrade your plan to unlock this feature.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => router.push('/settings')}
+              className="w-full py-2.5 px-4 font-medium rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none"
+            >
+              Go to Settings / Profile
+            </Button>
+            <Button
+              onClick={() => router.push('/')}
+              variant="secondary"
+              className="w-full py-2.5 px-4 font-medium rounded-xl transition-all focus:outline-none"
+            >
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900" suppressHydrationWarning>

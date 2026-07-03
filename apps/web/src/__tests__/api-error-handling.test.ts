@@ -83,7 +83,7 @@ describe('Validation schemas', () => {
   it('validates farm form data', async () => {
     const { farmFormSchema } = await import('@/lib/validation');
 
-    const validData = { name: 'Test Farm', location: 'Nairobi', size: '', description: '' };
+    const validData = { name: 'Test Farm', farmType: 'CROP', location: 'Nairobi', size: '', description: '' };
     const result = farmFormSchema.safeParse(validData);
     expect(result.success).toBe(true);
   });
@@ -91,7 +91,7 @@ describe('Validation schemas', () => {
   it('rejects farm form with empty name', async () => {
     const { farmFormSchema } = await import('@/lib/validation');
 
-    const invalidData = { name: '', location: 'Nairobi', size: '', description: '' };
+    const invalidData = { name: '', farmType: 'CROP', location: 'Nairobi', size: '', description: '' };
     const result = farmFormSchema.safeParse(invalidData);
     expect(result.success).toBe(false);
   });

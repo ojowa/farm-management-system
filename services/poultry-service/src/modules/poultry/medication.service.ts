@@ -4,7 +4,7 @@ import {
   CreateMedicationRequest,
   UpdateMedicationRequest,
 } from '@farm/types';
-import { emitPoultryEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitPoultryEvent } from '@farm/utils';
 
 export class MedicationService {
   private repository = new MedicationRepository();

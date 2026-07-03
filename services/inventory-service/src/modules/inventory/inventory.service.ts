@@ -1,6 +1,6 @@
 import { InventoryRepository } from './inventory.repository';
 import { CreateInventoryItemRequest, UpdateInventoryItemRequest } from '@farm/types';
-import { emitInventoryEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitInventoryEvent } from '@farm/utils';
 
 export class InventoryService {
   private repository = new InventoryRepository();

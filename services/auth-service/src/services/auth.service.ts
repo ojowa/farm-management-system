@@ -14,7 +14,11 @@ export class AuthService {
     const user = await prisma.user.findUnique({
       where: { email: credentials.email },
       include: {
-        organization: true,
+        organization: {
+          include: {
+            subscriptionPlanRef: true
+          }
+        },
         role: {
           include: {
             permissions: {
@@ -103,7 +107,11 @@ export class AuthService {
       },
       include: {
         role: true,
-        organization: true
+        organization: {
+          include: {
+            subscriptionPlanRef: true
+          }
+        }
       }
     });
 
@@ -168,5 +176,12 @@ export class AuthService {
     const newRefreshToken = await this.generateRefreshToken(storedToken.user.id);
 
     return { accessToken, refreshToken: newRefreshToken };
+  }
+
+  async logout(userId: string): Promise<void> {
+    await prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true },
+    });
   }
 }

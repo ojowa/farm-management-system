@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '@farm/auth/rn';
 
 // Expo exposes env vars at build time via EXPO_PUBLIC_*; at runtime they
 // are inlined. We guard the access so type-check still works in an
@@ -49,7 +50,7 @@ class APIClient {
     // Add request interceptor to include auth token
     this.client.interceptors.request.use(
       async (config) => {
-        const token = await AsyncStorage.getItem('accessToken');
+        const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -84,7 +85,7 @@ class APIClient {
         isRefreshing = true;
 
         try {
-          const refreshToken = await AsyncStorage.getItem('refreshToken');
+          const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
           if (!refreshToken) throw new Error('No refresh token');
 
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
@@ -92,8 +93,8 @@ class APIClient {
           });
 
           const { accessToken, refreshToken: newRefreshToken } = response.data;
-          await AsyncStorage.setItem('accessToken', accessToken);
-          await AsyncStorage.setItem('refreshToken', newRefreshToken);
+          await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
 
           processQueue(null, accessToken);
 
@@ -101,9 +102,9 @@ class APIClient {
           return this.client(originalRequest);
         } catch (refreshError) {
           // Refresh failed — clear tokens, notify the app, and reject queued requests
-          await AsyncStorage.removeItem('accessToken');
-          await AsyncStorage.removeItem('refreshToken');
-          await AsyncStorage.removeItem('user');
+          await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+          await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+          await AsyncStorage.removeItem(USER_KEY);
 
           processQueue(refreshError, null);
 

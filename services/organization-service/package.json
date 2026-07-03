@@ -1,6 +1,7 @@
 {
   "name": "@farm/organization-service",
   "version": "1.0.0",
+  "main": "dist/main.js",
   "private": true,
   "scripts": {
     "build": "nest build",

@@ -1,1 +1,0 @@
-{"root":["./src/main.ts","./src/modules/farm/farm.controller.ts","./src/modules/farm/farm.module.ts","./src/modules/farm/farm.repository.ts","./src/modules/farm/farm.service.ts"],"version":"6.0.3"}

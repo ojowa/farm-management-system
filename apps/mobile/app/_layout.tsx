@@ -5,6 +5,8 @@ import { Stack } from 'expo-router';
 import { PersistGate } from 'redux-persist/integration/react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initRNStorage } from '@farm/auth/rn';
 import { store, persistor } from '../src/store/store';
 import { useAppDispatch, useAppSelector } from '../src/hooks/useAuth';
 import { restoreSession } from '../src/store/slices/authSlice';
@@ -15,6 +17,9 @@ import { useNetworkSync } from '../src/hooks/useNetworkSync';
 import { colors } from '../src/components/common/UIComponents';
 import { ThemeProvider } from '../src/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
+
+// Initialize the shared auth storage adapter with AsyncStorage
+initRNStorage(AsyncStorage);
 
 // expo-splash-screen ships as a separate package. It isn't always present
 // in `node_modules` during type-check, so we shim it with a no-op. At

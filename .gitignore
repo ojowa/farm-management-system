@@ -12,6 +12,13 @@ build/
 out/
 bin/
 obj/
+coverage/
+*.tsbuildinfo
+
+# Stray compiled JS in source directories (tsc accidentally writing to src/)
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
 
 # Environment variables and secrets
 .env
@@ -30,7 +37,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
+*.err
 *.sqlite
+
+# Test outputs
+test-output.json
 
 # Editor directories and files
 .idea/

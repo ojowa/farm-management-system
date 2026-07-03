@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@farm/auth": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/validation": "workspace:*",
     "@tailwindcss/postcss": "^4.3.1",

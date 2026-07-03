@@ -15,7 +15,7 @@ import {
   CreateMortalityRecordRequest,
   UpdateMortalityRecordRequest
 } from '@farm/types';
-import { emitPoultryEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitPoultryEvent } from '@farm/utils';
 
 export class PoultryService {
   private repository = new PoultryRepository();

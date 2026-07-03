@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PushService } from './push.service';
-import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth/nestjs';
 import { scopedPrisma as prisma } from '@farm/database';
 
 interface RegisterDeviceTokenRequest {

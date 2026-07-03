@@ -18,7 +18,7 @@ import {
   JwtAuthGuard,
   Roles,
   Permission,
-} from '@farm/auth';
+} from '@farm/auth/nestjs';
 
 @Controller('organizations')
 export class OrganizationController {

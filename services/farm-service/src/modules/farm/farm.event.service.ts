@@ -1,4 +1,4 @@
-import { emitFarmEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitFarmEvent } from '@farm/utils';
 
 // Farm Service real-time events
 export class FarmEventService {

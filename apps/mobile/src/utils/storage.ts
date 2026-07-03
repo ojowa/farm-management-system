@@ -4,7 +4,10 @@ import {
   REFRESH_TOKEN_KEY,
   USER_KEY,
   MFA_SESSION_KEY,
-} from '../store/slices/authSlice';
+} from '@farm/auth/rn';
+
+// Re-export shared keys so existing imports still work
+export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, MFA_SESSION_KEY };
 
 /**
  * Remove all persistent keys used by the mobile app.
@@ -35,10 +38,3 @@ export async function clearAllStorage() {
     }
   }
 }
-
-export {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
-  USER_KEY,
-  MFA_SESSION_KEY,
-};

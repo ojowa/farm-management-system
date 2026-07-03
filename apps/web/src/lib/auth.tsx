@@ -3,6 +3,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { authAPI, myOrgsAPI } from '@/lib/api';
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  getAccessToken,
+  setAccessToken,
+  getRefreshToken,
+  setRefreshToken,
+  getUser,
+  setUser as setUserStorage,
+  setMfaToken,
+  clearAllAuthStorage,
+} from '@farm/auth';
 
 interface User {
   id: string;
@@ -33,33 +45,25 @@ interface AuthContextValue {
   myOrganizations: () => Promise<any[]>;
 }
 
-function setCookie(name: string, value: string, days: number) {
-  if (typeof document === 'undefined') return;
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
-
-function deleteCookie(name: string) {
-  if (typeof document === 'undefined') return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-}
-
-function clearAuthCookies() {
-  deleteCookie('accessToken');
-  deleteCookie('refreshToken');
-}
-
-function setAuthCookies(accessToken: string, refreshToken: string) {
-  setCookie('accessToken', accessToken, 7);
-  setCookie('refreshToken', refreshToken, 30);
-}
-
-function clearAllAuth() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-  localStorage.removeItem('mfaSessionToken');
-  clearAuthCookies();
+function buildUser(raw: any): User {
+  const org = raw.organization;
+  const planFeatures = org?.subscriptionPlanRef?.features;
+  return {
+    id: raw.id,
+    email: raw.email,
+    firstName: raw.firstName || '',
+    lastName: raw.lastName || '',
+    middleName: raw.middleName || undefined,
+    fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
+    role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
+    organizationId: raw.organizationId,
+    organizationName: org?.name || undefined,
+    permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
+    avatar: raw.avatar,
+    subscriptionPlan: org?.subscriptionPlan || undefined,
+    subscriptionStatus: org?.subscriptionStatus || undefined,
+    planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
+  };
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -81,57 +85,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = getAccessToken();
       if (!token) {
         setUser(null);
         return;
       }
       const { data } = await authAPI.getProfile();
-      const raw = data.user || data;
-      const org = raw.organization;
-      const planFeatures = org?.subscriptionPlanRef?.features;
-      const userObj: User = {
-        id: raw.id,
-        email: raw.email,
-        firstName: raw.firstName || '',
-        lastName: raw.lastName || '',
-        middleName: raw.middleName || undefined,
-        fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
-        role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
-        organizationId: raw.organizationId,
-        organizationName: org?.name || undefined,
-        permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
-        avatar: raw.avatar,
-        subscriptionPlan: org?.subscriptionPlan || undefined,
-        subscriptionStatus: org?.subscriptionStatus || undefined,
-        planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
-      };
+      const userObj = buildUser(data.user || data);
       setUser(userObj);
-      localStorage.setItem('user', JSON.stringify(userObj));
+      setUserStorage(userObj);
     } catch {
-      clearAllAuth();
       setUser(null);
     }
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const stored = localStorage.getItem('user');
+    const stored = getUser<User>();
+    const token = getAccessToken();
 
     if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch { /* ignore */ }
+      setUser(stored);
     }
 
-    // If no token, stop loading immediately — no point waiting for API
     if (!token) {
       setLoading(false);
       return;
     }
 
-    // If cached user exists, show it now; refresh silently in background
-    // If no cached user, show loading until profile arrives
+    // Show cached user immediately if available, refresh silently in background
     if (stored) {
       setLoading(false);
       refreshUser();
@@ -141,7 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'accessToken' && !e.newValue) {
-        clearAllAuth();
+        clearAllAuthStorage();
+        clearAuthCookies();
         setUser(null);
         router.push('/login');
       }
@@ -153,39 +135,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const { data } = await authAPI.login({ email, password });
     if (data.mfaRequired) {
-      localStorage.setItem('mfaSessionToken', data.mfaSessionToken);
+      setMfaToken(data.mfaSessionToken);
       router.push('/mfa');
       return;
     }
-    const raw = data.user;
-    const org = raw.organization;
-    const planFeatures = org?.subscriptionPlanRef?.features;
-    const userObj: User = {
-      id: raw.id,
-      email: raw.email,
-      firstName: raw.firstName || '',
-      lastName: raw.lastName || '',
-      middleName: raw.middleName || undefined,
-      fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
-      role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
-      organizationId: raw.organizationId,
-      permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
-      avatar: raw.avatar,
-      subscriptionPlan: org?.subscriptionPlan || undefined,
-      subscriptionStatus: org?.subscriptionStatus || undefined,
-      planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
-    };
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(userObj));
-    setAuthCookies(data.accessToken, data.refreshToken);
+    const userObj = buildUser(data.user);
+    setAccessToken(data.accessToken);
+    setRefreshToken(data.refreshToken);
+    setUserStorage(userObj);
+    setAuthCookies(data.accessToken, data.refreshToken, { accessDays: 1 });
     setUser(userObj);
     router.push('/dashboard');
   }, [router]);
 
   const logout = useCallback(async () => {
     try { await authAPI.logout(); } catch { /* best effort */ }
-    clearAllAuth();
+    clearAllAuthStorage();
+    clearAuthCookies();
     setUser(null);
     router.push('/login');
   }, [router]);
@@ -197,29 +163,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const switchOrganization = useCallback(async (organizationId: string) => {
     const { data } = await myOrgsAPI.switch(organizationId);
-    const raw = data.user;
-    const org = raw.organization;
-    const planFeatures = org?.subscriptionPlanRef?.features;
-    const userObj: User = {
-      id: raw.id,
-      email: raw.email,
-      firstName: raw.firstName || '',
-      lastName: raw.lastName || '',
-      middleName: raw.middleName || undefined,
-      fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
-      role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
-      organizationId: raw.organizationId,
-      organizationName: org?.name || undefined,
-      permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
-      avatar: raw.avatar,
-      subscriptionPlan: org?.subscriptionPlan || undefined,
-      subscriptionStatus: org?.subscriptionStatus || undefined,
-      planFeatures: planFeatures ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] } : undefined,
-    };
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(userObj));
-    setAuthCookies(data.accessToken, data.refreshToken);
+    const userObj = buildUser(data.user);
+    setAccessToken(data.accessToken);
+    setRefreshToken(data.refreshToken);
+    setUserStorage(userObj);
+    setAuthCookies(data.accessToken, data.refreshToken, { accessDays: 1 });
     setUser(userObj);
   }, []);
 

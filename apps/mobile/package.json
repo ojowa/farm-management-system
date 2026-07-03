@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^8.0.0",
+    "@farm/auth": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/validation": "workspace:*",
     "@react-native-async-storage/async-storage": "^1.23.1",

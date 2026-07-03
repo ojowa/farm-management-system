@@ -29,8 +29,19 @@ export class AuthService {
         },
       });
       return response.data;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  async logout(user: any, authHeader?: string): Promise<any> {
+    try {
+      const response = await axios.post(`${this.authServiceUrl}/logout`, {}, {
+        headers: { Authorization: authHeader || '' },
+      });
+      return response.data;
     } catch {
-      return user;
+      return { message: 'Logged out' };
     }
   }
 

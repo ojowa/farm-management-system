@@ -15,7 +15,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from '../services/auth.service';
-import { AuthorizationGuard, JwtAuthGuard } from '@farm/auth';
+import { AuthorizationGuard, JwtAuthGuard } from '@farm/auth/nestjs';
 import { ZodValidationPipe } from '@farm/utils';
 import { loginSchema, registerSchema } from '@farm/validation';
 
@@ -52,6 +52,14 @@ export class AuthController {
   }
 
   // Protected: must be authenticated to view the profile.
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
+  @ApiBearerAuth('access-token')
+  @Post('logout')
+  @ApiOperation({ summary: 'Logout and revoke refresh tokens' })
+  async logout(@Request() req: any) {
+    return this.authService.logout(req.user, req.headers.authorization);
+  }
+
   @UseGuards(JwtAuthGuard, AuthorizationGuard)
   @ApiBearerAuth('access-token')
   @Get('profile')

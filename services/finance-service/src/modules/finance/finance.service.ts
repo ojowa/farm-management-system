@@ -5,7 +5,7 @@ import {
   CreateSaleRequest,
   UpdateSaleRequest,
 } from '@farm/types';
-import { emitFinanceEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitFinanceEvent } from '@farm/utils';
 
 export class FinanceService {
   private repository = new FinanceRepository();

@@ -1,6 +1,6 @@
 import { LivestockRepository } from './livestock.repository';
 import { CreateLivestockRequest, UpdateLivestockRequest } from '@farm/types';
-import { emitLivestockEvent } from '../../../../../shared-services/events/event-emitter';
+import { emitLivestockEvent } from '@farm/utils';
 
 export class LivestockService {
   private repository = new LivestockRepository();

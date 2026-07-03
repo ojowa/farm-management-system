@@ -14,6 +14,7 @@ router.post('/refresh', authController.refresh);
 router.get('/me', authMiddleware(), authController.me);
 router.get('/profile', authMiddleware(), authController.me);
 router.put('/profile', authMiddleware(), authController.updateProfile);
+router.post('/logout', authMiddleware(), authController.logout);
 
 // Multi-organization
 router.get('/my-organizations', authMiddleware(), authController.myOrganizations);
