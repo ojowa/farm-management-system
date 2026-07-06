@@ -107,6 +107,11 @@ const PaginationParamsSchema = z.object({
 vi.mock('axios', () => ({
   default: {
     create: vi.fn(() => ({
+      defaults: {
+        baseURL: 'http://localhost:4000',
+        timeout: 15000,
+        headers: { 'Content-Type': 'application/json' },
+      },
       interceptors: {
         request: { use: vi.fn() },
         response: { use: vi.fn() },
