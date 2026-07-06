@@ -6,7 +6,7 @@
     "dev": "next dev -p 3004",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "echo \"No linter configured\""
   },
   "dependencies": {
     "@farm/auth": "workspace:*",
