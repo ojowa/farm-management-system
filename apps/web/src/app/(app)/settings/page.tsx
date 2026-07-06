@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
-import { authAPI, orgAdminAPI } from '@/lib/api';
+import { orgAdminAPI, settingsAPI } from '@/lib/api';
 import { useToasts } from '@/lib/toasts';
 import { Card, Button, Input, Badge } from '@/components/ui';
 
@@ -10,15 +9,38 @@ const canManageOrg = (role?: string) =>
   ['SUPER_ADMIN', 'SUPPORT_ADMIN', 'ORGANIZATION_OWNER'].includes(role || '');
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth();
   const { success, error: toastError } = useToasts();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [user, setUser] = useState<any>({
+    id: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: '',
+    organizationId: '',
+    organizationName: '',
+    avatar: null,
+    permissions: [],
+    planFeatures: { modules: [], farmTypes: [] },
+  });
+  const [loading, setLoading] = useState(true);
+
+  const refreshUser = async () => {
+    try {
+      const { data } = await settingsAPI.getProfile();
+      setUser(data);
+    } catch {
+      /* ignore */
+    }
+  };
+
   const [form, setForm] = useState({
-    fullName: user?.fullName || '',
+    firstName: '',
+    lastName: '',
   });
   const [saving, setSaving] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatar || null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Organization settings
@@ -37,7 +59,55 @@ export default function SettingsPage() {
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
   const [roleSaving, setRoleSaving] = useState(false);
 
-  const [tab, setTab] = useState<'profile' | 'organization' | 'roles'>('profile');
+  // Notification preferences
+  const [notifications, setNotifications] = useState({
+    emailAlerts: true,
+    pushNotifications: true,
+    weeklyDigest: false,
+    taskAssignments: true,
+    attendanceAlerts: true,
+  });
+
+  // Security settings
+  const [security, setSecurity] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [securityErrors, setSecurityErrors] = useState<Record<string, string>>({});
+
+  const [tab, setTab] = useState<'profile' | 'organization' | 'roles' | 'notifications' | 'security'>('profile');
+
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      try {
+        const [profileRes, prefsRes] = await Promise.all([
+          settingsAPI.getProfile(),
+          settingsAPI.getPreferences(),
+        ]);
+        const profile = profileRes.data;
+        setUser(profile);
+        setForm({
+          firstName: profile.firstName || '',
+          lastName: profile.lastName || '',
+        });
+        setAvatarPreview(profile.avatar || null);
+
+        if (prefsRes.data?.notificationPreferences) {
+          setNotifications((prev) => ({
+            ...prev,
+            ...prefsRes.data.notificationPreferences,
+          }));
+        }
+      } catch {
+        /* ignore */
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, []);
 
   useEffect(() => {
     if (canManageOrg(user?.role)) {
@@ -109,6 +179,43 @@ export default function SettingsPage() {
     }
   };
 
+  const handleNotificationsSave = async () => {
+    try {
+      await settingsAPI.updatePreferences({ notificationPreferences: notifications });
+      success('Notification preferences updated');
+    } catch (err: any) {
+      toastError(err.response?.data?.message || 'Failed to update notifications');
+    }
+  };
+
+  const handleSecuritySave = async () => {
+    const errors: Record<string, string> = {};
+    if (!security.currentPassword) {
+      errors.currentPassword = 'Current password is required';
+    }
+    if (security.newPassword && security.newPassword.length < 8) {
+      errors.newPassword = 'Password must be at least 8 characters';
+    }
+    if (security.newPassword && security.newPassword !== security.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    if (Object.keys(errors).length > 0) {
+      setSecurityErrors(errors);
+      return;
+    }
+    setSecurityErrors({});
+    try {
+      await settingsAPI.changePassword({
+        currentPassword: security.currentPassword,
+        newPassword: security.newPassword,
+      });
+      success('Password updated successfully');
+      setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      toastError(err.response?.data?.message || 'Failed to update password');
+    }
+  };
+
   async function loadOrg() {
     try {
       const { data } = await orgAdminAPI.getOrganization();
@@ -128,7 +235,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await authAPI.updateProfile({ fullName: form.fullName });
+      await settingsAPI.updateProfile({ firstName: form.firstName, lastName: form.lastName });
       success('Profile updated');
       await refreshUser();
     } catch (err: any) {
@@ -146,20 +253,20 @@ export default function SettingsPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setAvatarPreview(base64);
+      setUploadingAvatar(true);
+      try {
+        await settingsAPI.updateProfile({ avatar: base64 });
+        success('Avatar updated');
+        await refreshUser();
+      } catch (err: any) {
+        toastError(err.response?.data?.message || 'Failed to upload avatar');
+        setAvatarPreview(user?.avatar || null);
+      } finally { setUploadingAvatar(false); }
+    };
     reader.readAsDataURL(file);
-
-    setUploadingAvatar(true);
-    try {
-      const formData = new FormData();
-      formData.append('avatar', file);
-      await authAPI.updateProfile(formData);
-      success('Avatar updated');
-      await refreshUser();
-    } catch (err: any) {
-      toastError(err.response?.data?.message || 'Failed to upload avatar');
-      setAvatarPreview(user?.avatar || null);
-    } finally { setUploadingAvatar(false); }
   };
 
   const handleOrgSave = async (e: React.FormEvent) => {
@@ -172,6 +279,14 @@ export default function SettingsPage() {
       toastError(err.response?.data?.message || 'Failed to update organization');
     } finally { setOrgSaving(false); }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500">Loading settings...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -207,6 +322,22 @@ export default function SettingsPage() {
             Roles
           </button>
         )}
+        <button
+          onClick={() => setTab('notifications')}
+          className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'notifications' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Notifications
+        </button>
+        <button
+          onClick={() => setTab('security')}
+          className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+            tab === 'security' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Security
+        </button>
       </div>
 
       {tab === 'profile' && (
@@ -225,7 +356,7 @@ export default function SettingsPage() {
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      user?.fullName?.[0] || user?.email?.[0]?.toUpperCase() || '?'
+                      (user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || '?')
                     )}
                   </div>
                   <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -236,7 +367,11 @@ export default function SettingsPage() {
                   </div>
                 </button>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{user?.fullName || 'No name set'}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.firstName || user?.lastName
+                      ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                      : 'No name set'}
+                  </p>
                   <p className="text-xs text-gray-500">{user?.email}</p>
                   {uploadingAvatar && <p className="text-xs text-green-600 mt-1">Uploading...</p>}
                 </div>
@@ -249,12 +384,20 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <Input
-                label="Full Name"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                required
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="First Name"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Last Name"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  required
+                />
+              </div>
               <Input label="Email" value={user?.email || ''} disabled />
               <div className="flex justify-end mt-4">
                 <Button type="submit" loading={saving}>Save Changes</Button>
@@ -461,6 +604,79 @@ export default function SettingsPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {tab === 'notifications' && (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
+          <div className="space-y-4">
+            {[
+              { key: 'emailAlerts', label: 'Email Alerts', desc: 'Receive important updates via email' },
+              { key: 'pushNotifications', label: 'Push Notifications', desc: 'Get notified on your device' },
+              { key: 'weeklyDigest', label: 'Weekly Digest', desc: 'Summary of farm activity each week' },
+              { key: 'taskAssignments', label: 'Task Assignments', desc: 'Notify when tasks are assigned to you' },
+              { key: 'attendanceAlerts', label: 'Attendance Alerts', desc: 'Notify on clock-in/out events' },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                  <p className="text-xs text-gray-500">{item.desc}</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(notifications as any)[item.key]}
+                    onChange={(e) => setNotifications({ ...notifications, [item.key]: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6">
+            <Button onClick={handleNotificationsSave}>Save Preferences</Button>
+          </div>
+        </Card>
+      )}
+
+      {tab === 'security' && (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Password</h3>
+          <div className="space-y-4 max-w-md">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <Input
+                type="password"
+                value={security.currentPassword}
+                onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
+                placeholder="Enter current password"
+              />
+              {securityErrors.currentPassword && <p className="text-sm text-red-600 mt-1">{securityErrors.currentPassword}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <Input
+                type="password"
+                value={security.newPassword}
+                onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
+                placeholder="Enter new password"
+              />
+              {securityErrors.newPassword && <p className="text-sm text-red-600 mt-1">{securityErrors.newPassword}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <Input
+                type="password"
+                value={security.confirmPassword}
+                onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
+                placeholder="Confirm new password"
+              />
+              {securityErrors.confirmPassword && <p className="text-sm text-red-600 mt-1">{securityErrors.confirmPassword}</p>}
+            </div>
+            <Button onClick={handleSecuritySave}>Update Password</Button>
+          </div>
+        </Card>
       )}
     </div>
   );

@@ -1,121 +1,97 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { platformAuthAPI } from '@/lib/api';
-import {
-  setCookie,
-  deleteCookie,
-  getUser,
-  setUser as setUserStorage,
-  clearAllAuthStorage,
-} from '@farm/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 
-interface ConsoleUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  organizationId: string;
-  organizationName: string;
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-interface AuthContextValue {
-  user: ConsoleUser | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  loading: true,
-  isAuthenticated: false,
-  login: async () => {},
-  logout: () => {},
+const authClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-const CONSOLE_PREFIX = 'console_';
-
-function setConsoleCookies(accessToken: string, refreshToken: string) {
-  setCookie(`${CONSOLE_PREFIX}accessToken`, accessToken, 1);
-  setCookie(`${CONSOLE_PREFIX}refreshToken`, refreshToken, 7);
+interface User {
+  id: string;
+  email: string | null;
+  firstName: string;
+  lastName: string;
+  role: { name: string; permissions: { permission: { name: string }[] }[] };
+  organizationId: string | null;
+  twoFactorEnabled: boolean;
+  [key: string]: any;
 }
 
-function clearConsoleCookies() {
-  deleteCookie(`${CONSOLE_PREFIX}accessToken`);
-  deleteCookie(`${CONSOLE_PREFIX}refreshToken`);
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
 }
 
-function clearConsoleAuth() {
-  localStorage.removeItem('console_accessToken');
-  localStorage.removeItem('console_refreshToken');
-  localStorage.removeItem('console_user');
-  clearConsoleCookies();
+interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<ConsoleUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  const refreshUser = useCallback(async () => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+  });
+
+  const fetchUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('console_accessToken');
-      if (!token) { setUser(null); return; }
-      const { data } = await platformAuthAPI.me();
-      setUser(data);
-      setUserStorage(data, 'console_user');
+      const res = await authClient.get('/auth/me');
+      const user = res.data;
+      // Platform console requires SUPER_ADMIN or SUPPORT_ADMIN
+      if (user.role?.name !== 'SUPER_ADMIN' && user.role?.name !== 'SUPPORT_ADMIN') {
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+        return;
+      }
+      setState({ user, isLoading: false, isAuthenticated: true });
     } catch {
-      clearConsoleAuth();
-      setUser(null);
+      setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   }, []);
 
   useEffect(() => {
-    const stored = getUser<ConsoleUser>('console_user');
-    if (stored) { setUser(stored); }
-    refreshUser().finally(() => setLoading(false));
+    fetchUser();
+  }, [fetchUser]);
 
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'console_accessToken' && !e.newValue) {
-        clearConsoleAuth();
-        setUser(null);
-        router.push('/login');
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [refreshUser, router]);
+  const login = async (email: string, password: string) => {
+    const res = await authClient.post('/auth/login', { email, password });
+    const data = res.data;
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { data } = await platformAuthAPI.login({ email, password });
-    const u: ConsoleUser = {
-      id: data.user.id, email: data.user.email, firstName: data.user.firstName,
-      lastName: data.user.lastName, role: data.user.role, organizationId: data.user.organizationId,
-      organizationName: data.user.organizationName || '',
-    };
-    localStorage.setItem('console_accessToken', data.accessToken);
-    localStorage.setItem('console_refreshToken', data.refreshToken);
-    setUserStorage(u, 'console_user');
-    setConsoleCookies(data.accessToken, data.refreshToken);
-    setUser(u);
-    router.push('/dashboard');
-  }, [router]);
+    if (data.requiresMFA) {
+      throw { requiresMFA: true, mfaToken: data.mfaToken, user: data.user };
+    }
 
-  const logout = useCallback(() => {
-    clearConsoleAuth();
-    setUser(null);
-    router.push('/login');
-  }, [router]);
+    await fetchUser();
+  };
+
+  const logout = async () => {
+    try {
+      await authClient.post('/auth/logout');
+    } finally {
+      setState({ user: null, isLoading: false, isAuthenticated: false });
+    }
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ ...state, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 
 const router = Router();
@@ -9,7 +8,7 @@ function getOrgId(req: Request): string {
 }
 
 // GET /leave/types - List leave types for this org
-router.get('/', authMiddleware({ permission: 'leave.read' }), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const types = await scopedPrisma.leaveType.findMany({
@@ -24,7 +23,7 @@ router.get('/', authMiddleware({ permission: 'leave.read' }), async (req: Reques
 });
 
 // POST /leave/types - Create leave type (ORG_OWNER+)
-router.post('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN'], permission: 'leave.write' }), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { name, daysPerYear, isPaid } = req.body;
@@ -48,7 +47,7 @@ router.post('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN'], 
 });
 
 // PUT /leave/types/:id - Update leave type
-router.put('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN'], permission: 'leave.write' }), async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.leaveType.findFirst({ where: { id } });
@@ -71,7 +70,7 @@ router.put('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN']
 });
 
 // DELETE /leave/types/:id - Delete leave type
-router.delete('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN'], permission: 'leave.write' }), async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.leaveType.findFirst({

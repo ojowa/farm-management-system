@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getAccessToken, setAccessToken, setRefreshToken, clearAllAuthStorage, setAuthCookies, clearAuthCookies } from '@farm/auth';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -8,92 +7,49 @@ export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-// Request interceptor — attach access token + org override for SUPER_ADMIN
-apiClient.interceptors.request.use(async (config) => {
-  if (typeof window !== 'undefined') {
-    const token = getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    // For SUPER_ADMIN: send selected org if set
-    const selectedOrg = localStorage.getItem('admin_selected_org');
-    if (selectedOrg) {
-      config.headers['x-selected-organization'] = selectedOrg;
-    }
-  }
-  return config;
-});
-
-// Response interceptor — handle 401 + token refresh
+// ── Token refresh interceptor ─────────────────────────────
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (t: string) => void; reject: (e: any) => void }> = [];
+let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e?: unknown) => void }> = [];
 
-function processQueue(error: any, token: string | null) {
-  failedQueue.forEach((p) => (error || !token ? p.reject(error) : p.resolve(token!)));
+function processQueue(error: unknown) {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
   failedQueue = [];
 }
 
 apiClient.interceptors.response.use(
-  (res) => res,
+  (response) => response,
   async (error) => {
-    const original = error.config;
-    if (error.response?.status !== 401 || original._retry) return Promise.reject(error);
-
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then((token) => {
-        original.headers.Authorization = `Bearer ${token}`;
-        return apiClient(original);
-      });
-    }
-
-    original._retry = true;
-    isRefreshing = true;
-
-    try {
-      const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-      if (!refreshToken) throw new Error('No refresh token');
-
-      const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-      const { accessToken, refreshToken: newRefresh } = data;
-
-      setAccessToken(accessToken);
-      setRefreshToken(newRefresh);
-      setAuthCookies(accessToken, newRefresh, { accessDays: 1 });
-
-      processQueue(null, accessToken);
-      original.headers.Authorization = `Bearer ${accessToken}`;
-      return apiClient(original);
-    } catch (refreshError) {
-      if (typeof window !== 'undefined') {
-        clearAllAuthStorage();
-        clearAuthCookies();
-        window.location.href = '/login';
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => apiClient(originalRequest))
+          .catch((err) => Promise.reject(err));
       }
-      processQueue(refreshError, null);
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
+      originalRequest._retry = true;
+      isRefreshing = true;
+      try {
+        await apiClient.post('/auth/refresh');
+        processQueue(null);
+        return apiClient(originalRequest);
+      } catch (e) {
+        processQueue(e);
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        return Promise.reject(e);
+      } finally {
+        isRefreshing = false;
+      }
     }
+    return Promise.reject(error);
   }
 );
 
-// ── API modules ───────────────────────────────────────────────────────
-export const authAPI = {
-  login: (creds: { email: string; password: string }) => apiClient.post('/auth/login', creds),
-  register: (data: any) => apiClient.post('/auth/register', data),
-  logout: () => apiClient.post('/auth/logout'),
-  getProfile: () => apiClient.get('/auth/profile'),
-  updateProfile: (data: any) => apiClient.put('/auth/profile', data),
-  refreshToken: (data: { refreshToken: string }) => apiClient.post('/auth/refresh', data),
-  verifyMFA: (data: { mfaSessionToken: string; code: string }) => apiClient.post('/auth/verify-mfa', data),
-  requestPasswordReset: (data: { email: string }) => apiClient.post('/auth/forgot-password', data),
-  resetPassword: (data: { token: string; newPassword: string }) => apiClient.post('/auth/reset-password', data),
-};
-
+// ── Core API modules ──────────────────────────────────────
 export const farmsAPI = {
   list: (params?: any) => apiClient.get('/farms', { params }),
   get: (id: string) => apiClient.get(`/farms/${id}`),
@@ -143,13 +99,11 @@ export const workersAPI = {
 };
 
 export const financeAPI = {
-  // Expenses
   listExpenses: (params?: any) => apiClient.get('/finance/expenses', { params }),
   getExpense: (id: string) => apiClient.get(`/finance/expenses/${id}`),
   createExpense: (data: any) => apiClient.post('/finance/expenses', data),
   updateExpense: (id: string, data: any) => apiClient.put(`/finance/expenses/${id}`, data),
   deleteExpense: (id: string) => apiClient.delete(`/finance/expenses/${id}`),
-  // Sales
   listSales: (params?: any) => apiClient.get('/finance/sales', { params }),
   getSale: (id: string) => apiClient.get(`/finance/sales/${id}`),
   createSale: (data: any) => apiClient.post('/finance/sales', data),
@@ -157,7 +111,7 @@ export const financeAPI = {
   deleteSale: (id: string) => apiClient.delete(`/finance/sales/${id}`),
 };
 
-export const reportingAPI = {
+export const reportsAPI = {
   list: (params?: any) => apiClient.get('/reporting/reports', { params }),
   get: (id: string) => apiClient.get(`/reporting/reports/${id}`),
   create: (data: any) => apiClient.post('/reporting/reports', data),
@@ -166,9 +120,8 @@ export const reportingAPI = {
   delete: (id: string) => apiClient.delete(`/reporting/reports/${id}`),
 };
 
-export const reportsAPI = reportingAPI;
+export const reportingAPI = reportsAPI;
 
-// ── Poultry sub-modules ────────────────────────────────────────────────
 export const poultryHousesAPI = {
   list: (params?: any) => apiClient.get('/poultry/poultry-houses', { params }),
   get: (id: string) => apiClient.get(`/poultry/poultry-houses/${id}`),
@@ -225,29 +178,20 @@ export const mortalityRecordsAPI = {
   delete: (id: string) => apiClient.delete(`/poultry/mortality-records/${id}`),
 };
 
-export const medicationAPI = {
-  list: (params?: any) => apiClient.get('/poultry/medications', { params }),
-  get: (id: string) => apiClient.get(`/poultry/medications/${id}`),
-  create: (data: any) => apiClient.post('/poultry/medications', data),
-  update: (id: string, data: any) => apiClient.put(`/poultry/medications/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/poultry/medications/${id}`),
-};
-
-export const organizationsAPI = {
-  list: (params?: any) => apiClient.get('/organizations', { params }),
-  get: (id: string) => apiClient.get(`/organizations/${id}`),
-  getBySlug: (slug: string) => apiClient.get(`/organizations/slug/${slug}`),
-  create: (data: any) => apiClient.post('/organizations', data),
-  update: (id: string, data: any) => apiClient.put(`/organizations/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/organizations/${id}`),
-};
-
 export const eggProductionAPI = {
   list: (params?: any) => apiClient.get('/poultry/egg-production', { params }),
   get: (id: string) => apiClient.get(`/poultry/egg-production/${id}`),
   create: (data: any) => apiClient.post('/poultry/egg-production', data),
   update: (id: string, data: any) => apiClient.put(`/poultry/egg-production/${id}`, data),
   delete: (id: string) => apiClient.delete(`/poultry/egg-production/${id}`),
+};
+
+export const medicationAPI = {
+  list: (params?: any) => apiClient.get('/poultry/medications', { params }),
+  get: (id: string) => apiClient.get(`/poultry/medications/${id}`),
+  create: (data: any) => apiClient.post('/poultry/medications', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/medications/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/medications/${id}`),
 };
 
 export const poultrySalesAPI = {
@@ -258,46 +202,14 @@ export const poultrySalesAPI = {
   delete: (id: string) => apiClient.delete(`/poultry/sales/${id}`),
 };
 
-export const notificationsAPI = {
-  list: (userId: string, params?: any) => apiClient.get(`/notifications/user/${userId}`, { params }),
-  getUnreadCount: (userId: string) => apiClient.get(`/notifications/user/${userId}/unread-count`),
-  markAsRead: (id: string) => apiClient.put(`/notifications/${id}/read`),
-  markAllAsRead: (userId: string) => apiClient.put(`/notifications/user/${userId}/read-all`),
-  delete: (id: string) => apiClient.delete(`/notifications/${id}`),
-};
-
-export const rolesAPI = {
-  list: (params?: any) => apiClient.get('/roles', { params }),
-  get: (id: string) => apiClient.get(`/roles/${id}`),
-  create: (data: { name: string; description?: string; permissionIds?: string[] }) => apiClient.post('/roles', data),
-  update: (id: string, data: { name?: string; description?: string }) => apiClient.put(`/roles/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/roles/${id}`),
-  setPermissions: (id: string, permissionIds: string[]) => apiClient.post(`/roles/${id}/permissions`, { permissionIds }),
-};
-
-export const permissionsAPI = {
-  list: () => apiClient.get('/permissions'),
-  create: (data: { name: string; description?: string; category?: string }) => apiClient.post('/permissions', data),
-  delete: (id: string) => apiClient.delete(`/permissions/${id}`),
-};
-
-export const adminAPI = {
-  listOrganizations: (params?: any) => apiClient.get('/admin/organizations', { params }),
-  getOrganization: (id: string) => apiClient.get(`/admin/organizations/${id}`),
-  updateSubscription: (id: string, data: { subscriptionPlan?: string; subscriptionStatus?: string }) => apiClient.put(`/admin/organizations/${id}/subscription`, data),
-  getOrganizationUsers: (id: string) => apiClient.get(`/admin/organizations/${id}/users`),
-  toggleUserActive: (userId: string) => apiClient.put(`/admin/organizations/users/${userId}/toggle-active`),
-};
-
 export const orgAdminAPI = {
   getOrganization: () => apiClient.get('/org-admin/me'),
   updateOrganization: (data: any) => apiClient.put('/org-admin/me', data),
   listUsers: () => apiClient.get('/org-admin/users'),
-  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string }) =>
+  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string; phone?: string }) =>
     apiClient.post('/org-admin/users', data),
   updateUser: (userId: string, data: any) => apiClient.put(`/org-admin/users/${userId}`, data),
   removeUser: (userId: string) => apiClient.delete(`/org-admin/users/${userId}`),
-  // Role management
   listRoles: () => apiClient.get('/org-admin/roles'),
   getRole: (id: string) => apiClient.get(`/org-admin/roles/${id}`),
   createRole: (data: { name: string; description?: string; permissionIds?: string[] }) =>
@@ -305,4 +217,232 @@ export const orgAdminAPI = {
   updateRole: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) =>
     apiClient.put(`/org-admin/roles/${id}`, data),
   deleteRole: (id: string) => apiClient.delete(`/org-admin/roles/${id}`),
+};
+
+export const rolesAPI = {
+  list: () => apiClient.get('/roles'),
+  get: (id: string) => apiClient.get(`/roles/${id}`),
+  create: (data: any) => apiClient.post('/roles', data),
+  update: (id: string, data: any) => apiClient.put(`/roles/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/roles/${id}`),
+  setPermissions: (id: string, permissionIds: string[]) => apiClient.put(`/roles/${id}/permissions`, { permissionIds }),
+};
+
+export const permissionsAPI = {
+  list: () => apiClient.get('/permissions'),
+};
+
+export const rosterAPI = {
+  listShifts: () => apiClient.get('/shifts'),
+  createShift: (data: { name: string; startTime: string; endTime: string; color?: string }) =>
+    apiClient.post('/shifts', data),
+  updateShift: (id: string, data: any) => apiClient.put(`/shifts/${id}`, data),
+  deleteShift: (id: string) => apiClient.delete(`/shifts/${id}`),
+  listAssignments: (params?: { startDate?: string; endDate?: string; userId?: string }) =>
+    apiClient.get('/shift-assignments', { params }),
+  createAssignment: (data: { shiftId: string; userId: string; date: string; notes?: string }) =>
+    apiClient.post('/shift-assignments', data),
+  bulkAssign: (assignments: Array<{ shiftId: string; userId: string; date: string; notes?: string }>) =>
+    apiClient.post('/shift-assignments/bulk', { assignments }),
+  deleteAssignment: (id: string) => apiClient.delete(`/shift-assignments/${id}`),
+};
+
+export const messagesAPI = {
+  inbox: () => apiClient.get('/messages/inbox'),
+  sent: () => apiClient.get('/messages/sent'),
+  unreadCount: () => apiClient.get('/messages/unread-count'),
+  get: (id: string) => apiClient.get(`/messages/${id}`),
+  send: (data: { subject: string; body: string; recipientIds: string[]; priority?: string }) =>
+    apiClient.post('/messages', data),
+  delete: (id: string) => apiClient.delete(`/messages/${id}`),
+};
+
+export const correspondenceAPI = {
+  list: (params?: { status?: string; type?: string; category?: string; archived?: string }) =>
+    apiClient.get('/correspondence', { params }),
+  get: (id: string) => apiClient.get(`/correspondence/${id}`),
+  stats: () => apiClient.get('/correspondence/stats'),
+  create: (data: any) => apiClient.post('/correspondence', data),
+  update: (id: string, data: any) => apiClient.put(`/correspondence/${id}`, data),
+  archive: (id: string) => apiClient.put(`/correspondence/${id}/archive`),
+  unarchive: (id: string) => apiClient.put(`/correspondence/${id}/unarchive`),
+  delete: (id: string) => apiClient.delete(`/correspondence/${id}`),
+  addAttachment: (id: string, data: { fileName: string; fileSize: number; fileUrl: string; fileType?: string }) =>
+    apiClient.post(`/correspondence/${id}/attachments`, data),
+  removeAttachment: (attachmentId: string) => apiClient.delete(`/correspondence/attachments/${attachmentId}`),
+};
+
+export const tasksAPI = {
+  list: (params?: any) => apiClient.get('/tasks', { params }),
+  get: (id: string) => apiClient.get(`/tasks/${id}`),
+  create: (data: any) => apiClient.post('/tasks', data),
+  update: (id: string, data: any) => apiClient.put(`/tasks/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/tasks/${id}`),
+  updateStatus: (id: string, status: string) => apiClient.put(`/tasks/${id}/status`, { status }),
+};
+
+export const attendanceAPI = {
+  list: (params?: any) => apiClient.get('/attendance', { params }),
+  getToday: () => apiClient.get('/attendance/today'),
+  getSummary: (params: { workerId: string; month?: number; year?: number }) =>
+    apiClient.get('/attendance/summary', { params }),
+  create: (data: any) => apiClient.post('/attendance', data),
+  clockIn: (data: { workerId: string; workerName: string }) => apiClient.post('/attendance/clock-in', data),
+  clockOut: (data: { workerId: string }) => apiClient.post('/attendance/clock-out', data),
+  update: (id: string, data: any) => apiClient.put(`/attendance/${id}`, data),
+  bulkCreate: (records: any[]) => apiClient.post('/attendance/bulk', { records }),
+};
+
+export const cropStagesAPI = {
+  calendar: (params?: any) => apiClient.get('/crops/lifecycle/calendar', { params }),
+  listByCycle: (cropCycleId: string) => apiClient.get(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`),
+  create: (cropCycleId: string, data: any) => apiClient.post(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`, data),
+  update: (id: string, data: any) => apiClient.put(`/crops/lifecycle/stages/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/crops/lifecycle/stages/${id}`),
+};
+
+export const livestockHealthAPI = {
+  listByAnimal: (livestockId: string) => apiClient.get(`/livestock/health/livestock/${livestockId}`),
+  create: (livestockId: string, data: any) => apiClient.post(`/livestock/health/livestock/${livestockId}`, data),
+  listVaccinations: (livestockId: string) => apiClient.get(`/livestock/health/vaccinations/${livestockId}`),
+  scheduleVaccination: (livestockId: string, data: any) => apiClient.post(`/livestock/health/vaccinations/${livestockId}`, data),
+  administerVaccination: (id: string) => apiClient.put(`/livestock/health/vaccinations/${id}/administer`),
+  overdueVaccinations: () => apiClient.get('/livestock/health/overdue'),
+};
+
+export const breedingAPI = {
+  list: (params?: any) => apiClient.get('/livestock/breeding', { params }),
+  create: (data: any) => apiClient.post('/livestock/breeding', data),
+  update: (id: string, data: any) => apiClient.put(`/livestock/breeding/${id}`, data),
+  upcoming: () => apiClient.get('/livestock/breeding/upcoming'),
+};
+
+export const weightAPI = {
+  listByAnimal: (livestockId: string) => apiClient.get(`/livestock/weight/livestock/${livestockId}`),
+  recordForAnimal: (livestockId: string, data: any) => apiClient.post(`/livestock/weight/livestock/${livestockId}`, data),
+  listByFlock: (flockId: string) => apiClient.get(`/livestock/weight/flock/${flockId}`),
+  recordForFlock: (flockId: string, data: any) => apiClient.post(`/livestock/weight/flock/${flockId}`, data),
+};
+
+export const irrigationAPI = {
+  listSchedules: (params?: any) => apiClient.get('/crops/irrigation/schedule', { params }),
+  createSchedule: (data: any) => apiClient.post('/crops/irrigation/schedule', data),
+  updateSchedule: (id: string, data: any) => apiClient.put(`/crops/irrigation/schedule/${id}`, data),
+  deleteSchedule: (id: string) => apiClient.delete(`/crops/irrigation/schedule/${id}`),
+  createLog: (data: any) => apiClient.post('/crops/irrigation/log', data),
+  listLogs: (params?: any) => apiClient.get('/crops/irrigation/log', { params }),
+};
+
+export const pestDiseaseAPI = {
+  list: (params?: any) => apiClient.get('/crops/pest-disease', { params }),
+  active: () => apiClient.get('/crops/pest-disease/active'),
+  create: (data: any) => apiClient.post('/crops/pest-disease', data),
+  update: (id: string, data: any) => apiClient.put(`/crops/pest-disease/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/crops/pest-disease/${id}`),
+};
+
+export const weatherAPI = {
+  current: (lat: number, lon: number) => apiClient.get('/weather/current', { params: { lat, lon } }),
+  forecast: (lat: number, lon: number, days?: number) => apiClient.get('/weather/forecast', { params: { lat, lon, days } }),
+  alerts: (lat: number, lon: number) => apiClient.get('/weather/alerts', { params: { lat, lon } }),
+};
+
+export const profitabilityAPI = {
+  byFarm: (params?: any) => apiClient.get('/finance/profitability/farm', { params }),
+  summary: (params?: any) => apiClient.get('/finance/profitability/summary', { params }),
+};
+
+export const yieldAPI = {
+  listByCrop: (cropId: string) => apiClient.get(`/crops/yield/crop/${cropId}`),
+  create: (cropId: string, data: any) => apiClient.post(`/crops/yield/crop/${cropId}`, data),
+  summary: (cropId: string) => apiClient.get(`/crops/yield/crop/${cropId}/summary`),
+};
+
+export const scheduledReportsAPI = {
+  list: () => apiClient.get('/reporting/schedule'),
+  create: (data: any) => apiClient.post('/reporting/schedule', data),
+  update: (id: string, data: any) => apiClient.put(`/reporting/schedule/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/reporting/schedule/${id}`),
+};
+
+export const lowStockAPI = {
+  list: () => apiClient.get('/inventory/low-stock'),
+  reorder: (id: string) => apiClient.post(`/inventory/${id}/reorder`),
+};
+
+export const importExportAPI = {
+  exportFarms: (format?: string) => apiClient.get('/farms/export/farms', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  importFarms: (data: any[]) => apiClient.post('/farms/import/farms', { data }),
+  exportCrops: (format?: string) => apiClient.get('/farms/export/crops', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  exportWorkers: (format?: string) => apiClient.get('/farms/export/workers', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  exportInventory: (format?: string) => apiClient.get('/inventory/export', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  importInventory: (data: any[]) => apiClient.post('/inventory/import', { data }),
+};
+
+export const farmMapAPI = {
+  all: () => apiClient.get('/farms/map/all'),
+  updateLocation: (id: string, data: { latitude: number; longitude: number }) => apiClient.put(`/farms/map/${id}/location`, data),
+};
+
+export const equipmentAPI = {
+  list: (params?: any) => apiClient.get('/inventory/equipment', { params }),
+  get: (id: string) => apiClient.get(`/inventory/equipment/${id}`),
+  create: (data: any) => apiClient.post('/inventory/equipment', data),
+  update: (id: string, data: any) => apiClient.put(`/inventory/equipment/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/inventory/equipment/${id}`),
+  maintenanceHistory: (id: string) => apiClient.get(`/inventory/equipment/${id}/maintenance`),
+  addMaintenance: (id: string, data: any) => apiClient.post(`/inventory/equipment/${id}/maintenance`, data),
+};
+
+export const contractsAPI = {
+  list: (params?: any) => apiClient.get('/finance/contracts', { params }),
+  create: (data: any) => apiClient.post('/finance/contracts', data),
+  update: (id: string, data: any) => apiClient.put(`/finance/contracts/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/finance/contracts/${id}`),
+};
+
+export const documentsAPI = {
+  list: (params?: any) => apiClient.get('/documents', { params }),
+  upload: (formData: FormData) => apiClient.post('/documents/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  delete: (id: string) => apiClient.delete(`/documents/${id}`),
+};
+
+export const marketplaceAPI = {
+  listBuyers: (params?: any) => apiClient.get('/finance/marketplace/buyers', { params }),
+  createBuyer: (data: any) => apiClient.post('/finance/marketplace/buyers', data),
+  updateBuyer: (id: string, data: any) => apiClient.put(`/finance/marketplace/buyers/${id}`, data),
+  deleteBuyer: (id: string) => apiClient.delete(`/finance/marketplace/buyers/${id}`),
+  listListings: (params?: any) => apiClient.get('/finance/marketplace/listings', { params }),
+  createListing: (data: any) => apiClient.post('/finance/marketplace/listings', data),
+  updateListing: (id: string, data: any) => apiClient.put(`/finance/marketplace/listings/${id}`, data),
+  deleteListing: (id: string) => apiClient.delete(`/finance/marketplace/listings/${id}`),
+};
+
+export const notificationsAPI = {
+  list: (params?: any) => apiClient.get('/notifications', { params }),
+  markRead: (id: string) => apiClient.put(`/notifications/${id}/read`),
+  markAllRead: () => apiClient.put('/notifications/read-all'),
+  delete: (id: string) => apiClient.delete(`/notifications/${id}`),
+};
+
+export const settingsAPI = {
+  getProfile: () => apiClient.get('/auth/me'),
+  updateProfile: (data: any) => apiClient.put('/auth/profile', data),
+  changePassword: (data: any) => apiClient.put('/auth/password', data),
+  getPreferences: () => apiClient.get('/auth/preferences'),
+  updatePreferences: (data: any) => apiClient.put('/auth/preferences', data),
+  getMyOrganizations: () => apiClient.get('/auth/my-organizations'),
+  switchOrganization: (organizationId: string) =>
+    apiClient.post('/auth/switch-organization', { organizationId }),
+  generate2FA: () => apiClient.post('/auth/2fa/generate'),
+  enable2FA: (code: string) => apiClient.post('/auth/2fa/enable', { code }),
+  disable2FA: (code: string) => apiClient.post('/auth/2fa/disable', { code }),
+  getSessions: () => apiClient.get('/auth/sessions'),
+  revokeSession: (tokenId: string) => apiClient.delete(`/auth/sessions/${tokenId}`),
+  revokeAllSessions: () => apiClient.delete('/auth/sessions'),
+  getApiKeys: () => apiClient.get('/api-keys'),
+  listApiKeys: () => apiClient.get('/api-keys'),
+  createApiKey: (data: any) => apiClient.post('/api-keys', data),
+  toggleApiKey: (id: string) => apiClient.patch(`/api-keys/${id}/toggle`),
+  deleteApiKey: (id: string) => apiClient.delete(`/api-keys/${id}`),
 };

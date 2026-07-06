@@ -141,6 +141,7 @@ interface FarmData {
   crops: number;
   animals: number;
   status: 'active' | 'inactive';
+  farmType?: string;
 }
 
 export default function FarmDetailScreen() {
@@ -259,9 +260,9 @@ export default function FarmDetailScreen() {
         <Card style={styles.farmCard}>
           <Text style={styles.farmName}>{farm.name}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 }}>
-            <View style={{ backgroundColor: FARM_TYPE_COLORS[farm.farmType]?.bg || '#F3F4F6', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: FARM_TYPE_COLORS[farm.farmType]?.text || '#6B7280' }}>
-                {FARM_TYPE_LABELS[farm.farmType] || farm.farmType || 'Unknown'}
+            <View style={{ backgroundColor: FARM_TYPE_COLORS[farm.farmType || '']?.bg || '#F3F4F6', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: FARM_TYPE_COLORS[farm.farmType || '']?.text || '#6B7280' }}>
+                {FARM_TYPE_LABELS[farm.farmType || ''] || farm.farmType || 'Unknown'}
               </Text>
             </View>
           </View>

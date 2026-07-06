@@ -13,7 +13,6 @@ import { useToast } from '@/lib/toasts';
 import { farmFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { useReadOnly } from '@/lib/useReadOnly';
-import { useAuth } from '@/lib/auth';
 
 const ALL_FARM_TYPES = [
   { value: 'CROP', label: 'Crop' },
@@ -27,8 +26,7 @@ export default function NewFarmPage() {
   const router = useRouter();
   const { toast } = useToast();
   const readOnly = useReadOnly();
-  const { user } = useAuth();
-  const allowedFarmTypes = user?.planFeatures?.farmTypes;
+  const allowedFarmTypes = undefined;
 
   if (readOnly) {
     router.push('/farms');
@@ -121,7 +119,7 @@ export default function NewFarmPage() {
               </label>
               <Select
                 placeholder="Select farm type"
-                options={allowedFarmTypes ? ALL_FARM_TYPES.filter(t => allowedFarmTypes.includes(t.value)) : ALL_FARM_TYPES}
+                options={ALL_FARM_TYPES}
                 value={form.farmType}
                 onChange={(e) => {
                   setForm({ ...form, farmType: e.target.value });

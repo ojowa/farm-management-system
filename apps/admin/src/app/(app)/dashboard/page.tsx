@@ -13,49 +13,18 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowUpRight,
-  Clock,
   AlertTriangle,
   CheckCircle,
-  BarChart3,
-  DollarSign,
+  Clock,
+  ListTodo,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { farmsAPI, cropsAPI, livestockAPI, poultryAPI } from '@/lib/api';
+import { ChartCard, FarmAreaChart, FarmBarChart, FarmPieChart } from '@/components/charts';
+import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
 import { useReadOnly } from '@/lib/useReadOnly';
 
-const stats = [
-  { name: 'Total Farms', value: '12', change: '+2', changeType: 'up' as const, icon: Home, color: 'bg-blue-500', href: '/farms' },
-  { name: 'Active Crops', value: '48', change: '+5', changeType: 'up' as const, icon: Sprout, color: 'bg-green-500', href: '/crops' },
-  { name: 'Livestock', value: '1,234', change: '+12', changeType: 'up' as const, icon: Beef, color: 'bg-amber-500', href: '/livestock' },
-  { name: 'Poultry Birds', value: '15,670', change: '-3%', changeType: 'down' as const, icon: Egg, color: 'bg-orange-500', href: '/poultry' },
-];
-
-const quickActions = [
-  { name: 'Add Farm', href: '/farms/new', icon: Home, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-  { name: 'New Crop', href: '/crops/new', icon: Sprout, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
-  { name: 'Add Livestock', href: '/livestock/new', icon: Beef, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
-  { name: 'New Flock', href: '/poultry/flocks/new', icon: Egg, color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
-  { name: 'Inventory Item', href: '/inventory/new', icon: Package, color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
-  { name: 'Add Worker', href: '/workers/new', icon: Users, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
-];
-
-const recentActivity = [
-  { id: '1', title: 'New farm added', description: 'Green Valley Farm created', time: '2 hours ago', status: 'success' as const },
-  { id: '2', title: 'Crop harvested', description: 'Wheat - Field A (2.5 tons)', time: '4 hours ago', status: 'success' as const },
-  { id: '3', title: 'Health alert', description: 'Cow #B-204 needs vaccination', time: '6 hours ago', status: 'warning' as const },
-  { id: '4', title: 'Mortality recorded', description: 'Flock #FL-001: 3 birds', time: '8 hours ago', status: 'destructive' as const },
-  { id: '5', title: 'Low stock alert', description: 'Chicken feed (45 bags remaining)', time: '12 hours ago', status: 'warning' as const },
-  { id: '6', title: 'Task completed', description: 'John Doe completed fence repair', time: '1 day ago', status: 'success' as const },
-];
-
-const alerts = [
-  { id: '1', title: 'Vaccination Due', description: '50 cattle need vaccination this week', severity: 'warning' as const, action: 'View Schedule', href: '/livestock' },
-  { id: '2', title: 'Low Feed Stock', description: 'Chicken feed below minimum threshold', severity: 'destructive' as const, action: 'Order Now', href: '/inventory' },
-  { id: '3', title: 'Crop Disease Alert', description: 'Possible rust detected in Field C', severity: 'warning' as const, action: 'Inspect', href: '/crops' },
-];
-
-function StatCard({ stat }: { stat: typeof stats[0] }) {
+function StatCard({ stat }: { stat: { name: string; value: string; change: string; changeType: 'up' | 'down'; icon: any; color: string; href: string } }) {
   const Icon = stat.icon;
   const isUp = stat.changeType === 'up';
   return (
@@ -83,7 +52,7 @@ function StatCard({ stat }: { stat: typeof stats[0] }) {
   );
 }
 
-function QuickActionCard({ action }: { action: typeof quickActions[0] }) {
+function QuickActionCard({ action }: { action: { name: string; href: string; icon: any; color: string } }) {
   const Icon = action.icon;
   return (
     <Link href={action.href} className="group">
@@ -99,27 +68,41 @@ function QuickActionCard({ action }: { action: typeof quickActions[0] }) {
   );
 }
 
-function ActivityItem({ activity }: { activity: typeof recentActivity[0] }) {
-  const iconMap = { success: <CheckCircle className="h-4 w-4 text-green-600" />, warning: <AlertTriangle className="h-4 w-4 text-yellow-600" />, destructive: <AlertTriangle className="h-4 w-4 text-red-600" /> };
+function TaskItem({ task }: { task: any }) {
+  const priorityColors: Record<string, string> = {
+    URGENT: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    HIGH: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+    MEDIUM: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    LOW: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
+  };
+  const statusIcons: Record<string, React.ReactNode> = {
+    PENDING: <Clock className="h-4 w-4 text-yellow-500" />,
+    IN_PROGRESS: <Clock className="h-4 w-4 text-blue-500" />,
+    COMPLETED: <CheckCircle className="h-4 w-4 text-green-500" />,
+    CANCELLED: <AlertTriangle className="h-4 w-4 text-gray-400" />,
+  };
   return (
-    <div className="flex items-start gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors">
-      <div className="flex-shrink-0 mt-0.5">{iconMap[activity.status]}</div>
+    <Link href={`/tasks/${task.id}`} className="flex items-start gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors">
+      <div className="flex-shrink-0 mt-0.5">{statusIcons[task.status] || statusIcons.PENDING}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{activity.title}</p>
-        <p className="text-sm text-muted-foreground">{activity.description}</p>
+        <p className="text-sm font-medium truncate">{task.title}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className={`text-xs px-1.5 py-0.5 rounded ${priorityColors[task.priority] || priorityColors.MEDIUM}`}>{task.priority}</span>
+          {task.assignedToName && <span className="text-xs text-muted-foreground">{task.assignedToName}</span>}
+          {task.dueDate && <span className="text-xs text-muted-foreground">Due {new Date(task.dueDate).toLocaleDateString()}</span>}
+        </div>
       </div>
-      <span className="text-xs text-muted-foreground whitespace-nowrap">{activity.time}</span>
-    </div>
+    </Link>
   );
 }
 
-function AlertCard({ alert }: { alert: typeof alerts[0] }) {
+function AlertCard({ alert }: { alert: { title: string; description: string; severity: string; action: string; href: string } }) {
   const severityColors = {
     warning: 'bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
     destructive: 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-800',
   };
   return (
-    <div className={`flex items-start gap-3 p-4 rounded-lg border ${severityColors[alert.severity]}`}>
+    <div className={`flex items-start gap-3 p-4 rounded-lg border ${severityColors[alert.severity as keyof typeof severityColors] || severityColors.warning}`}>
       <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
       <div className="flex-1">
         <p className="font-medium">{alert.title}</p>
@@ -134,28 +117,67 @@ function AlertCard({ alert }: { alert: typeof alerts[0] }) {
 
 function DashboardContent() {
   const readOnly = useReadOnly();
-  const [statsData, setStatsData] = React.useState(stats);
-  const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [farms, crops, livestock, poultry] = await Promise.allSettled([
-          farmsAPI.list({ limit: 1 }),
-          cropsAPI.list({ limit: 1 }),
-          livestockAPI.list({ limit: 1 }),
-          poultryAPI.list({ limit: 1 }),
-        ]);
-        setStatsData([
-          { ...stats[0], value: farms.status === 'fulfilled' ? String(farms.value.data.total || 12) : '12' },
-          { ...stats[1], value: crops.status === 'fulfilled' ? String(crops.value.data.total || 48) : '48' },
-          { ...stats[2], value: livestock.status === 'fulfilled' ? String(livestock.value.data.total || 1234) : '1,234' },
-          { ...stats[3], value: poultry.status === 'fulfilled' ? String(poultry.value.data.total || 15670) : '15,670' },
-        ]);
-      } catch { /* keep defaults */ } finally { setLoading(false); }
-    };
-    fetchStats();
-  }, []);
+  const { data: farmsData, loading: farmsLoading } = useFetch('dashboard-farms', () => farmsAPI.list({ limit: 1 }));
+  const { data: cropsData, loading: cropsLoading } = useFetch('dashboard-crops', () => cropsAPI.list({ limit: 1 }));
+  const { data: livestockData, loading: livestockLoading } = useFetch('dashboard-livestock', () => livestockAPI.list({ limit: 1 }));
+  const { data: poultryData, loading: poultryLoading } = useFetch('dashboard-poultry', () => poultryAPI.list({ limit: 1 }));
+  const { data: expensesData } = useFetch('dashboard-expenses', () => financeAPI.listExpenses({ limit: 50 }));
+  const { data: salesData } = useFetch('dashboard-sales', () => financeAPI.listSales({ limit: 50 }));
+  const { data: tasksData } = useFetch('dashboard-tasks', () => tasksAPI.list({ status: 'PENDING' }));
+  const { data: attendanceData } = useFetch('dashboard-attendance', () => attendanceAPI.getToday());
+
+  const stats = [
+    { name: 'Total Farms', value: String(farmsData?.total ?? farmsData?.data?.total ?? '—'), change: '+2', changeType: 'up' as const, icon: Home, color: 'bg-blue-500', href: '/farms' },
+    { name: 'Active Crops', value: String(cropsData?.total ?? cropsData?.data?.total ?? '—'), change: '+5', changeType: 'up' as const, icon: Sprout, color: 'bg-green-500', href: '/crops' },
+    { name: 'Livestock', value: String(livestockData?.total ?? livestockData?.data?.total ?? '—'), change: '+12', changeType: 'up' as const, icon: Beef, color: 'bg-amber-500', href: '/livestock' },
+    { name: 'Poultry Birds', value: String(poultryData?.total ?? poultryData?.data?.total ?? '—'), change: '-3%', changeType: 'down' as const, icon: Egg, color: 'bg-orange-500', href: '/poultry' },
+  ];
+
+  // Build financial chart data from real expenses/sales
+  const expenses = Array.isArray(expensesData) ? expensesData : expensesData?.data || [];
+  const sales = Array.isArray(salesData) ? salesData : salesData?.data || [];
+
+  const monthlyFinancial = React.useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    return months.slice(0, now.getMonth() + 1).map((month, i) => {
+      const monthExpenses = expenses
+        .filter((e: any) => new Date(e.date).getMonth() === i)
+        .reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+      const monthSales = sales
+        .filter((s: any) => new Date(s.date).getMonth() === i)
+        .reduce((sum: number, s: any) => sum + (s.total || s.amount || 0), 0);
+      return { name: month, income: monthSales, expenses: monthExpenses, profit: monthSales - monthExpenses };
+    });
+  }, [expenses, sales]);
+
+  const totalIncome = sales.reduce((sum: number, s: any) => sum + (s.total || s.amount || 0), 0);
+  const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+
+  const expenseCategories = React.useMemo(() => {
+    const cats: Record<string, number> = {};
+    expenses.forEach((e: any) => { cats[e.category || 'Other'] = (cats[e.category || 'Other'] || 0) + (e.amount || 0); });
+    return Object.entries(cats).map(([name, value]) => ({ name, value }));
+  }, [expenses]);
+
+  const pendingTasks = tasksData?.data?.slice(0, 5) || [];
+  const attendanceSummary = attendanceData?.summary || { present: 0, absent: 0, late: 0 };
+
+  const quickActions = [
+    { name: 'Add Farm', href: '/farms/new', icon: Home, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+    { name: 'New Crop', href: '/crops/new', icon: Sprout, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+    { name: 'Add Livestock', href: '/livestock/new', icon: Beef, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
+    { name: 'New Task', href: '/tasks/new', icon: ListTodo, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
+    { name: 'Record Expense', href: '/finance/transactions/new', icon: Package, color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
+    { name: 'Add Worker', href: '/workers/new', icon: Users, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
+  ];
+
+  const alerts = [
+    ...(attendanceSummary.absent > 0 ? [{ title: 'Workers Absent', description: `${attendanceSummary.absent} worker(s) absent today`, severity: 'warning', action: 'View Attendance', href: '/workers/attendance' }] : []),
+    ...(pendingTasks.length > 0 ? [{ title: 'Pending Tasks', description: `${pendingTasks.length} task(s) awaiting completion`, severity: 'warning', action: 'View Tasks', href: '/tasks' }] : []),
+    ...(totalExpenses > totalIncome && totalIncome > 0 ? [{ title: 'Expenses Exceed Income', description: 'Monthly expenses are higher than income', severity: 'destructive', action: 'View Finance', href: '/finance' }] : []),
+  ];
 
   return (
     <div className="space-y-6">
@@ -171,56 +193,127 @@ function DashboardContent() {
         )}
       </div>
 
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {loading
+        {(farmsLoading || cropsLoading || livestockLoading || poultryLoading)
           ? Array.from({ length: 4 }).map((_, i) => <Card key={i}><CardContent className="p-6"><div className="h-20 bg-muted animate-pulse rounded" /></CardContent></Card>)
-          : statsData.map((stat) => <StatCard key={stat.name} stat={stat} />)}
+          : stats.map((stat) => <StatCard key={stat.name} stat={stat} />)}
       </div>
 
+      {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column: Alerts, Tasks, Quick Actions */}
         <div className="lg:col-span-1 space-y-6">
+          {/* Today's Attendance */}
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-yellow-600" />Alerts</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {alerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)}
+            <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-600" />Today&apos;s Attendance</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <p className="text-2xl font-bold text-green-600">{attendanceSummary.present}</p>
+                  <p className="text-xs text-muted-foreground">Present</p>
+                </div>
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                  <p className="text-2xl font-bold text-red-600">{attendanceSummary.absent}</p>
+                  <p className="text-xs text-muted-foreground">Absent</p>
+                </div>
+                <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
+                  <p className="text-2xl font-bold text-yellow-600">{attendanceSummary.late}</p>
+                  <p className="text-xs text-muted-foreground">Late</p>
+                </div>
+              </div>
+              <Link href="/workers/attendance" className="mt-3 inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full">
+                View Attendance <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Link>
             </CardContent>
           </Card>
+
+          {/* Pending Tasks */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2"><ListTodo className="h-5 w-5" />Pending Tasks</CardTitle>
+              <Link href="/tasks" className="text-sm text-primary hover:underline">View all</Link>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {pendingTasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No pending tasks</p>
+              ) : (
+                pendingTasks.map((task: any) => <TaskItem key={task.id} task={task} />)
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Alerts */}
+          {alerts.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-yellow-600" />Alerts</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {alerts.map((alert, i) => <AlertCard key={i} alert={alert} />)}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick Actions */}
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><ArrowUpRight className="h-5 w-5" />Quick Actions</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
-                {quickActions
-                  .filter(() => !readOnly)
-                  .map((action) => <QuickActionCard key={action.name} action={action} />)}
+                {quickActions.filter(() => !readOnly).map((action) => <QuickActionCard key={action.name} action={action} />)}
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Right Column: Charts */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {recentActivity.map((activity) => <ActivityItem key={activity.id} activity={activity} />)}
-            </CardContent>
-          </Card>
+          {/* Financial Summary */}
+          <ChartCard title="Financial Summary" data={monthlyFinancial} empty={monthlyFinancial.every((m: any) => m.income === 0 && m.expenses === 0)}>
+            <FarmBarChart
+              data={monthlyFinancial}
+              xKey="name"
+              bars={[
+                { key: 'income', name: 'Income', color: '#22c55e' },
+                { key: 'expenses', name: 'Expenses', color: '#ef4444' },
+              ]}
+            />
+          </ChartCard>
+
+          {/* Profit Trend */}
+          <ChartCard title="Profit Trend" data={monthlyFinancial} empty={monthlyFinancial.every((m: any) => m.profit === 0)}>
+            <FarmAreaChart
+              data={monthlyFinancial}
+              xKey="name"
+              areas={[{ key: 'profit', name: 'Net Profit', color: '#3b82f6' }]}
+            />
+          </ChartCard>
+
+          {/* Expense Breakdown */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle>Production Overview</CardTitle></CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
-                  <BarChart3 className="h-12 w-12" /><span className="ml-3">Chart placeholder</span>
-                </div>
-              </CardContent>
-            </Card>
+            <ChartCard title="Expense Breakdown" data={expenseCategories} empty={expenseCategories.length === 0}>
+              <FarmPieChart data={expenseCategories} />
+            </ChartCard>
+
+            {/* Financial Summary Card */}
             <Card>
               <CardHeader><CardTitle>Financial Summary</CardTitle></CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
-                  <DollarSign className="h-12 w-12" /><span className="ml-3">Chart placeholder</span>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <span className="text-sm font-medium">Total Income</span>
+                  <span className="text-lg font-bold text-green-600">${totalIncome.toLocaleString()}</span>
                 </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                  <span className="text-sm font-medium">Total Expenses</span>
+                  <span className="text-lg font-bold text-red-600">${totalExpenses.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <span className="text-sm font-medium">Net Profit</span>
+                  <span className={`text-lg font-bold ${(totalIncome - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${(totalIncome - totalExpenses).toLocaleString()}
+                  </span>
+                </div>
+                <Link href="/finance" className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full">
+                  View Finance <ArrowUpRight className="ml-1 h-3 w-3" />
+                </Link>
               </CardContent>
             </Card>
           </div>

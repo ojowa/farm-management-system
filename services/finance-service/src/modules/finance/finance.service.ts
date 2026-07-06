@@ -22,14 +22,14 @@ export class FinanceService {
   }
 
   // --- Expense ---
-  async createExpense(data: CreateExpenseRequest) {
+  async createExpense(data: CreateExpenseRequest, organizationId: string) {
     await this.assertFarmExists(data.farmId);
     const expense = await this.repository.createExpense({
       farmId: data.farmId,
       title: data.title,
       amount: data.amount,
       date: this.toDate(data.date),
-    });
+    }, organizationId);
     await emitFinanceEvent('created', expense);
     return expense;
   }
@@ -67,7 +67,7 @@ export class FinanceService {
   }
 
   // --- Sale ---
-  async createSale(data: CreateSaleRequest) {
+  async createSale(data: CreateSaleRequest, organizationId: string) {
     await this.assertFarmExists(data.farmId);
     const sale = await this.repository.createSale({
       farmId: data.farmId,
@@ -76,7 +76,7 @@ export class FinanceService {
       price: data.price,
       total: data.total,
       date: this.toDate(data.date),
-    });
+    }, organizationId);
     await emitFinanceEvent('created', sale);
     return sale;
   }

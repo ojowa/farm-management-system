@@ -1,18 +1,14 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback } from 'react';
+import { AppDispatch, RootState } from '../store/store';
 import {
-  login as loginAction,
-  register as registerAction,
-  logout as logoutAction,
-  refreshAccessToken,
-  requestPasswordReset as requestPasswordResetAction,
-  resetPassword as resetPasswordAction,
-  verifyMFA as verifyMFAAction,
-  restoreSession,
+  login as loginThunk,
+  verifyMFA as verifyMFAThunk,
+  fetchProfile as fetchProfileThunk,
+  logout as logoutThunk,
   clearError,
   resetMFA,
 } from '../store/slices/authSlice';
-import { AppDispatch, RootState } from '../store/store';
 
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -25,52 +21,33 @@ export const useAuth = () => {
     mfaRequired,
     mfaSessionToken,
     bootstrapped,
+    lastLoginAt,
   } = useSelector((state: RootState) => state.auth);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const result = await dispatch(loginAction({ email, password }));
-      return result.payload;
+      const result = await dispatch(loginThunk({ email, password })).unwrap();
+      return result;
     },
     [dispatch]
   );
 
-  const register = useCallback(
-    async (email: string, password: string, fullName: string) => {
-      const result = await dispatch(
-        registerAction({ email, password, fullName })
-      );
-      return result.payload;
+  const verifyMFA = useCallback(
+    async (mfaToken: string, code: string) => {
+      const result = await dispatch(verifyMFAThunk({ mfaToken, code })).unwrap();
+      return result;
     },
     [dispatch]
   );
+
+  const fetchProfile = useCallback(async () => {
+    const result = await dispatch(fetchProfileThunk()).unwrap();
+    return result;
+  }, [dispatch]);
 
   const logout = useCallback(async () => {
-    await dispatch(logoutAction());
+    await dispatch(logoutThunk());
   }, [dispatch]);
-
-  const refresh = useCallback(async (token: string) => {
-    await dispatch(refreshAccessToken(token));
-  }, [dispatch]);
-
-  const requestReset = useCallback(async (email: string) => {
-    await dispatch(requestPasswordResetAction(email));
-  }, [dispatch]);
-
-  const resetPass = useCallback(
-    async (token: string, newPassword: string) => {
-      await dispatch(resetPasswordAction({ token, newPassword }));
-    },
-    [dispatch]
-  );
-
-  const verifyMfa = useCallback(
-    async (sessionToken: string, code: string) => {
-      const result = await dispatch(verifyMFAAction({ mfaSessionToken: sessionToken, code }));
-      return result.payload;
-    },
-    [dispatch]
-  );
 
   const handleClearError = useCallback(() => {
     dispatch(clearError());
@@ -78,10 +55,6 @@ export const useAuth = () => {
 
   const handleResetMFA = useCallback(() => {
     dispatch(resetMFA());
-  }, [dispatch]);
-
-  const restore = useCallback(async () => {
-    await dispatch(restoreSession());
   }, [dispatch]);
 
   return {
@@ -93,14 +66,11 @@ export const useAuth = () => {
     mfaRequired,
     mfaSessionToken,
     bootstrapped,
+    lastLoginAt,
     login,
-    register,
+    verifyMFA,
+    fetchProfile,
     logout,
-    refresh,
-    requestReset,
-    resetPass,
-    verifyMfa,
-    restore,
     clearError: handleClearError,
     resetMFA: handleResetMFA,
   };

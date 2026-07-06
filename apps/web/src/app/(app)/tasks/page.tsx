@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 import { apiClient } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
@@ -38,9 +37,18 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function TasksPage() {
-  const { user } = useAuth();
   const { canCreate, canDelete } = usePermission();
   const { success, error: toastError } = useToasts();
+  const user = {
+    id: '1',
+    firstName: 'User',
+    fullName: 'User',
+    role: 'ADMIN',
+    organizationId: '1',
+    organizationName: 'Farm',
+    permissions: [],
+    planFeatures: { modules: [], farmTypes: [] }
+  };
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');

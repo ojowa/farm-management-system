@@ -2,8 +2,8 @@ import { scopedPrisma as prisma } from '@farm/database';
 
 export class FinanceRepository {
   // --- Expense CRUD ---
-  async createExpense(data: { farmId: string; title: string; amount: number; date: Date }) {
-    return prisma.expense.create({ data });
+  async createExpense(data: { farmId: string; title: string; amount: number; date: Date }, organizationId: string) {
+    return prisma.expense.create({ data: { ...data, organizationId } });
   }
 
   async getExpenseById(id: string) {
@@ -48,8 +48,8 @@ export class FinanceRepository {
     price: number;
     total: number;
     date: Date;
-  }) {
-    return prisma.sale.create({ data });
+  }, organizationId: string) {
+    return prisma.sale.create({ data: { ...data, organizationId } });
   }
 
   async getSaleById(id: string) {

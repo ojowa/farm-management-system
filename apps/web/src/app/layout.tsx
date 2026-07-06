@@ -1,33 +1,29 @@
-import type { Metadata } from 'next';
-// @ts-ignore
+import React from 'react';
 import './globals.css';
+import { ToastProvider } from '@/lib/toasts';
+import { SocketProvider } from '@/lib/socket';
+import { ThemeProvider } from '@/lib/theme';
+import { AuthProvider } from '@/lib/auth';
+import AppLayout from '@/components/AppLayout';
+import ReconnectingBanner from '@/components/ReconnectingBanner';
+import OfflineBanner from '@/components/OfflineBanner';
 
-export const metadata: Metadata = {
-  title: 'Farm Management System',
-  description: 'Manage your farms, crops, livestock, and finances',
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(){try{
-                if(typeof window==='undefined')return;
-                var observer=new MutationObserver(function(){
-                  document.querySelectorAll('[bis_skin_checked]').forEach(function(el){
-                    el.removeAttribute('bis_skin_checked');
-                  });
-                });
-                observer.observe(document.documentElement,{attributes:true,childList:true,subtree:true});
-              }catch(e){}})();
-            `,
-          }}
-        />
-      </head>
-      <body className="bg-gray-50 text-gray-900 antialiased" suppressHydrationWarning>{children}</body>
+    <html lang="en">
+      <body>
+        <AuthProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <SocketProvider>
+                <ReconnectingBanner />
+                <OfflineBanner />
+                <AppLayout>{children}</AppLayout>
+              </SocketProvider>
+            </ToastProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

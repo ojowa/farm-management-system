@@ -18,7 +18,6 @@ import { ScreenLoading, StateView } from '../../../src/components/feedback';
 import { useToasts } from '../../../src/hooks/useToasts';
 import { useAppDispatch } from '../../../src/hooks/useAuth';
 import { describeApiError } from '../../../src/utils/apiError';
-import { authAPI } from '../../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const styles = StyleSheet.create({
@@ -108,8 +107,8 @@ export default function EditProfileScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await authAPI.getProfile();
-      const data = response.data.data || response.data;
+      const response = await fetch('http://localhost:4000/auth/me');
+      const data = await response.json();
       setProfile(data);
       setFormData({
         fullName: data.fullName || '',
@@ -183,10 +182,14 @@ export default function EditProfileScreen() {
 
     setSubmitting(true);
     try {
-      await authAPI.updateProfile({
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim(),
-        avatar: formData.avatar || undefined,
+      await fetch('http://localhost:4000/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          avatar: formData.avatar || undefined,
+        }),
       });
       success('Profile updated successfully');
       router.back();

@@ -1,67 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Save,
   User,
-  Building2,
   Bell,
   Upload,
   Eye,
   EyeOff,
   Shield,
   Globe,
-  Palette,
   Key,
   CheckCircle,
   Link,
-  Cloud,
-  CreditCard,
-  MapPin,
   Copy,
   Trash2,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/toasts';
-import { useAuth } from '@/lib/auth';
 import { useReadOnly } from '@/lib/useReadOnly';
+import { settingsAPI } from '@/lib/api';
 
-type Tab = 'profile' | 'organization' | 'notifications' | 'security' | 'integrations';
+type Tab = 'profile' | 'notifications' | 'security' | 'integrations';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'profile', label: 'Profile', icon: User, description: 'Personal information' },
-  { id: 'organization', label: 'Organization', icon: Building2, description: 'Company settings' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Alert preferences' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password & 2FA' },
-  { id: 'integrations', label: 'Integrations', icon: Link, description: 'API keys & services' },
+  { id: 'integrations', label: 'Integrations', icon: Link, description: 'API keys' },
 ];
+
+interface ApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  service: string;
+  isActive: boolean;
+  key?: string;
+}
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
   const readOnly = useReadOnly();
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Profile state
-  const [profile, setProfile] = useState({
-    name: user?.fullName || '',
-    email: user?.email || '',
-    phone: '',
-  });
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
-
-  // Organization state
-  const [org, setOrg] = useState({
-    name: '',
-    timezone: 'UTC',
-    currency: 'USD',
-    dateFormat: 'YYYY-MM-DD',
-  });
 
   // Notifications state
   const [notifications, setNotifications] = useState({
@@ -76,31 +72,85 @@ export default function SettingsPage() {
   });
 
   // Security state
-  const [security, setSecurity] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-    twoFactorEnabled: false,
-  });
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [securityErrors, setSecurityErrors] = useState<Record<string, string>>({});
 
-  // Integrations state
-  const [apiKeys, setApiKeys] = useState([
-    { id: '1', name: 'Weather API', key: 'wx-abc123def456', service: 'weather', enabled: true, lastUsed: '2026-06-28' },
-    { id: '2', name: 'Payment Gateway', key: 'pg-xyz789ghi012', service: 'payment', enabled: true, lastUsed: '2026-06-27' },
-    { id: '3', name: 'SMS Service', key: 'sms-mno345pqr678', service: 'sms', enabled: false, lastUsed: '2026-06-15' },
-  ]);
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [showApiKey, setShowApiKey] = useState<string | null>(null);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyService, setNewKeyService] = useState('weather');
   const [showNewKeyForm, setShowNewKeyForm] = useState(false);
+  const [creatingKey, setCreatingKey] = useState(false);
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const res = await settingsAPI.getProfile();
+      const user = res.data;
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setAvatar(user.avatar || '');
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to load profile',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
+  }, [toast]);
+
+  const loadPreferences = useCallback(async () => {
+    try {
+      const res = await settingsAPI.getPreferences();
+      const prefs = res.data;
+      if (prefs.notificationPreferences) {
+        setNotifications((prev) => ({ ...prev, ...prefs.notificationPreferences }));
+      }
+      if (typeof prefs.twoFactorEnabled === 'boolean') {
+        setTwoFactorEnabled(prefs.twoFactorEnabled);
+      }
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to load preferences',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
+  }, [toast]);
+
+  const loadApiKeys = useCallback(async () => {
+    try {
+      const res = await settingsAPI.listApiKeys();
+      setApiKeys(res.data);
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to load API keys',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      await Promise.all([loadProfile(), loadPreferences(), loadApiKeys()]);
+      setLoading(false);
+    };
+    init();
+  }, [loadProfile, loadPreferences, loadApiKeys]);
 
   const handleProfileSave = async () => {
     const errors: Record<string, string> = {};
-    if (!profile.name.trim()) errors.name = 'Name is required';
-    if (!profile.email.trim()) errors.email = 'Email is required';
-    if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
+    if (!firstName.trim() && !lastName.trim()) errors.name = 'Name is required';
+    if (!email.trim()) errors.email = 'Email is required';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.email = 'Invalid email address';
     }
     if (Object.keys(errors).length > 0) {
@@ -110,6 +160,7 @@ export default function SettingsPage() {
     setProfileErrors({});
     setSaving(true);
     try {
+      await settingsAPI.updateProfile({ firstName, lastName, phone, email, avatar });
       toast({ type: 'success', title: 'Profile updated successfully' });
     } catch (err: any) {
       toast({
@@ -122,24 +173,10 @@ export default function SettingsPage() {
     }
   };
 
-  const handleOrgSave = async () => {
-    setSaving(true);
-    try {
-      toast({ type: 'success', title: 'Organization settings updated' });
-    } catch (err: any) {
-      toast({
-        type: 'error',
-        title: 'Failed to update organization',
-        message: err.response?.data?.message || 'An error occurred',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleNotificationsSave = async () => {
     setSaving(true);
     try {
+      await settingsAPI.updatePreferences({ notificationPreferences: notifications });
       toast({ type: 'success', title: 'Notification preferences updated' });
     } catch (err: any) {
       toast({
@@ -154,10 +191,12 @@ export default function SettingsPage() {
 
   const handleSecuritySave = async () => {
     const errors: Record<string, string> = {};
-    if (security.newPassword && security.newPassword.length < 8) {
+    if (!currentPassword) errors.currentPassword = 'Current password is required';
+    if (!newPassword) errors.newPassword = 'New password is required';
+    else if (newPassword.length < 8) {
       errors.newPassword = 'Password must be at least 8 characters';
     }
-    if (security.newPassword && security.newPassword !== security.confirmPassword) {
+    if (newPassword && newPassword !== confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
     if (Object.keys(errors).length > 0) {
@@ -167,12 +206,15 @@ export default function SettingsPage() {
     setSecurityErrors({});
     setSaving(true);
     try {
-      toast({ type: 'success', title: 'Security settings updated' });
-      setSecurity({ ...security, currentPassword: '', newPassword: '', confirmPassword: '' });
+      await settingsAPI.changePassword({ currentPassword, newPassword });
+      toast({ type: 'success', title: 'Password updated successfully' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to update security',
+        title: 'Failed to update password',
         message: err.response?.data?.message || 'An error occurred',
       });
     } finally {
@@ -180,37 +222,80 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAddApiKey = () => {
+  const handleTwoFactorToggle = async () => {
+    setSaving(true);
+    try {
+      await settingsAPI.updatePreferences({ twoFactorEnabled: !twoFactorEnabled });
+      setTwoFactorEnabled(!twoFactorEnabled);
+      toast({
+        type: 'success',
+        title: twoFactorEnabled ? '2FA disabled' : '2FA enabled',
+        message: twoFactorEnabled
+          ? 'Two-factor authentication has been disabled'
+          : 'Two-factor authentication has been enabled',
+      });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to update 2FA',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddApiKey = async () => {
     if (!newKeyName.trim()) {
       toast({ type: 'error', title: 'API key name is required' });
       return;
     }
-    const generatedKey = `${newKeyService.substring(0, 2)}-${Math.random().toString(36).substring(2, 15)}`;
-    setApiKeys([
-      ...apiKeys,
-      {
-        id: String(Date.now()),
-        name: newKeyName,
-        key: generatedKey,
-        service: newKeyService,
-        enabled: true,
-        lastUsed: 'Never',
-      },
-    ]);
-    setNewKeyName('');
-    setShowNewKeyForm(false);
-    toast({ type: 'success', title: 'API key created', message: 'Copy your key now - it won\'t be shown again.' });
-    setShowApiKey(String(Date.now()));
+    setCreatingKey(true);
+    try {
+      const res = await settingsAPI.createApiKey({ name: newKeyName, service: newKeyService });
+      const newKey = res.data;
+      setApiKeys([...apiKeys, { id: newKey.id, name: newKey.name, keyPrefix: newKey.keyPrefix, service: newKey.service, isActive: newKey.isActive, key: newKey.key }]);
+      setNewKeyName('');
+      setShowNewKeyForm(false);
+      toast({ type: 'success', title: 'API key created', message: 'Copy your key now - it won\'t be shown again.' });
+      setShowApiKey(newKey.id);
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to create API key',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setCreatingKey(false);
+    }
   };
 
-  const handleDeleteApiKey = (id: string) => {
+  const handleDeleteApiKey = async (id: string) => {
     if (!confirm('Delete this API key? Any service using it will stop working.')) return;
-    setApiKeys(apiKeys.filter((k) => k.id !== id));
-    toast({ type: 'success', title: 'API key deleted' });
+    try {
+      await settingsAPI.deleteApiKey(id);
+      setApiKeys(apiKeys.filter((k) => k.id !== id));
+      toast({ type: 'success', title: 'API key deleted' });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to delete API key',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
   };
 
-  const handleToggleApiKey = (id: string) => {
-    setApiKeys(apiKeys.map((k) => (k.id === id ? { ...k, enabled: !k.enabled } : k)));
+  const handleToggleApiKey = async (id: string) => {
+    try {
+      await settingsAPI.toggleApiKey(id);
+      setApiKeys(apiKeys.map((k) => (k.id === id ? { ...k, isActive: !k.isActive } : k)));
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to toggle API key',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
   };
 
   const handleCopyKey = (key: string) => {
@@ -239,6 +324,20 @@ export default function SettingsPage() {
       />
     </button>
   );
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">Manage your account and application preferences</p>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -286,7 +385,11 @@ export default function SettingsPage() {
           <CardContent className="p-6 space-y-6">
             <div className="flex items-center gap-4 mb-6">
               <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-10 w-10 text-primary" />
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" className="h-20 w-20 rounded-full object-cover" />
+                ) : (
+                  <User className="h-10 w-10 text-primary" />
+                )}
               </div>
               <div>
                 {!readOnly && (
@@ -304,20 +407,36 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">
-                  Full Name <span className="text-destructive">*</span>
+                  First Name
                 </label>
                 <Input
-                  placeholder="John Doe"
-                  value={profile.name}
+                  placeholder="John"
+                  value={firstName}
                   onChange={(e) => {
-                    setProfile({ ...profile, name: e.target.value });
+                    setFirstName(e.target.value);
                     if (profileErrors.name) setProfileErrors({ ...profileErrors, name: '' });
                   }}
                 />
-                {profileErrors.name && (
-                  <p className="text-sm text-destructive mt-1">{profileErrors.name}</p>
-                )}
               </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Last Name
+                </label>
+                <Input
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    if (profileErrors.name) setProfileErrors({ ...profileErrors, name: '' });
+                  }}
+                />
+              </div>
+            </div>
+            {profileErrors.name && (
+              <p className="text-sm text-destructive">{profileErrors.name}</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   Email Address <span className="text-destructive">*</span>
@@ -325,9 +444,9 @@ export default function SettingsPage() {
                 <Input
                   type="email"
                   placeholder="john@example.com"
-                  value={profile.email}
+                  value={email}
                   onChange={(e) => {
-                    setProfile({ ...profile, email: e.target.value });
+                    setEmail(e.target.value);
                     if (profileErrors.email) setProfileErrors({ ...profileErrors, email: '' });
                   }}
                 />
@@ -335,16 +454,15 @@ export default function SettingsPage() {
                   <p className="text-sm text-destructive mt-1">{profileErrors.email}</p>
                 )}
               </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">Phone Number</label>
-              <Input
-                type="tel"
-                placeholder="+1 (555) 000-0000"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              />
+              <div>
+                <label className="text-sm font-medium mb-1 block">Phone Number</label>
+                <Input
+                  type="tel"
+                  placeholder="+1 (555) 000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="flex justify-end pt-2">
@@ -352,114 +470,6 @@ export default function SettingsPage() {
                 <Button onClick={handleProfileSave} loading={saving}>
                   <Save className="mr-2 h-4 w-4" />
                   Save Profile
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Organization Tab */}
-      {activeTab === 'organization' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Organization Settings
-            </CardTitle>
-            <CardDescription>
-              Manage your organization details and preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Organization Name</label>
-              <Input
-                placeholder="My Farm Organization"
-                value={org.name}
-                onChange={(e) => setOrg({ ...org, name: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">Logo</label>
-              <div className="flex items-center gap-4">
-                <div className="h-20 w-20 rounded-lg border-2 border-dashed flex items-center justify-center bg-muted">
-                  <Upload className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <div>
-                  {!readOnly && (
-                    <Button variant="outline" size="sm">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Logo
-                    </Button>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PNG, JPG up to 2MB. Recommended 256x256px.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block flex items-center gap-1">
-                  <Globe className="h-3 w-3" /> Timezone
-                </label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={org.timezone}
-                  onChange={(e) => setOrg({ ...org, timezone: e.target.value })}
-                >
-                  <option value="UTC">UTC</option>
-                  <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
-                  <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
-                  <option value="Europe/London">Europe/London (GMT)</option>
-                  <option value="America/New_York">America/New_York (EST)</option>
-                  <option value="America/Chicago">America/Chicago (CST)</option>
-                  <option value="America/Denver">America/Denver (MST)</option>
-                  <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block flex items-center gap-1">
-                  <Palette className="h-3 w-3" /> Currency
-                </label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={org.currency}
-                  onChange={(e) => setOrg({ ...org, currency: e.target.value })}
-                >
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                  <option value="GBP">GBP - British Pound</option>
-                  <option value="KES">KES - Kenyan Shilling</option>
-                  <option value="NGN">NGN - Nigerian Naira</option>
-                  <option value="ZAR">ZAR - South African Rand</option>
-                  <option value="GHS">GHS - Ghanaian Cedi</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">Date Format</label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={org.dateFormat}
-                onChange={(e) => setOrg({ ...org, dateFormat: e.target.value })}
-              >
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="DD-MM-YYYY">DD-MM-YYYY</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              {!readOnly && (
-                <Button onClick={handleOrgSave} loading={saving}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Organization
                 </Button>
               )}
             </div>
@@ -573,10 +583,11 @@ export default function SettingsPage() {
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter current password"
-                    value={security.currentPassword}
-                    onChange={(e) =>
-                      setSecurity({ ...security, currentPassword: e.target.value })
-                    }
+                    value={currentPassword}
+                    onChange={(e) => {
+                      setCurrentPassword(e.target.value);
+                      if (securityErrors.currentPassword) setSecurityErrors({ ...securityErrors, currentPassword: '' });
+                    }}
                   />
                   <button
                     type="button"
@@ -586,6 +597,9 @@ export default function SettingsPage() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {securityErrors.currentPassword && (
+                  <p className="text-sm text-destructive mt-1">{securityErrors.currentPassword}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -593,9 +607,9 @@ export default function SettingsPage() {
                   <Input
                     type="password"
                     placeholder="Enter new password"
-                    value={security.newPassword}
+                    value={newPassword}
                     onChange={(e) => {
-                      setSecurity({ ...security, newPassword: e.target.value });
+                      setNewPassword(e.target.value);
                       if (securityErrors.newPassword)
                         setSecurityErrors({ ...securityErrors, newPassword: '' });
                     }}
@@ -609,9 +623,9 @@ export default function SettingsPage() {
                   <Input
                     type="password"
                     placeholder="Confirm new password"
-                    value={security.confirmPassword}
+                    value={confirmPassword}
                     onChange={(e) => {
-                      setSecurity({ ...security, confirmPassword: e.target.value });
+                      setConfirmPassword(e.target.value);
                       if (securityErrors.confirmPassword)
                         setSecurityErrors({ ...securityErrors, confirmPassword: '' });
                     }}
@@ -646,43 +660,37 @@ export default function SettingsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${security.twoFactorEnabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
-                    <Shield className={`h-5 w-5 ${security.twoFactorEnabled ? 'text-green-600' : 'text-muted-foreground'}`} />
+                  <div className={`p-2 rounded-lg ${twoFactorEnabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
+                    <Shield className={`h-5 w-5 ${twoFactorEnabled ? 'text-green-600' : 'text-muted-foreground'}`} />
                   </div>
                   <div>
                     <p className="font-medium">
-                      {security.twoFactorEnabled ? 'Two-Factor is Enabled' : 'Two-Factor is Disabled'}
+                      {twoFactorEnabled ? 'Two-Factor is Enabled' : 'Two-Factor is Disabled'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {security.twoFactorEnabled
+                      {twoFactorEnabled
                         ? 'Your account is secured with 2FA'
                         : 'Enable 2FA for additional security'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {security.twoFactorEnabled && (
+                  {twoFactorEnabled && (
                     <Badge variant="success">
                       <CheckCircle className="mr-1 h-3 w-3" />
                       Enabled
                     </Badge>
                   )}
                   <Button
-                    variant={security.twoFactorEnabled ? 'outline' : 'default'}
+                    variant={twoFactorEnabled ? 'outline' : 'default'}
                     size="sm"
-                    disabled={readOnly}
-                    onClick={() => {
-                      setSecurity({ ...security, twoFactorEnabled: !security.twoFactorEnabled });
-                      toast({
-                        type: 'success',
-                        title: security.twoFactorEnabled ? '2FA disabled' : '2FA enabled',
-                        message: security.twoFactorEnabled
-                          ? 'Two-factor authentication has been disabled'
-                          : 'Two-factor authentication has been enabled',
-                      });
-                    }}
+                    disabled={readOnly || saving}
+                    onClick={handleTwoFactorToggle}
                   >
-                    {security.twoFactorEnabled ? 'Disable' : 'Enable'}
+                    {saving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {twoFactorEnabled ? 'Disable' : 'Enable'}
                   </Button>
                 </div>
               </div>
@@ -744,7 +752,10 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleAddApiKey}>Create Key</Button>
+                    <Button size="sm" onClick={handleAddApiKey} disabled={creatingKey}>
+                      {creatingKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Create Key
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setShowNewKeyForm(false)}>Cancel</Button>
                   </div>
                 </div>
@@ -763,10 +774,10 @@ export default function SettingsPage() {
                 <div className="space-y-3">
                   {apiKeys.map((apiKey) => {
                     const serviceIcons: Record<string, React.ElementType> = {
-                      weather: Cloud,
-                      payment: CreditCard,
-                      sms: Bell,
-                      maps: MapPin,
+                      weather: Globe,
+                      payment: Globe,
+                      sms: Globe,
+                      maps: Globe,
                       analytics: Globe,
                       other: Link,
                     };
@@ -782,13 +793,15 @@ export default function SettingsPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{apiKey.name}</p>
-                            <Badge variant={apiKey.enabled ? 'success' : 'secondary'}>
-                              {apiKey.enabled ? 'Active' : 'Disabled'}
+                            <Badge variant={apiKey.isActive ? 'success' : 'secondary'}>
+                              {apiKey.isActive ? 'Active' : 'Disabled'}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                              {showApiKey === apiKey.id ? apiKey.key : '••••••••••••••••'}
+                              {showApiKey === apiKey.id && apiKey.key
+                                ? apiKey.key
+                                : `${apiKey.keyPrefix}••••••••`}
                             </code>
                             <button
                               onClick={() =>
@@ -803,9 +816,9 @@ export default function SettingsPage() {
                                 <Eye className="h-3 w-3" />
                               )}
                             </button>
-                            {showApiKey === apiKey.id && (
+                            {showApiKey === apiKey.id && apiKey.key && (
                               <button
-                                onClick={() => handleCopyKey(apiKey.key)}
+                                onClick={() => handleCopyKey(apiKey.key!)}
                                 className="text-muted-foreground hover:text-foreground"
                                 title="Copy"
                               >
@@ -813,13 +826,10 @@ export default function SettingsPage() {
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Last used: {apiKey.lastUsed}
-                          </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <ToggleSwitch
-                            enabled={apiKey.enabled}
+                            enabled={apiKey.isActive}
                             onToggle={() => {
                               if (readOnly) return;
                               handleToggleApiKey(apiKey.id);
@@ -840,58 +850,6 @@ export default function SettingsPage() {
                   })}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          {/* Connected Services */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link className="h-5 w-5" />
-                Connected Services
-              </CardTitle>
-              <CardDescription>
-                Manage third-party service integrations
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                {[
-                  { name: 'Google Maps', description: 'Geolocation and mapping services', connected: true },
-                  { name: 'OpenWeather', description: 'Weather data and forecasts', connected: true },
-                  { name: 'Stripe', description: 'Payment processing', connected: false },
-                  { name: 'Twilio', description: 'SMS and voice notifications', connected: false },
-                ].map((service) => (
-                  <div
-                    key={service.name}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-muted">
-                        <Globe className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{service.name}</p>
-                        <p className="text-sm text-muted-foreground">{service.description}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant={service.connected ? 'outline' : 'default'}
-                      size="sm"
-                      disabled={readOnly}
-                      onClick={() => {
-                        toast({
-                          type: 'success',
-                          title: service.connected ? 'Disconnected' : 'Connected',
-                          message: `${service.name} has been ${service.connected ? 'disconnected' : 'connected'}.`,
-                        });
-                      }}
-                    >
-                      {service.connected ? 'Disconnect' : 'Connect'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
             </CardContent>
           </Card>
         </div>

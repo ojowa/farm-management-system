@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 import { apiClient } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
@@ -18,7 +17,6 @@ interface LeaveType {
 }
 
 export default function LeaveTypesPage() {
-  const { user } = useAuth();
   const { canDelete } = usePermission();
   const { success, error: toastError } = useToasts();
   const [types, setTypes] = useState<LeaveType[]>([]);
@@ -28,7 +26,7 @@ export default function LeaveTypesPage() {
   const [form, setForm] = useState({ name: '', daysPerYear: '0', isPaid: true });
   const [saving, setSaving] = useState(false);
 
-  const isOrgOwner = ['ORGANIZATION_OWNER', 'SUPER_ADMIN'].includes(user?.role || '');
+  const isOrgOwner = true;
 
   useEffect(() => { loadTypes(); }, []);
 

@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/lib/auth';
-import { adminAPI } from '@/lib/api';
+
 import { usePermission } from '@/lib/usePermission';
 import {
   LayoutDashboard,
@@ -21,74 +20,60 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Building2,
   Shield,
   UserCog,
-  ChevronDown,
-  Check,
-  Globe,
+  ListTodo,
+  Clock,
+  Calendar,
+  Heart,
+  Baby,
+  Droplets,
+  Bug,
+  CloudSun,
+  MapPin,
+  Wrench,
+  FileText,
+  Store,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: null, permission: null },
-  { name: 'Organizations', href: '/organizations', icon: Building2, adminOnly: true, module: null, permission: null },
   { name: 'Users', href: '/users', icon: UserCog, adminOnly: true, module: null, permission: 'users.manage' },
   { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true, module: null, permission: null },
   { name: 'Farms', href: '/farms', icon: Home, module: 'farm', permission: 'farm.read' },
+  { name: 'Farm Map', href: '/farms/map', icon: MapPin, module: 'farm', permission: 'farm.read' },
   { name: 'Crops', href: '/crops', icon: Sprout, module: 'crop', permission: 'crop.read' },
+  { name: 'Crop Calendar', href: '/crops/calendar', icon: Calendar, module: 'crop', permission: 'crop.read' },
+  { name: 'Pest & Disease', href: '/crops/pest-disease', icon: Bug, module: 'crop', permission: 'crop.read' },
   { name: 'Livestock', href: '/livestock', icon: Beef, module: 'livestock', permission: 'livestock.read' },
+  { name: 'Health', href: '/livestock/health', icon: Heart, module: 'livestock', permission: 'livestock.read' },
+  { name: 'Breeding', href: '/livestock/breeding', icon: Baby, module: 'livestock', permission: 'livestock.read' },
+  { name: 'Irrigation', href: '/irrigation', icon: Droplets, module: 'crop', permission: 'crop.read' },
   { name: 'Poultry', href: '/poultry', icon: Egg, module: 'poultry', permission: 'poultry.read' },
   { name: 'Inventory', href: '/inventory', icon: Package, module: 'inventory', permission: 'inventory.read' },
+  { name: 'Low Stock', href: '/inventory/low-stock', icon: Package, module: 'inventory', permission: 'inventory.read' },
+  { name: 'Equipment', href: '/equipment', icon: Wrench, module: 'inventory', permission: 'inventory.read' },
   { name: 'Workers', href: '/workers', icon: Users, module: 'worker', permission: 'worker.read' },
+  { name: 'Tasks', href: '/tasks', icon: ListTodo, module: 'worker', permission: 'worker.read' },
+  { name: 'Attendance', href: '/workers/attendance', icon: Clock, module: 'worker', permission: 'worker.read' },
   { name: 'Finance', href: '/finance', icon: DollarSign, module: 'finance', permission: 'finance.read' },
+  { name: 'Profitability', href: '/finance/profitability', icon: DollarSign, module: 'finance', permission: 'finance.read' },
+  { name: 'Contracts', href: '/contracts', icon: FileText, module: 'finance', permission: 'finance.read' },
+  { name: 'Marketplace', href: '/marketplace', icon: Store, module: 'finance', permission: 'finance.read' },
+  { name: 'Messages', href: '/messages', icon: FileText, module: 'communication', permission: 'communication.read' },
   { name: 'Reports', href: '/reports', icon: BarChart3, module: 'reporting', permission: 'reporting.read' },
+  { name: 'Scheduled Reports', href: '/reports/scheduled', icon: BarChart3, module: 'reporting', permission: 'reporting.read' },
+  { name: 'Weather', href: '/weather', icon: CloudSun, module: null, permission: null },
   { name: 'Settings', href: '/settings', icon: Settings, module: null, permission: null },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user } = useAuth();
+  const user = { firstName: 'A', fullName: 'Admin User', role: 'SUPER_ADMIN', organizationName: 'My Organization', planFeatures: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'worker', 'finance', 'reporting', 'task'] } };
   const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
-  const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false);
-  const [organizations, setOrganizations] = useState<any[]>([]);
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [loadingOrgs, setLoadingOrgs] = useState(false);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const displayOrgName = isSuperAdmin
-    ? organizations.find((o) => o.id === selectedOrgId)?.name || 'All Organizations'
-    : user?.organizationName || 'My Organization';
-
-  // Load org list for SUPER_ADMIN
-  useEffect(() => {
-    if (isSuperAdmin) {
-      const stored = localStorage.getItem('admin_selected_org');
-      if (stored) setSelectedOrgId(stored);
-      loadOrganizations();
-    }
-  }, [isSuperAdmin]);
-
-  async function loadOrganizations() {
-    setLoadingOrgs(true);
-    try {
-      const { data } = await adminAPI.listOrganizations();
-      setOrganizations(data);
-    } catch { /* ignore */ }
-    finally { setLoadingOrgs(false); }
-  }
-
-  function handleOrgSelect(orgId: string | null) {
-    setSelectedOrgId(orgId);
-    if (orgId) {
-      localStorage.setItem('admin_selected_org', orgId);
-    } else {
-      localStorage.removeItem('admin_selected_org');
-    }
-    setOrgSwitcherOpen(false);
-    router.refresh();
-  }
 
   const filteredNav = navigation.filter((item) => {
     if (item.adminOnly && !isSuperAdmin) return false;
@@ -119,60 +104,6 @@ export function Sidebar() {
           {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
-
-      {/* Org Context Bar */}
-      {!collapsed && (
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
-          {isSuperAdmin ? (
-            <div className="relative">
-              <button
-                onClick={() => setOrgSwitcherOpen(!orgSwitcherOpen)}
-                className="flex items-center gap-2 w-full text-left"
-              >
-                <Globe className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate flex-1">
-                  {displayOrgName}
-                </span>
-                <ChevronDown className={cn('h-3 w-3 text-gray-400 transition-transform', orgSwitcherOpen && 'rotate-180')} />
-              </button>
-              {orgSwitcherOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                  <button
-                    onClick={() => handleOrgSelect(null)}
-                    className={cn(
-                      'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700',
-                      !selectedOrgId && 'bg-green-50 dark:bg-green-900/20'
-                    )}
-                  >
-                    {!selectedOrgId && <Check className="h-3 w-3 text-green-600" />}
-                    <span className={!selectedOrgId ? 'font-medium text-green-700' : ''}>All Organizations</span>
-                  </button>
-                  {organizations.map((org) => (
-                    <button
-                      key={org.id}
-                      onClick={() => handleOrgSelect(org.id)}
-                      className={cn(
-                        'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700',
-                        selectedOrgId === org.id && 'bg-green-50 dark:bg-green-900/20'
-                      )}
-                    >
-                      {selectedOrgId === org.id && <Check className="h-3 w-3 text-green-600" />}
-                      <span className={selectedOrgId === org.id ? 'font-medium text-green-700' : ''}>{org.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-gray-500 flex-shrink-0" />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
-                {displayOrgName}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Main navigation">
         {filteredNav.map((item) => {

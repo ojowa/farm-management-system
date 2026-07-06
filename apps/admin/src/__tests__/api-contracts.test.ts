@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import {
   apiClient,
-  authAPI,
   farmsAPI,
   cropsAPI,
   livestockAPI,
@@ -20,7 +19,6 @@ import {
   vaccinationRecordsAPI,
   mortalityRecordsAPI,
   medicationAPI,
-  organizationsAPI,
   eggProductionAPI,
   poultrySalesAPI,
 } from '@/lib/api';
@@ -314,18 +312,6 @@ describe('API Contract Tests', () => {
   });
 
   describe('API Module Exports', () => {
-    it('exports authAPI with all methods', () => {
-      expect(authAPI.login).toBeDefined();
-      expect(authAPI.register).toBeDefined();
-      expect(authAPI.logout).toBeDefined();
-      expect(authAPI.getProfile).toBeDefined();
-      expect(authAPI.updateProfile).toBeDefined();
-      expect(authAPI.refreshToken).toBeDefined();
-      expect(authAPI.verifyMFA).toBeDefined();
-      expect(authAPI.requestPasswordReset).toBeDefined();
-      expect(authAPI.resetPassword).toBeDefined();
-    });
-
     it('exports farmsAPI with CRUD methods', () => {
       expect(farmsAPI.list).toBeDefined();
       expect(farmsAPI.get).toBeDefined();
@@ -406,14 +392,6 @@ describe('API Contract Tests', () => {
       expect(typeof farmsAPI.list).toBe('function');
     });
 
-    it('authAPI.login accepts credentials object', () => {
-      expect(typeof authAPI.login).toBe('function');
-    });
-
-    it('authAPI.verifyMFA accepts token and code', () => {
-      expect(typeof authAPI.verifyMFA).toBe('function');
-    });
-
     it('financeAPI.listExpenses accepts optional params', () => {
       expect(typeof financeAPI.listExpenses).toBe('function');
     });
@@ -486,15 +464,6 @@ describe('API Contract Tests', () => {
       expect(medicationAPI.create).toBeDefined();
       expect(medicationAPI.update).toBeDefined();
       expect(medicationAPI.delete).toBeDefined();
-    });
-
-    it('exports organizationsAPI with CRUD methods', () => {
-      expect(organizationsAPI.list).toBeDefined();
-      expect(organizationsAPI.get).toBeDefined();
-      expect(organizationsAPI.getBySlug).toBeDefined();
-      expect(organizationsAPI.create).toBeDefined();
-      expect(organizationsAPI.update).toBeDefined();
-      expect(organizationsAPI.delete).toBeDefined();
     });
 
     it('exports eggProductionAPI with CRUD methods', () => {

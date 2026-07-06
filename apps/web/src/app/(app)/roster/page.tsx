@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 import { rosterAPI, orgAdminAPI } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
@@ -49,7 +48,6 @@ const SHIFT_COLORS: Record<string, string> = {
 };
 
 export default function RosterPage() {
-  const { user } = useAuth();
   const { canCreate, canDelete } = usePermission();
   const { success, error: toastError } = useToasts();
 

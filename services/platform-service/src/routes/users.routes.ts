@@ -41,7 +41,7 @@ router.get('/', async (req: Request, res: Response) => {
     res.json({
       users: users.map((u) => ({
         id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, phone: u.phone,
-        role: u.role.name, organizationId: u.organizationId, organizationName: u.organization.name,
+        role: u.role.name, organizationId: u.organizationId, organizationName: u.organization?.name ?? null,
         isActive: u.isActive, lastLoginAt: u.lastLoginAt, createdAt: u.createdAt,
       })),
       total, page, limit, totalPages: Math.ceil(total / limit),
@@ -72,7 +72,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     res.json({
       id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, phone: user.phone,
-      role: user.role.name, organizationId: user.organizationId, organizationName: user.organization.name,
+      role: user.role.name, organizationId: user.organizationId, organizationName: user.organization?.name ?? null,
       isActive: user.isActive, lastLoginAt: user.lastLoginAt, createdAt: user.createdAt,
       sessions: sessions.map((s) => ({
         id: s.id, app: s.app, ipAddress: s.ipAddress, isActive: s.isActive,
@@ -114,7 +114,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     res.json({
       id: updatedUser.id, email: updatedUser.email, firstName: updatedUser.firstName, lastName: updatedUser.lastName,
       phone: updatedUser.phone, role: updatedUser.role.name, organizationId: updatedUser.organizationId,
-      organizationName: updatedUser.organization.name, isActive: updatedUser.isActive,
+      organizationName: updatedUser.organization?.name ?? null, isActive: updatedUser.isActive,
     });
   } catch (error) {
     console.error('Update user error:', error);

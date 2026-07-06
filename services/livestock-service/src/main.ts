@@ -5,7 +5,9 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { livestockRouter } from './modules/livestock/livestock.module';
-import { AuthError } from '@farm/auth';
+import { healthRouter } from './modules/livestock/health.routes';
+import { breedingRouter } from './modules/livestock/breeding.routes';
+import { weightRouter } from './modules/livestock/weight.routes';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -20,18 +22,12 @@ app.use(express.json());
 app.use(rlsMiddleware);
 
 app.use('/api', featureFlagGuard('livestock.enabled'), livestockRouter);
+app.use('/api/health', featureFlagGuard('livestock.enabled'), healthRouter);
+app.use('/api/breeding', featureFlagGuard('livestock.enabled'), breedingRouter);
+app.use('/api/weight', featureFlagGuard('livestock.enabled'), weightRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'livestock-service' });
-});
-
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res
-      .status(err.statusCode)
-      .json({ statusCode: err.statusCode, message: err.message });
-  }
-  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
 });
 
 app.listen(port, () => {

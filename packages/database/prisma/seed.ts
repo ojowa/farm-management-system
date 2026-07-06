@@ -6,11 +6,19 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database...')
 
-  // 1. Create Default Roles with descriptions
+  // 1. Delete all existing users (cascade through related tables)
+  await prisma.refreshToken.deleteMany()
+  await prisma.userSession.deleteMany()
+  await prisma.auditLog.deleteMany()
+  await prisma.userOrganization.deleteMany()
+  await prisma.user.deleteMany()
+  console.log('  Cleared all users and related records')
+
+  // 2. Create System Roles
   const roleData = [
-    { name: 'SUPER_ADMIN', description: 'Platform superadmin — full access to all organizations, billing, and system settings (ICT/Console manager)', isSystem: true },
-    { name: 'SUPPORT_ADMIN', description: 'Platform support — read-only access to all organizations for troubleshooting and support (ICT/Console manager)', isSystem: true },
-    { name: 'ORGANIZATION_OWNER', description: 'Organization superadmin — full control over own organization, users, farms, and billing', isSystem: true },
+    { name: 'SUPER_ADMIN', description: 'Platform superadmin — full access to all organizations and system settings', isSystem: true },
+    { name: 'SUPPORT_ADMIN', description: 'Platform support — read-only access for troubleshooting', isSystem: true },
+    { name: 'ORGANIZATION_OWNER', description: 'Organization owner — full control over own organization, users, farms, and billing', isSystem: true },
     { name: 'FARM_MANAGER', description: 'Manage farms, crops, livestock, poultry, and inventory', isSystem: true },
     { name: 'ACCOUNTANT', description: 'View and manage financial records and reports', isSystem: true },
     { name: 'SUPERVISOR', description: 'Supervise farm operations, crops, and workers', isSystem: true },
@@ -35,50 +43,37 @@ async function main() {
     }
   }
 
-  const ownerRole = createdRoles.find(r => r.name === 'ORGANIZATION_OWNER')!
-
-  // 2. Create Default Permissions with descriptions and categories
+  // 3. Create Permissions
   const permissionData = [
-    // Farm
     { name: 'farm.read', description: 'View farms and farm details', category: 'Farm' },
     { name: 'farm.write', description: 'Create and edit farms', category: 'Farm' },
     { name: 'farm.delete', description: 'Delete farms', category: 'Farm' },
-    // Crop
     { name: 'crop.read', description: 'View crops and crop cycles', category: 'Crop' },
     { name: 'crop.write', description: 'Create and edit crops', category: 'Crop' },
     { name: 'crop.delete', description: 'Delete crops', category: 'Crop' },
-    // Livestock
     { name: 'livestock.read', description: 'View livestock records', category: 'Livestock' },
     { name: 'livestock.write', description: 'Create and edit livestock', category: 'Livestock' },
     { name: 'livestock.delete', description: 'Delete livestock records', category: 'Livestock' },
-    // Poultry
     { name: 'poultry.read', description: 'View poultry flocks and records', category: 'Poultry' },
     { name: 'poultry.write', description: 'Create and edit poultry data', category: 'Poultry' },
     { name: 'poultry.delete', description: 'Delete poultry records', category: 'Poultry' },
-    // Inventory
     { name: 'inventory.read', description: 'View inventory items', category: 'Inventory' },
     { name: 'inventory.write', description: 'Create and edit inventory', category: 'Inventory' },
     { name: 'inventory.delete', description: 'Delete inventory items', category: 'Inventory' },
-    // Finance
     { name: 'finance.read', description: 'View expenses, sales, and financial data', category: 'Finance' },
     { name: 'finance.write', description: 'Create and edit financial records', category: 'Finance' },
     { name: 'finance.delete', description: 'Delete financial records', category: 'Finance' },
-    // Worker
     { name: 'worker.read', description: 'View worker profiles', category: 'Worker' },
     { name: 'worker.write', description: 'Create and edit workers', category: 'Worker' },
     { name: 'worker.delete', description: 'Delete worker records', category: 'Worker' },
-    // Notification
-    { name: 'notification.read', description: 'View notifications', category: 'Notification' },
-    { name: 'notification.write', description: 'Manage notification preferences', category: 'Notification' },
-    // Reporting
+    { name: 'communication.read', description: 'View messages and correspondence', category: 'Communication' },
+    { name: 'communication.write', description: 'Send messages and correspondence', category: 'Communication' },
     { name: 'reporting.read', description: 'View reports and analytics', category: 'Reporting' },
     { name: 'reporting.write', description: 'Create and export reports', category: 'Reporting' },
-    // Organization
     { name: 'organization.read', description: 'View organization settings', category: 'Organization' },
     { name: 'organization.write', description: 'Edit organization settings', category: 'Organization' },
     { name: 'organization.delete', description: 'Delete organization', category: 'Organization' },
     { name: 'organization.manage', description: 'Manage organization membership and settings', category: 'Organization' },
-    // Users & Billing
     { name: 'users.manage', description: 'Manage users within the organization', category: 'Administration' },
     { name: 'billing.manage', description: 'Manage subscription and billing', category: 'Administration' },
   ]
@@ -95,7 +90,7 @@ async function main() {
 
   const permissionByName = Object.fromEntries(createdPermissions.map((p) => [p.name, p]))
 
-  // 3. Assign permissions to roles
+  // 4. Assign permissions to roles
   const rolePermissions: Record<string, string[]> = {
     SUPER_ADMIN: ['*'],
     SUPPORT_ADMIN: ['*.read'],
@@ -107,7 +102,7 @@ async function main() {
       'inventory.read', 'inventory.write', 'inventory.delete',
       'finance.read', 'finance.write', 'finance.delete',
       'worker.read', 'worker.write', 'worker.delete',
-      'notification.read', 'notification.write',
+      'communication.read', 'communication.write',
       'reporting.read', 'reporting.write',
       'organization.read', 'organization.write', 'organization.delete',
       'organization.manage', 'users.manage', 'billing.manage',
@@ -120,7 +115,7 @@ async function main() {
       'inventory.read', 'inventory.write',
       'finance.read', 'finance.write',
       'worker.read', 'worker.write',
-      'notification.read',
+      'communication.read', 'communication.write',
       'reporting.read',
     ],
     ACCOUNTANT: ['finance.read', 'finance.write', 'farm.read', 'inventory.read', 'reporting.read'],
@@ -129,10 +124,10 @@ async function main() {
       'livestock.read', 'livestock.write',
       'poultry.read', 'poultry.write',
       'worker.read', 'worker.write',
-      'notification.read', 'reporting.read',
+      'communication.read', 'reporting.read',
     ],
-    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'farm.read', 'notification.read'],
-    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'notification.read'],
+    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'farm.read'],
+    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'communication.read'],
   }
 
   for (const [roleName, perms] of Object.entries(rolePermissions)) {
@@ -145,9 +140,7 @@ async function main() {
     }
     for (const permissionName of perms) {
       const permission = permissionByName[permissionName]
-      if (!permission) {
-        continue
-      }
+      if (!permission) continue
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
         update: {},
@@ -156,101 +149,98 @@ async function main() {
     }
   }
 
-  // 4. Create Organization
-  const org = await prisma.organization.upsert({
-    where: { id: 'default-org-id' },
+  // 5. Create Demo Organization
+  const demoOrg = await prisma.organization.upsert({
+    where: { id: 'demo-org-id' },
     update: {},
     create: {
-      id: 'default-org-id',
-      name: 'Default Farm Organization',
-      slug: 'default-farm-org',
-      email: 'admin@farm.com',
+      id: 'demo-org-id',
+      name: 'Demo Farm',
+      slug: 'demo-farm',
+      email: 'demo@farm.com',
+      subscriptionPlan: 'ENTERPRISE',
+      subscriptionStatus: 'ACTIVE',
     },
   })
 
-  // 5. Create Admin User (ORGANIZATION_OWNER) with a known password so the seed is usable
-  const passwordHash = await bcrypt.hash('admin1234', 12)
-  await prisma.user.upsert({
-    where: { email: 'admin@farm.com' },
-    update: {},
-    create: {
-      organizationId: org.id,
-      firstName: 'System',
+  // 6. Create Super Admin (no org — platform developer login)
+  const superAdminRole = createdRoles.find(r => r.name === 'SUPER_ADMIN')!
+  const passwordHash = await bcrypt.hash('password123', 12)
+
+  await prisma.user.create({
+    data: {
+      firstName: 'Super',
       lastName: 'Admin',
-      email: 'admin@farm.com',
+      email: 'Admin@fms.com',
+      passwordHash,
+      roleId: superAdminRole.id,
+    },
+  })
+  console.log('  Created Super Admin: Admin@fms.com / password123 (no organization)')
+
+  // 7. Create Demo Organization Owner (admin app login)
+  const ownerRole = createdRoles.find(r => r.name === 'ORGANIZATION_OWNER')!
+
+  await prisma.user.create({
+    data: {
+      organizationId: demoOrg.id,
+      firstName: 'Demo',
+      lastName: 'Owner',
+      email: 'demo@farm.com',
       passwordHash,
       roleId: ownerRole.id,
     },
   })
+  console.log('  Created Org Owner: demo@farm.com / password123')
 
-  // 6. Create SUPER_ADMIN user (superadmin@farm.com / superadmin123)
-  const superAdminRole = createdRoles.find(r => r.name === 'SUPER_ADMIN')!
-  const superAdminPasswordHash = await bcrypt.hash('superadmin123', 12)
-  await prisma.user.upsert({
-    where: { email: 'superadmin@farm.com' },
-    update: {},
-    create: {
-      organizationId: org.id,
-      firstName: 'Super',
-      lastName: 'Admin',
-      email: 'superadmin@farm.com',
-      passwordHash: superAdminPasswordHash,
-      roleId: superAdminRole.id,
-    },
-  })
+  // 8. Create Demo Workers (web/mobile login)
+  const workerUsers = [
+    { role: 'FARM_MANAGER', firstName: 'Farm', lastName: 'Manager', email: 'farmmanager.demo@farm.com' },
+    { role: 'ACCOUNTANT', firstName: 'Account', lastName: 'Manager', email: 'accountant.demo@farm.com' },
+    { role: 'SUPERVISOR', firstName: 'Super', lastName: 'Visor', email: 'supervisor.demo@farm.com' },
+    { role: 'VETERINARIAN', firstName: 'Vet', lastName: 'Doctor', email: 'veterinarian.demo@farm.com' },
+    { role: 'WORKER', firstName: 'Farm', lastName: 'Worker', email: 'worker.demo@farm.com' },
+  ]
 
-  // 7. Create Default Subscription Plans
+  for (const w of workerUsers) {
+    const role = createdRoles.find(r => r.name === w.role)!
+    await prisma.user.create({
+      data: {
+        organizationId: demoOrg.id,
+        firstName: w.firstName,
+        lastName: w.lastName,
+        email: w.email,
+        passwordHash,
+        roleId: role.id,
+      },
+    })
+    console.log(`  Created ${w.role}: ${w.email} / password123`)
+  }
+
+  // 9. Create Subscription Plans
   const planData = [
     {
-      name: 'FREE',
-      displayName: 'Free Plan',
-      description: 'Basic features for small farms',
-      price: 0,
-      currency: 'USD',
-      billingCycle: 'NONE',
-      maxUsers: 3,
-      maxFarms: 1,
-      maxStorage: 100,
-      features: { modules: ['farm', 'crop', 'task', 'leave', 'roster', 'basic_reporting'], farmTypes: ['CROP'] },
+      name: 'FREE', displayName: 'Free Plan', description: 'Basic features for small farms',
+      price: 0, currency: 'USD', billingCycle: 'NONE', maxUsers: 3, maxFarms: 1, maxStorage: 100,
+      features: { modules: ['farm', 'crop', 'worker', 'communication', 'reporting'], farmTypes: ['CROP'] },
       sortOrder: 0,
     },
     {
-      name: 'BASIC',
-      displayName: 'Basic Plan',
-      description: 'Essential features for growing farms',
-      price: 29.99,
-      currency: 'USD',
-      billingCycle: 'MONTHLY',
-      maxUsers: 10,
-      maxFarms: 3,
-      maxStorage: 500,
-      features: { modules: ['farm', 'crop', 'livestock', 'inventory', 'messaging', 'task', 'leave', 'roster', 'basic_reporting'], farmTypes: ['CROP', 'LIVESTOCK'] },
+      name: 'BASIC', displayName: 'Basic Plan', description: 'Essential features for growing farms',
+      price: 29.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 10, maxFarms: 3, maxStorage: 500,
+      features: { modules: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting'], farmTypes: ['CROP', 'LIVESTOCK'] },
       sortOrder: 1,
     },
     {
-      name: 'PRO',
-      displayName: 'Professional Plan',
-      description: 'Advanced features for professional farm management',
-      price: 79.99,
-      currency: 'USD',
-      billingCycle: 'MONTHLY',
-      maxUsers: 50,
-      maxFarms: 20,
-      maxStorage: 5120,
-      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'task', 'leave', 'roster', 'messaging', 'correspondence', 'reporting'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY'] },
+      name: 'PRO', displayName: 'Professional Plan', description: 'Advanced features for professional farm management',
+      price: 79.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 50, maxFarms: 20, maxStorage: 5120,
+      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY'] },
       sortOrder: 2,
     },
     {
-      name: 'ENTERPRISE',
-      displayName: 'Enterprise Plan',
-      description: 'Unlimited features for large organizations',
-      price: 199.99,
-      currency: 'USD',
-      billingCycle: 'MONTHLY',
-      maxUsers: 999999,
-      maxFarms: 999999,
-      maxStorage: 51200,
-      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'task', 'leave', 'roster', 'messaging', 'correspondence', 'reporting', 'api_access', 'priority_support'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] },
+      name: 'ENTERPRISE', displayName: 'Enterprise Plan', description: 'Unlimited features for large organizations',
+      price: 199.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 999999, maxFarms: 999999, maxStorage: 51200,
+      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'api_access', 'priority_support'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] },
       sortOrder: 3,
     },
   ]
@@ -258,45 +248,27 @@ async function main() {
   for (const plan of planData) {
     await prisma.subscriptionPlan.upsert({
       where: { name: plan.name },
-      update: {
-        displayName: plan.displayName,
-        description: plan.description,
-        price: plan.price,
-        currency: plan.currency,
-        billingCycle: plan.billingCycle,
-        maxUsers: plan.maxUsers,
-        maxFarms: plan.maxFarms,
-        maxStorage: plan.maxStorage,
-        features: plan.features,
-        sortOrder: plan.sortOrder,
-      },
-      create: plan,
+      update: { ...plan },
+      create: { ...plan },
     })
   }
 
-  // 8. Create Default Feature Flags
+  // 10. Create Feature Flags (10 consolidated modules)
   const featureFlagData = [
-    // Core modules
-    { key: 'farm.enabled', name: 'Farm Management', category: 'module', description: 'Enable/disable farm management module' },
-    { key: 'crop.enabled', name: 'Crop Management', category: 'module', description: 'Enable/disable crop management module' },
-    { key: 'livestock.enabled', name: 'Livestock Management', category: 'module', description: 'Enable/disable livestock management module' },
-    { key: 'poultry.enabled', name: 'Poultry Management', category: 'module', description: 'Enable/disable poultry management module' },
-    { key: 'inventory.enabled', name: 'Inventory Management', category: 'module', description: 'Enable/disable inventory management module' },
-    { key: 'finance.enabled', name: 'Finance Management', category: 'module', description: 'Enable/disable finance management module' },
-    { key: 'worker.enabled', name: 'Worker Management', category: 'module', description: 'Enable/disable worker management module' },
-    { key: 'task.enabled', name: 'Task Management', category: 'module', description: 'Enable/disable task management module' },
-    { key: 'leave.enabled', name: 'Leave Management', category: 'module', description: 'Enable/disable leave management module' },
-    { key: 'roster.enabled', name: 'Roster Management', category: 'module', description: 'Enable/disable roster management module' },
-    { key: 'messaging.enabled', name: 'Internal Messaging', category: 'module', description: 'Enable/disable internal messaging module' },
-    { key: 'correspondence.enabled', name: 'Correspondence', category: 'module', description: 'Enable/disable correspondence module' },
-    { key: 'reporting.enabled', name: 'Reporting & Analytics', category: 'module', description: 'Enable/disable reporting module' },
-    { key: 'notification.enabled', name: 'Notifications', category: 'module', description: 'Enable/disable notifications module' },
-    // Platform features
+    { key: 'farm.enabled', name: 'Farm Management', category: 'module', description: 'Farms, fields, GPS mapping' },
+    { key: 'crop.enabled', name: 'Crop Management', category: 'module', description: 'Crops, crop cycles, irrigation, pest & disease, yield' },
+    { key: 'livestock.enabled', name: 'Livestock Management', category: 'module', description: 'Livestock, health, breeding, weight tracking' },
+    { key: 'poultry.enabled', name: 'Poultry Management', category: 'module', description: 'Flocks, feeding, vaccination, mortality' },
+    { key: 'inventory.enabled', name: 'Inventory Management', category: 'module', description: 'Stock, equipment, low stock alerts' },
+    { key: 'finance.enabled', name: 'Finance Management', category: 'module', description: 'Expenses, sales, profitability, contracts, marketplace' },
+    { key: 'worker.enabled', name: 'Worker Management', category: 'module', description: 'Workers, tasks, attendance, leave, roster, shifts' },
+    { key: 'communication.enabled', name: 'Communication', category: 'module', description: 'Internal messaging and correspondence' },
+    { key: 'reporting.enabled', name: 'Reporting & Analytics', category: 'module', description: 'Reports, scheduled reports, analytics' },
+    { key: 'notification.enabled', name: 'Notifications', category: 'module', description: 'System-wide notifications' },
     { key: 'platform.mobile_access', name: 'Mobile App Access', category: 'platform', description: 'Enable/disable mobile app access' },
     { key: 'platform.web_access', name: 'Web App Access', category: 'platform', description: 'Enable/disable web app access' },
     { key: 'platform.admin_access', name: 'Admin App Access', category: 'platform', description: 'Enable/disable admin app access' },
     { key: 'platform.api_access', name: 'API Access', category: 'platform', description: 'Enable/disable API access' },
-    // Integrations
     { key: 'integration.email', name: 'Email Notifications', category: 'integration', description: 'Enable/disable email notifications' },
     { key: 'integration.push', name: 'Push Notifications', category: 'integration', description: 'Enable/disable push notifications' },
     { key: 'integration.sms', name: 'SMS Notifications', category: 'integration', description: 'Enable/disable SMS notifications' },
@@ -310,7 +282,130 @@ async function main() {
     })
   }
 
-  console.log('Seeding complete.')
+  // 11. Create Demo Farms
+  const farm1 = await prisma.farm.upsert({
+    where: { id: 'demo-farm-1' },
+    update: {},
+    create: {
+      id: 'demo-farm-1',
+      organizationId: demoOrg.id,
+      name: 'Green Valley Farm',
+      location: 'Ogun State, Nigeria',
+      size: 50,
+      farmType: 'CROP',
+      status: 'active',
+    },
+  })
+
+  const farm2 = await prisma.farm.upsert({
+    where: { id: 'demo-farm-2' },
+    update: {},
+    create: {
+      id: 'demo-farm-2',
+      organizationId: demoOrg.id,
+      name: 'Sunrise Livestock Ranch',
+      location: 'Oyo State, Nigeria',
+      size: 30,
+      farmType: 'LIVESTOCK',
+      status: 'active',
+    },
+  })
+  console.log('  Created 2 demo farms')
+
+  // 12. Create Fields for Farm 1
+  const field1 = await prisma.field.create({
+    data: { farmId: farm1.id, name: 'North Field', size: 25 },
+  })
+  const field2 = await prisma.field.create({
+    data: { farmId: farm1.id, name: 'South Field', size: 20 },
+  })
+
+  // 13. Create Crops and CropCycles
+  const maizeCrop = await prisma.crop.upsert({
+    where: { id: 'crop-maize' },
+    update: {},
+    create: { id: 'crop-maize', name: 'Maize' },
+  })
+  const cassavaCrop = await prisma.crop.upsert({
+    where: { id: 'crop-cassava' },
+    update: {},
+    create: { id: 'crop-cassava', name: 'Cassava' },
+  })
+  const tomatoCrop = await prisma.crop.upsert({
+    where: { id: 'crop-tomato' },
+    update: {},
+    create: { id: 'crop-tomato', name: 'Tomato' },
+  })
+
+  await prisma.cropCycle.createMany({
+    data: [
+      { fieldId: field1.id, cropId: maizeCrop.id, plantingDate: new Date('2026-03-01'), status: 'growing', health: 85 },
+      { fieldId: field2.id, cropId: cassavaCrop.id, plantingDate: new Date('2026-02-15'), status: 'growing', health: 90 },
+      { fieldId: field1.id, cropId: tomatoCrop.id, plantingDate: new Date('2025-11-01'), harvestDate: new Date('2026-02-01'), status: 'harvested', health: 100 },
+    ],
+    skipDuplicates: true,
+  })
+  console.log('  Created 3 crops and crop cycles')
+
+  // 14. Create Demo Livestock
+  await prisma.livestock.createMany({
+    data: [
+      { farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Female', birthDate: new Date('2023-06-15'), status: 'healthy' },
+      { farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Male', birthDate: new Date('2023-03-10'), status: 'healthy' },
+      { farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-01-20'), status: 'healthy' },
+      { farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-03-05'), status: 'healthy' },
+    ],
+    skipDuplicates: true,
+  })
+  console.log('  Created 4 demo livestock')
+
+  // 15. Create Demo Workers (simple Worker model: farmId, name, role)
+  await prisma.worker.createMany({
+    data: [
+      { farmId: farm1.id, name: 'Farm Manager', role: 'FARM_MANAGER' },
+      { farmId: farm1.id, name: 'John Worker', role: 'WORKER' },
+      { farmId: farm1.id, name: 'Jane Supervisor', role: 'SUPERVISOR' },
+      { farmId: farm2.id, name: 'Vet Doctor', role: 'VETERINARIAN' },
+      { farmId: farm2.id, name: 'Ranch Hand', role: 'WORKER' },
+    ],
+    skipDuplicates: true,
+  })
+  console.log('  Created 5 demo workers')
+
+  // 16. Create Demo Tasks
+  await prisma.task.createMany({
+    data: [
+      { organizationId: demoOrg.id, farmId: farm1.id, title: 'Inspect maize field', description: 'Check for pests and growth progress', status: 'PENDING', priority: 'HIGH', assignedToName: 'Farm Manager' },
+      { organizationId: demoOrg.id, farmId: farm1.id, title: 'Apply fertilizer to cassava', description: 'NPK fertilizer application', status: 'IN_PROGRESS', priority: 'MEDIUM', assignedToName: 'Farm Manager' },
+      { organizationId: demoOrg.id, farmId: farm2.id, title: 'Vaccinate cattle', description: 'Annual vaccination schedule', status: 'PENDING', priority: 'HIGH' },
+    ],
+    skipDuplicates: true,
+  })
+  console.log('  Created 3 demo tasks')
+
+  // 17. Create Demo Inventory
+  await prisma.inventory.createMany({
+    data: [
+      { farmId: farm1.id, name: 'NPK Fertilizer', category: 'Fertilizer', quantity: 50, unit: 'bags', minimumQuantity: 10 },
+      { farmId: farm1.id, name: 'Maize Seeds', category: 'Seeds', quantity: 20, unit: 'kg', minimumQuantity: 5 },
+      { farmId: farm2.id, name: 'Animal Feed', category: 'Feed', quantity: 100, unit: 'kg', minimumQuantity: 20 },
+    ],
+    skipDuplicates: true,
+  })
+  console.log('  Created 3 demo inventory items')
+
+  console.log('')
+  console.log('Seeding complete!')
+  console.log('')
+  console.log('--- Login Credentials ---')
+  console.log('Console (Platform Developer): Admin@fms.com / password123')
+  console.log('Admin (Farm Owner):           demo@farm.com / password123')
+  console.log('Web/Mobile (Farm Manager):    farmmanager.demo@farm.com / password123')
+  console.log('Web/Mobile (Accountant):      accountant.demo@farm.com / password123')
+  console.log('Web/Mobile (Supervisor):      supervisor.demo@farm.com / password123')
+  console.log('Web/Mobile (Veterinarian):    veterinarian.demo@farm.com / password123')
+  console.log('Web/Mobile (Worker):          worker.demo@farm.com / password123')
+  console.log('All passwords: password123')
 }
 
 main()

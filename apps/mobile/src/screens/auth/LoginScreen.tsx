@@ -1,195 +1,212 @@
 import React, { useState } from 'react';
 import {
   View,
-  ScrollView,
   StyleSheet,
   Text,
   SafeAreaView,
-  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../hooks/useAuth';
 import { TextInputField, Button, colors } from '../../components/common/UIComponents';
-import { useToasts } from '../../hooks/useToasts';
+import { useAuth } from '../../hooks/useAuth';
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
-  header: {
-    marginBottom: 40,
-  },
-  logo: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textLight,
-    lineHeight: 24,
-  },
-  form: {
-    marginBottom: 24,
-  },
-  errorBox: {
-    backgroundColor: '#FFEBEE',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.error,
-  },
-  errorText: {
-    color: colors.error,
-    fontSize: 14,
-  },
-  forgotPassword: {
-    alignItems: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: colors.secondary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  signupContainer: {
-    flexDirection: 'row',
+  logoSection: { alignItems: 'center', marginBottom: 48 },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginBottom: 16,
   },
-  signupText: {
+  logoText: { fontSize: 36, color: '#FFFFFF', fontWeight: '700' },
+  title: { fontSize: 28, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 8 },
+  subtitle: { fontSize: 14, color: colors.textLight, textAlign: 'center', marginBottom: 32 },
+  form: { gap: 16 },
+  mfaSection: { marginTop: 24, alignItems: 'center' },
+  mfaTitle: { fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 8 },
+  mfaSubtitle: { fontSize: 13, color: colors.textLight, marginBottom: 16, textAlign: 'center' },
+  errorText: { fontSize: 13, color: colors.error, textAlign: 'center', marginBottom: 12 },
+  registerText: {
+    fontSize: 13,
     color: colors.textLight,
-    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 24,
   },
-  signupLink: {
-    color: colors.primary,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+  registerLink: { color: colors.primary, fontWeight: '600' },
 });
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const { login, loading, error, clearError } = useAuth();
-  const { error: showError } = useToasts();
+  const { login, verifyMFA, loading, error, mfaRequired, mfaSessionToken, clearError, resetMFA } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-
-  const validateForm = () => {
-    let valid = true;
-    setEmailError('');
-    setPasswordError('');
-
-    if (!email) {
-      setEmailError('Email is required');
-      valid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Invalid email format');
-      valid = false;
-    }
-
-    if (!password) {
-      setPasswordError('Password is required');
-      valid = false;
-    } else if (password.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
-      valid = false;
-    }
-
-    return valid;
-  };
+  const [mfaCode, setMfaCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    clearError();
-    if (!validateForm()) return;
+    if (!email.trim()) {
+      Alert.alert('Error', 'Email is required');
+      return;
+    }
+    if (!password) {
+      Alert.alert('Error', 'Password is required');
+      return;
+    }
 
+    clearError();
     try {
-      const result: any = await login(email, password);
-      if (result && (result as any).mfaRequired) {
-        showError('Enter the code from your authenticator app to continue.');
-      }
-      // Navigation is handled by auth state change
-    } catch (err) {
-      // The error message is already in Redux state; we surface it inline.
-      // Keep the catch so we never get an unhandled promise rejection.
+      await login(email.trim().toLowerCase(), password);
+    } catch (err: any) {
+      // Error is handled by the slice
     }
   };
+
+  const handleVerifyMFA = async () => {
+    if (!mfaCode || mfaCode.length !== 6) {
+      Alert.alert('Error', 'Enter a 6-digit code');
+      return;
+    }
+    if (!mfaSessionToken) return;
+
+    clearError();
+    try {
+      await verifyMFA(mfaSessionToken, mfaCode);
+    } catch (err: any) {
+      // Error is handled by the slice
+    }
+  };
+
+  const handleUsePassword = () => {
+    resetMFA();
+    setMfaCode('');
+  };
+
+  if (mfaRequired) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.logoSection}>
+              <View style={styles.logoCircle}>
+                <Text style={styles.logoText}>F</Text>
+              </View>
+              <Text style={styles.title}>Two-Factor Auth</Text>
+              <Text style={styles.mfaSubtitle}>
+                Enter the 6-digit code from your authenticator app
+              </Text>
+            </View>
+
+            {error && <Text style={styles.errorText}>{error}</Text>}
+
+            <View style={styles.form}>
+              <TextInputField
+                label="Verification Code"
+                placeholder="000000"
+                value={mfaCode}
+                onChangeText={(v) => {
+                  setMfaCode(v.replace(/[^0-9]/g, '').slice(0, 6));
+                  clearError();
+                }}
+                keyboardType="numeric"
+                accessibilityLabel="6-digit verification code"
+              />
+
+              <Button
+                title={loading ? 'Verifying...' : 'Verify'}
+                onPress={handleVerifyMFA}
+                loading={loading}
+                disabled={loading || mfaCode.length !== 6}
+              />
+
+              <Button
+                title="Use password instead"
+                onPress={handleUsePassword}
+                variant="secondary"
+              />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>🌾 FarmHub</Text>
-          <Text style={styles.subtitle}>
-            Manage your farm efficiently with our all-in-one platform
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.logoSection}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoText}>F</Text>
             </View>
-          )}
+            <Text style={styles.title}>Farm Management</Text>
+            <Text style={styles.subtitle}>Sign in to your account</Text>
+          </View>
 
-          <TextInputField
-            label="Email Address"
-            placeholder="you@example.com"
-            value={email}
-            onChangeText={setEmail}
-            error={emailError}
-            keyboardType="email-address"
-            editable={!loading}
-          />
+          {error && <Text style={styles.errorText}>{error}</Text>}
 
-          <TextInputField
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            error={passwordError}
-            secureTextEntry
-            editable={!loading}
-          />
+          <View style={styles.form}>
+            <TextInputField
+              label="Email"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={(v) => {
+                setEmail(v);
+                clearError();
+              }}
+              keyboardType="email-address"
+              accessibilityLabel="Email address"
+            />
 
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => router.push('/(auth)/forgot-password')}
-            disabled={loading}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+            <TextInputField
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={(v) => {
+                setPassword(v);
+                clearError();
+              }}
+              secureTextEntry={!showPassword}
+            />
 
-          <Button
-            title="Sign In"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-          />
-        </View>
+            <Button
+              title={loading ? 'Signing in...' : 'Sign In'}
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+            />
+          </View>
 
-        <View style={styles.signupContainer}>
-          <Text style={styles.signupText}>Don\u2019t have an account?</Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(auth)/register')}
-            disabled={loading}
-          >
-            <Text style={styles.signupLink}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <Text style={styles.registerText}>
+            Don't have an account?{' '}
+            <Text style={styles.registerLink}>Contact your administrator</Text>
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

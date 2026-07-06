@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppSelector } from '../../hooks/useAuth';
-import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI } from '../../services/api';
+import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI } from '../../services/api';
 import { Card, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useToasts } from '../../hooks/useToasts';
@@ -145,6 +145,8 @@ export default function DashboardScreen() {
     totalLivestock: 0,
     totalRevenue: 0,
   });
+  const [pendingTasks, setPendingTasks] = useState<any[]>([]);
+  const [attendanceSummary, setAttendanceSummary] = useState<{ total: number; present: number; absent: number; late: number } | null>(null);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -156,6 +158,15 @@ export default function DashboardScreen() {
         poultryAPI.list(),
         financeAPI.list(),
       ]);
+
+      const [tasksRes, attendanceRes] = await Promise.allSettled([
+        tasksAPI.list({ status: 'PENDING', limit: 5 }),
+        attendanceAPI.getToday(),
+      ]);
+      const tasks = tasksRes.status === 'fulfilled' ? extractArray<any>(tasksRes.value) : [];
+      const attendance = attendanceRes.status === 'fulfilled' ? attendanceRes.value?.data || attendanceRes.value : null;
+      setPendingTasks(tasks.slice(0, 5));
+      setAttendanceSummary(attendance?.summary || null);
 
       const farms = extractArray<RawFarm>(farmsRes).map(transformFarm);
       const crops = extractArray<any>(cropsRes);
@@ -350,6 +361,65 @@ export default function DashboardScreen() {
                 <Text style={styles.quickActionIcon}>💰</Text>
               </View>
             </Card>
+          </View>
+
+          {/* Pending Tasks */}
+          <View style={styles.section}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Pending Tasks</Text>
+              <TouchableOpacity onPress={() => router.push('/tasks')}>
+                <Text style={{ color: colors.primary, fontSize: 14 }}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            {pendingTasks.length === 0 ? (
+              <Card style={styles.quickActionCard}>
+                <Text style={styles.quickActionDescription}>No pending tasks</Text>
+              </Card>
+            ) : (
+              pendingTasks.map((task: any) => (
+                <Card key={task.id} style={styles.quickActionCard} onPress={() => router.push(`/tasks/${task.id}`)}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.quickActionTitle} numberOfLines={1}>{task.title}</Text>
+                      <Text style={styles.quickActionDescription}>
+                        {task.assignedToName || 'Unassigned'}{task.dueDate ? ` · Due ${new Date(task.dueDate).toLocaleDateString()}` : ''}
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: task.priority === 'URGENT' ? '#FEE2E2' : task.priority === 'HIGH' ? '#FFEDD5' : '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: task.priority === 'URGENT' ? '#DC2626' : task.priority === 'HIGH' ? '#EA580C' : '#6B7280' }}>
+                        {task.priority}
+                      </Text>
+                    </View>
+                  </View>
+                </Card>
+              ))
+            )}
+          </View>
+
+          {/* Today's Attendance */}
+          <View style={styles.section}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Today's Attendance</Text>
+              <TouchableOpacity onPress={() => router.push('/attendance')}>
+                <Text style={{ color: colors.primary, fontSize: 14 }}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            {attendanceSummary ? (
+              <View style={styles.statsRow}>
+                <Card style={styles.statCard}>
+                  <Text style={styles.statLabel}>Present</Text>
+                  <Text style={[styles.statValue, { color: '#16A34A' }]}>{attendanceSummary.present}</Text>
+                </Card>
+                <Card style={styles.statCard}>
+                  <Text style={styles.statLabel}>Absent</Text>
+                  <Text style={[styles.statValue, { color: '#DC2626' }]}>{attendanceSummary.absent}</Text>
+                </Card>
+              </View>
+            ) : (
+              <Card style={styles.quickActionCard}>
+                <Text style={styles.quickActionDescription}>No attendance data</Text>
+              </Card>
+            )}
           </View>
 
           {/* Recent Activity */}

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import { useToasts } from '@/lib/toasts';
@@ -41,7 +40,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function LeavePage() {
-  const { user } = useAuth();
   const { success, error: toastError } = useToasts();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [balance, setBalance] = useState<BalanceItem[]>([]);

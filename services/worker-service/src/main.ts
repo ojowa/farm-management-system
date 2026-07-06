@@ -5,8 +5,6 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { workerRouter } from './modules/worker/worker.module';
-import { taskRouter } from './modules/task/task.module';
-import { AuthError } from '@farm/auth';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -21,19 +19,9 @@ app.use(express.json());
 app.use(rlsMiddleware);
 
 app.use('/api', featureFlagGuard('worker.enabled'), workerRouter);
-app.use('/api', featureFlagGuard('task.enabled'), taskRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'worker-service' });
-});
-
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res
-      .status(err.statusCode)
-      .json({ statusCode: err.statusCode, message: err.message });
-  }
-  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
 });
 
 app.listen(port, () => {

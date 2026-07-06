@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useSocket } from './socket';
-import { useAuth } from './auth';
 import { Bell, X } from 'lucide-react';
 import { useToast } from './toasts';
 import { notificationsAPI } from './api';
@@ -31,16 +30,14 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { socket, isConnected, on } = useSocket();
-  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
     try {
-      const { data } = await notificationsAPI.list(user.id, { limit: 50 });
+      const { data } = await notificationsAPI.list({ limit: 50 });
       setNotifications(data);
       setUnreadCount(data.filter((n: Notification) => !n.read).length);
     } catch (error) {
@@ -48,11 +45,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   const markAsRead = useCallback(async (id: string) => {
     try {
-      await notificationsAPI.markAsRead(id);
+      await notificationsAPI.markRead(id);
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
@@ -63,15 +60,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markAllAsRead = useCallback(async () => {
-    if (!user) return;
     try {
-      await notificationsAPI.markAllAsRead(user.id);
+      await notificationsAPI.markAllRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
-  }, [user]);
+  }, []);
 
   const deleteNotification = useCallback(async (id: string) => {
     try {
@@ -88,9 +84,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
     fetchNotifications();
-  }, [authLoading, fetchNotifications]);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     if (!isConnected || !socket) return;

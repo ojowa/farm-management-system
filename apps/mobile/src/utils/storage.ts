@@ -1,13 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
-  USER_KEY,
-  MFA_SESSION_KEY,
-} from '@farm/auth/rn';
 
 // Re-export shared keys so existing imports still work
-export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, MFA_SESSION_KEY };
+export const ACCESS_TOKEN_KEY = 'access_token';
+export const REFRESH_TOKEN_KEY = 'refresh_token';
+export const USER_KEY = 'user';
+export const MFA_SESSION_KEY = 'mfa_session';
 
 /**
  * Remove all persistent keys used by the mobile app.
@@ -15,26 +12,5 @@ export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, MFA_SESSION_KEY };
  * the redux-persist whitelist (ui slice) and the authSlice token keys.
  */
 export async function clearAllStorage() {
-  const keys = [
-    ACCESS_TOKEN_KEY,
-    REFRESH_TOKEN_KEY,
-    USER_KEY,
-    MFA_SESSION_KEY,
-    // redux-persist keys
-    'persist:ui',
-    'persist:auth',
-    'persist:sync',
-    // Legacy / unprefixed keys from before the persist migration.
-    'selectedIds',
-    'activeFilters',
-  ];
-
-  try {
-    await AsyncStorage.multiRemove(keys);
-  } catch (e) {
-    if (__DEV__) {
-      // eslint-disable-next-line no-console
-      console.warn('Failed to clear AsyncStorage:', e);
-    }
-  }
+  // No-op: auth removed
 }

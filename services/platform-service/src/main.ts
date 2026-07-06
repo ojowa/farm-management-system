@@ -13,7 +13,8 @@ import healthRoutes from './routes/health.routes';
 import auditRoutes from './routes/audit.routes';
 import broadcastsRoutes from './routes/broadcasts.routes';
 import configRoutes from './routes/config.routes';
-import { AuthError } from '@farm/auth';
+import { weatherRouter } from './routes/weather';
+import { documentsRouter } from './routes/documents';
 import { apiLimiter, authLimiter, healthCheckLimiter } from './middleware/rate-limiter';
 import { cspHeaders } from './middleware/csp';
 
@@ -68,6 +69,12 @@ app.use('/health', healthRoutes);
 app.use('/audit', auditRoutes);
 app.use('/broadcasts', broadcastsRoutes);
 app.use('/config', configRoutes);
+app.use('/weather', weatherRouter);
+app.use('/documents', documentsRouter);
+
+// Serve uploaded files statically
+const uploadsPath = path.resolve(__dirname, '../../uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 app.get('/health-check', (_req, res) => {
   res.json({ status: 'ok', service: 'platform-service', uptime: process.uptime(), timestamp: new Date().toISOString() });
@@ -75,9 +82,6 @@ app.get('/health-check', (_req, res) => {
 
 // Centralized error handler
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res.status(err.statusCode).json({ statusCode: err.statusCode, message: err.message });
-  }
   if (err instanceof Error && err.message === 'Not allowed by CORS') {
     return res.status(403).json({ statusCode: 403, message: 'Origin not allowed by CORS policy' });
   }

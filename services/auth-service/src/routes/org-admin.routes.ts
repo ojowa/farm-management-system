@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authMiddleware } from '@farm/auth/express';
 import { prisma } from '@farm/database';
 import { subscriptionLimitGuard } from '@farm/database';
+import { sendInvitationEmail } from '../utils/email';
 
 const router = Router();
 
@@ -155,8 +156,11 @@ router.post('/users', orgAccess, subscriptionLimitGuard('users'), async (req: Re
       },
     });
 
-    // TODO: Send invitation email with tempPassword
-    res.status(201).json({ user, tempPassword });
+    // Send invitation email (best-effort, don't fail user creation)
+    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true } });
+    sendInvitationEmail(email, firstName, tempPassword, org?.name || 'your organization');
+
+    res.status(201).json({ user });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

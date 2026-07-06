@@ -13,8 +13,9 @@ export class FinanceController {
   // --- Expense ---
   async createExpense(req: Request, res: Response) {
     try {
+      const orgId = String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
       const validated = createExpenseSchema.parse(req.body);
-      const expense = await financeService.createExpense(validated);
+      const expense = await financeService.createExpense(validated, orgId);
       res.status(201).json(expense);
     } catch (error: any) {
       res.status(400).json({ error: error.message || error });
@@ -72,8 +73,9 @@ export class FinanceController {
   // --- Sale ---
   async createSale(req: Request, res: Response) {
     try {
+      const orgId = String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
       const validated = createSaleSchema.parse(req.body);
-      const sale = await financeService.createSale(validated);
+      const sale = await financeService.createSale(validated, orgId);
       res.status(201).json(sale);
     } catch (error: any) {
       res.status(400).json({ error: error.message || error });

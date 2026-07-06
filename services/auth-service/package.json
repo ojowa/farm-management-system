@@ -13,13 +13,17 @@
     "@farm/database": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/validation": "workspace:*",
+    "@otplib/plugin-base32-scure": "^13.4.1",
+    "@otplib/plugin-crypto-node": "^13.4.1",
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "otplib": "^13.4.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",

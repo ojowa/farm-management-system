@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
-import { AuthError } from '@farm/auth';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 
@@ -23,18 +22,11 @@ app.use(rlsMiddleware);
 // `reporting.read` permission.
 // CRUD for reporting artifacts is implemented in a dedicated router.
 import reportingRouter from './modules/reporting/reporting.router';
+import { scheduledReportsRouter } from './routes/scheduled-reports';
 
 app.use('/api', featureFlagGuard('reporting.enabled'), reportingRouter);
+app.use('/api/schedule', featureFlagGuard('reporting.enabled'), scheduledReportsRouter);
 
-
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res
-      .status(err.statusCode)
-      .json({ statusCode: err.statusCode, message: err.message });
-  }
-  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
-});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'reporting-service' });

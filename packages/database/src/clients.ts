@@ -30,4 +30,5 @@ export {
   getOrganizationId,
   getIsSuperAdmin,
   clearOrganizationId,
+  runWithRlsContext,
 } from './rls';

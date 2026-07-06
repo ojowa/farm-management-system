@@ -58,7 +58,7 @@ describe('API error handling', () => {
   });
 
   it('falls back to default message when no response data', () => {
-    const error = { response: { status: 500 } };
+    const error = { response: { status: 500 } } as any;
     const message = error.response.data?.message || 'An error occurred';
     expect(message).toBe('An error occurred');
   });

@@ -4,10 +4,8 @@ import {
   Delete,
   Body,
   Req,
-  UseGuards,
 } from '@nestjs/common';
 import { PushService } from './push.service';
-import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth/nestjs';
 import { scopedPrisma as prisma } from '@farm/database';
 
 interface RegisterDeviceTokenRequest {
@@ -16,7 +14,6 @@ interface RegisterDeviceTokenRequest {
 }
 
 @Controller('devices')
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class PushController {
   constructor(private readonly pushService: PushService) {}
 

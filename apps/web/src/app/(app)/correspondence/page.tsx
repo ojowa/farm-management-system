@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 import { correspondenceAPI } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
@@ -64,7 +63,6 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function CorrespondencePage() {
-  const { user } = useAuth();
   const { canCreate, canDelete } = usePermission();
   const { success, error: toastError } = useToasts();
   const canWrite = canCreate('correspondence');

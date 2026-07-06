@@ -12,13 +12,16 @@ export interface VerifiedUser {
   id: string;
   email: string | null;
   role: string;
-  organizationId: string;
+  organizationId: string | null;
 }
 
 const DEFAULT_SECRET = 'secret';
 
-const resolveSecret = (): string =>
-  process.env.JWT_SECRET || DEFAULT_SECRET;
+const resolveSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  return secret;
+};
 
 /**
  * Verify a bearer token and return a normalized user object. Throws on any
@@ -29,7 +32,7 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
   const decoded = verify(token, resolveSecret()) as any;
 
 
-  if (!decoded || !decoded.sub || !decoded.role || !decoded.organizationId) {
+  if (!decoded || !decoded.sub || !decoded.role) {
     throw new Error('Invalid token payload');
   }
 
@@ -37,7 +40,7 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
     id: decoded.sub,
     email: decoded.email ?? null,
     role: decoded.role,
-    organizationId: decoded.organizationId,
+    organizationId: decoded.organizationId ?? null,
   };
 };
 

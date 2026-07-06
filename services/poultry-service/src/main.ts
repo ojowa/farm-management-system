@@ -6,7 +6,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { poultryRouter } from './modules/poultry/poultry.module';
 import { medicationRouter } from './modules/poultry/medication.module';
-import { AuthError } from '@farm/auth';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -25,15 +24,6 @@ app.use('/api', featureFlagGuard('poultry.enabled'), medicationRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'poultry-service' });
-});
-
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res
-      .status(err.statusCode)
-      .json({ statusCode: err.statusCode, message: err.message });
-  }
-  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
 });
 
 app.listen(port, () => {

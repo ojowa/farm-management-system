@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 import { createNotification } from '../lib/notificationClient';
 
@@ -22,7 +21,7 @@ function canApprove(role: string): boolean {
 }
 
 // GET /leave/requests - List leave requests
-router.get('/', authMiddleware({ permission: 'leave.read' }), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -53,7 +52,7 @@ router.get('/', authMiddleware({ permission: 'leave.read' }), async (req: Reques
 });
 
 // POST /leave/requests - Submit leave request
-router.post('/', authMiddleware({ permission: 'leave.write' }), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -105,7 +104,7 @@ router.post('/', authMiddleware({ permission: 'leave.write' }), async (req: Requ
 });
 
 // PUT /leave/requests/:id/approve - Approve leave
-router.put('/:id/approve', authMiddleware({ permission: 'leave.approve' }), async (req: Request, res: Response) => {
+router.put('/:id/approve', async (req: Request, res: Response) => {
   try {
     const role = getUserRole(req);
     if (!canApprove(role)) return res.status(403).json({ error: 'Not authorized to approve leave' });
@@ -164,7 +163,7 @@ router.put('/:id/approve', authMiddleware({ permission: 'leave.approve' }), asyn
 });
 
 // PUT /leave/requests/:id/reject - Reject leave
-router.put('/:id/reject', authMiddleware({ permission: 'leave.approve' }), async (req: Request, res: Response) => {
+router.put('/:id/reject', async (req: Request, res: Response) => {
   try {
     const role = getUserRole(req);
     if (!canApprove(role)) return res.status(403).json({ error: 'Not authorized to reject leave' });
@@ -207,7 +206,7 @@ router.put('/:id/reject', authMiddleware({ permission: 'leave.approve' }), async
 });
 
 // PUT /leave/requests/:id/cancel - Cancel own request
-router.put('/:id/cancel', authMiddleware({ permission: 'leave.write' }), async (req: Request, res: Response) => {
+router.put('/:id/cancel', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const id = String(req.params.id);

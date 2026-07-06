@@ -1,6 +1,4 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '@farm/auth/rn';
+import axios, { AxiosInstance } from 'axios';
 
 // Expo exposes env vars at build time via EXPO_PUBLIC_*; at runtime they
 // are inlined. We guard the access so type-check still works in an
@@ -11,35 +9,10 @@ const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
   'http://localhost:4000';
 
-// ── Force-logout callback ─────────────────────────────────────────────
-// The Redux store registers a callback here so the interceptor can trigger
-// a global logout without creating a circular import.
-let onForceLogout: (() => void) | null = null;
-
-export function registerForceLogoutHandler(handler: () => void) {
-  onForceLogout = handler;
-}
-
-// ── Concurrent-401 protection ─────────────────────────────────────────
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: any) => void;
-}> = [];
-
-function processQueue(error: any, token: string | null) {
-  failedQueue.forEach((promise) => {
-    if (error || !token) {
-      promise.reject(error);
-    } else {
-      promise.resolve(token);
-    }
-  });
-  failedQueue = [];
-}
-
 class APIClient {
   private client: AxiosInstance;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -47,76 +20,56 @@ class APIClient {
       timeout: 10000,
     });
 
-    // Add request interceptor to include auth token
-    this.client.interceptors.request.use(
-      async (config) => {
-        const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
+    // Request interceptor — attach Bearer token
+    this.client.interceptors.request.use((config) => {
+      if (this.accessToken) {
+        config.headers.Authorization = `Bearer ${this.accessToken}`;
+      }
+      return config;
+    });
 
-    // Add response interceptor for token refresh with concurrent-401 queue
+    // Response interceptor — auto-refresh on 401
+    let isRefreshing = false;
+    let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (e: unknown) => void }> = [];
+
+    const processQueue = (error: unknown) => {
+      failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
+      failedQueue = [];
+    };
+
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & {
-          _retry?: boolean;
-        };
-
-        if (error.response?.status !== 401 || originalRequest._retry) {
-          return Promise.reject(error);
-        }
-
-        // If a refresh is already in flight, queue this request
-        if (isRefreshing) {
-          return new Promise<string>((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then((newToken) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return this.client(originalRequest);
-          });
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-          if (!refreshToken) throw new Error('No refresh token');
-
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-
-          processQueue(null, accessToken);
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return this.client(originalRequest);
-        } catch (refreshError) {
-          // Refresh failed — clear tokens, notify the app, and reject queued requests
-          await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
-          await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
-          await AsyncStorage.removeItem(USER_KEY);
-
-          processQueue(refreshError, null);
-
-          // Trigger a global force-logout so the UI navigates to login
-          if (onForceLogout) {
-            onForceLogout();
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            })
+              .then(() => this.client(originalRequest))
+              .catch((err) => Promise.reject(err));
           }
-
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
+          originalRequest._retry = true;
+          isRefreshing = true;
+          try {
+            if (this.refreshToken) {
+              const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+                refreshToken: this.refreshToken,
+              });
+              this.setTokens(res.data.accessToken, res.data.refreshToken);
+              processQueue(null);
+              return this.client(originalRequest);
+            }
+            throw new Error('No refresh token');
+          } catch (e) {
+            processQueue(e);
+            this.clearTokens();
+            return Promise.reject(e);
+          } finally {
+            isRefreshing = false;
+          }
         }
+        return Promise.reject(error);
       }
     );
   }
@@ -124,30 +77,19 @@ class APIClient {
   get axiosInstance() {
     return this.client;
   }
+
+  setTokens(accessToken: string, refreshToken: string) {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+  }
+
+  clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+  }
 }
 
 export const apiClient = new APIClient();
-
-
-// Auth API
-export const authAPI = {
-  login: (credentials: { email: string; password: string }) =>
-    apiClient.axiosInstance.post('/auth/login', credentials),
-  register: (data: { email: string; password: string; firstName: string; lastName: string; middleName?: string }) =>
-    apiClient.axiosInstance.post('/auth/register', data),
-  refreshToken: (data: { refreshToken: string }) =>
-    apiClient.axiosInstance.post('/auth/refresh', data),
-  requestPasswordReset: (data: { email: string }) =>
-    apiClient.axiosInstance.post('/auth/forgot-password', data),
-  resetPassword: (data: { token: string; newPassword: string }) =>
-    apiClient.axiosInstance.post('/auth/reset-password', data),
-  verifyMFA: (data: { mfaSessionToken: string; code: string }) =>
-    apiClient.axiosInstance.post('/auth/verify-mfa', data),
-  getProfile: () => apiClient.axiosInstance.get('/auth/me'),
-  updateProfile: (data: { fullName?: string; email?: string; avatar?: string }) =>
-    apiClient.axiosInstance.put('/auth/profile', data),
-  logout: () => apiClient.axiosInstance.post('/auth/logout').catch(() => ({ data: null })),
-};
 
 export const farmsAPI = {
   list: (params?: any) => apiClient.axiosInstance.get('/farms', { params }),
@@ -478,6 +420,7 @@ export const tasksAPI = {
   create: (data: any) => apiClient.axiosInstance.post('/tasks', data),
   update: (id: string, data: any) => apiClient.axiosInstance.put(`/tasks/${id}`, data),
   delete: (id: string) => apiClient.axiosInstance.delete(`/tasks/${id}`),
+  updateStatus: (id: string, status: string) => apiClient.axiosInstance.put(`/tasks/${id}/status`, { status }),
 };
 
 export const leaveAPI = {
@@ -525,4 +468,175 @@ export const notificationsAPI = {
   unreadCount: (userId: string) => apiClient.axiosInstance.get(`/notifications/user/${userId}/unread-count`),
   markAsRead: (id: string) => apiClient.axiosInstance.put(`/notifications/${id}/read`),
   markAllAsRead: (userId: string) => apiClient.axiosInstance.put(`/notifications/user/${userId}/read-all`),
+};
+
+export const attendanceAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/attendance', { params }),
+  getToday: () => apiClient.axiosInstance.get('/attendance/today'),
+  getSummary: (params: { workerId: string; month?: number; year?: number }) =>
+    apiClient.axiosInstance.get('/attendance/summary', { params }),
+  create: (data: any) => apiClient.axiosInstance.post('/attendance', data),
+  clockIn: (data: { workerId: string; workerName: string }) => apiClient.axiosInstance.post('/attendance/clock-in', data),
+  clockOut: (data: { workerId: string }) => apiClient.axiosInstance.post('/attendance/clock-out', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/attendance/${id}`, data),
+  bulkCreate: (records: any[]) => apiClient.axiosInstance.post('/attendance/bulk', { records }),
+};
+
+export const cropStagesAPI = {
+  calendar: (params?: any) => apiClient.axiosInstance.get('/crops/lifecycle/calendar', { params }),
+  listByCycle: (cropCycleId: string) => apiClient.axiosInstance.get(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`),
+  create: (cropCycleId: string, data: any) => apiClient.axiosInstance.post(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`, data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/crops/lifecycle/stages/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/crops/lifecycle/stages/${id}`),
+};
+
+export const livestockHealthAPI = {
+  listByAnimal: (livestockId: string) => apiClient.axiosInstance.get(`/livestock/health/livestock/${livestockId}`),
+  create: (livestockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/health/livestock/${livestockId}`, data),
+  listVaccinations: (livestockId: string) => apiClient.axiosInstance.get(`/livestock/health/vaccinations/${livestockId}`),
+  scheduleVaccination: (livestockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/health/vaccinations/${livestockId}`, data),
+  administerVaccination: (id: string) => apiClient.axiosInstance.put(`/livestock/health/vaccinations/${id}/administer`),
+  overdueVaccinations: () => apiClient.axiosInstance.get('/livestock/health/overdue'),
+};
+
+export const breedingAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/livestock/breeding', { params }),
+  create: (data: any) => apiClient.axiosInstance.post('/livestock/breeding', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/livestock/breeding/${id}`, data),
+  upcoming: () => apiClient.axiosInstance.get('/livestock/breeding/upcoming'),
+};
+
+export const weightAPI = {
+  listByAnimal: (livestockId: string) => apiClient.axiosInstance.get(`/livestock/weight/livestock/${livestockId}`),
+  recordForAnimal: (livestockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/weight/livestock/${livestockId}`, data),
+  listByFlock: (flockId: string) => apiClient.axiosInstance.get(`/livestock/weight/flock/${flockId}`),
+  recordForFlock: (flockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/weight/flock/${flockId}`, data),
+};
+
+export const irrigationAPI = {
+  listSchedules: (params?: any) => apiClient.axiosInstance.get('/crops/irrigation/schedule', { params }),
+  createSchedule: (data: any) => apiClient.axiosInstance.post('/crops/irrigation/schedule', data),
+  updateSchedule: (id: string, data: any) => apiClient.axiosInstance.put(`/crops/irrigation/schedule/${id}`, data),
+  deleteSchedule: (id: string) => apiClient.axiosInstance.delete(`/crops/irrigation/schedule/${id}`),
+  createLog: (data: any) => apiClient.axiosInstance.post('/crops/irrigation/log', data),
+  listLogs: (params?: any) => apiClient.axiosInstance.get('/crops/irrigation/log', { params }),
+};
+
+export const pestDiseaseAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/crops/pest-disease', { params }),
+  active: () => apiClient.axiosInstance.get('/crops/pest-disease/active'),
+  create: (data: any) => apiClient.axiosInstance.post('/crops/pest-disease', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/crops/pest-disease/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/crops/pest-disease/${id}`),
+};
+
+export const weatherAPI = {
+  current: (lat: number, lon: number) => apiClient.axiosInstance.get('/weather/current', { params: { lat, lon } }),
+  forecast: (lat: number, lon: number, days?: number) => apiClient.axiosInstance.get('/weather/forecast', { params: { lat, lon, days } }),
+  alerts: (lat: number, lon: number) => apiClient.axiosInstance.get('/weather/alerts', { params: { lat, lon } }),
+};
+
+export const profitabilityAPI = {
+  byFarm: (params?: any) => apiClient.axiosInstance.get('/finance/profitability/farm', { params }),
+  summary: (params?: any) => apiClient.axiosInstance.get('/finance/profitability/summary', { params }),
+};
+
+export const yieldAPI = {
+  listByCrop: (cropId: string) => apiClient.axiosInstance.get(`/crops/yield/crop/${cropId}`),
+  create: (cropId: string, data: any) => apiClient.axiosInstance.post(`/crops/yield/crop/${cropId}`, data),
+  summary: (cropId: string) => apiClient.axiosInstance.get(`/crops/yield/crop/${cropId}/summary`),
+};
+
+export const scheduledReportsAPI = {
+  list: () => apiClient.axiosInstance.get('/reporting/schedule'),
+  create: (data: any) => apiClient.axiosInstance.post('/reporting/schedule', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/reporting/schedule/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/reporting/schedule/${id}`),
+};
+
+export const lowStockAPI = {
+  list: () => apiClient.axiosInstance.get('/inventory/low-stock'),
+  reorder: (id: string) => apiClient.axiosInstance.post(`/inventory/${id}/reorder`),
+};
+
+export const importExportAPI = {
+  exportFarms: (format?: string) => apiClient.axiosInstance.get('/farms/export/farms', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  importFarms: (data: any[]) => apiClient.axiosInstance.post('/farms/import/farms', { data }),
+  exportCrops: (format?: string) => apiClient.axiosInstance.get('/farms/export/crops', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  exportWorkers: (format?: string) => apiClient.axiosInstance.get('/farms/export/workers', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  exportInventory: (format?: string) => apiClient.axiosInstance.get('/inventory/export', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
+  importInventory: (data: any[]) => apiClient.axiosInstance.post('/inventory/import', { data }),
+};
+
+export const farmMapAPI = {
+  all: () => apiClient.axiosInstance.get('/farms/map/all'),
+  updateLocation: (id: string, data: { latitude: number; longitude: number }) => apiClient.axiosInstance.put(`/farms/map/${id}/location`, data),
+};
+
+export const equipmentAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/inventory/equipment', { params }),
+  get: (id: string) => apiClient.axiosInstance.get(`/inventory/equipment/${id}`),
+  create: (data: any) => apiClient.axiosInstance.post('/inventory/equipment', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/inventory/equipment/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/inventory/equipment/${id}`),
+  maintenanceHistory: (id: string) => apiClient.axiosInstance.get(`/inventory/equipment/${id}/maintenance`),
+  addMaintenance: (id: string, data: any) => apiClient.axiosInstance.post(`/inventory/equipment/${id}/maintenance`, data),
+};
+
+export const contractsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/finance/contracts', { params }),
+  create: (data: any) => apiClient.axiosInstance.post('/finance/contracts', data),
+  update: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/contracts/${id}`, data),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/finance/contracts/${id}`),
+};
+
+export const documentsAPI = {
+  list: (params?: any) => apiClient.axiosInstance.get('/documents', { params }),
+  upload: (formData: FormData) => apiClient.axiosInstance.post('/documents/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  delete: (id: string) => apiClient.axiosInstance.delete(`/documents/${id}`),
+};
+
+export const marketplaceAPI = {
+  listBuyers: (params?: any) => apiClient.axiosInstance.get('/finance/marketplace/buyers', { params }),
+  createBuyer: (data: any) => apiClient.axiosInstance.post('/finance/marketplace/buyers', data),
+  updateBuyer: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/marketplace/buyers/${id}`, data),
+  deleteBuyer: (id: string) => apiClient.axiosInstance.delete(`/finance/marketplace/buyers/${id}`),
+  listListings: (params?: any) => apiClient.axiosInstance.get('/finance/marketplace/listings', { params }),
+  createListing: (data: any) => apiClient.axiosInstance.post('/finance/marketplace/listings', data),
+  updateListing: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/marketplace/listings/${id}`, data),
+  deleteListing: (id: string) => apiClient.axiosInstance.delete(`/finance/marketplace/listings/${id}`),
+};
+
+export const authAPI = {
+  login: async (email: string, password: string) => {
+    const res = await apiClient.axiosInstance.post('/auth/login', { email, password });
+    const data = res.data;
+    if (data.accessToken && data.refreshToken) {
+      apiClient.setTokens(data.accessToken, data.refreshToken);
+    }
+    return data;
+  },
+  verifyMFA: async (mfaToken: string, code: string) => {
+    const res = await apiClient.axiosInstance.post('/auth/verify-mfa', { mfaToken, code });
+    const data = res.data;
+    if (data.accessToken && data.refreshToken) {
+      apiClient.setTokens(data.accessToken, data.refreshToken);
+    }
+    return data;
+  },
+  logout: async () => {
+    try {
+      await apiClient.axiosInstance.post('/auth/logout');
+    } finally {
+      apiClient.clearTokens();
+    }
+  },
+  getProfile: () => apiClient.axiosInstance.get('/auth/me'),
+  updateProfile: (data: any) => apiClient.axiosInstance.put('/auth/profile', data),
+  changePassword: (data: any) => apiClient.axiosInstance.put('/auth/password', data),
+  getPreferences: () => apiClient.axiosInstance.get('/auth/preferences'),
+  updatePreferences: (data: any) => apiClient.axiosInstance.put('/auth/preferences', data),
+  generate2FA: () => apiClient.axiosInstance.post('/auth/2fa/generate'),
+  enable2FA: (code: string) => apiClient.axiosInstance.post('/auth/2fa/enable', { code }),
+  disable2FA: (code: string) => apiClient.axiosInstance.post('/auth/2fa/disable', { code }),
 };

@@ -1,6 +1,5 @@
 'use client';
 
-import { AuthProvider } from '@/lib/auth';
 import { ToastProvider } from '@/lib/toasts';
 import { SocketProvider } from '@/lib/socket';
 import { ThemeProvider } from '@/lib/theme';
@@ -12,13 +11,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AuthProvider>
-          <SocketProvider>
-            <ReconnectingBanner />
-            <OfflineBanner />
-            <AppLayout>{children}</AppLayout>
-          </SocketProvider>
-        </AuthProvider>
+        <SocketProvider>
+          <ReconnectingBanner />
+          <OfflineBanner />
+          <AppLayout>{children}</AppLayout>
+        </SocketProvider>
       </ToastProvider>
     </ThemeProvider>
   );

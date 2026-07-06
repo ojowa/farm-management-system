@@ -3,6 +3,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { join } from 'path';
 import { readFileSync } from 'fs';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
@@ -26,6 +27,9 @@ loadEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser());
+
   app.enableCors({
     origin: [
       'http://localhost:3000',
@@ -43,7 +47,12 @@ async function bootstrap() {
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'X-Requested-With',
+      'Authorization',
+    ],
+    exposedHeaders: ['Set-Cookie'],
   });
   app.useWebSocketAdapter(new IoAdapter(app));
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -52,17 +61,6 @@ async function bootstrap() {
     .setTitle('Farm Management API Gateway')
     .setDescription('API Gateway for Farm Management System')
     .setVersion('1.0.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'Authorization',
-        description: 'Enter JWT as: Bearer <token>',
-        in: 'header',
-      },
-      'access-token',
-    )
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
@@ -75,4 +73,3 @@ async function bootstrap() {
   await app.listen(process.env.API_GATEWAY_PORT || 4000);
 }
 bootstrap();
-

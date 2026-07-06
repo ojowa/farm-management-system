@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 
 const router = Router();
@@ -26,7 +25,7 @@ async function generateRefNumber(orgId: string): Promise<string> {
 }
 
 // GET /correspondence - List correspondence
-router.get('/', authMiddleware({ permission: 'correspondence.read' }), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { status, type, category, archived } = req.query;
@@ -53,7 +52,7 @@ router.get('/', authMiddleware({ permission: 'correspondence.read' }), async (re
 });
 
 // GET /correspondence/stats - Get counts by status
-router.get('/stats', authMiddleware({ permission: 'correspondence.read' }), async (req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const [total, draft, sent, received, archived] = await Promise.all([
@@ -70,7 +69,7 @@ router.get('/stats', authMiddleware({ permission: 'correspondence.read' }), asyn
 });
 
 // GET /correspondence/:id - Get single correspondence
-router.get('/:id', authMiddleware({ permission: 'correspondence.read' }), async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const item = await scopedPrisma.correspondence.findFirst({
@@ -85,7 +84,7 @@ router.get('/:id', authMiddleware({ permission: 'correspondence.read' }), async 
 });
 
 // POST /correspondence - Create correspondence
-router.post('/', authMiddleware({ permission: 'correspondence.write' }), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -121,7 +120,7 @@ router.post('/', authMiddleware({ permission: 'correspondence.write' }), async (
 });
 
 // PUT /correspondence/:id - Update correspondence
-router.put('/:id', authMiddleware({ permission: 'correspondence.write' }), async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
@@ -149,7 +148,7 @@ router.put('/:id', authMiddleware({ permission: 'correspondence.write' }), async
 });
 
 // PUT /correspondence/:id/archive - Archive correspondence
-router.put('/:id/archive', authMiddleware({ permission: 'correspondence.archive' }), async (req: Request, res: Response) => {
+router.put('/:id/archive', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
@@ -166,7 +165,7 @@ router.put('/:id/archive', authMiddleware({ permission: 'correspondence.archive'
 });
 
 // PUT /correspondence/:id/unarchive - Unarchive correspondence
-router.put('/:id/unarchive', authMiddleware({ permission: 'correspondence.archive' }), async (req: Request, res: Response) => {
+router.put('/:id/unarchive', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
@@ -183,7 +182,7 @@ router.put('/:id/unarchive', authMiddleware({ permission: 'correspondence.archiv
 });
 
 // DELETE /correspondence/:id - Delete correspondence
-router.delete('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER'], permission: 'correspondence.write' }), async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
@@ -196,7 +195,7 @@ router.delete('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMI
 });
 
 // POST /correspondence/:id/attachments - Add attachment metadata
-router.post('/:id/attachments', authMiddleware({ permission: 'correspondence.write' }), async (req: Request, res: Response) => {
+router.post('/:id/attachments', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const orgId = getOrgId(req);
@@ -225,7 +224,7 @@ router.post('/:id/attachments', authMiddleware({ permission: 'correspondence.wri
 });
 
 // DELETE /correspondence/attachments/:id - Remove attachment
-router.delete('/attachments/:id', authMiddleware({ permission: 'correspondence.write' }), async (req: Request, res: Response) => {
+router.delete('/attachments/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.correspondenceAttachment.findFirst({ where: { id } });

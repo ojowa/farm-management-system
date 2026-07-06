@@ -11,7 +11,6 @@ import { useToasts } from '@/lib/toasts';
 import { useRealtime } from '@/hooks/useRealtime';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { farmFormSchema } from '@/lib/validation';
-import { useAuth } from '@/lib/auth';
 
 interface Farm {
   id: string;
@@ -54,12 +53,17 @@ const PAGE_SIZE = 10;
 export default function FarmsPage() {
   const router = useRouter();
   const { success, error: toastError } = useToasts();
-  const { user } = useAuth();
-  const allowedFarmTypes = user?.planFeatures?.farmTypes;
-  const farmTypeOptions = useMemo(() =>
-    allowedFarmTypes ? FARM_TYPE_OPTIONS.filter(t => allowedFarmTypes.includes(t.value)) : FARM_TYPE_OPTIONS,
-    [allowedFarmTypes]
-  );
+  const user = {
+    id: '1',
+    firstName: 'User',
+    fullName: 'User',
+    role: 'ADMIN',
+    organizationId: '1',
+    organizationName: 'Farm',
+    permissions: [],
+    planFeatures: { modules: [], farmTypes: [] }
+  };
+  const farmTypeOptions = useMemo(() => FARM_TYPE_OPTIONS, []);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);

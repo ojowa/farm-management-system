@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 import { createBulkNotifications } from '../lib/notificationClient';
 
@@ -14,7 +13,7 @@ function getUserId(req: Request): string {
 }
 
 // GET /messages/inbox - Get messages received by current user
-router.get('/inbox', authMiddleware({ permission: 'messaging.read' }), async (req: Request, res: Response) => {
+router.get('/inbox', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -39,7 +38,7 @@ router.get('/inbox', authMiddleware({ permission: 'messaging.read' }), async (re
 });
 
 // GET /messages/sent - Get messages sent by current user
-router.get('/sent', authMiddleware({ permission: 'messaging.read' }), async (req: Request, res: Response) => {
+router.get('/sent', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -57,7 +56,7 @@ router.get('/sent', authMiddleware({ permission: 'messaging.read' }), async (req
 });
 
 // GET /messages/unread-count - Get unread message count
-router.get('/unread-count', authMiddleware({ permission: 'messaging.read' }), async (req: Request, res: Response) => {
+router.get('/unread-count', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const orgId = getOrgId(req);
@@ -73,7 +72,7 @@ router.get('/unread-count', authMiddleware({ permission: 'messaging.read' }), as
 });
 
 // GET /messages/:id - Get single message
-router.get('/:id', authMiddleware({ permission: 'messaging.read' }), async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const userId = getUserId(req);
@@ -104,7 +103,7 @@ router.get('/:id', authMiddleware({ permission: 'messaging.read' }), async (req:
 });
 
 // POST /messages - Send a message
-router.post('/', authMiddleware({ permission: 'messaging.write' }), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -173,7 +172,7 @@ router.post('/', authMiddleware({ permission: 'messaging.write' }), async (req: 
 });
 
 // DELETE /messages/:id - Delete message (sender or recipient)
-router.delete('/:id', authMiddleware({ permission: 'messaging.write' }), async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const userId = getUserId(req);

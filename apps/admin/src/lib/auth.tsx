@@ -1,169 +1,89 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { authAPI } from '@/lib/api';
-import {
-  setAuthCookies,
-  clearAuthCookies,
-  getAccessToken,
-  setAccessToken,
-  getRefreshToken,
-  setRefreshToken,
-  getUser,
-  setUser as setUserStorage,
-  setMfaToken,
-  clearAllAuthStorage,
-} from '@farm/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { apiClient } from '@/lib/api';
 
 interface User {
   id: string;
-  email: string;
+  email: string | null;
   firstName: string;
   lastName: string;
-  middleName?: string;
-  fullName: string;
-  role: string;
-  organizationId: string;
-  organizationName?: string;
-  permissions: string[];
-  avatar?: string;
-  subscriptionPlan?: string;
-  subscriptionStatus?: string;
-  planFeatures?: { modules: string[]; farmTypes: string[] };
+  role: { name: string; permissions: { permission: { name: string }[] }[] };
+  organizationId: string | null;
+  organization: any;
+  twoFactorEnabled: boolean;
+  [key: string]: any;
 }
 
-interface AuthContextValue {
+interface AuthState {
   user: User | null;
-  loading: boolean;
+  isLoading: boolean;
   isAuthenticated: boolean;
+}
+
+interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
 }
 
-function buildUser(raw: any): User {
-  const org = raw.organization;
-  const planFeatures = org?.subscriptionPlanRef?.features;
-  return {
-    id: raw.id,
-    email: raw.email,
-    firstName: raw.firstName || '',
-    lastName: raw.lastName || '',
-    middleName: raw.middleName || undefined,
-    fullName: [raw.firstName, raw.middleName, raw.lastName].filter(Boolean).join(' '),
-    role: typeof raw.role === 'string' ? raw.role : raw.role?.name || '',
-    organizationId: raw.organizationId,
-    organizationName: org?.name || undefined,
-    permissions: raw.role?.permissions?.map((p: any) => p.permission?.name || p) || [],
-    avatar: raw.avatar,
-    subscriptionPlan: org?.subscriptionPlan || undefined,
-    subscriptionStatus: org?.subscriptionStatus || undefined,
-    planFeatures: planFeatures
-      ? { modules: planFeatures.modules || [], farmTypes: planFeatures.farmTypes || [] }
-      : { modules: ['farm', 'crop', 'task', 'leave', 'roster', 'basic_reporting'], farmTypes: ['CROP'] },
-  };
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  loading: true,
-  isAuthenticated: false,
-  login: async () => {},
-  logout: async () => {},
-  refreshUser: async () => {},
-  updateProfile: async () => {},
-});
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+  });
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  const refreshUser = useCallback(async () => {
+  const fetchUser = useCallback(async () => {
     try {
-      const token = getAccessToken();
-      if (!token) {
-        setUser(null);
-        return;
-      }
-      const { data } = await authAPI.getProfile();
-      const userObj = buildUser(data.user || data);
-      setUser(userObj);
-      setUserStorage(userObj);
+      const res = await apiClient.get('/auth/me');
+      setState({ user: res.data, isLoading: false, isAuthenticated: true });
     } catch {
-      setUser(null);
+      setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   }, []);
 
   useEffect(() => {
-    const stored = getUser<User>();
-    const token = getAccessToken();
+    fetchUser();
+  }, [fetchUser]);
 
-    if (stored) {
-      setUser(stored);
+  const login = async (email: string, password: string) => {
+    const res = await apiClient.post('/auth/login', { email, password });
+    const data = res.data;
+
+    if (data.requiresMFA) {
+      throw { requiresMFA: true, mfaToken: data.mfaToken, user: data.user };
     }
 
-    if (!token) {
-      setLoading(false);
-      return;
+    // Cookies set by server — just fetch user
+    await fetchUser();
+  };
+
+  const logout = async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } finally {
+      setState({ user: null, isLoading: false, isAuthenticated: false });
     }
+  };
 
-    // Show cached user immediately if available, refresh silently in background
-    if (stored) {
-      setLoading(false);
-      refreshUser();
-    } else {
-      refreshUser().finally(() => setLoading(false));
-    }
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'accessToken' && !e.newValue) {
-        clearAllAuthStorage();
-        clearAuthCookies();
-        setUser(null);
-        router.push('/login');
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [refreshUser, router]);
-
-  const login = useCallback(async (email: string, password: string) => {
-    const { data } = await authAPI.login({ email, password });
-    if (data.mfaRequired) {
-      setMfaToken(data.mfaSessionToken);
-      router.push('/mfa');
-      return;
-    }
-    const userObj = buildUser(data.user);
-    setAccessToken(data.accessToken);
-    setRefreshToken(data.refreshToken);
-    setUserStorage(userObj);
-    setAuthCookies(data.accessToken, data.refreshToken, { accessDays: 1 });
-    setUser(userObj);
-    router.push('/');
-  }, [router]);
-
-  const logout = useCallback(async () => {
-    try { await authAPI.logout(); } catch { /* best effort */ }
-    clearAllAuthStorage();
-    clearAuthCookies();
-    setUser(null);
-    router.push('/login');
-  }, [router]);
-
-  const updateProfile = useCallback(async (data: Partial<User>) => {
-    await authAPI.updateProfile(data);
-    await refreshUser();
-  }, [refreshUser]);
+  const refreshUser = async () => {
+    await fetchUser();
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout, refreshUser, updateProfile }}>
+    <AuthContext.Provider value={{ ...state, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

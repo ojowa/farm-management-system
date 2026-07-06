@@ -1,4 +1,4 @@
-import { setOrganizationId, setSuperAdmin, clearOrganizationId } from './rls';
+import { runWithRlsContext, setOrganizationId, setSuperAdmin, clearOrganizationId } from './rls';
 
 /**
  * Minimal request interface — works with Express, NestJS, or any HTTP framework.
@@ -19,32 +19,31 @@ interface RlsResponse {
  * (set by the API gateway's proxy middleware) and configures the
  * RLS context for all subsequent Prisma queries in this request.
  *
+ * Uses AsyncLocalStorage so each concurrent request gets its own
+ * isolated org context — no cross-request contamination.
+ *
  * - Regular users: scoped to their organization via RLS
  * - Super admins: bypass RLS, see all organizations
  *
  * Usage (Express):
  *   import { rlsMiddleware } from '@farm/database';
  *   app.use(rlsMiddleware);
- *
- * Usage (NestJS main.ts):
- *   import { rlsMiddleware } from '@farm/database';
- *   app.use(rlsMiddleware);
  */
 export function rlsMiddleware(req: RlsRequest, res: RlsResponse, next: () => void) {
-  const orgId = req.headers['x-organization-id'] as string | undefined;
-  const role = req.headers['x-user-role'] as string | undefined;
+  runWithRlsContext(() => {
+    const orgId = req.headers['x-organization-id'] as string | undefined;
+    const role = req.headers['x-user-role'] as string | undefined;
 
-  // Super admins bypass RLS
-  if (role === 'SUPER_ADMIN') {
-    setSuperAdmin(true);
-  } else if (orgId) {
-    setOrganizationId(orgId);
-  }
+    if (role === 'SUPER_ADMIN') {
+      setSuperAdmin(true);
+    } else if (orgId) {
+      setOrganizationId(orgId);
+    }
 
-  // Clear when the request finishes
-  res.on('finish', () => {
-    clearOrganizationId();
+    res.on('finish', () => {
+      clearOrganizationId();
+    });
+
+    next();
   });
-
-  next();
 }

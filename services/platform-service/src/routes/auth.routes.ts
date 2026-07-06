@@ -130,7 +130,7 @@ router.get('/me', platformAdminGuard, async (req: Request, res: Response) => {
       lastName: dbUser.lastName,
       role: dbUser.role.name,
       organizationId: dbUser.organizationId,
-      organizationName: dbUser.organization.name,
+      organizationName: dbUser.organization?.name ?? null,
     });
   } catch (error) {
     res.status(500).json({ statusCode: 500, message: 'Internal server error' });

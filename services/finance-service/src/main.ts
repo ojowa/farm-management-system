@@ -5,7 +5,9 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { financeRouter } from './modules/finance/finance.module';
-import { AuthError } from '@farm/auth';
+import { profitabilityRouter } from './routes/profitability';
+import { contractsRouter } from './routes/contracts';
+import { marketplaceRouter } from './routes/marketplace';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -20,18 +22,12 @@ app.use(express.json());
 app.use(rlsMiddleware);
 
 app.use('/api', featureFlagGuard('finance.enabled'), financeRouter);
+app.use('/api/profitability', featureFlagGuard('finance.enabled'), profitabilityRouter);
+app.use('/api/contracts', featureFlagGuard('finance.enabled'), contractsRouter);
+app.use('/api/marketplace', featureFlagGuard('finance.enabled'), marketplaceRouter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'finance-service' });
-});
-
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res
-      .status(err.statusCode)
-      .json({ statusCode: err.statusCode, message: err.message });
-  }
-  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
 });
 
 app.listen(port, () => {

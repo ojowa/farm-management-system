@@ -1,53 +1,31 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { adminAPI, rolesAPI } from '@/lib/api';
+import { apiClient } from '@/lib/api';
 import { useReadOnly } from '@/lib/useReadOnly';
 import { Card, CardContent, Badge, Input, Button, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function UsersPage() {
   const readOnly = useReadOnly();
-  const [organizations, setOrganizations] = useState<any[]>([]);
-  const [selectedOrg, setSelectedOrg] = useState<string>('');
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingUsers, setLoadingUsers] = useState(false);
   const [search, setSearch] = useState('');
 
-  useEffect(() => { loadOrgs(); }, []);
+  useEffect(() => { loadUsers(); }, []);
 
-  async function loadOrgs() {
+  async function loadUsers() {
+    setLoading(true);
     try {
-      const { data } = await adminAPI.listOrganizations();
-      setOrganizations(data);
-      if (data.length > 0) {
-        setSelectedOrg(data[0].id);
-        loadUsers(data[0].id);
-      }
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }
-
-  async function loadUsers(orgId: string) {
-    setLoadingUsers(true);
-    try {
-      const { data } = await adminAPI.getOrganizationUsers(orgId);
+      const { data } = await apiClient.get('/admin/users');
       setUsers(data);
     } catch { setUsers([]); }
-    finally { setLoadingUsers(false); }
-  }
-
-  function handleOrgChange(orgId: string) {
-    setSelectedOrg(orgId);
-    setSearch('');
-    loadUsers(orgId);
+    finally { setLoading(false); }
   }
 
   async function handleToggleUser(userId: string) {
     try {
-      await adminAPI.toggleUserActive(userId);
-      if (selectedOrg) loadUsers(selectedOrg);
+      await apiClient.put(`/admin/users/${userId}/toggle-active`);
+      loadUsers();
     } catch { /* ignore */ }
   }
 
@@ -69,18 +47,6 @@ export default function UsersPage() {
       </div>
 
       <div className="flex gap-4 mb-6">
-        <div className="w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
-          <select
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            value={selectedOrg}
-            onChange={(e) => handleOrgChange(e.target.value)}
-          >
-            {organizations.map((org) => (
-              <option key={org.id} value={org.id}>{org.name}</option>
-            ))}
-          </select>
-        </div>
         <div className="flex-1">
           <Input
             placeholder="Search users..."
@@ -92,9 +58,7 @@ export default function UsersPage() {
 
       <Card>
         <CardContent className="p-0">
-          {loadingUsers ? (
-            <div className="text-center py-8 text-gray-500">Loading users...</div>
-          ) : filtered.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No users found</div>
           ) : (
             <Table>

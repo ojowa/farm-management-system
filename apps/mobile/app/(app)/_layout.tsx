@@ -10,26 +10,25 @@ const TAB_CONFIG = [
   { name: 'farms', title: 'Farms', icon: '🌾', permission: 'farm.read', module: 'farm' },
   { name: 'crops', title: 'Crops', icon: '🌱', permission: 'crop.read', module: 'crop' },
   { name: 'livestock', title: 'Livestock', icon: '🐄', permission: 'livestock.read', module: 'livestock' },
-  { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'task.read', module: 'task' },
-  { name: 'roster', title: 'Roster', icon: '📅', permission: 'roster.read', module: 'roster' },
-  { name: 'messages', title: 'Messages', icon: '✉️', permission: 'messaging.read', module: 'messaging' },
-  { name: 'correspondence', title: 'Docs', icon: '📄', permission: 'correspondence.read', module: 'correspondence' },
-  { name: 'leave', title: 'Leave', icon: '🏖️', permission: 'leave.read', module: 'leave' },
-  { name: 'notifications', title: 'Alerts', icon: '🔔', permission: 'notification.read', module: 'notification' },
+  { name: 'irrigation', title: 'Irrigation', icon: '💧', permission: 'crop.read', module: 'crop' },
+  { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'worker.read', module: 'worker' },
+  { name: 'roster', title: 'Roster', icon: '📅', permission: 'worker.read', module: 'worker' },
+  { name: 'attendance', title: 'Attendance', icon: '📋', permission: 'worker.read', module: 'worker' },
+  { name: 'messages', title: 'Messages', icon: '✉️', permission: 'communication.read', module: 'communication' },
+  { name: 'correspondence', title: 'Docs', icon: '📄', permission: 'communication.read', module: 'communication' },
+  { name: 'leave', title: 'Leave', icon: '🏖️', permission: 'worker.read', module: 'worker' },
+  { name: 'notifications', title: 'Alerts', icon: '🔔', permission: null, module: null },
   { name: 'finance', title: 'Finance', icon: '💰', permission: 'finance.read', module: 'finance' },
+  { name: 'equipment', title: 'Equipment', icon: '🔧', permission: 'inventory.read', module: 'inventory' },
+  { name: 'contracts', title: 'Contracts', icon: '📝', permission: 'finance.read', module: 'finance' },
+  { name: 'marketplace', title: 'Marketplace', icon: '🏪', permission: 'finance.read', module: 'finance' },
+  { name: 'weather', title: 'Weather', icon: '🌤️', permission: null, module: null },
   { name: 'settings', title: 'Settings', icon: '⚙️', permission: null, module: null },
 ];
 
 export default function AppLayout() {
-  const isAuthenticated = useAppSelector(
-    (state) => state.auth.isAuthenticated
-  );
   const user = useAppSelector((state) => state.auth.user);
   const { hasPermission } = usePermission();
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   const visibleTabs = TAB_CONFIG.filter((tab) => {
     if (tab.permission && !hasPermission(tab.permission)) return false;

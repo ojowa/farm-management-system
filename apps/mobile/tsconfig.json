@@ -4,6 +4,7 @@
     "strict": true,
     "noImplicitAny": false,
     "skipLibCheck": true,
+    "moduleResolution": "bundler",
     "types": ["react-native"],
     "paths": {
       "@/*": ["./src/*"]

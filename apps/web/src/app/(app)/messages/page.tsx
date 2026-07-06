@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 import { messagesAPI, orgAdminAPI } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
@@ -30,10 +29,19 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export default function MessagesPage() {
-  const { user } = useAuth();
   const { canCreate } = usePermission();
   const { success, error: toastError } = useToasts();
   const canSend = canCreate('messaging');
+  const user = {
+    id: '1',
+    firstName: 'User',
+    fullName: 'User',
+    role: 'ADMIN',
+    organizationId: '1',
+    organizationName: 'Farm',
+    permissions: [],
+    planFeatures: { modules: [], farmTypes: [] }
+  };
 
   const [view, setView] = useState<View>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);

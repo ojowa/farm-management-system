@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 
 const NAV_SECTIONS = [
@@ -17,10 +16,17 @@ const NAV_SECTIONS = [
     title: 'Farm Management',
     items: [
       { href: '/farms', label: 'Farms', icon: '🏡', permission: 'farm.read', module: 'farm' },
+      { href: '/farms/map', label: 'Farm Map', icon: '🗺️', permission: 'farm.read', module: 'farm' },
       { href: '/crops', label: 'Crops', icon: '🌾', permission: 'crop.read', module: 'crop' },
+      { href: '/crops/calendar', label: 'Crop Calendar', icon: '📅', permission: 'crop.read', module: 'crop' },
+      { href: '/crops/pest-disease', label: 'Pest & Disease', icon: '🐛', permission: 'crop.read', module: 'crop' },
       { href: '/livestock', label: 'Livestock', icon: '🐄', permission: 'livestock.read', module: 'livestock' },
+      { href: '/livestock/health', label: 'Health', icon: '❤️', permission: 'livestock.read', module: 'livestock' },
+      { href: '/livestock/breeding', label: 'Breeding', icon: '👶', permission: 'livestock.read', module: 'livestock' },
+      { href: '/irrigation', label: 'Irrigation', icon: '💧', permission: 'crop.read', module: 'crop' },
       { href: '/workers', label: 'Workers', icon: '👷', permission: 'worker.read', module: 'worker' },
-      { href: '/tasks', label: 'Tasks', icon: '✅', permission: 'task.read', module: 'task' },
+      { href: '/tasks', label: 'Tasks', icon: '✅', permission: 'worker.read', module: 'worker' },
+      { href: '/workers/attendance', label: 'Attendance', icon: '🕐', permission: 'worker.read', module: 'worker' },
     ],
   },
   {
@@ -39,25 +45,43 @@ const NAV_SECTIONS = [
     title: 'Operations',
     items: [
       { href: '/inventory', label: 'Inventory', icon: '📦', permission: 'inventory.read', module: 'inventory' },
+      { href: '/inventory/low-stock', label: 'Low Stock', icon: '⚠️', permission: 'inventory.read', module: 'inventory' },
+      { href: '/equipment', label: 'Equipment', icon: '🔧', permission: 'inventory.read', module: 'inventory' },
       { href: '/sales', label: 'Sales', icon: '💰', permission: 'finance.read', module: 'finance' },
       { href: '/reports', label: 'Finance', icon: '📈', permission: 'finance.read', module: 'finance' },
+      { href: '/finance/profitability', label: 'Profitability', icon: '💹', permission: 'finance.read', module: 'finance' },
+      { href: '/contracts', label: 'Contracts', icon: '📝', permission: 'finance.read', module: 'finance' },
+      { href: '/marketplace', label: 'Marketplace', icon: '🏪', permission: 'finance.read', module: 'finance' },
       { href: '/analytics', label: 'Analytics', icon: '📉', permission: 'reporting.read', module: 'reporting' },
+    ],
+  },
+  {
+    title: 'Reports',
+    items: [
+      { href: '/reports', label: 'Reports', icon: '📊', permission: 'reporting.read', module: 'reporting' },
+      { href: '/reports/scheduled', label: 'Scheduled Reports', icon: '🕐', permission: 'reporting.read', module: 'reporting' },
     ],
   },
   {
     title: 'HR',
     items: [
-      { href: '/hr/leave', label: 'My Leave', icon: '🏖️', permission: 'leave.read', module: 'leave' },
-      { href: '/hr/leave/approvals', label: 'Leave Approvals', icon: '✅', permission: 'leave.approve', module: 'leave' },
-      { href: '/hr/leave/types', label: 'Leave Types', icon: '📋', permission: 'leave.write', module: 'leave' },
-      { href: '/roster', label: 'Duty Roster', icon: '📅', permission: 'roster.read', module: 'roster' },
+      { href: '/hr/leave', label: 'My Leave', icon: '🏖️', permission: 'worker.read', module: 'worker' },
+      { href: '/hr/leave/approvals', label: 'Leave Approvals', icon: '✅', permission: 'worker.write', module: 'worker' },
+      { href: '/hr/leave/types', label: 'Leave Types', icon: '📋', permission: 'worker.write', module: 'worker' },
+      { href: '/roster', label: 'Duty Roster', icon: '📅', permission: 'worker.read', module: 'worker' },
     ],
   },
   {
     title: 'Communication',
     items: [
-      { href: '/messages', label: 'Messages', icon: '✉️', permission: 'messaging.read', module: 'messaging' },
-      { href: '/correspondence', label: 'Correspondence', icon: '📄', permission: 'correspondence.read', module: 'correspondence' },
+      { href: '/messages', label: 'Messages', icon: '✉️', permission: 'communication.read', module: 'communication' },
+      { href: '/correspondence', label: 'Correspondence', icon: '📄', permission: 'communication.read', module: 'communication' },
+    ],
+  },
+  {
+    title: 'Tools',
+    items: [
+      { href: '/weather', label: 'Weather', icon: '🌤️', permission: null, module: null },
     ],
   },
   {
@@ -70,17 +94,20 @@ const NAV_SECTIONS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, logout, myOrganizations, switchOrganization } = useAuth();
   const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
-  const [orgs, setOrgs] = useState<any[]>([]);
-  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      myOrganizations().then(setOrgs).catch(() => {});
-    }
-  }, [user, myOrganizations]);
+  const user = {
+    id: '1',
+    firstName: 'User',
+    fullName: 'User',
+    email: 'user@farm.com',
+    role: 'ADMIN',
+    organizationId: '1',
+    organizationName: 'Farm',
+    permissions: [],
+    planFeatures: { modules: [], farmTypes: [] }
+  };
 
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0 shrink-0 transition-all duration-200`}>
@@ -95,7 +122,6 @@ export default function Sidebar() {
         {NAV_SECTIONS.map((section) => {
           const visibleItems = section.items.filter((item) => {
             if (item.permission && !hasPermission(item.permission)) return false;
-            if (item.module && user?.planFeatures?.modules && !user.planFeatures.modules.includes(item.module)) return false;
             return true;
           });
           if (visibleItems.length === 0) return null;
@@ -131,47 +157,15 @@ export default function Sidebar() {
 
       {!collapsed && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          {orgs.length > 1 && (
-            <div className="mb-3 relative">
-              <button
-                onClick={() => setShowOrgSwitcher(!showOrgSwitcher)}
-                className="w-full text-left px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-              >
-                <span className="text-gray-500 dark:text-gray-400 text-xs">Organization</span>
-                <p className="font-medium text-gray-900 dark:text-white truncate">{user?.organizationName || 'Select org'}</p>
-              </button>
-              {showOrgSwitcher && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                  {orgs.map((org) => (
-                    <button
-                      key={org.id}
-                      onClick={() => { switchOrganization(org.id); setShowOrgSwitcher(false); }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                        org.id === user?.organizationId ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {org.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center text-green-700 dark:text-green-400 font-semibold text-sm">
-              {user?.fullName?.[0] || user?.email?.[0]?.toUpperCase() || '?'}
+              {user.fullName?.[0] || user.email?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.fullName || 'User'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.fullName || 'User'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
-          <button
-            onClick={logout}
-            className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-          >
-            Sign out
-          </button>
         </div>
       )}
     </aside>

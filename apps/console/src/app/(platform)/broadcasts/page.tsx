@@ -45,78 +45,187 @@ export default function BroadcastsPage() {
     loadBroadcasts();
   };
 
+  const typeStyles: Record<string, string> = {
+    INFO: 'bg-blue-50 text-blue-700',
+    WARNING: 'bg-amber-50 text-amber-700',
+    CRITICAL: 'bg-red-50 text-red-700',
+    MAINTENANCE: 'bg-purple-50 text-purple-700',
+  };
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Broadcasts</h1>
-        <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-green-600 text-white rounded-md text-sm">
-          {showForm ? 'Cancel' : '+ New Broadcast'}
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#16a34a] flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Broadcasts</h1>
+              <p className="text-sm text-gray-500">{broadcasts.length} total broadcasts</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#16a34a] text-white text-sm font-medium rounded-lg hover:bg-[#15803d] transition-colors shadow-sm"
+          >
+            {showForm ? (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Broadcast
+              </>
+            )}
+          </button>
+        </div>
 
-      {showForm && (
-        <form onSubmit={handleCreate} className="bg-white rounded-lg shadow p-6 mb-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-3 py-2 border rounded-md" required />
+        {/* Create Form */}
+        {showForm && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-[#16a34a]/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Create New Broadcast</h2>
+            </div>
+            <form onSubmit={handleCreate} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+                  <input
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-colors"
+                    placeholder="Enter broadcast title"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Type</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-colors bg-white"
+                  >
+                    <option value="INFO">Info</option>
+                    <option value="WARNING">Warning</option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
+                <textarea
+                  value={form.message}
+                  onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-colors resize-none"
+                  rows={3}
+                  placeholder="Enter broadcast message"
+                  required
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#16a34a] text-white text-sm font-medium rounded-lg hover:bg-[#15803d] transition-colors shadow-sm"
+                >
+                  Create Broadcast
+                </button>
+              </div>
+            </form>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-            <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="w-full px-3 py-2 border rounded-md" rows={3} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="px-3 py-2 border rounded-md">
-              <option value="INFO">Info</option>
-              <option value="WARNING">Warning</option>
-              <option value="CRITICAL">Critical</option>
-              <option value="MAINTENANCE">Maintenance</option>
-            </select>
-          </div>
-          <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-md text-sm">Create Broadcast</button>
-        </form>
-      )}
+        )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Created</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">Loading...</td></tr>
-            ) : broadcasts.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No broadcasts</td></tr>
-            ) : broadcasts.map((b) => (
-              <tr key={b.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-medium">{b.title}</td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    b.type === 'CRITICAL' ? 'bg-red-100 text-red-800' :
-                    b.type === 'WARNING' ? 'bg-yellow-100 text-yellow-800' :
-                    b.type === 'MAINTENANCE' ? 'bg-purple-100 text-purple-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>{b.type}</span>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`px-2 py-1 rounded text-xs ${b.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                    {b.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{new Date(b.createdAt).toLocaleDateString()}</td>
-                <td className="px-4 py-3 text-sm">
-                  <button onClick={() => handleDelete(b.id)} className="text-red-600 hover:underline text-xs">Delete</button>
-                </td>
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Title</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Created</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-gray-500">Loading broadcasts...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : broadcasts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">No broadcasts</p>
+                        <p className="text-xs text-gray-500 mt-1">Create your first broadcast to get started</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : broadcasts.map((b) => (
+                <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-gray-900">{b.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{b.message}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${typeStyles[b.type] || 'bg-gray-100 text-gray-700'}`}>
+                      {b.type}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${b.isActive ? 'bg-[#16a34a]' : 'bg-gray-400'}`} />
+                      <span className={`text-sm font-medium ${b.isActive ? 'text-[#16a34a]' : 'text-gray-500'}`}>
+                        {b.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-600">{new Date(b.createdAt).toLocaleDateString()}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => handleDelete(b.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

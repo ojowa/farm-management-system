@@ -11,7 +11,8 @@ import { shiftsRouter } from './routes/shifts';
 import { shiftAssignmentsRouter } from './routes/shiftAssignments';
 import { messagesRouter } from './routes/messages';
 import { correspondenceRouter } from './routes/correspondence';
-import { AuthError } from '@farm/auth';
+import { tasksRouter } from './routes/tasks';
+import { attendanceRouter } from './routes/attendance';
 import { rlsMiddleware, featureFlagGuard } from '@farm/database';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
@@ -34,15 +35,12 @@ app.use('/shift-assignments', featureFlagGuard('roster.enabled'), shiftAssignmen
 app.use('/messages', featureFlagGuard('messaging.enabled'), messagesRouter);
 app.use('/correspondence', featureFlagGuard('correspondence.enabled'), correspondenceRouter);
 
+// Always-on routes
+app.use('/tasks', tasksRouter);
+app.use('/attendance', attendanceRouter);
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'hr-service' });
-});
-
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof AuthError) {
-    return res.status(err.statusCode).json({ statusCode: err.statusCode, message: err.message });
-  }
-  return res.status(500).json({ statusCode: 500, message: 'Internal server error' });
 });
 
 app.listen(port, () => {

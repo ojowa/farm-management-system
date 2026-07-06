@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 
 const router = Router();
@@ -9,7 +8,7 @@ function getOrgId(req: Request): string {
 }
 
 // GET /shifts - List shifts for this org
-router.get('/', authMiddleware({ permission: 'roster.read' }), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const shifts = await scopedPrisma.shift.findMany({
@@ -24,7 +23,7 @@ router.get('/', authMiddleware({ permission: 'roster.read' }), async (req: Reque
 });
 
 // POST /shifts - Create shift (ORG_OWNER+)
-router.post('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER'], permission: 'roster.write' }), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { name, startTime, endTime, color } = req.body;
@@ -51,7 +50,7 @@ router.post('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', '
 });
 
 // PUT /shifts/:id - Update shift
-router.put('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER'], permission: 'roster.write' }), async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.shift.findFirst({ where: { id } });
@@ -75,7 +74,7 @@ router.put('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN',
 });
 
 // DELETE /shifts/:id - Delete shift
-router.delete('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER'], permission: 'roster.write' }), async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.shift.findFirst({

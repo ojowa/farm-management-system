@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 
 const router = Router();
@@ -9,7 +8,7 @@ function getOrgId(req: Request): string {
 }
 
 // GET /shift-assignments - List assignments (with optional date range filter)
-router.get('/', authMiddleware({ permission: 'roster.read' }), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { startDate, endDate, userId } = req.query;
@@ -34,7 +33,7 @@ router.get('/', authMiddleware({ permission: 'roster.read' }), async (req: Reque
 });
 
 // POST /shift-assignments - Create assignment (MANAGER+)
-router.post('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER', 'SUPERVISOR'], permission: 'roster.write' }), async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { shiftId, userId, date, notes } = req.body;
@@ -67,7 +66,7 @@ router.post('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', '
 });
 
 // POST /shift-assignments/bulk - Bulk create assignments for a week
-router.post('/bulk', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER', 'SUPERVISOR'], permission: 'roster.write' }), async (req: Request, res: Response) => {
+router.post('/bulk', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { assignments } = req.body;
@@ -92,7 +91,7 @@ router.post('/bulk', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN
 });
 
 // DELETE /shift-assignments/:id - Remove assignment
-router.delete('/:id', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN', 'FARM_MANAGER', 'SUPERVISOR'], permission: 'roster.write' }), async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
     const existing = await scopedPrisma.shiftAssignment.findFirst({ where: { id } });

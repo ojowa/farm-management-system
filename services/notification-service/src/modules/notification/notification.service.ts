@@ -61,31 +61,20 @@ export class NotificationService {
     try {
       if (dto.entityType === 'LeaveRequest') {
         if (dto.type === 'SUCCESS') {
-          await this.emailService.sendLeaveApprovalEmail(
-            userEmail,
-            userName,
-            'Leave',
-            0,
-            '',
-            ''
+          await this.emailService.sendLeaveStatus(
+            userEmail, userName, 'Leave', 'APPROVED', 0, '', ''
           );
         } else if (dto.type === 'ALERT') {
-          await this.emailService.sendLeaveRejectionEmail(
-            userEmail,
-            userName,
-            'Leave',
-            0
+          await this.emailService.sendLeaveStatus(
+            userEmail, userName, 'Leave', 'REJECTED', 0, '', ''
           );
         }
       } else if (dto.entityType === 'Message') {
-        await this.emailService.sendNewMessageEmail(
-          userEmail,
-          userName,
-          'System',
-          dto.title,
-          dto.message,
-          dto.type === 'ALERT' ? 'URGENT' : 'NORMAL'
-        );
+        await this.emailService.sendEmail({
+          to: userEmail,
+          subject: dto.title,
+          html: `<p>Hello ${userName},</p><p>${dto.message}</p>`,
+        });
       }
     } catch (error) {
       this.logger.error('Failed to send email notification:', error);

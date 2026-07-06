@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Provider } from 'react-redux';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { PersistGate } from 'redux-persist/integration/react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initRNStorage } from '@farm/auth/rn';
 import { store, persistor } from '../src/store/store';
-import { useAppDispatch, useAppSelector } from '../src/hooks/useAuth';
-import { restoreSession } from '../src/store/slices/authSlice';
 import { ToastHost } from '../src/components/feedback';
 import { ErrorBoundary } from '../src/components/feedback/ErrorBoundary';
 import { ConnectionBanner } from '../src/components/layout/ConnectionBanner';
@@ -17,14 +13,9 @@ import { useNetworkSync } from '../src/hooks/useNetworkSync';
 import { colors } from '../src/components/common/UIComponents';
 import { ThemeProvider } from '../src/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
+import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
+import { fetchProfile, setBootstrapped } from '../src/store/slices/authSlice';
 
-// Initialize the shared auth storage adapter with AsyncStorage
-initRNStorage(AsyncStorage);
-
-// expo-splash-screen ships as a separate package. It isn't always present
-// in `node_modules` during type-check, so we shim it with a no-op. At
-// runtime we still call SplashScreen.hideAsync() if the module is wired up
-// by the host app; otherwise the splash remains as configured in app.json.
 interface SplashShim {
   preventAutoHideAsync: () => Promise<void>;
   hideAsync: () => Promise<void>;
@@ -42,84 +33,42 @@ const SplashScreen: SplashShim = (() => {
   }
 })();
 
-void SplashScreen.preventAutoHideAsync().catch(() => {
-  /* older SDK may not support the promise variant */
-});
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function hideSplash() {
   try {
     void SplashScreen.hideAsync();
-  } catch {
-    /* environment without native splash */
-  }
-}
-
-function BootstrapGate({
-  children,
-  onReady,
-}: {
-  children: React.ReactNode;
-  onReady: () => void;
-}) {
-  const dispatch = useAppDispatch();
-  const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
-  const [bootstrapping, setBootstrapping] = useState(true);
-  const [bootError, setBootError] = useState(false);
-
-  const doRestore = async () => {
-    setBootstrapping(true);
-    setBootError(false);
-    try {
-      await dispatch(restoreSession());
-    } catch {
-      setBootError(true);
-    } finally {
-      setBootstrapping(false);
-    }
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      await doRestore();
-      if (cancelled) setBootstrapping(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch]);
-
-  if (!bootstrapped || bootstrapping) {
-    if (bootError) {
-      return (
-        <View style={styles.bootGate}>
-          <Text style={{ fontSize: 16, color: colors.text, marginBottom: 16 }}>
-            Failed to load session
-          </Text>
-          <Button title="Retry" onPress={doRestore} />
-        </View>
-      );
-    }
-    return (
-      <View style={styles.bootGate}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  useEffect(() => {
-    onReady();
-  }, [onReady]);
-
-  return <>{children}</>;
+  } catch {}
 }
 
 function RootLayoutNav() {
-  const { isAuthenticated, mfaRequired } = useAppSelector(
-    (state) => state.auth
-  );
-
   useNetworkSync();
+  const router = useRouter();
+  const segments = useSegments();
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
+
+  // Bootstrap: verify session on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchProfile()).unwrap().catch(() => {});
+    } else {
+      dispatch(setBootstrapped());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!bootstrapped) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/(app)');
+    }
+  }, [isAuthenticated, bootstrapped, segments]);
 
   return (
     <View style={styles.root}>
@@ -128,30 +77,14 @@ function RootLayoutNav() {
           headerShown: false,
         }}
       >
-        {!isAuthenticated ? (
-          mfaRequired ? (
-            <Stack.Screen
-              name="mfa"
-              options={{
-                animation: 'none',
-              }}
-            />
-          ) : (
-            <Stack.Screen
-              name="(auth)"
-              options={{
-                animation: 'none',
-              }}
-            />
-          )
-        ) : (
-          <Stack.Screen
-            name="(app)"
-            options={{
-              animation: 'none',
-            }}
-          />
-        )}
+        <Stack.Screen
+          name="(app)"
+          options={{ animation: 'none' }}
+        />
+        <Stack.Screen
+          name="(auth)"
+          options={{ animation: 'none' }}
+        />
       </Stack>
       <ConnectionBanner />
       <ToastHost />
@@ -175,9 +108,7 @@ function RootLayoutWithSplash() {
         </View>
       }
     >
-      <BootstrapGate onReady={() => setSplashDismissed(true)}>
-        <RootLayoutNav />
-      </BootstrapGate>
+      <RootLayoutNav />
     </PersistGate>
   );
 }

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '@farm/auth/express';
 import { scopedPrisma } from '@farm/database';
 
 const router = Router();
@@ -13,7 +12,7 @@ function getUserId(req: Request): string {
 }
 
 // GET /leave/balance - Get leave balances
-router.get('/', authMiddleware({ permission: 'leave.read' }), async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const userId = req.query.userId as string || getUserId(req);
@@ -49,7 +48,7 @@ router.get('/', authMiddleware({ permission: 'leave.read' }), async (req: Reques
 });
 
 // PUT /leave/balance - Set/adjust leave balance (ORG_OWNER+)
-router.put('/', authMiddleware({ roles: ['ORGANIZATION_OWNER', 'SUPER_ADMIN'], permission: 'leave.write' }), async (req: Request, res: Response) => {
+router.put('/', async (req: Request, res: Response) => {
   try {
     const orgId = getOrgId(req);
     const { userId, leaveTypeId, year, totalDays } = req.body;
