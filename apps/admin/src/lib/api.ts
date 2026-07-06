@@ -39,7 +39,9 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (e) {
         processQueue(e);
-        if (typeof window !== 'undefined') window.location.href = '/login';
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(e);
       } finally {
         isRefreshing = false;

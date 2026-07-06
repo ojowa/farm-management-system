@@ -1,0 +1,455 @@
+services:
+  # ── Database ─────────────────────────────────────────────
+  - type: postgresql
+    name: farmms-database
+    plan: starter
+    databaseName: FMS
+    user: postgres
+
+  # ── Shared: build all workspace packages once ────────────
+  # Backend services
+
+  # Auth Service
+  - type: web
+    name: auth-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/auth build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/auth-service build
+    startCommand: pnpm --filter @farm/auth-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+      - key: AUTH_SERVICE_PORT
+        value: "4001"
+
+  # Farm Service
+  - type: web
+    name: farm-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/farm-service build
+    startCommand: pnpm --filter @farm/farm-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: FARM_SERVICE_PORT
+        value: "4002"
+
+  # Livestock Service
+  - type: web
+    name: livestock-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/livestock-service build
+    startCommand: pnpm --filter @farm/livestock-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: LIVESTOCK_SERVICE_PORT
+        value: "4003"
+
+  # Poultry Service
+  - type: web
+    name: poultry-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/poultry-service build
+    startCommand: pnpm --filter @farm/poultry-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: POULTRY_SERVICE_PORT
+        value: "4004"
+
+  # Notification Service
+  - type: web
+    name: notification-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/notification-service build
+    startCommand: pnpm --filter @farm/notification-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: NOTIFICATION_SERVICE_PORT
+        value: "4005"
+
+  # Finance Service
+  - type: web
+    name: finance-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/finance-service build
+    startCommand: pnpm --filter @farm/finance-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: FINANCE_SERVICE_PORT
+        value: "4006"
+
+  # Worker Service
+  - type: web
+    name: worker-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/worker-service build
+    startCommand: pnpm --filter @farm/worker-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: WORKER_SERVICE_PORT
+        value: "4007"
+
+  # Reporting Service
+  - type: web
+    name: reporting-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/reporting-service build
+    startCommand: pnpm --filter @farm/reporting-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: REPORTING_SERVICE_PORT
+        value: "4008"
+
+  # Organization Service
+  - type: web
+    name: organization-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/organization-service build
+    startCommand: pnpm --filter @farm/organization-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: ORGANIZATION_SERVICE_PORT
+        value: "4009"
+
+  # Inventory Service
+  - type: web
+    name: inventory-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/inventory-service build
+    startCommand: pnpm --filter @farm/inventory-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: INVENTORY_SERVICE_PORT
+        value: "4010"
+
+  # Crop Service
+  - type: web
+    name: crop-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/crop-service build
+    startCommand: pnpm --filter @farm/crop-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: CROP_SERVICE_PORT
+        value: "4011"
+
+  # HR Service
+  - type: web
+    name: hr-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/hr-service build
+    startCommand: pnpm --filter @farm/hr-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: HR_SERVICE_PORT
+        value: "4012"
+
+  # Platform Service
+  - type: web
+    name: platform-service
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/auth build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/platform-service build
+    startCommand: pnpm --filter @farm/platform-service start
+    envVars:
+      - fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: DATABASE_URL
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: PLATFORM_SERVICE_PORT
+        value: "4020"
+
+  # API Gateway (routes to all services)
+  - type: web
+    name: api-gateway
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/auth build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/api-gateway build
+    startCommand: pnpm --filter @farm/api-gateway start
+    envVars:
+      - key: API_GATEWAY_PORT
+        value: "4000"
+      - key: JWT_SECRET
+        sync: false
+      - key: AUTH_SERVICE_URL
+        value: "http://auth-service:4001"
+      - key: FARM_SERVICE_URL
+        value: "http://farm-service:4002"
+      - key: LIVESTOCK_SERVICE_URL
+        value: "http://livestock-service:4003"
+      - key: POULTRY_SERVICE_URL
+        value: "http://poultry-service:4004"
+      - key: NOTIFICATION_SERVICE_URL
+        value: "http://notification-service:4005"
+      - key: FINANCE_SERVICE_URL
+        value: "http://finance-service:4006"
+      - key: WORKER_SERVICE_URL
+        value: "http://worker-service:4007"
+      - key: REPORTING_SERVICE_URL
+        value: "http://reporting-service:4008"
+      - key: ORGANIZATION_SERVICE_URL
+        value: "http://organization-service:4009"
+      - key: INVENTORY_SERVICE_URL
+        value: "http://inventory-service:4010"
+      - key: CROP_SERVICE_URL
+        value: "http://crop-service:4011"
+      - key: HR_SERVICE_URL
+        value: "http://hr-service:4012"
+      - key: PLATFORM_SERVICE_URL
+        value: "http://platform-service:4020"
+
+  # ── Frontend Apps ────────────────────────────────────────
+
+  # Admin Dashboard
+  - type: web
+    name: admin
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/auth build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/admin build
+    startCommand: pnpm --filter @farm/admin start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: "http://api-gateway:4000"
+      - key: NEXT_PUBLIC_SOCKET_URL
+        value: "http://api-gateway:4000"
+
+  # Worker Web App
+  - type: web
+    name: web
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/auth build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/web build
+    startCommand: pnpm --filter @farm/web start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: "http://api-gateway:4000"
+      - key: NEXT_PUBLIC_SOCKET_URL
+        value: "http://api-gateway:4000"
+
+  # Platform Console
+  - type: web
+    name: console
+    plan: starter
+    runtime: node
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm --filter @farm/database build
+      pnpm --filter @farm/types build
+      pnpm --filter @farm/utils build
+      pnpm --filter @farm/auth build
+      pnpm --filter @farm/validation build
+      pnpm --filter @farm/console build
+    startCommand: pnpm --filter @farm/console start
+    envVars:
+      - key: NEXT_PUBLIC_PLATFORM_API_URL
+        value: "http://platform-service:4020"
+      - key: NEXT_PUBLIC_API_URL
+        value: "http://api-gateway:4000"
