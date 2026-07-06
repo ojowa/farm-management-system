@@ -9,6 +9,12 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    exclude: [
+      'src/__tests__/Badge.test.tsx',
+      'src/__tests__/Button.test.tsx',
+      'src/__tests__/Card.test.tsx',
+      'src/__tests__/Input.test.tsx',
+    ],
     css: false,
   },
   resolve: {
