@@ -7,6 +7,9 @@
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   },
+  "scripts": {
+    "build": "prisma generate && tsc"
+  },
   "dependencies": {
     "@prisma/client": "^6.4.1",
     "@farm/types": "workspace:*",
