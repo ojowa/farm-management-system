@@ -1,10 +1,6 @@
 services:
   # ── Database ─────────────────────────────────────────────
-  - type: postgresql
-    name: farmms-database
-    plan: starter
-    databaseName: FMS
-    user: postgres
+  # Database is hosted on Neon — connection string set via DATABASE_URL env var
 
   # ── Shared: build all workspace packages once ────────────
   # Backend services
@@ -25,13 +21,10 @@ services:
       pnpm --filter @farm/auth-service build
     startCommand: pnpm --filter @farm/auth-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRES_IN
@@ -54,13 +47,8 @@ services:
       pnpm --filter @farm/farm-service build
     startCommand: pnpm --filter @farm/farm-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: FARM_SERVICE_PORT
         value: "4002"
 
@@ -79,13 +67,8 @@ services:
       pnpm --filter @farm/livestock-service build
     startCommand: pnpm --filter @farm/livestock-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: LIVESTOCK_SERVICE_PORT
         value: "4003"
 
@@ -104,13 +87,8 @@ services:
       pnpm --filter @farm/poultry-service build
     startCommand: pnpm --filter @farm/poultry-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: POULTRY_SERVICE_PORT
         value: "4004"
 
@@ -129,13 +107,8 @@ services:
       pnpm --filter @farm/notification-service build
     startCommand: pnpm --filter @farm/notification-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: NOTIFICATION_SERVICE_PORT
         value: "4005"
 
@@ -154,13 +127,8 @@ services:
       pnpm --filter @farm/finance-service build
     startCommand: pnpm --filter @farm/finance-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: FINANCE_SERVICE_PORT
         value: "4006"
 
@@ -179,13 +147,8 @@ services:
       pnpm --filter @farm/worker-service build
     startCommand: pnpm --filter @farm/worker-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: WORKER_SERVICE_PORT
         value: "4007"
 
@@ -204,13 +167,8 @@ services:
       pnpm --filter @farm/reporting-service build
     startCommand: pnpm --filter @farm/reporting-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: REPORTING_SERVICE_PORT
         value: "4008"
 
@@ -229,13 +187,8 @@ services:
       pnpm --filter @farm/organization-service build
     startCommand: pnpm --filter @farm/organization-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: ORGANIZATION_SERVICE_PORT
         value: "4009"
 
@@ -254,13 +207,8 @@ services:
       pnpm --filter @farm/inventory-service build
     startCommand: pnpm --filter @farm/inventory-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: INVENTORY_SERVICE_PORT
         value: "4010"
 
@@ -279,13 +227,8 @@ services:
       pnpm --filter @farm/crop-service build
     startCommand: pnpm --filter @farm/crop-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: CROP_SERVICE_PORT
         value: "4011"
 
@@ -304,13 +247,8 @@ services:
       pnpm --filter @farm/hr-service build
     startCommand: pnpm --filter @farm/hr-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: HR_SERVICE_PORT
         value: "4012"
 
@@ -330,13 +268,8 @@ services:
       pnpm --filter @farm/platform-service build
     startCommand: pnpm --filter @farm/platform-service start
     envVars:
-      - fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
-      - key: DIRECT_DATABASE_URL
-        fromDatabase:
-          name: DATABASE_URL
-          property: connectionString
+      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: JWT_SECRET
         sync: false
       - key: PLATFORM_SERVICE_PORT
@@ -453,3 +386,4 @@ services:
         value: "http://platform-service:4020"
       - key: NEXT_PUBLIC_API_URL
         value: "http://api-gateway:4000"
+
