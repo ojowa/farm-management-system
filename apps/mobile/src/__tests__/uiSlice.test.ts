@@ -24,6 +24,7 @@ const initialState: UIState = {
   selectedLivestockId: null,
   filters: {
     farms: 'all',
+    farmType: 'all',
     crops: { status: 'all', farmId: null, healthMin: null, healthMax: null },
     livestock: { type: 'all', farmId: null },
     finance: { type: 'all', category: null, dateFrom: null, dateTo: null },

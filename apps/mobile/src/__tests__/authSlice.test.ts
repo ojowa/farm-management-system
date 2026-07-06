@@ -2,17 +2,14 @@ import authReducer, {
   clearError,
   resetMFA,
   login,
-  register,
-  refreshAccessToken,
   logout,
-  restoreSession,
   verifyMFA,
-  requestPasswordReset,
-  resetPassword,
-  AuthState,
+  fetchProfile,
+  setBootstrapped,
+  User,
 } from '../store/slices/authSlice';
 
-const mockUser = {
+const mockUser: User = {
   id: 'u1',
   email: 'test@farm.com',
   firstName: 'Test',
@@ -24,7 +21,7 @@ const mockUser = {
   permissions: ['farms.read'],
 };
 
-const initialState: AuthState = {
+const initialState = {
   user: null,
   accessToken: null,
   refreshToken: null,
@@ -55,6 +52,11 @@ describe('authSlice — synchronous reducers', () => {
     expect(state.mfaRequired).toBe(false);
     expect(state.mfaSessionToken).toBeNull();
   });
+
+  it('setBootstrapped sets bootstrapped to true', () => {
+    const state = authReducer(initialState, setBootstrapped());
+    expect(state.bootstrapped).toBe(true);
+  });
 });
 
 describe('authSlice — login thunk', () => {
@@ -65,35 +67,35 @@ describe('authSlice — login thunk', () => {
     expect(state.error).toBeNull();
   });
 
-  it('login.fulfilled sets user and tokens', () => {
+  it('login.fulfilled with requiresMFA=false sets user and isAuthenticated', () => {
     const action = {
       type: login.fulfilled.type,
       payload: {
+        requiresMFA: false,
+        user: mockUser,
         accessToken: 'acc123',
         refreshToken: 'ref123',
-        user: mockUser,
       },
     };
     const state = authReducer(initialState, action);
     expect(state.isAuthenticated).toBe(true);
-    expect(state.accessToken).toBe('acc123');
-    expect(state.refreshToken).toBe('ref123');
     expect(state.user).toEqual(mockUser);
+    expect(state.mfaRequired).toBe(false);
     expect(state.loading).toBe(false);
   });
 
-  it('login.fulfilled with mfaRequired sets MFA state', () => {
+  it('login.fulfilled with requiresMFA=true sets MFA state', () => {
     const action = {
       type: login.fulfilled.type,
-      payload: { mfaRequired: true, mfaSessionToken: 'mfa-tok' },
+      payload: { requiresMFA: true, mfaToken: 'mfa-tok', user: mockUser },
     };
     const state = authReducer(initialState, action);
     expect(state.mfaRequired).toBe(true);
     expect(state.mfaSessionToken).toBe('mfa-tok');
-    expect(state.isAuthenticated).toBe(false);
+    expect(state.user).toEqual(mockUser);
   });
 
-  it('login.rejected sets error and clears auth', () => {
+  it('login.rejected sets error', () => {
     const action = {
       type: login.rejected.type,
       payload: 'Invalid credentials',
@@ -101,67 +103,52 @@ describe('authSlice — login thunk', () => {
     const state = authReducer({ ...initialState, loading: true }, action);
     expect(state.loading).toBe(false);
     expect(state.error).toBe('Invalid credentials');
-    expect(state.isAuthenticated).toBe(false);
   });
 });
 
-describe('authSlice — register thunk', () => {
-  it('register.fulfilled sets auth state', () => {
+describe('authSlice — verifyMFA thunk', () => {
+  it('verifyMFA.fulfilled sets auth and clears MFA', () => {
     const action = {
-      type: register.fulfilled.type,
-      payload: { accessToken: 'a', refreshToken: 'r', user: mockUser },
+      type: verifyMFA.fulfilled.type,
+      payload: { user: mockUser },
     };
-    const state = authReducer(initialState, action);
+    const state = authReducer(
+      { ...initialState, mfaRequired: true, mfaSessionToken: 'mfa' },
+      action
+    );
     expect(state.isAuthenticated).toBe(true);
     expect(state.user).toEqual(mockUser);
+    expect(state.mfaRequired).toBe(false);
+    expect(state.mfaSessionToken).toBeNull();
   });
 
-  it('register.rejected sets error', () => {
-    const action = { type: register.rejected.type, payload: 'Email taken' };
+  it('verifyMFA.rejected sets error', () => {
+    const action = {
+      type: verifyMFA.rejected.type,
+      payload: 'Invalid code',
+    };
     const state = authReducer({ ...initialState, loading: true }, action);
-    expect(state.error).toBe('Email taken');
     expect(state.loading).toBe(false);
+    expect(state.error).toBe('Invalid code');
   });
 });
 
-describe('authSlice — refreshAccessToken thunk', () => {
-  it('refreshAccessToken.fulfilled updates tokens', () => {
+describe('authSlice — fetchProfile thunk', () => {
+  it('fetchProfile.fulfilled sets user and isAuthenticated', () => {
     const action = {
-      type: refreshAccessToken.fulfilled.type,
-      payload: { accessToken: 'new-acc', refreshToken: 'new-ref' },
+      type: fetchProfile.fulfilled.type,
+      payload: mockUser,
     };
-    const state = authReducer(
-      { ...initialState, accessToken: 'old-acc', refreshToken: 'old-ref' },
-      action
-    );
-    expect(state.accessToken).toBe('new-acc');
-    expect(state.refreshToken).toBe('new-ref');
+    const state = authReducer(initialState, action);
+    expect(state.user).toEqual(mockUser);
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.bootstrapped).toBe(true);
   });
 
-  it('refreshAccessToken.rejected clears ALL auth state', () => {
-    const action = { type: refreshAccessToken.rejected.type };
-    const state = authReducer(
-      {
-        ...initialState,
-        isAuthenticated: true,
-        accessToken: 'acc',
-        refreshToken: 'ref',
-        user: mockUser,
-        mfaRequired: true,
-        mfaSessionToken: 'mfa',
-        lastLoginAt: '2024-01-01',
-        loading: true,
-      },
-      action
-    );
-    expect(state.isAuthenticated).toBe(false);
-    expect(state.accessToken).toBeNull();
-    expect(state.refreshToken).toBeNull();
-    expect(state.user).toBeNull();
-    expect(state.mfaRequired).toBe(false);
-    expect(state.mfaSessionToken).toBeNull();
-    expect(state.lastLoginAt).toBeNull();
-    expect(state.loading).toBe(false);
+  it('fetchProfile.rejected marks bootstrapped', () => {
+    const action = { type: fetchProfile.rejected.type };
+    const state = authReducer(initialState, action);
+    expect(state.bootstrapped).toBe(true);
   });
 });
 
@@ -172,8 +159,6 @@ describe('authSlice — logout thunk', () => {
       {
         ...initialState,
         isAuthenticated: true,
-        accessToken: 'acc',
-        refreshToken: 'ref',
         user: mockUser,
         mfaRequired: true,
         mfaSessionToken: 'mfa',
@@ -190,77 +175,5 @@ describe('authSlice — logout thunk', () => {
     expect(state.mfaRequired).toBe(false);
     expect(state.mfaSessionToken).toBeNull();
     expect(state.lastLoginAt).toBeNull();
-  });
-});
-
-describe('authSlice — restoreSession thunk', () => {
-  it('restoreSession.fulfilled with authenticated=true sets user', () => {
-    const action = {
-      type: restoreSession.fulfilled.type,
-      payload: { authenticated: true, accessToken: 'a', refreshToken: 'r', user: mockUser },
-    };
-    const state = authReducer(initialState, action);
-    expect(state.isAuthenticated).toBe(true);
-    expect(state.bootstrapped).toBe(true);
-    expect(state.user).toEqual(mockUser);
-  });
-
-  it('restoreSession.fulfilled with authenticated=false marks bootstrapped', () => {
-    const action = {
-      type: restoreSession.fulfilled.type,
-      payload: { authenticated: false },
-    };
-    const state = authReducer(initialState, action);
-    expect(state.isAuthenticated).toBe(false);
-    expect(state.bootstrapped).toBe(true);
-  });
-
-  it('restoreSession.rejected marks bootstrapped and not authenticated', () => {
-    const action = { type: restoreSession.rejected.type };
-    const state = authReducer(initialState, action);
-    expect(state.bootstrapped).toBe(true);
-    expect(state.isAuthenticated).toBe(false);
-  });
-});
-
-describe('authSlice — verifyMFA thunk', () => {
-  it('verifyMFA.fulfilled sets auth and clears MFA', () => {
-    const action = {
-      type: verifyMFA.fulfilled.type,
-      payload: { accessToken: 'a', refreshToken: 'r', user: mockUser },
-    };
-    const state = authReducer(
-      { ...initialState, mfaRequired: true, mfaSessionToken: 'mfa' },
-      action
-    );
-    expect(state.isAuthenticated).toBe(true);
-    expect(state.mfaRequired).toBe(false);
-    expect(state.mfaSessionToken).toBeNull();
-  });
-});
-
-describe('authSlice — password reset thunks', () => {
-  it('requestPasswordReset.fulfilled clears loading', () => {
-    const action = { type: requestPasswordReset.fulfilled.type };
-    const state = authReducer({ ...initialState, loading: true }, action);
-    expect(state.loading).toBe(false);
-  });
-
-  it('requestPasswordReset.rejected sets error', () => {
-    const action = { type: requestPasswordReset.rejected.type, payload: 'Email not found' };
-    const state = authReducer({ ...initialState, loading: true }, action);
-    expect(state.error).toBe('Email not found');
-  });
-
-  it('resetPassword.fulfilled clears loading', () => {
-    const action = { type: resetPassword.fulfilled.type };
-    const state = authReducer({ ...initialState, loading: true }, action);
-    expect(state.loading).toBe(false);
-  });
-
-  it('resetPassword.rejected sets error', () => {
-    const action = { type: resetPassword.rejected.type, payload: 'Invalid token' };
-    const state = authReducer({ ...initialState, loading: true }, action);
-    expect(state.error).toBe('Invalid token');
   });
 });

@@ -180,6 +180,7 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.refreshToken = null;
         state.isAuthenticated = false;
+        state.error = null;
         state.mfaRequired = false;
         state.mfaSessionToken = null;
         state.lastLoginAt = null;
