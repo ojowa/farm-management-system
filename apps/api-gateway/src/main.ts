@@ -26,7 +26,7 @@ function loadEnv() {
 loadEnv();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger: ['warn', 'error'] });
 
   app.use(cookieParser());
 
