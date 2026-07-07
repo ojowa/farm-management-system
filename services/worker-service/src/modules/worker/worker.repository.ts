@@ -13,10 +13,7 @@ export class WorkerRepository {
     return prisma.worker.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  async updateWorker(
-    id: string,
-    data: { farmId?: string; name?: string; role?: string }
-  ) {
+  async updateWorker(id: string, data: { farmId?: string; name?: string; role?: string }) {
     return prisma.worker.update({ where: { id }, data });
   }
 
@@ -24,4 +21,3 @@ export class WorkerRepository {
     return prisma.worker.delete({ where: { id } });
   }
 }
-

@@ -190,7 +190,7 @@ export default function LandingPage() {
               <span className="font-semibold text-green-700">Farm Manager</span>
             </div>
             <p className="text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} Farm Management System. All rights reserved.
+              &copy; 2026 Farm Management System. All rights reserved.
             </p>
           </div>
         </div>

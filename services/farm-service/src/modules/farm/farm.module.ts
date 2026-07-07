@@ -1,28 +1,14 @@
-import { Router } from 'express';
+import { Module } from '@nestjs/common';
 import { FarmController } from './farm.controller';
-import { subscriptionLimitGuard, farmTypeGuard } from '@farm/database';
+import { FieldController } from './field.controller';
+import { ImportExportController } from './import-export.controller';
+import { MapController } from './map.controller';
+import { FarmService } from './farm.service';
+import { FarmRepository } from './farm.repository';
 
-const router = Router();
-const farmController = new FarmController();
-
-// Farm routes
-router.get('/farms', farmController.getAllFarms);
-router.get('/farms/:id', farmController.getFarmById);
-router.post(
-  '/farms',
-  subscriptionLimitGuard('farms'),
-  farmTypeGuard,
-  farmController.createFarm,
-);
-router.put('/farms/:id', farmController.updateFarm);
-router.delete('/farms/:id', farmController.deleteFarm);
-
-// Field routes
-router.get('/fields', farmController.getAllFields);
-router.get('/fields/:id', farmController.getFieldById);
-router.post('/fields', farmController.createField);
-router.put('/fields/:id', farmController.updateField);
-router.delete('/fields/:id', farmController.deleteField);
-
-export const farmRouter = router;
-export default router;
+@Module({
+  controllers: [FarmController, FieldController, ImportExportController, MapController],
+  providers: [FarmService, FarmRepository],
+  exports: [FarmService],
+})
+export class FarmModule {}

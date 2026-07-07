@@ -1,34 +1,24 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { FinanceRepository } from './finance.repository';
-import {
-  CreateExpenseRequest,
-  UpdateExpenseRequest,
-  CreateSaleRequest,
-  UpdateSaleRequest,
-} from '@farm/types';
 import { emitFinanceEvent } from '@farm/utils';
 
+@Injectable()
 export class FinanceService {
-  private repository = new FinanceRepository();
+  constructor(private readonly repository: FinanceRepository) {}
 
   private async assertFarmExists(farmId: string) {
     const farm = await this.repository.getFarmById(farmId);
-    if (!farm) {
-      throw new Error(`Farm with ID ${farmId} not found`);
-    }
+    if (!farm) throw new NotFoundException(`Farm with ID ${farmId} not found`);
   }
 
   private toDate(value: Date | string): Date {
     return typeof value === 'string' ? new Date(value) : value;
   }
 
-  // --- Expense ---
-  async createExpense(data: CreateExpenseRequest, organizationId: string) {
+  async createExpense(data: any, organizationId: string) {
     await this.assertFarmExists(data.farmId);
     const expense = await this.repository.createExpense({
-      farmId: data.farmId,
-      title: data.title,
-      amount: data.amount,
-      date: this.toDate(data.date),
+      farmId: data.farmId, title: data.title, amount: data.amount, date: this.toDate(data.date),
     }, organizationId);
     await emitFinanceEvent('created', expense);
     return expense;
@@ -36,9 +26,7 @@ export class FinanceService {
 
   async getExpenseById(id: string) {
     const expense = await this.repository.getExpenseById(id);
-    if (!expense) {
-      throw new Error(`Expense with ID ${id} not found`);
-    }
+    if (!expense) throw new NotFoundException(`Expense with ID ${id} not found`);
     return expense;
   }
 
@@ -46,15 +34,10 @@ export class FinanceService {
     return this.repository.getAllExpenses(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateExpense(id: string, data: UpdateExpenseRequest) {
+  async updateExpense(id: string, data: any) {
     await this.getExpenseById(id);
-    if (data.farmId) {
-      await this.assertFarmExists(data.farmId);
-    }
-    const expense = await this.repository.updateExpense(id, {
-      ...data,
-      date: data.date ? this.toDate(data.date) : undefined,
-    });
+    if (data.farmId) await this.assertFarmExists(data.farmId);
+    const expense = await this.repository.updateExpense(id, { ...data, date: data.date ? this.toDate(data.date) : undefined });
     await emitFinanceEvent('updated', expense);
     return expense;
   }
@@ -66,16 +49,10 @@ export class FinanceService {
     return { deleted: true };
   }
 
-  // --- Sale ---
-  async createSale(data: CreateSaleRequest, organizationId: string) {
+  async createSale(data: any, organizationId: string) {
     await this.assertFarmExists(data.farmId);
     const sale = await this.repository.createSale({
-      farmId: data.farmId,
-      item: data.item,
-      quantity: data.quantity,
-      price: data.price,
-      total: data.total,
-      date: this.toDate(data.date),
+      farmId: data.farmId, item: data.item, quantity: data.quantity, price: data.price, total: data.total, date: this.toDate(data.date),
     }, organizationId);
     await emitFinanceEvent('created', sale);
     return sale;
@@ -83,9 +60,7 @@ export class FinanceService {
 
   async getSaleById(id: string) {
     const sale = await this.repository.getSaleById(id);
-    if (!sale) {
-      throw new Error(`Sale with ID ${id} not found`);
-    }
+    if (!sale) throw new NotFoundException(`Sale with ID ${id} not found`);
     return sale;
   }
 
@@ -93,15 +68,10 @@ export class FinanceService {
     return this.repository.getAllSales(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateSale(id: string, data: UpdateSaleRequest) {
+  async updateSale(id: string, data: any) {
     await this.getSaleById(id);
-    if (data.farmId) {
-      await this.assertFarmExists(data.farmId);
-    }
-    const sale = await this.repository.updateSale(id, {
-      ...data,
-      date: data.date ? this.toDate(data.date) : undefined,
-    });
+    if (data.farmId) await this.assertFarmExists(data.farmId);
+    const sale = await this.repository.updateSale(id, { ...data, date: data.date ? this.toDate(data.date) : undefined });
     await emitFinanceEvent('updated', sale);
     return sale;
   }
@@ -113,4 +83,3 @@ export class FinanceService {
     return { deleted: true };
   }
 }
-

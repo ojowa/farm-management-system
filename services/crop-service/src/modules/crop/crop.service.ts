@@ -1,12 +1,12 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CropRepository } from './crop.repository';
-import { CreateCropRequest, CreateCropCycleRequest, UpdateCropRequest, UpdateCropCycleRequest } from '@farm/types';
 import { emitCropEvent } from '@farm/utils';
 
+@Injectable()
 export class CropService {
-  private cropRepository = new CropRepository();
+  constructor(private readonly cropRepository: CropRepository) {}
 
-  // Crop Business Logic
-  async createCrop(data: CreateCropRequest) {
+  async createCrop(data: any) {
     const crop = await this.cropRepository.createCrop(data.name);
     await emitCropEvent('created', crop);
     return crop;
@@ -14,9 +14,7 @@ export class CropService {
 
   async getCropById(id: string) {
     const crop = await this.cropRepository.getCropById(id);
-    if (!crop) {
-      throw new Error(`Crop with ID ${id} not found`);
-    }
+    if (!crop) throw new NotFoundException(`Crop with ID ${id} not found`);
     return crop;
   }
 
@@ -24,46 +22,33 @@ export class CropService {
     return this.cropRepository.getAllCrops(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateCrop(id: string, data: UpdateCropRequest) {
-    await this.getCropById(id); // Throws if not found
-    if (!data.name) {
-      throw new Error('Crop name is required for update');
-    }
+  async updateCrop(id: string, data: any) {
+    await this.getCropById(id);
+    if (!data.name) throw new BadRequestException('Crop name is required for update');
     const crop = await this.cropRepository.updateCrop(id, data.name);
     await emitCropEvent('updated', crop);
     return crop;
   }
 
   async deleteCrop(id: string) {
-    await this.getCropById(id); // Throws if not found
+    await this.getCropById(id);
     await this.cropRepository.deleteCrop(id);
     await emitCropEvent('deleted', { id });
     return { deleted: true };
   }
 
-  // CropCycle Business Logic
-  async createCropCycle(data: CreateCropCycleRequest) {
+  async createCropCycle(data: any) {
     const plantingDate = typeof data.plantingDate === 'string' ? new Date(data.plantingDate) : data.plantingDate;
     const harvestDate = data.harvestDate ? (typeof data.harvestDate === 'string' ? new Date(data.harvestDate) : data.harvestDate) : null;
-
-    // Check if crop exists
     await this.getCropById(data.cropId);
-
-    const cycle = await this.cropRepository.createCropCycle({
-      fieldId: data.fieldId,
-      cropId: data.cropId,
-      plantingDate,
-      harvestDate,
-    });
+    const cycle = await this.cropRepository.createCropCycle({ fieldId: data.fieldId, cropId: data.cropId, plantingDate, harvestDate });
     await emitCropEvent('created', cycle);
     return cycle;
   }
 
   async getCropCycleById(id: string) {
     const cycle = await this.cropRepository.getCropCycleById(id);
-    if (!cycle) {
-      throw new Error(`Crop cycle with ID ${id} not found`);
-    }
+    if (!cycle) throw new NotFoundException(`Crop cycle with ID ${id} not found`);
     return cycle;
   }
 
@@ -71,28 +56,18 @@ export class CropService {
     return this.cropRepository.getAllCropCycles(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateCropCycle(id: string, data: UpdateCropCycleRequest) {
-    await this.getCropCycleById(id); // Throws if not found
-
+  async updateCropCycle(id: string, data: any) {
+    await this.getCropCycleById(id);
     const plantingDate = data.plantingDate ? (typeof data.plantingDate === 'string' ? new Date(data.plantingDate) : data.plantingDate) : undefined;
     const harvestDate = data.harvestDate ? (typeof data.harvestDate === 'string' ? new Date(data.harvestDate) : data.harvestDate) : (data.harvestDate === null ? null : undefined);
-
-    if (data.cropId) {
-      await this.getCropById(data.cropId);
-    }
-
-    const cycle = await this.cropRepository.updateCropCycle(id, {
-      fieldId: data.fieldId,
-      cropId: data.cropId,
-      plantingDate,
-      harvestDate,
-    });
+    if (data.cropId) await this.getCropById(data.cropId);
+    const cycle = await this.cropRepository.updateCropCycle(id, { fieldId: data.fieldId, cropId: data.cropId, plantingDate, harvestDate });
     await emitCropEvent('updated', cycle);
     return cycle;
   }
 
   async deleteCropCycle(id: string) {
-    await this.getCropCycleById(id); // Throws if not found
+    await this.getCropCycleById(id);
     await this.cropRepository.deleteCropCycle(id);
     await emitCropEvent('deleted', { id });
     return { deleted: true };

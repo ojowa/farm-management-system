@@ -1,0 +1,201 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { scopedPrisma } from '@farm/database';
+
+const CAN_CREATE_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
+
+function getOrgId(req: Request): string {
+  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+}
+
+function getUserRole(req: Request): string {
+  return String((req as any).user?.role || '');
+}
+
+@Controller('tasks')
+export class TasksController {
+  @Get()
+  async findAll(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('assignedToId') assignedToId?: string,
+    @Query('farmId') farmId?: string,
+    @Query('search') search?: string,
+  ) {
+    const orgId = getOrgId(req);
+    const user = (req as any).user;
+
+    const where: any = { organizationId: orgId };
+    if (status) where.status = status;
+    if (priority) where.priority = priority;
+    if (farmId) where.farmId = farmId;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (getUserRole(req) === 'WORKER') {
+      where.assignedToId = user?.sub;
+    } else if (assignedToId) {
+      where.assignedToId = assignedToId;
+    }
+
+    const tasks = await scopedPrisma.task.findMany({
+      where,
+      orderBy: [
+        { status: 'asc' },
+        { priority: 'desc' },
+        { dueDate: 'asc' },
+      ],
+    });
+
+    const stats = await scopedPrisma.task.groupBy({
+      by: ['status'],
+      where: { organizationId: orgId },
+      _count: true,
+    });
+
+    return { data: tasks, stats };
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const task = await scopedPrisma.task.findUnique({ where: { id } });
+    if (!task) throw new Error('Task not found');
+    return task;
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Req() req: Request,
+    @Body() body: {
+      title: string;
+      description?: string;
+      priority?: string;
+      status?: string;
+      assignedToId?: string;
+      assignedToName?: string;
+      farmId?: string;
+      dueDate?: string;
+    },
+  ) {
+    const orgId = getOrgId(req);
+    const user = (req as any).user;
+    const role = getUserRole(req);
+
+    if (!CAN_CREATE_ROLES.includes(role)) {
+      throw new Error('You do not have permission to create tasks');
+    }
+
+    const { title, description, priority, status, assignedToId, assignedToName, farmId, dueDate } = body;
+    if (!title) throw new Error('Title is required');
+
+    return scopedPrisma.task.create({
+      data: {
+        organizationId: orgId,
+        title: title.trim(),
+        description: description?.trim() || null,
+        priority: priority || 'MEDIUM',
+        status: status || 'PENDING',
+        assignedToId: assignedToId || null,
+        assignedToName: assignedToName || null,
+        createdById: user?.sub || null,
+        createdByName: user?.email || null,
+        farmId: farmId || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+      },
+    });
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() body: {
+      title?: string;
+      description?: string;
+      priority?: string;
+      status?: string;
+      assignedToId?: string;
+      assignedToName?: string;
+      farmId?: string;
+      dueDate?: string;
+    },
+  ) {
+    const user = (req as any).user;
+    const role = getUserRole(req);
+    const existing = await scopedPrisma.task.findUnique({ where: { id } });
+    if (!existing) throw new Error('Task not found');
+
+    if (role === 'WORKER') {
+      if (existing.assignedToId !== user?.sub) {
+        throw new Error('Cannot update tasks not assigned to you');
+      }
+      const { status } = body;
+      if (!status) throw new Error('Status is required');
+      return scopedPrisma.task.update({
+        where: { id },
+        data: {
+          status,
+          ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null }),
+        },
+      });
+    }
+
+    const { title, description, priority, status, assignedToId, assignedToName, farmId, dueDate } = body;
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title.trim();
+    if (description !== undefined) updateData.description = description?.trim() || null;
+    if (priority !== undefined) updateData.priority = priority;
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status === 'COMPLETED') updateData.completedAt = new Date();
+      else updateData.completedAt = null;
+    }
+    if (assignedToId !== undefined) updateData.assignedToId = assignedToId || null;
+    if (assignedToName !== undefined) updateData.assignedToName = assignedToName || null;
+    if (farmId !== undefined) updateData.farmId = farmId || null;
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+
+    return scopedPrisma.task.update({ where: { id }, data: updateData });
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id') id: string) {
+    const existing = await scopedPrisma.task.findUnique({ where: { id } });
+    if (!existing) throw new Error('Task not found');
+    await scopedPrisma.task.delete({ where: { id } });
+  }
+
+  @Put(':id/status')
+  async updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    const { status } = body;
+    if (!status) throw new Error('Status is required');
+
+    return scopedPrisma.task.update({
+      where: { id },
+      data: {
+        status,
+        ...(status === 'COMPLETED' ? { completedAt: new Date() } : { completedAt: null }),
+      },
+    });
+  }
+}

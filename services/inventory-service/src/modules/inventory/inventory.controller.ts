@@ -1,67 +1,62 @@
-import { Request, Response } from 'express';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UsePipes,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { InventoryService } from './inventory.service';
+import { ZodValidationPipe } from '@farm/utils';
 import { createInventoryItemSchema, updateInventoryItemSchema } from '@farm/validation';
 
-const inventoryService = new InventoryService();
-
+@Controller('inventory')
 export class InventoryController {
-  async createInventoryItem(req: Request, res: Response) {
-    try {
-      const validated = createInventoryItemSchema.parse(req.body);
-      const item = await inventoryService.createInventoryItem(validated);
-      res.status(201).json(item);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || error });
-    }
+  constructor(private readonly inventoryService: InventoryService) {}
+
+  @Post()
+  @UsePipes(new ZodValidationPipe(createInventoryItemSchema))
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() data: any) {
+    return this.inventoryService.createInventoryItem(data);
   }
 
-  async getInventoryItemById(req: Request, res: Response) {
-    try {
-      const id = req.params.id as string;
-      const item = await inventoryService.getInventoryItemById(id);
-      res.json(item);
-    } catch (error: any) {
-      res.status(404).json({ error: error.message || error });
-    }
+  @Get()
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('farmId') farmId?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
+  ) {
+    const filter: any = {};
+    if (farmId) filter.farmId = farmId;
+    if (category) filter.category = category;
+    if (search) filter.search = search;
+    return this.inventoryService.getAllInventoryItems(filter, sortBy || 'createdAt', sortOrder || 'desc', parseInt(page || '1'), parseInt(limit || '20'));
   }
 
-  async getAllInventoryItems(req: Request, res: Response) {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const sortBy = (req.query.sortBy as string) || 'createdAt';
-      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
-      const filter: any = {};
-      if (req.query.farmId) filter.farmId = req.query.farmId as string;
-      if (req.query.category) filter.category = req.query.category as string;
-      if (req.query.search) filter.search = req.query.search as string;
-
-      const result = await inventoryService.getAllInventoryItems(filter, sortBy, sortOrder, page, limit);
-      res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || error });
-    }
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.inventoryService.getInventoryItemById(id);
   }
 
-  async updateInventoryItem(req: Request, res: Response) {
-    try {
-      const id = req.params.id as string;
-      const validated = updateInventoryItemSchema.parse(req.body);
-      const item = await inventoryService.updateInventoryItem(id, validated);
-      res.json(item);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || error });
-    }
+  @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateInventoryItemSchema))
+  async update(@Param('id') id: string, @Body() data: any) {
+    return this.inventoryService.updateInventoryItem(id, data);
   }
 
-  async deleteInventoryItem(req: Request, res: Response) {
-    try {
-      const id = req.params.id as string;
-      await inventoryService.deleteInventoryItem(id);
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(404).json({ error: error.message || error });
-    }
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('id') id: string) {
+    return this.inventoryService.deleteInventoryItem(id);
   }
 }
-

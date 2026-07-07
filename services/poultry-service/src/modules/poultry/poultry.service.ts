@@ -1,27 +1,13 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PoultryRepository } from './poultry.repository';
-import {
-  CreatePoultryHouseRequest,
-  UpdatePoultryHouseRequest,
-  CreatePenRequest,
-  UpdatePenRequest,
-  CreateBreedRequest,
-  UpdateBreedRequest,
-  CreateFlockRequest,
-  UpdateFlockRequest,
-  CreateFeedingRecordRequest,
-  UpdateFeedingRecordRequest,
-  CreateVaccinationRecordRequest,
-  UpdateVaccinationRecordRequest,
-  CreateMortalityRecordRequest,
-  UpdateMortalityRecordRequest
-} from '@farm/types';
 import { emitPoultryEvent } from '@farm/utils';
 
+@Injectable()
 export class PoultryService {
-  private repository = new PoultryRepository();
+  constructor(private readonly repository: PoultryRepository) {}
 
-  // --- PoultryHouse Service Methods ---
-  async createPoultryHouse(data: CreatePoultryHouseRequest) {
+  // --- PoultryHouse ---
+  async createPoultryHouse(data: any) {
     const house = await this.repository.createPoultryHouse(data);
     await emitPoultryEvent('created', house);
     return house;
@@ -30,7 +16,7 @@ export class PoultryService {
   async getPoultryHouseById(id: string) {
     const house = await this.repository.getPoultryHouseById(id);
     if (!house) {
-      throw new Error(`PoultryHouse with ID ${id} not found`);
+      throw new NotFoundException(`PoultryHouse with ID ${id} not found`);
     }
     return house;
   }
@@ -39,7 +25,7 @@ export class PoultryService {
     return this.repository.getAllPoultryHouses(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updatePoultryHouse(id: string, data: UpdatePoultryHouseRequest) {
+  async updatePoultryHouse(id: string, data: any) {
     await this.getPoultryHouseById(id);
     const house = await this.repository.updatePoultryHouse(id, data);
     await emitPoultryEvent('updated', house);
@@ -53,9 +39,8 @@ export class PoultryService {
     return { deleted: true };
   }
 
-  // --- Pen Service Methods ---
-  async createPen(data: CreatePenRequest) {
-    // Validate PoultryHouse exists
+  // --- Pen ---
+  async createPen(data: any) {
     await this.getPoultryHouseById(data.poultryHouseId);
     const pen = await this.repository.createPen(data);
     await emitPoultryEvent('created', pen);
@@ -65,7 +50,7 @@ export class PoultryService {
   async getPenById(id: string) {
     const pen = await this.repository.getPenById(id);
     if (!pen) {
-      throw new Error(`Pen with ID ${id} not found`);
+      throw new NotFoundException(`Pen with ID ${id} not found`);
     }
     return pen;
   }
@@ -74,7 +59,7 @@ export class PoultryService {
     return this.repository.getAllPens(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updatePen(id: string, data: UpdatePenRequest) {
+  async updatePen(id: string, data: any) {
     await this.getPenById(id);
     if (data.poultryHouseId) {
       await this.getPoultryHouseById(data.poultryHouseId);
@@ -91,8 +76,8 @@ export class PoultryService {
     return { deleted: true };
   }
 
-  // --- Breed Service Methods ---
-  async createBreed(data: CreateBreedRequest) {
+  // --- Breed ---
+  async createBreed(data: any) {
     const breed = await this.repository.createBreed(data);
     await emitPoultryEvent('created', breed);
     return breed;
@@ -101,7 +86,7 @@ export class PoultryService {
   async getBreedById(id: string) {
     const breed = await this.repository.getBreedById(id);
     if (!breed) {
-      throw new Error(`Breed with ID ${id} not found`);
+      throw new NotFoundException(`Breed with ID ${id} not found`);
     }
     return breed;
   }
@@ -110,7 +95,7 @@ export class PoultryService {
     return this.repository.getAllBreeds(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateBreed(id: string, data: UpdateBreedRequest) {
+  async updateBreed(id: string, data: any) {
     await this.getBreedById(id);
     const breed = await this.repository.updateBreed(id, data);
     await emitPoultryEvent('updated', breed);
@@ -124,18 +109,12 @@ export class PoultryService {
     return { deleted: true };
   }
 
-  // --- Flock Service Methods ---
-  async createFlock(data: CreateFlockRequest) {
-    // Validate relations
+  // --- Flock ---
+  async createFlock(data: any) {
     await this.getPenById(data.penId);
     await this.getBreedById(data.breedId);
-
     const arrivalDate = typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate;
-
-    const flock = await this.repository.createFlock({
-      ...data,
-      arrivalDate,
-    });
+    const flock = await this.repository.createFlock({ ...data, arrivalDate });
     await emitPoultryEvent('created', flock);
     return flock;
   }
@@ -143,7 +122,7 @@ export class PoultryService {
   async getFlockById(id: string) {
     const flock = await this.repository.getFlockById(id);
     if (!flock) {
-      throw new Error(`Flock with ID ${id} not found`);
+      throw new NotFoundException(`Flock with ID ${id} not found`);
     }
     return flock;
   }
@@ -152,21 +131,12 @@ export class PoultryService {
     return this.repository.getAllFlocks(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateFlock(id: string, data: UpdateFlockRequest) {
+  async updateFlock(id: string, data: any) {
     await this.getFlockById(id);
-    if (data.penId) {
-      await this.getPenById(data.penId);
-    }
-    if (data.breedId) {
-      await this.getBreedById(data.breedId);
-    }
-
+    if (data.penId) await this.getPenById(data.penId);
+    if (data.breedId) await this.getBreedById(data.breedId);
     const arrivalDate = data.arrivalDate ? (typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate) : undefined;
-
-    const flock = await this.repository.updateFlock(id, {
-      ...data,
-      arrivalDate,
-    });
+    const flock = await this.repository.updateFlock(id, { ...data, arrivalDate });
     await emitPoultryEvent('updated', flock);
     return flock;
   }
@@ -178,14 +148,11 @@ export class PoultryService {
     return { deleted: true };
   }
 
-  // --- FeedingRecord Service Methods ---
-  async createFeedingRecord(data: CreateFeedingRecordRequest) {
+  // --- FeedingRecord ---
+  async createFeedingRecord(data: any) {
     await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
-    const record = await this.repository.createFeedingRecord({
-      ...data,
-      date,
-    });
+    const record = await this.repository.createFeedingRecord({ ...data, date });
     await emitPoultryEvent('created', record);
     return record;
   }
@@ -193,7 +160,7 @@ export class PoultryService {
   async getFeedingRecordById(id: string) {
     const record = await this.repository.getFeedingRecordById(id);
     if (!record) {
-      throw new Error(`Feeding record with ID ${id} not found`);
+      throw new NotFoundException(`Feeding record with ID ${id} not found`);
     }
     return record;
   }
@@ -202,16 +169,11 @@ export class PoultryService {
     return this.repository.getAllFeedingRecords(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateFeedingRecord(id: string, data: UpdateFeedingRecordRequest) {
+  async updateFeedingRecord(id: string, data: any) {
     await this.getFeedingRecordById(id);
-    if (data.flockId) {
-      await this.getFlockById(data.flockId);
-    }
+    if (data.flockId) await this.getFlockById(data.flockId);
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
-    const record = await this.repository.updateFeedingRecord(id, {
-      ...data,
-      date,
-    });
+    const record = await this.repository.updateFeedingRecord(id, { ...data, date });
     await emitPoultryEvent('updated', record);
     return record;
   }
@@ -223,14 +185,11 @@ export class PoultryService {
     return { deleted: true };
   }
 
-  // --- VaccinationRecord Service Methods ---
-  async createVaccinationRecord(data: CreateVaccinationRecordRequest) {
+  // --- VaccinationRecord ---
+  async createVaccinationRecord(data: any) {
     await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
-    const record = await this.repository.createVaccinationRecord({
-      ...data,
-      date,
-    });
+    const record = await this.repository.createVaccinationRecord({ ...data, date });
     await emitPoultryEvent('created', record);
     return record;
   }
@@ -238,7 +197,7 @@ export class PoultryService {
   async getVaccinationRecordById(id: string) {
     const record = await this.repository.getVaccinationRecordById(id);
     if (!record) {
-      throw new Error(`Vaccination record with ID ${id} not found`);
+      throw new NotFoundException(`Vaccination record with ID ${id} not found`);
     }
     return record;
   }
@@ -247,16 +206,11 @@ export class PoultryService {
     return this.repository.getAllVaccinationRecords(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateVaccinationRecord(id: string, data: UpdateVaccinationRecordRequest) {
+  async updateVaccinationRecord(id: string, data: any) {
     await this.getVaccinationRecordById(id);
-    if (data.flockId) {
-      await this.getFlockById(data.flockId);
-    }
+    if (data.flockId) await this.getFlockById(data.flockId);
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
-    const record = await this.repository.updateVaccinationRecord(id, {
-      ...data,
-      date,
-    });
+    const record = await this.repository.updateVaccinationRecord(id, { ...data, date });
     await emitPoultryEvent('updated', record);
     return record;
   }
@@ -268,25 +222,16 @@ export class PoultryService {
     return { deleted: true };
   }
 
-  // --- MortalityRecord Service Methods ---
-  async createMortalityRecord(data: CreateMortalityRecordRequest) {
+  // --- MortalityRecord ---
+  async createMortalityRecord(data: any) {
     const flock = await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
-
-    // Check if mortality count exceeds current bird count
     if (data.count > flock.currentCount) {
       throw new Error(`Mortality count (${data.count}) cannot exceed current flock bird count (${flock.currentCount})`);
     }
-
-    const record = await this.repository.createMortalityRecord({
-      ...data,
-      date,
-    });
-
-    // Automatically update flock current count
+    const record = await this.repository.createMortalityRecord({ ...data, date });
     const updatedCount = flock.currentCount - data.count;
     await this.repository.updateFlock(flock.id, { currentCount: updatedCount });
-
     await emitPoultryEvent('created', record);
     return record;
   }
@@ -294,7 +239,7 @@ export class PoultryService {
   async getMortalityRecordById(id: string) {
     const record = await this.repository.getMortalityRecordById(id);
     if (!record) {
-      throw new Error(`Mortality record with ID ${id} not found`);
+      throw new NotFoundException(`Mortality record with ID ${id} not found`);
     }
     return record;
   }
@@ -303,10 +248,9 @@ export class PoultryService {
     return this.repository.getAllMortalityRecords(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateMortalityRecord(id: string, data: UpdateMortalityRecordRequest) {
+  async updateMortalityRecord(id: string, data: any) {
     const originalRecord = await this.getMortalityRecordById(id);
     const flock = await this.getFlockById(originalRecord.flockId);
-
     let countDiff = 0;
     if (data.count !== undefined) {
       countDiff = data.count - originalRecord.count;
@@ -314,18 +258,12 @@ export class PoultryService {
         throw new Error(`Updated mortality count exceeds available flock count by ${countDiff - flock.currentCount}`);
       }
     }
-
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
-    const record = await this.repository.updateMortalityRecord(id, {
-      ...data,
-      date,
-    });
-
+    const record = await this.repository.updateMortalityRecord(id, { ...data, date });
     if (countDiff !== 0) {
       const updatedCount = flock.currentCount - countDiff;
       await this.repository.updateFlock(flock.id, { currentCount: updatedCount });
     }
-
     await emitPoultryEvent('updated', record);
     return record;
   }
@@ -333,11 +271,8 @@ export class PoultryService {
   async deleteMortalityRecord(id: string) {
     const record = await this.getMortalityRecordById(id);
     const flock = await this.getFlockById(record.flockId);
-
-    // Restore the flock count by the deleted record's count
     const updatedCount = flock.currentCount + record.count;
     await this.repository.updateFlock(flock.id, { currentCount: updatedCount });
-
     await this.repository.deleteMortalityRecord(id);
     await emitPoultryEvent('deleted', { id });
     return { deleted: true };

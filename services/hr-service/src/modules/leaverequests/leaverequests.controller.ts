@@ -1,0 +1,217 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Query,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { scopedPrisma } from '@farm/database';
+import { createNotification } from '../../lib/notificationClient';
+
+function getOrgId(req: Request): string {
+  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+}
+
+function getUserId(req: Request): string {
+  return String((req as any).user?.sub || '');
+}
+
+function getUserRole(req: Request): string {
+  return String((req as any).user?.role || '');
+}
+
+function canApprove(role: string): boolean {
+  return ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'].includes(role);
+}
+
+@Controller('leave/requests')
+export class LeaveRequestsController {
+  @Get()
+  async findAll(
+    @Req() req: Request,
+    @Query('status') status?: string,
+    @Query('userId') filterUserId?: string,
+  ) {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const role = getUserRole(req);
+
+    const where: any = { organizationId: orgId };
+    if (status) where.status = status;
+
+    if (role === 'WORKER') {
+      where.userId = userId;
+    } else if (filterUserId) {
+      where.userId = filterUserId;
+    }
+
+    return scopedPrisma.leaveRequest.findMany({
+      where,
+      include: {
+        leaveType: { select: { name: true, isPaid: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Req() req: Request,
+    @Body() body: { leaveTypeId: string; startDate: string; endDate: string; reason?: string },
+  ) {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { leaveTypeId, startDate, endDate, reason } = body;
+
+    if (!leaveTypeId || !startDate || !endDate) {
+      throw new Error('leaveTypeId, startDate, and endDate are required');
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end < start) throw new Error('endDate must be after startDate');
+
+    let days = 0;
+    const current = new Date(start);
+    while (current <= end) {
+      const dow = current.getDay();
+      if (dow !== 0 && dow !== 6) days++;
+      current.setDate(current.getDate() + 1);
+    }
+    if (days === 0) throw new Error('Leave must include at least one business day');
+
+    const year = start.getFullYear();
+    const balance = await scopedPrisma.leaveBalance.findUnique({
+      where: { userId_leaveTypeId_year: { userId, leaveTypeId, year } },
+    });
+    if (balance && (balance.usedDays + days) > balance.totalDays) {
+      throw new Error(`Insufficient leave balance. Available: ${balance.totalDays - balance.usedDays} days`);
+    }
+
+    return scopedPrisma.leaveRequest.create({
+      data: {
+        organizationId: orgId,
+        userId,
+        leaveTypeId,
+        startDate: start,
+        endDate: end,
+        days,
+        reason: reason || null,
+      },
+      include: { leaveType: { select: { name: true } } },
+    });
+  }
+
+  @Put(':id/approve')
+  async approve(@Param('id') id: string, @Req() req: Request) {
+    const role = getUserRole(req);
+    if (!canApprove(role)) throw new Error('Not authorized to approve leave');
+
+    const existing = await scopedPrisma.leaveRequest.findFirst({ where: { id } });
+    if (!existing) throw new Error('Leave request not found');
+    if (existing.status !== 'PENDING') throw new Error('Request is not pending');
+
+    const approverId = getUserId(req);
+
+    const updated = await scopedPrisma.leaveRequest.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        approvedById: approverId,
+        approvedAt: new Date(),
+      },
+      include: { leaveType: { select: { name: true } } },
+    });
+
+    const year = new Date(existing.startDate).getFullYear();
+    await scopedPrisma.leaveBalance.upsert({
+      where: { userId_leaveTypeId_year: { userId: existing.userId, leaveTypeId: existing.leaveTypeId, year } },
+      create: {
+        organizationId: existing.organizationId,
+        userId: existing.userId,
+        leaveTypeId: existing.leaveTypeId,
+        year,
+        totalDays: 0,
+        usedDays: existing.days,
+      },
+      update: { usedDays: { increment: existing.days } },
+    });
+
+    try {
+      const leaveType = await scopedPrisma.leaveType.findFirst({ where: { id: existing.leaveTypeId } });
+      await createNotification({
+        userId: existing.userId,
+        title: 'Leave Approved',
+        message: `Your ${leaveType?.name || 'leave'} request for ${existing.days} day(s) has been approved.`,
+        type: 'SUCCESS',
+        link: '/hr/leave',
+        entityType: 'LeaveRequest',
+        entityId: id,
+      });
+    } catch {}
+
+    return updated;
+  }
+
+  @Put(':id/reject')
+  async reject(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() body: { rejectionReason?: string },
+  ) {
+    const role = getUserRole(req);
+    if (!canApprove(role)) throw new Error('Not authorized to reject leave');
+
+    const existing = await scopedPrisma.leaveRequest.findFirst({ where: { id } });
+    if (!existing) throw new Error('Leave request not found');
+    if (existing.status !== 'PENDING') throw new Error('Request is not pending');
+
+    const { rejectionReason } = body;
+    const updated = await scopedPrisma.leaveRequest.update({
+      where: { id },
+      data: {
+        status: 'REJECTED',
+        approvedById: getUserId(req),
+        approvedAt: new Date(),
+        rejectionReason: rejectionReason || null,
+      },
+      include: { leaveType: { select: { name: true } } },
+    });
+
+    try {
+      const leaveType = await scopedPrisma.leaveType.findFirst({ where: { id: existing.leaveTypeId } });
+      await createNotification({
+        userId: existing.userId,
+        title: 'Leave Rejected',
+        message: `Your ${leaveType?.name || 'leave'} request for ${existing.days} day(s) has been rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`,
+        type: 'ALERT',
+        link: '/hr/leave',
+        entityType: 'LeaveRequest',
+        entityId: id,
+      });
+    } catch {}
+
+    return updated;
+  }
+
+  @Put(':id/cancel')
+  async cancel(@Param('id') id: string, @Req() req: Request) {
+    const userId = getUserId(req);
+    const existing = await scopedPrisma.leaveRequest.findFirst({ where: { id } });
+    if (!existing) throw new Error('Leave request not found');
+    if (existing.userId !== userId) throw new Error('Cannot cancel requests from other users');
+    if (existing.status !== 'PENDING') throw new Error('Only pending requests can be cancelled');
+
+    return scopedPrisma.leaveRequest.update({
+      where: { id },
+      data: { status: 'CANCELLED' },
+    });
+  }
+}

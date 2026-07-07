@@ -1,25 +1,20 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InventoryRepository } from './inventory.repository';
-import { CreateInventoryItemRequest, UpdateInventoryItemRequest } from '@farm/types';
 import { emitInventoryEvent } from '@farm/utils';
 
+@Injectable()
 export class InventoryService {
-  private repository = new InventoryRepository();
+  constructor(private readonly repository: InventoryRepository) {}
 
   private async assertFarmExists(farmId: string) {
     const farm = await this.repository.getFarmById(farmId);
-    if (!farm) {
-      throw new Error(`Farm with ID ${farmId} not found`);
-    }
+    if (!farm) throw new NotFoundException(`Farm with ID ${farmId} not found`);
   }
 
-  async createInventoryItem(data: CreateInventoryItemRequest) {
+  async createInventoryItem(data: any) {
     await this.assertFarmExists(data.farmId);
     const item = await this.repository.createInventoryItem({
-      farmId: data.farmId,
-      name: data.name,
-      category: data.category,
-      quantity: data.quantity,
-      unit: data.unit,
+      farmId: data.farmId, name: data.name, category: data.category, quantity: data.quantity, unit: data.unit,
     });
     await emitInventoryEvent('created', item);
     return item;
@@ -27,9 +22,7 @@ export class InventoryService {
 
   async getInventoryItemById(id: string) {
     const item = await this.repository.getInventoryItemById(id);
-    if (!item) {
-      throw new Error(`Inventory item with ID ${id} not found`);
-    }
+    if (!item) throw new NotFoundException(`Inventory item with ID ${id} not found`);
     return item;
   }
 
@@ -37,11 +30,9 @@ export class InventoryService {
     return this.repository.getAllInventoryItems(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateInventoryItem(id: string, data: UpdateInventoryItemRequest) {
+  async updateInventoryItem(id: string, data: any) {
     await this.getInventoryItemById(id);
-    if (data.farmId) {
-      await this.assertFarmExists(data.farmId);
-    }
+    if (data.farmId) await this.assertFarmExists(data.farmId);
     const item = await this.repository.updateInventoryItem(id, data);
     await emitInventoryEvent('updated', item);
     return item;
@@ -54,4 +45,3 @@ export class InventoryService {
     return { deleted: true };
   }
 }
-

@@ -1,22 +1,21 @@
-import { Router } from 'express';
-import { FinanceController } from './finance.controller';
+import { Module } from '@nestjs/common';
+import { ExpenseController } from './expense.controller';
+import { SaleController } from './sale.controller';
+import { ProfitabilityController } from './profitability.controller';
+import { ContractController } from './contract.controller';
+import { MarketplaceController } from './marketplace.controller';
+import { FinanceService } from './finance.service';
+import { FinanceRepository } from './finance.repository';
 
-const router = Router();
-const financeController = new FinanceController();
-
-// Expense routes
-router.get('/expenses', financeController.getAllExpenses);
-router.get('/expenses/:id', financeController.getExpenseById);
-router.post('/expenses', financeController.createExpense);
-router.put('/expenses/:id', financeController.updateExpense);
-router.delete('/expenses/:id', financeController.deleteExpense);
-
-// Sale routes
-router.get('/sales', financeController.getAllSales);
-router.get('/sales/:id', financeController.getSaleById);
-router.post('/sales', financeController.createSale);
-router.put('/sales/:id', financeController.updateSale);
-router.delete('/sales/:id', financeController.deleteSale);
-
-export const financeRouter = router;
-export default router;
+@Module({
+  controllers: [
+    ExpenseController,
+    SaleController,
+    ProfitabilityController,
+    ContractController,
+    MarketplaceController,
+  ],
+  providers: [FinanceService, FinanceRepository],
+  exports: [FinanceService],
+})
+export class FinanceModule {}

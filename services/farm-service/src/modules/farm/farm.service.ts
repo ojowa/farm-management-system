@@ -1,12 +1,15 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { FarmRepository } from './farm.repository';
-import { CreateFarmRequest, UpdateFarmRequest, CreateFieldRequest, UpdateFieldRequest } from '@farm/types';
 import { FarmEventService } from './farm.event.service';
 
+@Injectable()
 export class FarmService {
-  private repository = new FarmRepository();
-  private eventService = FarmEventService.getInstance();
+  constructor(
+    private readonly repository: FarmRepository,
+    private readonly eventService: FarmEventService,
+  ) {}
 
-  async createFarm(data: CreateFarmRequest) {
+  async createFarm(data: any) {
     const farm = await this.repository.createFarm(data);
     await this.eventService.emitFarmCreatedEvent(farm);
     return farm;
@@ -15,7 +18,7 @@ export class FarmService {
   async getFarmById(id: string) {
     const farm = await this.repository.getFarmById(id);
     if (!farm) {
-      throw new Error(`Farm with ID ${id} not found`);
+      throw new NotFoundException(`Farm with ID ${id} not found`);
     }
     return farm;
   }
@@ -24,7 +27,7 @@ export class FarmService {
     return this.repository.getAllFarms(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateFarm(id: string, data: UpdateFarmRequest) {
+  async updateFarm(id: string, data: any) {
     await this.getFarmById(id);
     const updatedFarm = await this.repository.updateFarm(id, data);
     await this.eventService.emitFarmUpdatedEvent(updatedFarm);
@@ -37,8 +40,7 @@ export class FarmService {
     return this.repository.deleteFarm(id);
   }
 
-  // --- Field Service Methods ---
-  async createField(data: CreateFieldRequest) {
+  async createField(data: any) {
     await this.getFarmById(data.farmId);
     const field = await this.repository.createField(data);
     await this.eventService.emitFarmUpdatedEvent(field.farm);
@@ -48,7 +50,7 @@ export class FarmService {
   async getFieldById(id: string) {
     const field = await this.repository.getFieldById(id);
     if (!field) {
-      throw new Error(`Field with ID ${id} not found`);
+      throw new NotFoundException(`Field with ID ${id} not found`);
     }
     return field;
   }
@@ -57,7 +59,7 @@ export class FarmService {
     return this.repository.getAllFields(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateField(id: string, data: UpdateFieldRequest) {
+  async updateField(id: string, data: any) {
     await this.getFieldById(id);
     if (data.farmId) {
       await this.getFarmById(data.farmId);
@@ -70,4 +72,3 @@ export class FarmService {
     return this.repository.deleteField(id);
   }
 }
-

@@ -1,19 +1,20 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { LivestockRepository } from './livestock.repository';
-import { CreateLivestockRequest, UpdateLivestockRequest } from '@farm/types';
 import { emitLivestockEvent } from '@farm/utils';
 
+@Injectable()
 export class LivestockService {
-  private repository = new LivestockRepository();
+  constructor(private readonly repository: LivestockRepository) {}
 
   private async assertFarmExists(farmId: string) {
     const farm = await this.repository.getFarmById(farmId);
     if (!farm) {
-      throw new Error(`Farm with ID ${farmId} not found`);
+      throw new NotFoundException(`Farm with ID ${farmId} not found`);
     }
     return farm;
   }
 
-  async createLivestock(data: CreateLivestockRequest) {
+  async createLivestock(data: any) {
     await this.assertFarmExists(data.farmId);
 
     const birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate;
@@ -33,16 +34,16 @@ export class LivestockService {
   async getLivestockById(id: string) {
     const livestock = await this.repository.getLivestockById(id);
     if (!livestock) {
-      throw new Error(`Livestock with ID ${id} not found`);
+      throw new NotFoundException(`Livestock with ID ${id} not found`);
     }
     return livestock;
   }
 
-  async getAllLivestock(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 10) {
+  async getAllLivestock(filter: any = {}, sortBy: string = 'createdAt', sortOrder: 'asc' | 'desc' = 'desc', page: number = 1, limit: number = 20) {
     return this.repository.getAllLivestock(filter, sortBy, sortOrder, page, limit);
   }
 
-  async updateLivestock(id: string, data: UpdateLivestockRequest) {
+  async updateLivestock(id: string, data: any) {
     await this.getLivestockById(id);
 
     if (data.farmId) {
@@ -70,4 +71,3 @@ export class LivestockService {
     return { deleted: true };
   }
 }
-

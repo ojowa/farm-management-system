@@ -43,17 +43,7 @@ export class LivestockRepository {
     return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async updateLivestock(
-    id: string,
-    data: {
-      farmId?: string;
-      species?: string;
-      breed?: string | null;
-      gender?: string;
-      birthDate?: Date;
-      status?: string;
-    }
-  ) {
+  async updateLivestock(id: string, data: any) {
     return prisma.livestock.update({ where: { id }, data });
   }
 
@@ -65,4 +55,3 @@ export class LivestockRepository {
     return prisma.farm.findUnique({ where: { id } });
   }
 }
-

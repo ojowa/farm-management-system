@@ -1,58 +1,49 @@
-import { Request, Response } from 'express';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UsePipes,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { WorkerService } from './worker.service';
+import { ZodValidationPipe } from '@farm/utils';
 import { createWorkerSchema, updateWorkerSchema } from '@farm/validation';
 
-const workerService = new WorkerService();
-
+@Controller('workers')
 export class WorkerController {
-  async createWorker(req: Request, res: Response) {
-    try {
-      const validatedData = createWorkerSchema.parse(req.body);
-      const worker = await workerService.createWorker(validatedData);
-      res.status(201).json(worker);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || error });
-    }
+  constructor(private readonly workerService: WorkerService) {}
+
+  @Post()
+  @UsePipes(new ZodValidationPipe(createWorkerSchema))
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() data: { farmId: string; name: string; role: string }) {
+    return this.workerService.createWorker(data);
   }
 
-  async getWorkerById(req: Request, res: Response) {
-    try {
-      const id = req.params.id as string;
-      const worker = await workerService.getWorkerById(id);
-      res.json(worker);
-    } catch (error: any) {
-      res.status(404).json({ error: error.message || error });
-    }
+  @Get()
+  async findAll() {
+    return this.workerService.getAllWorkers();
   }
 
-  async getAllWorkers(req: Request, res: Response) {
-    try {
-      const workers = await workerService.getAllWorkers();
-      res.json(workers);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || error });
-    }
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.workerService.getWorkerById(id);
   }
 
-  async updateWorker(req: Request, res: Response) {
-    try {
-      const id = req.params.id as string;
-      const validatedData = updateWorkerSchema.parse(req.body);
-      const worker = await workerService.updateWorker(id, validatedData);
-      res.json(worker);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message || error });
-    }
+  @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateWorkerSchema))
+  async update(@Param('id') id: string, @Body() data: { farmId?: string; name?: string; role?: string }) {
+    return this.workerService.updateWorker(id, data);
   }
 
-  async deleteWorker(req: Request, res: Response) {
-    try {
-      const id = req.params.id as string;
-      await workerService.deleteWorker(id);
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(404).json({ error: error.message || error });
-    }
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('id') id: string) {
+    return this.workerService.deleteWorker(id);
   }
 }
-

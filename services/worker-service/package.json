@@ -4,28 +4,31 @@
   "main": "dist/main.js",
   "private": true,
   "scripts": {
-    "dev": "ts-node-dev src/main.ts",
-    "build": "tsc",
-    "start": "node dist/main.js"
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "lint": "echo \"No linter configured\"",
+    "test": "echo \"No tests configured\""
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "cors": "^2.8.5",
-    "helmet": "^8.0.0",
-    "morgan": "^1.10.0",
-    "dotenv": "^16.4.7",
+    "@nestjs/common": "^11.0.10",
+    "@nestjs/core": "^11.0.10",
+    "@nestjs/platform-express": "^11.0.10",
+    "@nestjs/config": "^4.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
     "@farm/types": "workspace:*",
     "@farm/database": "workspace:*",
     "@farm/validation": "workspace:*",
-    "@farm/auth": "workspace:*",
-    "jsonwebtoken": "^9.0.2"
+    "@farm/utils": "workspace:*",
+    "@farm/auth": "workspace:*"
   },
   "devDependencies": {
+    "@nestjs/cli": "^11.0.4",
+    "@nestjs/schematics": "^11.0.1",
     "@types/express": "^5.0.0",
-    "@types/cors": "^2.8.17",
-    "@types/morgan": "^1.9.9",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.3",
-    "@types/jsonwebtoken": "^9.0.8"
+    "@types/node": "^22.13.5",
+    "typescript": "^6.0.3"
   }
 }

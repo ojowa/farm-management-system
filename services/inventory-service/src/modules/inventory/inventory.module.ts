@@ -1,14 +1,14 @@
-import { Router } from 'express';
+import { Module } from '@nestjs/common';
 import { InventoryController } from './inventory.controller';
+import { LowStockController } from './low-stock.controller';
+import { ImportExportController } from './import-export.controller';
+import { EquipmentController } from './equipment.controller';
+import { InventoryService } from './inventory.service';
+import { InventoryRepository } from './inventory.repository';
 
-const router = Router();
-const inventoryController = new InventoryController();
-
-router.get('/inventory', inventoryController.getAllInventoryItems);
-router.get('/inventory/:id', inventoryController.getInventoryItemById);
-router.post('/inventory', inventoryController.createInventoryItem);
-router.put('/inventory/:id', inventoryController.updateInventoryItem);
-router.delete('/inventory/:id', inventoryController.deleteInventoryItem);
-
-export const inventoryRouter = router;
-export default router;
+@Module({
+  controllers: [InventoryController, LowStockController, ImportExportController, EquipmentController],
+  providers: [InventoryService, InventoryRepository],
+  exports: [InventoryService],
+})
+export class InventoryModule {}

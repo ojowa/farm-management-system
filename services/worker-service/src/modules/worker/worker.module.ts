@@ -1,16 +1,11 @@
-import { Router } from 'express';
+import { Module } from '@nestjs/common';
 import { WorkerController } from './worker.controller';
+import { WorkerService } from './worker.service';
+import { WorkerRepository } from './worker.repository';
 
-const router = Router();
-const workerController = new WorkerController();
-
-const writeRoles = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
-
-router.get('/workers', workerController.getAllWorkers);
-router.get('/workers/:id', workerController.getWorkerById);
-router.post('/workers', workerController.createWorker);
-router.put('/workers/:id', workerController.updateWorker);
-router.delete('/workers/:id', workerController.deleteWorker);
-
-export const workerRouter = router;
-export default router;
+@Module({
+  controllers: [WorkerController],
+  providers: [WorkerService, WorkerRepository],
+  exports: [WorkerService],
+})
+export class WorkerModule {}

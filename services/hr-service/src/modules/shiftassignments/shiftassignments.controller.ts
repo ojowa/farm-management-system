@@ -1,0 +1,111 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: Request): string {
+  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+}
+
+@Controller('shift-assignments')
+export class ShiftAssignmentsController {
+  @Get()
+  async findAll(
+    @Req() req: Request,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('userId') userId?: string,
+  ) {
+    const orgId = getOrgId(req);
+
+    const where: any = { organizationId: orgId };
+    if (userId) where.userId = userId;
+    if (startDate || endDate) {
+      where.date = {};
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
+    }
+
+    return scopedPrisma.shiftAssignment.findMany({
+      where,
+      include: { shift: true },
+      orderBy: { date: 'asc' },
+    });
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(
+    @Req() req: Request,
+    @Body() body: { shiftId: string; userId: string; date: string; notes?: string },
+  ) {
+    const orgId = getOrgId(req);
+    const { shiftId, userId: assignUserId, date, notes } = body;
+    if (!shiftId || !assignUserId || !date) {
+      throw new Error('shiftId, userId, and date are required');
+    }
+
+    const shift = await scopedPrisma.shift.findFirst({ where: { id: shiftId, organizationId: orgId } });
+    if (!shift) throw new Error('Shift not found');
+
+    const existing = await scopedPrisma.shiftAssignment.findFirst({
+      where: { shiftId, userId: assignUserId, date: new Date(date) },
+    });
+    if (existing) throw new Error('User already assigned to this shift on this date');
+
+    return scopedPrisma.shiftAssignment.create({
+      data: {
+        organizationId: orgId,
+        shiftId,
+        userId: assignUserId,
+        date: new Date(date),
+        notes: notes || null,
+      },
+      include: { shift: true },
+    });
+  }
+
+  @Post('bulk')
+  @HttpCode(HttpStatus.CREATED)
+  async bulkCreate(
+    @Req() req: Request,
+    @Body() body: { assignments: { shiftId: string; userId: string; date: string; notes?: string }[] },
+  ) {
+    const orgId = getOrgId(req);
+    const { assignments } = body;
+    if (!Array.isArray(assignments) || assignments.length === 0) {
+      throw new Error('assignments array is required');
+    }
+
+    const created = await scopedPrisma.shiftAssignment.createMany({
+      data: assignments.map((a) => ({
+        organizationId: orgId,
+        shiftId: a.shiftId,
+        userId: a.userId,
+        date: new Date(a.date),
+        notes: a.notes || null,
+      })),
+      skipDuplicates: true,
+    });
+
+    return { count: created.count };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(@Param('id') id: string) {
+    const existing = await scopedPrisma.shiftAssignment.findFirst({ where: { id } });
+    if (!existing) throw new Error('Assignment not found');
+    await scopedPrisma.shiftAssignment.delete({ where: { id } });
+  }
+}

@@ -10,8 +10,8 @@ import OfflineBanner from '@/components/OfflineBanner';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider>
             <ToastProvider>

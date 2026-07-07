@@ -1084,3 +1084,9 @@ The architecture emphasizes:
 * Modular development
 * Enterprise readiness
 * Future extensibility
+
+---
+
+# Backend Migration Reference
+
+All 11 backend services have been migrated to NestJS. See [BACKEND_NESTJS_MIGRATION.md](../BACKEND_NESTJS_MIGRATION.md) for full details on the migration, architecture patterns, and deployment configuration.

@@ -114,7 +114,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="relative z-10">
-          <p className="text-slate-600 text-xs">&copy; {new Date().getFullYear()} FarmMS. Admin console access only.</p>
+          <p className="text-slate-600 text-xs">&copy; 2026 FarmMS. Admin console access only.</p>
         </div>
       </div>
 

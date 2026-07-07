@@ -1,17 +1,18 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { WorkerRepository } from './worker.repository';
-import { CreateWorkerRequest, UpdateWorkerRequest } from '@farm/types';
 
+@Injectable()
 export class WorkerService {
-  private repository = new WorkerRepository();
+  constructor(private readonly repository: WorkerRepository) {}
 
-  async createWorker(data: CreateWorkerRequest) {
+  async createWorker(data: { farmId: string; name: string; role: string }) {
     return this.repository.createWorker(data);
   }
 
   async getWorkerById(id: string) {
     const worker = await this.repository.getWorkerById(id);
     if (!worker) {
-      throw new Error(`Worker with ID ${id} not found`);
+      throw new NotFoundException(`Worker with ID ${id} not found`);
     }
     return worker;
   }
@@ -20,7 +21,7 @@ export class WorkerService {
     return this.repository.getAllWorkers();
   }
 
-  async updateWorker(id: string, data: UpdateWorkerRequest) {
+  async updateWorker(id: string, data: { farmId?: string; name?: string; role?: string }) {
     await this.getWorkerById(id);
     return this.repository.updateWorker(id, data);
   }
@@ -30,4 +31,3 @@ export class WorkerService {
     return this.repository.deleteWorker(id);
   }
 }
-

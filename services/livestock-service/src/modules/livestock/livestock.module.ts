@@ -1,14 +1,14 @@
-import { Router } from 'express';
+import { Module } from '@nestjs/common';
 import { LivestockController } from './livestock.controller';
+import { LivestockService } from './livestock.service';
+import { LivestockRepository } from './livestock.repository';
+import { HealthController } from './health.controller';
+import { BreedingController } from './breeding.controller';
+import { WeightController } from './weight.controller';
 
-const router = Router();
-const livestockController = new LivestockController();
-
-router.get('/livestock', livestockController.getAllLivestock);
-router.get('/livestock/:id', livestockController.getLivestockById);
-router.post('/livestock', livestockController.createLivestock);
-router.put('/livestock/:id', livestockController.updateLivestock);
-router.delete('/livestock/:id', livestockController.deleteLivestock);
-
-export const livestockRouter = router;
-export default router;
+@Module({
+  controllers: [LivestockController, HealthController, BreedingController, WeightController],
+  providers: [LivestockService, LivestockRepository],
+  exports: [LivestockService],
+})
+export class LivestockModule {}
