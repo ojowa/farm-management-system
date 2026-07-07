@@ -20,6 +20,8 @@ services:
       pnpm --filter @farm/auth-service build
     startCommand: pnpm --filter @farm/auth-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -46,6 +48,8 @@ services:
       pnpm --filter @farm/farm-service build
     startCommand: pnpm --filter @farm/farm-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -68,6 +72,8 @@ services:
       pnpm --filter @farm/livestock-service build
     startCommand: pnpm --filter @farm/livestock-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -90,6 +96,8 @@ services:
       pnpm --filter @farm/poultry-service build
     startCommand: pnpm --filter @farm/poultry-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -112,6 +120,8 @@ services:
       pnpm --filter @farm/notification-service build
     startCommand: pnpm --filter @farm/notification-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -134,6 +144,8 @@ services:
       pnpm --filter @farm/finance-service build
     startCommand: pnpm --filter @farm/finance-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -156,6 +168,8 @@ services:
       pnpm --filter @farm/worker-service build
     startCommand: pnpm --filter @farm/worker-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -178,6 +192,8 @@ services:
       pnpm --filter @farm/reporting-service build
     startCommand: pnpm --filter @farm/reporting-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -200,6 +216,8 @@ services:
       pnpm --filter @farm/organization-service build
     startCommand: pnpm --filter @farm/organization-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -222,6 +240,8 @@ services:
       pnpm --filter @farm/inventory-service build
     startCommand: pnpm --filter @farm/inventory-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -244,6 +264,8 @@ services:
       pnpm --filter @farm/crop-service build
     startCommand: pnpm --filter @farm/crop-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -266,6 +288,8 @@ services:
       pnpm --filter @farm/hr-service build
     startCommand: pnpm --filter @farm/hr-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -289,6 +313,8 @@ services:
       pnpm --filter @farm/platform-service build
     startCommand: pnpm --filter @farm/platform-service start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: DIRECT_DATABASE_URL
@@ -363,6 +389,8 @@ services:
       pnpm --filter @farm/admin build
     startCommand: pnpm --filter @farm/admin start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: NEXT_PUBLIC_API_URL
         value: "http://api-gateway:4000"
       - key: NEXT_PUBLIC_SOCKET_URL
@@ -384,6 +412,8 @@ services:
       pnpm --filter @farm/web build
     startCommand: pnpm --filter @farm/web start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: NEXT_PUBLIC_API_URL
         value: "http://api-gateway:4000"
       - key: NEXT_PUBLIC_SOCKET_URL
@@ -405,6 +435,8 @@ services:
       pnpm --filter @farm/console build
     startCommand: pnpm --filter @farm/console start
     envVars:
+      - key: COREPACK_ENABLE
+        value: "0"
       - key: NEXT_PUBLIC_PLATFORM_API_URL
         value: "http://platform-service:4020"
       - key: NEXT_PUBLIC_API_URL
