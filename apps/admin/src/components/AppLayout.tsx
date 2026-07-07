@@ -20,6 +20,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const user = { fullName: 'Admin User', email: 'admin@farm.com', role: 'SUPER_ADMIN', avatar: null };
 
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900" suppressHydrationWarning>
       <Sidebar />

@@ -8,6 +8,13 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { LoadingSpinner } from '@/components/ui';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isLoginPage = pathname === '/login';
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900" suppressHydrationWarning>
       <Sidebar />

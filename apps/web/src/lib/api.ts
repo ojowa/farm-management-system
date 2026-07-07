@@ -39,7 +39,8 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (e) {
         processQueue(e);
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        const publicPaths = ['/', '/login', '/register'];
+        if (typeof window !== 'undefined' && !publicPaths.includes(window.location.pathname)) {
           window.location.href = '/login';
         }
         return Promise.reject(e);
