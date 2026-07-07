@@ -2,8 +2,7 @@ services:
   # ── Database ─────────────────────────────────────────────
   # Database is hosted on Neon — connection string set via DATABASE_URL env var
 
-  # ── Shared: build all workspace packages once ────────────
-  # Backend services
+  # ── Backend Services ─────────────────────────────────────
 
   # Auth Service
   - type: web
@@ -11,7 +10,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -38,7 +37,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -47,8 +46,10 @@ services:
       pnpm --filter @farm/farm-service build
     startCommand: pnpm --filter @farm/farm-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: FARM_SERVICE_PORT
         value: "4002"
 
@@ -58,7 +59,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -67,8 +68,10 @@ services:
       pnpm --filter @farm/livestock-service build
     startCommand: pnpm --filter @farm/livestock-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: LIVESTOCK_SERVICE_PORT
         value: "4003"
 
@@ -78,7 +81,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -87,8 +90,10 @@ services:
       pnpm --filter @farm/poultry-service build
     startCommand: pnpm --filter @farm/poultry-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: POULTRY_SERVICE_PORT
         value: "4004"
 
@@ -98,7 +103,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -107,8 +112,10 @@ services:
       pnpm --filter @farm/notification-service build
     startCommand: pnpm --filter @farm/notification-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: NOTIFICATION_SERVICE_PORT
         value: "4005"
 
@@ -118,7 +125,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -127,8 +134,10 @@ services:
       pnpm --filter @farm/finance-service build
     startCommand: pnpm --filter @farm/finance-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: FINANCE_SERVICE_PORT
         value: "4006"
 
@@ -138,7 +147,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -147,8 +156,10 @@ services:
       pnpm --filter @farm/worker-service build
     startCommand: pnpm --filter @farm/worker-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: WORKER_SERVICE_PORT
         value: "4007"
 
@@ -158,7 +169,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -167,8 +178,10 @@ services:
       pnpm --filter @farm/reporting-service build
     startCommand: pnpm --filter @farm/reporting-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: REPORTING_SERVICE_PORT
         value: "4008"
 
@@ -178,7 +191,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -187,8 +200,10 @@ services:
       pnpm --filter @farm/organization-service build
     startCommand: pnpm --filter @farm/organization-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: ORGANIZATION_SERVICE_PORT
         value: "4009"
 
@@ -198,7 +213,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -207,8 +222,10 @@ services:
       pnpm --filter @farm/inventory-service build
     startCommand: pnpm --filter @farm/inventory-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: INVENTORY_SERVICE_PORT
         value: "4010"
 
@@ -218,7 +235,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -227,8 +244,10 @@ services:
       pnpm --filter @farm/crop-service build
     startCommand: pnpm --filter @farm/crop-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: CROP_SERVICE_PORT
         value: "4011"
 
@@ -238,7 +257,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -247,8 +266,10 @@ services:
       pnpm --filter @farm/hr-service build
     startCommand: pnpm --filter @farm/hr-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: HR_SERVICE_PORT
         value: "4012"
 
@@ -258,7 +279,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -268,8 +289,10 @@ services:
       pnpm --filter @farm/platform-service build
     startCommand: pnpm --filter @farm/platform-service start
     envVars:
-      - key: DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL`n        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+      - key: DIRECT_DATABASE_URL
+        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
       - key: JWT_SECRET
         sync: false
       - key: PLATFORM_SERVICE_PORT
@@ -281,7 +304,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -330,7 +353,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -351,7 +374,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -372,7 +395,7 @@ services:
     plan: starter
     runtime: node
     buildCommand: |
-      corepack enable
+      npm install -g pnpm@10.27.0
       pnpm install --frozen-lockfile
       pnpm --filter @farm/database build
       pnpm --filter @farm/types build
@@ -386,4 +409,3 @@ services:
         value: "http://platform-service:4020"
       - key: NEXT_PUBLIC_API_URL
         value: "http://api-gateway:4000"
-
