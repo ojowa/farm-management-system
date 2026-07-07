@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { useAuth } from '@/lib/auth';
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -18,6 +19,7 @@ const SocketContext = createContext<SocketContextValue>({
 });
 
 export function SocketProvider({ children }: { children: ReactNode }) {
+  const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [online, setOnline] = useState(true);
@@ -41,10 +43,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     socket.on('connect', () => {
       setConnected(true);
       setReconnecting(false);
-      if (!joinedRef.current) {
-        socket.emit('join', { userId: '1' });
-        joinedRef.current = true;
-      }
     });
 
     socket.on('disconnect', () => {
@@ -53,11 +51,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     });
 
     socket.on('reconnect_attempt', () => setReconnecting(true));
-    socket.on('reconnect', () => {
-      setReconnecting(false);
-      socket.emit('join', { userId: '1' });
-      joinedRef.current = true;
-    });
+    socket.on('reconnect', () => setReconnecting(false));
     socket.on('reconnect_failed', () => setReconnecting(false));
 
     return () => {
@@ -68,6 +62,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setReconnecting(false);
     };
   }, []);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !connected || !isAuthenticated || !user?.id) return;
+
+    if (!joinedRef.current) {
+      socket.emit('join', { userId: user.id });
+      joinedRef.current = true;
+    }
+  }, [connected, isAuthenticated, user?.id]);
 
   useEffect(() => {
     const handleOnline = () => setOnline(true);
