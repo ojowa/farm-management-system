@@ -9,9 +9,9 @@ import { LoadingSpinner } from '@/components/ui';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLoginPage = pathname === '/login';
+  const publicPaths = ['/', '/login', '/register'];
 
-  if (isLoginPage) {
+  if (publicPaths.includes(pathname)) {
     return <>{children}</>;
   }
 
