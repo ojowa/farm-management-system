@@ -43,6 +43,8 @@ export default function LoginPage() {
       const axios = (await import('axios')).default;
       const client = axios.create({
         baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+        timeout: 15000,
+        headers: { 'Content-Type': 'application/json' },
         withCredentials: true,
       });
       await client.post('/auth/verify-mfa', { mfaToken, code: mfaCode });

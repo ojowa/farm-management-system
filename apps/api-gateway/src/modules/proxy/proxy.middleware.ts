@@ -34,6 +34,7 @@ function isPublicPath(path: string): boolean {
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private proxies: Record<string, string> = {
+    '/auth': process.env.AUTH_SERVICE_URL || `http://localhost:${process.env.AUTH_SERVICE_PORT || 4001}`,
     '/crops': process.env.CROP_SERVICE_URL || `http://localhost:${process.env.CROP_SERVICE_PORT || 4011}`,
     '/farms': process.env.FARM_SERVICE_URL || `http://localhost:${process.env.FARM_SERVICE_PORT || 4002}`,
     '/livestocks': process.env.LIVESTOCK_SERVICE_URL || `http://localhost:${process.env.LIVESTOCK_SERVICE_PORT || 4003}`,

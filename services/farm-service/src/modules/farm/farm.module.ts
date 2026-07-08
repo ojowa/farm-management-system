@@ -5,10 +5,11 @@ import { ImportExportController } from './import-export.controller';
 import { MapController } from './map.controller';
 import { FarmService } from './farm.service';
 import { FarmRepository } from './farm.repository';
+import { FarmEventService } from './farm.event.service';
 
 @Module({
   controllers: [FarmController, FieldController, ImportExportController, MapController],
-  providers: [FarmService, FarmRepository],
+  providers: [FarmService, FarmRepository, FarmEventService],
   exports: [FarmService],
 })
 export class FarmModule {}

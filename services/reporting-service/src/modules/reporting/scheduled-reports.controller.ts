@@ -1,4 +1,4 @@
-import { Injectable, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { scopedPrisma } from '@farm/database';
 
 function calculateNextSend(frequency: string): Date {
@@ -12,7 +12,7 @@ function calculateNextSend(frequency: string): Date {
   return now;
 }
 
-@Injectable()
+@Controller('schedule')
 export class ScheduledReportsController {
   @Get()
   async findAll(@Query('organizationId') orgId: string) {

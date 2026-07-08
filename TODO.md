@@ -1,0 +1,3 @@
+- [x] Update `apps/console/src/app/login/page.tsx` to redesign the landing/login UI (hero + form card) while preserving existing login + MFA logic
+- [x] Ensure TypeScript/React compiles (no missing imports/props) and MFA flow still renders correctly
+- [x] Run quick Next build/dev check (per repo scripts) to validate UI changes
