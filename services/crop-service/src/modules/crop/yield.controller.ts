@@ -1,11 +1,7 @@
-import { Injectable, Get, Post, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: any): string {
-  return String(req['x-organization-id'] || req.user?.organizationId || '');
-}
-
-@Injectable()
+@Controller('yield')
 export class YieldController {
   @Get('crop/:cropId')
   async getYieldHistory(@Param('cropId') cropId: string, @Query('organizationId') orgId: string) {

@@ -70,7 +70,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw { requiresMFA: true, mfaToken: data.mfaToken, user: data.user };
     }
 
-    await fetchUser();
+    const profileRes = await authClient.get('/auth/me');
+    const user = profileRes.data;
+    if (user.role?.name !== 'SUPER_ADMIN' && user.role?.name !== 'SUPPORT_ADMIN') {
+      await authClient.post('/auth/logout').catch(() => {});
+      setState({ user: null, isLoading: false, isAuthenticated: false });
+      throw new Error('Access denied: Admin/Support role required');
+    }
+
+    setState({ user, isLoading: false, isAuthenticated: true });
   };
 
   const logout = async () => {

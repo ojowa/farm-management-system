@@ -1,11 +1,7 @@
-import { Injectable, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: any): string {
-  return String(req['x-organization-id'] || req.user?.organizationId || '');
-}
-
-@Injectable()
+@Controller('pest-disease')
 export class PestDiseaseController {
   @Get()
   async findAll(@Query('organizationId') orgId: string, @Query('type') type?: string, @Query('severity') severity?: string, @Query('farmId') farmId?: string) {

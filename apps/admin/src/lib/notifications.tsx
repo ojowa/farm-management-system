@@ -5,6 +5,7 @@ import { useSocket } from './socket';
 import { Bell, X } from 'lucide-react';
 import { useToast } from './toasts';
 import { notificationsAPI } from './api';
+import { useAuth } from './auth';
 
 export interface Notification {
   id: string;
@@ -31,6 +32,7 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { socket, isConnected, on } = useSocket();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -84,8 +86,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    if (isAuthenticated) {
+      fetchNotifications();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated, fetchNotifications]);
 
   useEffect(() => {
     if (!isConnected || !socket) return;

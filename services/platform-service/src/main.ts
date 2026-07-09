@@ -32,7 +32,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT || 4020;
+  const port = process.env.PLATFORM_SERVICE_PORT || 4020;
   await app.listen(port);
   console.log(`Platform service running on port ${port}`);
 }

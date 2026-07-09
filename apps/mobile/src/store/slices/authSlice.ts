@@ -60,8 +60,8 @@ export const login = createAsyncThunk(
       return {
         requiresMFA: false,
         user: res.user,
-        accessToken: null, // stored in memory by apiClient
-        refreshToken: null,
+        accessToken: res.accessToken || null,
+        refreshToken: res.refreshToken || null,
       };
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Login failed');
@@ -74,7 +74,11 @@ export const verifyMFA = createAsyncThunk(
   async ({ mfaToken, code }: { mfaToken: string; code: string }, { rejectWithValue }) => {
     try {
       const res = await authAPI.verifyMFA(mfaToken, code);
-      return { user: res.user };
+      return {
+        user: res.user,
+        accessToken: res.accessToken || null,
+        refreshToken: res.refreshToken || null,
+      };
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'MFA verification failed');
     }
@@ -88,7 +92,10 @@ export const fetchProfile = createAsyncThunk(
       const res = await authAPI.getProfile();
       return res.data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch profile');
+      return rejectWithValue({
+        message: err.response?.data?.message || 'Failed to fetch profile',
+        status: err.response?.status
+      });
     }
   }
 );
@@ -139,6 +146,8 @@ const authSlice = createSlice({
         } else {
           state.isAuthenticated = true;
           state.user = action.payload.user ?? null;
+          state.accessToken = action.payload.accessToken ?? null;
+          state.refreshToken = action.payload.refreshToken ?? null;
           state.lastLoginAt = new Date().toISOString();
           state.mfaRequired = false;
           state.mfaSessionToken = null;
@@ -157,6 +166,8 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken ?? null;
+        state.refreshToken = action.payload.refreshToken ?? null;
         state.mfaRequired = false;
         state.mfaSessionToken = null;
         state.lastLoginAt = new Date().toISOString();
@@ -171,8 +182,15 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.bootstrapped = true;
       })
-      .addCase(fetchProfile.rejected, (state) => {
+      .addCase(fetchProfile.rejected, (state, action: any) => {
         state.bootstrapped = true;
+        const status = action.payload?.status;
+        if (status === 401 || status === 403 || !state.accessToken) {
+          state.isAuthenticated = false;
+          state.user = null;
+          state.accessToken = null;
+          state.refreshToken = null;
+        }
       })
       // logout
       .addCase(logout.fulfilled, (state) => {

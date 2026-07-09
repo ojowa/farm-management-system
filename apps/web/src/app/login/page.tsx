@@ -20,6 +20,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      window.location.href = '/';
     } catch (err: any) {
       if (err?.requiresMFA) {
         setMfaToken(err.mfaToken);

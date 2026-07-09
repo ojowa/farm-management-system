@@ -57,6 +57,13 @@ export class AuthController {
   }
 
   @ApiBearerAuth('access-token')
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user (alias for profile)' })
+  async getCurrentUser(@Request() req: any) {
+    return this.authService.getProfile(req.user, req.headers.authorization);
+  }
+
+  @ApiBearerAuth('access-token')
   @Get('profile')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ description: 'Authenticated user' })

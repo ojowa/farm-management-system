@@ -34,7 +34,6 @@ function isPublicPath(path: string): boolean {
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private proxies: Record<string, string> = {
-    '/auth': process.env.AUTH_SERVICE_URL || `http://localhost:${process.env.AUTH_SERVICE_PORT || 4001}`,
     '/crops': process.env.CROP_SERVICE_URL || `http://localhost:${process.env.CROP_SERVICE_PORT || 4011}`,
     '/farms': process.env.FARM_SERVICE_URL || `http://localhost:${process.env.FARM_SERVICE_PORT || 4002}`,
     '/livestocks': process.env.LIVESTOCK_SERVICE_URL || `http://localhost:${process.env.LIVESTOCK_SERVICE_PORT || 4003}`,
@@ -54,6 +53,7 @@ export class ProxyMiddleware implements NestMiddleware {
     '/organizations': process.env.ORGANIZATION_SERVICE_URL || `http://localhost:${process.env.ORGANIZATION_SERVICE_PORT || 4009}`,
     '/inventory': process.env.INVENTORY_SERVICE_URL || `http://localhost:${process.env.INVENTORY_SERVICE_PORT || 4010}`,
     '/medications': process.env.POULTRY_SERVICE_URL || `http://localhost:${process.env.POULTRY_SERVICE_PORT || 4004}`,
+    '/auth': process.env.AUTH_SERVICE_URL || `http://localhost:${process.env.AUTH_SERVICE_PORT || 4001}`,
     '/roles': process.env.AUTH_SERVICE_URL || `http://localhost:${process.env.AUTH_SERVICE_PORT || 4001}`,
     '/permissions': process.env.AUTH_SERVICE_URL || `http://localhost:${process.env.AUTH_SERVICE_PORT || 4001}`,
     '/admin': process.env.AUTH_SERVICE_URL || `http://localhost:${process.env.AUTH_SERVICE_PORT || 4001}`,
@@ -63,7 +63,16 @@ export class ProxyMiddleware implements NestMiddleware {
     '/documents': process.env.PLATFORM_SERVICE_URL || `http://localhost:${process.env.PLATFORM_SERVICE_PORT || 4020}`,
   };
 
-  private noPathRewrite = new Set(['/weather', '/documents']);
+  private noPathRewrite = new Set([
+    '/auth',
+    '/roles',
+    '/permissions',
+    '/admin',
+    '/org-admin',
+    '/api-keys',
+    '/weather',
+    '/documents',
+  ]);
 
   private proxyHandlers: Record<string, RequestHandler> = {};
 
@@ -78,6 +87,22 @@ export class ProxyMiddleware implements NestMiddleware {
               pathRewrite: (url) =>
                 url.replace(new RegExp(`^${routePath}`), ''),
             }),
+        on: {
+          proxyReq: (proxyReq: any, req: any, res: any) => {
+            if (req.body) {
+              const contentType = req.headers['content-type'];
+              if (contentType && contentType.includes('application/json')) {
+                const bodyData = JSON.stringify(req.body);
+                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                proxyReq.write(bodyData);
+              } else if (contentType && contentType.includes('application/x-www-form-urlencoded')) {
+                const bodyData = new URLSearchParams(req.body).toString();
+                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                proxyReq.write(bodyData);
+              }
+            }
+          }
+        }
       });
     }
   }

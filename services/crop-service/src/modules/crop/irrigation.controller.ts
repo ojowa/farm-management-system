@@ -1,11 +1,7 @@
-import { Injectable, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: any): string {
-  return String(req['x-organization-id'] || req.user?.organizationId || '');
-}
-
-@Injectable()
+@Controller('irrigation')
 export class IrrigationController {
   @Get('schedule')
   async getActiveSchedules(@Query('organizationId') orgId: string, @Query('farmId') farmId?: string) {

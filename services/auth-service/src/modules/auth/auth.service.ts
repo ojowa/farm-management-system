@@ -4,12 +4,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret';
-
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
+
+function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret'; }
+function getJwtRefreshSecret() { return process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret'; }
 
 @Injectable()
 export class AuthService {
@@ -19,7 +19,7 @@ export class AuthService {
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
     if (!isValid) throw new Error('Invalid credentials');
     if (user.twoFactorEnabled) {
-      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, JWT_SECRET, { expiresIn: '5m' });
+      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getJwtSecret(), { expiresIn: '5m' });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
     const accessToken = this.generateAccessToken(user);
@@ -29,7 +29,7 @@ export class AuthService {
   }
 
   async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const payload = jwt.verify(mfaToken, JWT_SECRET) as any;
+    const payload = jwt.verify(mfaToken, getJwtSecret()) as any;
     const user = await prisma.user.findUnique({ where: { id: payload.sub }, include: { role: true } });
     if (!user) throw new Error('User not found');
     // @ts-ignore - otplib types not available
@@ -81,14 +81,14 @@ export class AuthService {
   }
 
   async generateRefreshToken(userId: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
-    const rawToken = jwt.sign({ sub: userId }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    const rawToken = jwt.sign({ sub: userId }, getJwtRefreshSecret(), { expiresIn: '7d' });
     const tokenHash = hashToken(rawToken);
     await prisma.refreshToken.create({ data: { userId, tokenHash, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), ipAddress: ctx?.ipAddress, deviceInfo: ctx?.deviceInfo } });
     return rawToken;
   }
 
   generateAccessToken(user: any) {
-    return jwt.sign({ sub: user.id, email: user.email, role: user.role?.name, organizationId: user.organizationId }, JWT_SECRET, { expiresIn: '15m' });
+    return jwt.sign({ sub: user.id, email: user.email, role: user.role?.name, organizationId: user.organizationId }, getJwtSecret(), { expiresIn: '15m' });
   }
 
   async logout(userId: string) {

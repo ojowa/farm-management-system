@@ -63,7 +63,11 @@ export class AuthController {
     if (wasReused) { this.clearAuthCookies(res); return res.status(401).json({ message: 'Token reuse detected. All sessions revoked.' }); }
     const result = await this.authService.refreshToken(token, { ipAddress: req.ip, deviceInfo: req.headers['user-agent'] });
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
-    return { message: 'Token refreshed' };
+    return {
+      message: 'Token refreshed',
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    };
   }
 
   @Get('me')

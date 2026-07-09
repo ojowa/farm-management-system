@@ -58,3 +58,5 @@ test-output.json
 .DS_Store
 Thumbs.db
 .aider*
+.claude
+

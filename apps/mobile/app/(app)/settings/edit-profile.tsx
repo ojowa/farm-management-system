@@ -19,6 +19,7 @@ import { useToasts } from '../../../src/hooks/useToasts';
 import { useAppDispatch } from '../../../src/hooks/useAuth';
 import { describeApiError } from '../../../src/utils/apiError';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient } from '../../../src/services/api';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -107,8 +108,8 @@ export default function EditProfileScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await fetch('http://localhost:4000/auth/me');
-      const data = await response.json();
+      const response = await apiClient.axiosInstance.get('/auth/me');
+      const data = response.data;
       setProfile(data);
       setFormData({
         fullName: data.fullName || '',
@@ -182,14 +183,10 @@ export default function EditProfileScreen() {
 
     setSubmitting(true);
     try {
-      await fetch('http://localhost:4000/auth/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: formData.fullName.trim(),
-          email: formData.email.trim(),
-          avatar: formData.avatar || undefined,
-        }),
+      await apiClient.axiosInstance.put('/auth/profile', {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        avatar: formData.avatar || undefined,
       });
       success('Profile updated successfully');
       router.back();

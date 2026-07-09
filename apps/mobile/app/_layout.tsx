@@ -15,6 +15,7 @@ import { ThemeProvider } from '../src/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
 import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
 import { fetchProfile, setBootstrapped } from '../src/store/slices/authSlice';
+import { apiClient } from '../src/services/api';
 
 interface SplashShim {
   preventAutoHideAsync: () => Promise<void>;
@@ -48,10 +49,15 @@ function RootLayoutNav() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
+  const refreshToken = useAppSelector((state) => state.auth.refreshToken);
 
   // Bootstrap: verify session on mount
   useEffect(() => {
     if (isAuthenticated) {
+      if (accessToken && refreshToken) {
+        apiClient.setTokens(accessToken, refreshToken);
+      }
       dispatch(fetchProfile()).unwrap().catch(() => {});
     } else {
       dispatch(setBootstrapped());
