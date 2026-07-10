@@ -9,6 +9,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -84,7 +87,7 @@ export class AttendanceController {
   ) {
     const orgId = getOrgId(req);
 
-    if (!workerId) throw new Error('workerId is required');
+    if (!workerId) throw new BadRequestException('workerId is required');
 
     const m = month ? parseInt(month) : new Date().getMonth();
     const y = year ? parseInt(year) : new Date().getFullYear();
@@ -135,7 +138,7 @@ export class AttendanceController {
     const { workerId, workerName, date, status, clockIn, clockOut, hoursWorked, notes } = body;
 
     if (!workerId || !workerName || !date || !status) {
-      throw new Error('workerId, workerName, date, and status are required');
+      throw new BadRequestException('workerId, workerName, date, and status are required');
     }
 
     return prisma.attendance.create({
@@ -163,7 +166,7 @@ export class AttendanceController {
     const { workerId, workerName } = body;
 
     if (!workerId || !workerName) {
-      throw new Error('workerId and workerName are required');
+      throw new BadRequestException('workerId and workerName are required');
     }
 
     const today = new Date();
@@ -175,7 +178,7 @@ export class AttendanceController {
     });
 
     if (existing) {
-      throw new Error('Worker already clocked in today');
+      throw new ConflictException('Worker already clocked in today');
     }
 
     const clockInTime = today.toTimeString().slice(0, 5);
@@ -201,7 +204,7 @@ export class AttendanceController {
     const orgId = getOrgId(req);
     const { workerId } = body;
 
-    if (!workerId) throw new Error('workerId is required');
+    if (!workerId) throw new BadRequestException('workerId is required');
 
     const today = new Date();
     const start = new Date(today); start.setHours(0, 0, 0, 0);
@@ -211,8 +214,8 @@ export class AttendanceController {
       where: { organizationId: orgId, workerId, date: { gte: start, lte: end } },
     });
 
-    if (!existing) throw new Error('No clock-in record found for today');
-    if (existing.clockOut) throw new Error('Worker already clocked out today');
+    if (!existing) throw new NotFoundException('No clock-in record found for today');
+    if (existing.clockOut) throw new ConflictException('Worker already clocked out today');
 
     const clockOutTime = today.toTimeString().slice(0, 5);
     const hoursWorked = existing.clockIn
@@ -232,7 +235,7 @@ export class AttendanceController {
     @Body() body: { status?: string; clockIn?: string; clockOut?: string; hoursWorked?: number; notes?: string },
   ) {
     const existing = await prisma.attendance.findUnique({ where: { id } });
-    if (!existing) throw new Error('Attendance record not found');
+    if (!existing) throw new NotFoundException('Attendance record not found');
 
     const { status, clockIn, clockOut, hoursWorked, notes } = body;
     const updateData: any = {};
@@ -266,7 +269,7 @@ export class AttendanceController {
     const { records } = body;
 
     if (!Array.isArray(records) || records.length === 0) {
-      throw new Error('records array is required');
+      throw new BadRequestException('records array is required');
     }
 
     const created = await prisma.attendance.createMany({

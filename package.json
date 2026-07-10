@@ -18,7 +18,7 @@
   "devDependencies": {
     "@types/node": "^22.19.21",
     "tsx": "^4.22.4",
-    "turbo": "^2.9.14",
+    "turbo": "^2.10.4",
     "typescript": "~5.8.3"
   },
   "pnpm": {
@@ -28,7 +28,8 @@
       "esbuild"
     ],
     "overrides": {
-      "@types/react": "18.3.31"
+      "@types/react": "18.3.31",
+      "typescript": "5.8.3"
     }
   }
 }

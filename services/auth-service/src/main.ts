@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
 function jwtAuthMiddleware(req: Request, _res: Response, next: NextFunction) {
   let token: string | null = null;
@@ -43,7 +44,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
   app.use(jwtAuthMiddleware);
-  app.enableCors();
+  app.useGlobalFilters(new AllExceptionsFilter());
   const port = process.env.AUTH_SERVICE_PORT || 4001;
   await app.listen(port);
   console.log(`Auth service is running on: http://localhost:${port}`);

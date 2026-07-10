@@ -9,6 +9,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -34,10 +37,10 @@ export class LeaveTypesController {
   async create(@Req() req: Request, @Body() body: { name: string; daysPerYear?: number; isPaid?: boolean }) {
     const orgId = getOrgId(req);
     const { name, daysPerYear, isPaid } = body;
-    if (!name) throw new Error('Name is required');
+    if (!name) throw new BadRequestException('Name is required');
 
     const existing = await scopedPrisma.leaveType.findFirst({ where: { name: name.trim(), organizationId: orgId } });
-    if (existing) throw new Error('Leave type already exists');
+    if (existing) throw new ConflictException('Leave type already exists');
 
     return scopedPrisma.leaveType.create({
       data: {
@@ -52,7 +55,7 @@ export class LeaveTypesController {
   @Put(':id')
   async update(@Param('id') id: string, @Body() body: { name?: string; daysPerYear?: number; isPaid?: boolean; isActive?: boolean }) {
     const existing = await scopedPrisma.leaveType.findFirst({ where: { id } });
-    if (!existing) throw new Error('Leave type not found');
+    if (!existing) throw new NotFoundException('Leave type not found');
 
     const { name, daysPerYear, isPaid, isActive } = body;
     return scopedPrisma.leaveType.update({
@@ -73,9 +76,9 @@ export class LeaveTypesController {
       where: { id },
       include: { _count: { select: { leaveRequests: true } } },
     });
-    if (!existing) throw new Error('Leave type not found');
+    if (!existing) throw new NotFoundException('Leave type not found');
     if ((existing as any)._count.leaveRequests > 0) {
-      throw new Error('Cannot delete leave type with existing requests');
+      throw new ConflictException('Cannot delete leave type with existing requests');
     }
     await scopedPrisma.leaveType.delete({ where: { id } });
   }

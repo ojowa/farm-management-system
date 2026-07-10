@@ -10,6 +10,8 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -80,7 +82,7 @@ export class CorrespondenceController {
   @Get('attachments/:id')
   async findAttachment(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondenceAttachment.findFirst({ where: { id } });
-    if (!existing) throw new Error('Attachment not found');
+    if (!existing) throw new NotFoundException('Attachment not found');
     return existing;
   }
 
@@ -90,7 +92,7 @@ export class CorrespondenceController {
       where: { id },
       include: { attachments: true },
     });
-    if (!item) throw new Error('Correspondence not found');
+    if (!item) throw new NotFoundException('Correspondence not found');
     return item;
   }
 
@@ -115,8 +117,8 @@ export class CorrespondenceController {
     const userName = getUserName(req);
     const { title, type, category, from, to, content, status, priority, receivedDate } = body;
 
-    if (!title?.trim()) throw new Error('Title is required');
-    if (!type) throw new Error('Type is required (INCOMING, OUTGOING, INTERNAL)');
+    if (!title?.trim()) throw new BadRequestException('Title is required');
+    if (!type) throw new BadRequestException('Type is required (INCOMING, OUTGOING, INTERNAL)');
 
     const referenceNumber = await generateRefNumber(orgId);
 
@@ -155,7 +157,7 @@ export class CorrespondenceController {
     },
   ) {
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
-    if (!existing) throw new Error('Correspondence not found');
+    if (!existing) throw new NotFoundException('Correspondence not found');
 
     const { title, type, category, from, to, content, status, priority, receivedDate } = body;
     return scopedPrisma.correspondence.update({
@@ -177,7 +179,7 @@ export class CorrespondenceController {
   @Put(':id/archive')
   async archive(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
-    if (!existing) throw new Error('Correspondence not found');
+    if (!existing) throw new NotFoundException('Correspondence not found');
 
     return scopedPrisma.correspondence.update({
       where: { id },
@@ -188,7 +190,7 @@ export class CorrespondenceController {
   @Put(':id/unarchive')
   async unarchive(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
-    if (!existing) throw new Error('Correspondence not found');
+    if (!existing) throw new NotFoundException('Correspondence not found');
 
     return scopedPrisma.correspondence.update({
       where: { id },
@@ -200,7 +202,7 @@ export class CorrespondenceController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
-    if (!existing) throw new Error('Correspondence not found');
+    if (!existing) throw new NotFoundException('Correspondence not found');
     await scopedPrisma.correspondence.delete({ where: { id } });
   }
 
@@ -214,10 +216,10 @@ export class CorrespondenceController {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
-    if (!existing) throw new Error('Correspondence not found');
+    if (!existing) throw new NotFoundException('Correspondence not found');
 
     const { fileName, fileSize, fileUrl, fileType } = body;
-    if (!fileName || !fileUrl) throw new Error('fileName and fileUrl are required');
+    if (!fileName || !fileUrl) throw new BadRequestException('fileName and fileUrl are required');
 
     return scopedPrisma.correspondenceAttachment.create({
       data: {
@@ -236,7 +238,7 @@ export class CorrespondenceController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeAttachment(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondenceAttachment.findFirst({ where: { id } });
-    if (!existing) throw new Error('Attachment not found');
+    if (!existing) throw new NotFoundException('Attachment not found');
     await scopedPrisma.correspondenceAttachment.delete({ where: { id } });
   }
 }

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
+import { startInactivityTracker } from '@/lib/inactivity';
 
 interface User {
   id: string;
@@ -48,6 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    const stop = startInactivityTracker(() => {
+      logout();
+    });
+    return stop;
+  }, [state.isAuthenticated]);
 
   const login = async (email: string, password: string) => {
     const res = await apiClient.post('/auth/login', { email, password });

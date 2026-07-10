@@ -9,6 +9,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -38,11 +41,11 @@ export class ShiftsController {
     const orgId = getOrgId(req);
     const { name, startTime, endTime, color } = body;
     if (!name || !startTime || !endTime) {
-      throw new Error('Name, startTime, and endTime are required');
+      throw new BadRequestException('Name, startTime, and endTime are required');
     }
 
     const existing = await scopedPrisma.shift.findFirst({ where: { name: name.trim(), organizationId: orgId } });
-    if (existing) throw new Error('Shift already exists');
+    if (existing) throw new ConflictException('Shift already exists');
 
     return scopedPrisma.shift.create({
       data: {
@@ -61,7 +64,7 @@ export class ShiftsController {
     @Body() body: { name?: string; startTime?: string; endTime?: string; color?: string; isActive?: boolean },
   ) {
     const existing = await scopedPrisma.shift.findFirst({ where: { id } });
-    if (!existing) throw new Error('Shift not found');
+    if (!existing) throw new NotFoundException('Shift not found');
 
     const { name, startTime, endTime, color, isActive } = body;
     return scopedPrisma.shift.update({
@@ -83,9 +86,9 @@ export class ShiftsController {
       where: { id },
       include: { _count: { select: { assignments: true } } },
     });
-    if (!existing) throw new Error('Shift not found');
+    if (!existing) throw new NotFoundException('Shift not found');
     if ((existing as any)._count.assignments > 0) {
-      throw new Error('Cannot delete shift with existing assignments');
+      throw new ConflictException('Cannot delete shift with existing assignments');
     }
     await scopedPrisma.shift.delete({ where: { id } });
   }

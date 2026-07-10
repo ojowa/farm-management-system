@@ -10,6 +10,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -76,7 +79,7 @@ export class TasksController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const task = await scopedPrisma.task.findUnique({ where: { id } });
-    if (!task) throw new Error('Task not found');
+    if (!task) throw new NotFoundException('Task not found');
     return task;
   }
 
@@ -100,11 +103,11 @@ export class TasksController {
     const role = getUserRole(req);
 
     if (!CAN_CREATE_ROLES.includes(role)) {
-      throw new Error('You do not have permission to create tasks');
+      throw new ForbiddenException('You do not have permission to create tasks');
     }
 
     const { title, description, priority, status, assignedToId, assignedToName, farmId, dueDate } = body;
-    if (!title) throw new Error('Title is required');
+    if (!title) throw new BadRequestException('Title is required');
 
     return scopedPrisma.task.create({
       data: {
@@ -141,14 +144,14 @@ export class TasksController {
     const user = (req as any).user;
     const role = getUserRole(req);
     const existing = await scopedPrisma.task.findUnique({ where: { id } });
-    if (!existing) throw new Error('Task not found');
+    if (!existing) throw new NotFoundException('Task not found');
 
     if (role === 'WORKER') {
       if (existing.assignedToId !== user?.sub) {
-        throw new Error('Cannot update tasks not assigned to you');
+        throw new ForbiddenException('Cannot update tasks not assigned to you');
       }
       const { status } = body;
-      if (!status) throw new Error('Status is required');
+      if (!status) throw new BadRequestException('Status is required');
       return scopedPrisma.task.update({
         where: { id },
         data: {
@@ -181,14 +184,14 @@ export class TasksController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     const existing = await scopedPrisma.task.findUnique({ where: { id } });
-    if (!existing) throw new Error('Task not found');
+    if (!existing) throw new NotFoundException('Task not found');
     await scopedPrisma.task.delete({ where: { id } });
   }
 
   @Put(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
     const { status } = body;
-    if (!status) throw new Error('Status is required');
+    if (!status) throw new BadRequestException('Status is required');
 
     return scopedPrisma.task.update({
       where: { id },

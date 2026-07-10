@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -15,9 +15,9 @@ function getJwtRefreshSecret() { return process.env.JWT_REFRESH_SECRET || 'dev-r
 export class AuthService {
   async login(data: any, ctx?: { ipAddress?: string; userAgent?: string }) {
     const user = await prisma.user.findUnique({ where: { email: data.email }, include: { role: true } });
-    if (!user || !user.isActive) throw new Error('Invalid credentials');
+    if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
-    if (!isValid) throw new Error('Invalid credentials');
+    if (!isValid) throw new UnauthorizedException('Invalid credentials');
     if (user.twoFactorEnabled) {
       const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getJwtSecret(), { expiresIn: '5m' });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
@@ -31,11 +31,11 @@ export class AuthService {
   async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
     const payload = jwt.verify(mfaToken, getJwtSecret()) as any;
     const user = await prisma.user.findUnique({ where: { id: payload.sub }, include: { role: true } });
-    if (!user) throw new Error('User not found');
+    if (!user) throw new NotFoundException('User not found');
     // @ts-ignore - otplib types not available
     const { authenticator } = await import('otplib');
     const isValid = authenticator.verify({ token: code, secret: user.twoFactorSecret! });
-    if (!isValid) throw new Error('Invalid MFA code');
+    if (!isValid) throw new UnauthorizedException('Invalid MFA code');
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
@@ -44,7 +44,7 @@ export class AuthService {
 
   async register(data: any, ctx?: { ipAddress?: string; userAgent?: string }) {
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
-    if (existing) throw new Error('Email already registered');
+    if (existing) throw new ConflictException('Email already registered');
     const passwordHash = await bcrypt.hash(data.password, 12);
     const defaultRole = await prisma.role.findFirst({ where: { name: 'WORKER', organizationId: null } });
     const user = await prisma.user.create({
@@ -65,10 +65,10 @@ export class AuthService {
   async refreshToken(token: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
     const tokenHash = hashToken(token);
     const stored = await prisma.refreshToken.findFirst({ where: { tokenHash, revoked: false } });
-    if (!stored) throw new Error('Invalid refresh token');
+    if (!stored) throw new UnauthorizedException('Invalid refresh token');
     await prisma.refreshToken.update({ where: { id: stored.id }, data: { revoked: true } });
     const user = await prisma.user.findUnique({ where: { id: stored.userId }, include: { role: true } });
-    if (!user) throw new Error('User not found');
+    if (!user) throw new NotFoundException('User not found');
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     return { accessToken, refreshToken };

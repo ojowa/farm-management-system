@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Req, HttpCode, HttpStatus, BadRequestException, NotFoundException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
@@ -14,7 +14,7 @@ export class ApiKeysController {
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() body: any) {
     const { name, service } = body;
-    if (!name?.trim()) throw new Error('Name is required');
+    if (!name?.trim()) throw new BadRequestException('Name is required');
     const rawKey = `fm_${crypto.randomBytes(24).toString('hex')}`;
     const keyPrefix = rawKey.substring(0, 10);
     const keyHash = await bcrypt.hash(rawKey, 10);
@@ -26,7 +26,7 @@ export class ApiKeysController {
   @HttpCode(HttpStatus.OK)
   async toggle(@Param('id') id: string, @Req() req: any) {
     const key = await prisma.apiKey.findFirst({ where: { id, userId: req.user.sub } });
-    if (!key) throw new Error('API key not found');
+    if (!key) throw new NotFoundException('API key not found');
     return prisma.apiKey.update({ where: { id: key.id }, data: { isActive: !key.isActive }, select: { id: true, name: true, keyPrefix: true, service: true, isActive: true, lastUsedAt: true, createdAt: true } });
   }
 
@@ -34,7 +34,7 @@ export class ApiKeysController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
     const key = await prisma.apiKey.findFirst({ where: { id, userId: req.user.sub } });
-    if (!key) throw new Error('API key not found');
+    if (!key) throw new NotFoundException('API key not found');
     await prisma.apiKey.delete({ where: { id: key.id } });
   }
 }

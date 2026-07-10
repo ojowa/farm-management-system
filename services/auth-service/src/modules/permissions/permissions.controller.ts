@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, HttpCode, HttpStatus, ConflictException, ForbiddenException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 
 @Controller('permissions')
@@ -20,7 +20,7 @@ export class PermissionsController {
   async create(@Body() body: any) {
     const { name, description, category } = body;
     const existing = await prisma.permission.findUnique({ where: { name } });
-    if (existing) throw new Error('Permission name already exists');
+    if (existing) throw new ConflictException('Permission name already exists');
     return prisma.permission.create({ data: { name, description, category } });
   }
 
@@ -28,7 +28,7 @@ export class PermissionsController {
   @HttpCode(HttpStatus.OK)
   async delete(@Param('id') id: string) {
     const roleCount = await prisma.rolePermission.count({ where: { permissionId: id } });
-    if (roleCount > 0) throw new Error('Cannot delete permission assigned to roles');
+    if (roleCount > 0) throw new ForbiddenException('Cannot delete permission assigned to roles');
     await prisma.permission.delete({ where: { id } });
     return { message: 'Permission deleted' };
   }

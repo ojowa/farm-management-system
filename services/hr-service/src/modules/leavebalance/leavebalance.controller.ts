@@ -5,6 +5,7 @@ import {
   Body,
   Query,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -61,7 +62,7 @@ export class LeaveBalanceController {
     const { userId, leaveTypeId, year, totalDays } = body;
 
     if (!userId || !leaveTypeId || !year || totalDays === undefined) {
-      throw new Error('userId, leaveTypeId, year, and totalDays are required');
+      throw new BadRequestException('userId, leaveTypeId, year, and totalDays are required');
     }
 
     return scopedPrisma.leaveBalance.upsert({

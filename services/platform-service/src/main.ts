@@ -4,10 +4,13 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { AppModule } from './app.module';
 
+import { AllExceptionsFilter } from './filters/all-exceptions.filter';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -15,12 +18,6 @@ async function bootstrap() {
       message: 'Too many requests from this IP, please try again later.',
     }),
   );
-
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
 
   app.useGlobalPipes(
     new ValidationPipe({

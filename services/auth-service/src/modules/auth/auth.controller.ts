@@ -1,6 +1,7 @@
 import {
   Controller, Get, Post, Put, Delete, Body, Param, Query, Req, Res,
-  HttpCode, HttpStatus, UsePipes,
+  HttpCode, HttpStatus, UsePipes, BadRequestException, UnauthorizedException,
+  NotFoundException, ForbiddenException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ZodValidationPipe } from '@farm/utils';
@@ -58,9 +59,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refresh(@Body('refreshToken') refreshToken: string, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const token = refreshToken || req.cookies?.refreshToken;
-    if (!token) return res.status(400).json({ message: 'Refresh token required' });
+    if (!token) throw new BadRequestException('Refresh token required');
     const wasReused = await this.authService.detectRefreshTokenReuse(token);
-    if (wasReused) { this.clearAuthCookies(res); return res.status(401).json({ message: 'Token reuse detected. All sessions revoked.' }); }
+    if (wasReused) { this.clearAuthCookies(res); throw new UnauthorizedException('Token reuse detected. All sessions revoked.'); }
     const result = await this.authService.refreshToken(token, { ipAddress: req.ip, deviceInfo: req.headers['user-agent'] });
     this.setAuthCookies(res, result.accessToken, result.refreshToken);
     return {
@@ -103,11 +104,11 @@ export class AuthController {
   @Put('password')
   async changePassword(@Req() req: any, @Body() body: any, @Res({ passthrough: true }) res: Response) {
     const { currentPassword, newPassword } = body;
-    if (!currentPassword || !newPassword) return res.status(400).json({ message: 'Current and new password are required' });
+    if (!currentPassword || !newPassword) throw new BadRequestException('Current and new password are required');
     const fullUser = await prisma.user.findUnique({ where: { id: req.user.sub } });
-    if (!fullUser) return res.status(404).json({ message: 'User not found' });
+    if (!fullUser) throw new NotFoundException('User not found');
     const isValid = await bcrypt.compare(currentPassword, fullUser.passwordHash);
-    if (!isValid) return res.status(401).json({ message: 'Current password is incorrect' });
+    if (!isValid) throw new UnauthorizedException('Current password is incorrect');
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({ where: { id: req.user.sub }, data: { passwordHash } });
     await this.authService.logoutAllSessions(req.user.sub);
@@ -135,11 +136,11 @@ export class AuthController {
   @Post('switch-organization')
   @HttpCode(HttpStatus.OK)
   async switchOrganization(@Req() req: any, @Body('organizationId') organizationId: string, @Res({ passthrough: true }) res: Response) {
-    if (!organizationId) return res.status(400).json({ message: 'organizationId required' });
+    if (!organizationId) throw new BadRequestException('organizationId required');
     const membership = await prisma.userOrganization.findUnique({ where: { userId_organizationId: { userId: req.user.sub, organizationId } } });
-    if (!membership || !membership.isActive) return res.status(403).json({ message: 'Not a member of this organization' });
+    if (!membership || !membership.isActive) throw new ForbiddenException('Not a member of this organization');
     const fullUser = await prisma.user.findUnique({ where: { id: req.user.sub }, include: { role: { include: { permissions: { include: { permission: true } } } }, organization: { include: { subscriptionPlanRef: true } } } });
-    if (!fullUser) return res.status(404).json({ message: 'User not found' });
+    if (!fullUser) throw new NotFoundException('User not found');
     const accessToken = (this.authService as any).generateAccessToken({ ...fullUser, organizationId });
     const refreshToken = await this.authService.generateRefreshToken(req.user.sub, { ipAddress: req.ip });
     this.setAuthCookies(res, accessToken, refreshToken);

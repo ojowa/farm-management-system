@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PoultryRepository } from './poultry.repository';
 import { emitPoultryEvent } from '@farm/utils';
 
@@ -227,7 +227,7 @@ export class PoultryService {
     const flock = await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
     if (data.count > flock.currentCount) {
-      throw new Error(`Mortality count (${data.count}) cannot exceed current flock bird count (${flock.currentCount})`);
+      throw new BadRequestException(`Mortality count (${data.count}) cannot exceed current flock bird count (${flock.currentCount})`);
     }
     const record = await this.repository.createMortalityRecord({ ...data, date });
     const updatedCount = flock.currentCount - data.count;
@@ -255,7 +255,7 @@ export class PoultryService {
     if (data.count !== undefined) {
       countDiff = data.count - originalRecord.count;
       if (countDiff > flock.currentCount) {
-        throw new Error(`Updated mortality count exceeds available flock count by ${countDiff - flock.currentCount}`);
+        throw new BadRequestException(`Updated mortality count exceeds available flock count by ${countDiff - flock.currentCount}`);
       }
     }
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;

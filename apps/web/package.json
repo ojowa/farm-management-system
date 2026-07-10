@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "echo \"No linter configured\"",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -36,7 +36,7 @@
     "jsdom": "^29.1.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.7",
-    "typescript": "^6.0.3",
+    "typescript": "^5.8.3",
     "vitest": "^4.1.9"
   }
 }

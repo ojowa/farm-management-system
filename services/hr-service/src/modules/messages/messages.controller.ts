@@ -8,6 +8,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -76,7 +79,7 @@ export class MessagesController {
       include: { recipients: true },
     });
 
-    if (!message) throw new Error('Message not found');
+    if (!message) throw new NotFoundException('Message not found');
 
     const recipient = await scopedPrisma.messageRecipient.findFirst({
       where: { messageId: id, recipientId: userId },
@@ -102,11 +105,11 @@ export class MessagesController {
     const { subject, body: messageBody, recipientIds, priority } = body;
 
     if (!subject || !messageBody || !Array.isArray(recipientIds) || recipientIds.length === 0) {
-      throw new Error('subject, body, and recipientIds are required');
+      throw new BadRequestException('subject, body, and recipientIds are required');
     }
 
     const sender = await scopedPrisma.user.findFirst({ where: { id: userId } });
-    if (!sender) throw new Error('Sender not found');
+    if (!sender) throw new NotFoundException('Sender not found');
     const senderName = `${sender.firstName} ${sender.lastName}`;
 
     const message = await scopedPrisma.$transaction(async (tx: any) => {
@@ -163,7 +166,7 @@ export class MessagesController {
     const orgId = getOrgId(req);
 
     const message = await scopedPrisma.message.findFirst({ where: { id, organizationId: orgId } });
-    if (!message) throw new Error('Message not found');
+    if (!message) throw new NotFoundException('Message not found');
 
     if (message.senderId === userId) {
       await scopedPrisma.message.delete({ where: { id } });
@@ -171,7 +174,7 @@ export class MessagesController {
       const recipient = await scopedPrisma.messageRecipient.findFirst({
         where: { messageId: id, recipientId: userId },
       });
-      if (!recipient) throw new Error('Not authorized');
+      if (!recipient) throw new ForbiddenException('Not authorized');
       await scopedPrisma.messageRecipient.delete({ where: { id: recipient.id } });
     }
   }

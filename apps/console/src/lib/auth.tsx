@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { startInactivityTracker } from '@/lib/inactivity';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -88,6 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   };
+
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    const stop = startInactivityTracker(() => {
+      logout();
+    });
+    return stop;
+  }, [state.isAuthenticated]);
 
   return (
     <AuthContext.Provider value={{ ...state, login, logout }}>

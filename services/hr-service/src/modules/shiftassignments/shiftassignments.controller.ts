@@ -9,6 +9,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { scopedPrisma } from '@farm/database';
@@ -52,16 +55,16 @@ export class ShiftAssignmentsController {
     const orgId = getOrgId(req);
     const { shiftId, userId: assignUserId, date, notes } = body;
     if (!shiftId || !assignUserId || !date) {
-      throw new Error('shiftId, userId, and date are required');
+      throw new BadRequestException('shiftId, userId, and date are required');
     }
 
     const shift = await scopedPrisma.shift.findFirst({ where: { id: shiftId, organizationId: orgId } });
-    if (!shift) throw new Error('Shift not found');
+    if (!shift) throw new NotFoundException('Shift not found');
 
     const existing = await scopedPrisma.shiftAssignment.findFirst({
       where: { shiftId, userId: assignUserId, date: new Date(date) },
     });
-    if (existing) throw new Error('User already assigned to this shift on this date');
+    if (existing) throw new ConflictException('User already assigned to this shift on this date');
 
     return scopedPrisma.shiftAssignment.create({
       data: {
@@ -84,7 +87,7 @@ export class ShiftAssignmentsController {
     const orgId = getOrgId(req);
     const { assignments } = body;
     if (!Array.isArray(assignments) || assignments.length === 0) {
-      throw new Error('assignments array is required');
+      throw new BadRequestException('assignments array is required');
     }
 
     const created = await scopedPrisma.shiftAssignment.createMany({
@@ -105,7 +108,7 @@ export class ShiftAssignmentsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     const existing = await scopedPrisma.shiftAssignment.findFirst({ where: { id } });
-    if (!existing) throw new Error('Assignment not found');
+    if (!existing) throw new NotFoundException('Assignment not found');
     await scopedPrisma.shiftAssignment.delete({ where: { id } });
   }
 }
