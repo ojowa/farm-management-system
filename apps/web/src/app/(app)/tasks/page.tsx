@@ -5,6 +5,7 @@ import { usePermission } from '@/lib/usePermission';
 import { apiClient } from '@/lib/api';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import { useToasts } from '@/lib/toasts';
+import { useAuth } from '@/lib/auth';
 
 interface Task {
   id: string;
@@ -39,16 +40,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function TasksPage() {
   const { canCreate, canDelete } = usePermission();
   const { success, error: toastError } = useToasts();
-  const user = {
-    id: '1',
-    firstName: 'User',
-    fullName: 'User',
-    role: 'ADMIN',
-    organizationId: '1',
-    organizationName: 'Farm',
-    permissions: [],
-    planFeatures: { modules: [], farmTypes: [] }
-  };
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');

@@ -96,20 +96,8 @@ const NAV_SECTIONS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { hasPermission } = usePermission();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-
-  const user = {
-    id: '1',
-    firstName: 'User',
-    fullName: 'User',
-    email: 'user@farm.com',
-    role: 'ADMIN',
-    organizationId: '1',
-    organizationName: 'Farm',
-    permissions: [],
-    planFeatures: { modules: [], farmTypes: [] }
-  };
 
   return (
     <aside className={`${collapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen sticky top-0 shrink-0 transition-all duration-200`}>
@@ -161,11 +149,11 @@ export default function Sidebar() {
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center text-green-700 dark:text-green-400 font-semibold text-sm">
-              {user.fullName?.[0] || user.email?.[0]?.toUpperCase() || '?'}
+              {user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` : '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.fullName || 'User'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user ? `${user.firstName} ${user.lastName}` : 'User'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
             </div>
           </div>
           <button

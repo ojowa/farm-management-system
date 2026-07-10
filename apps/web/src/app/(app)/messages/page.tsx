@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { usePermission } from '@/lib/usePermission';
 import { messagesAPI, orgAdminAPI } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import { useToasts } from '@/lib/toasts';
 
@@ -31,17 +32,8 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function MessagesPage() {
   const { canCreate } = usePermission();
   const { success, error: toastError } = useToasts();
+  const { user } = useAuth();
   const canSend = canCreate('messaging');
-  const user = {
-    id: '1',
-    firstName: 'User',
-    fullName: 'User',
-    role: 'ADMIN',
-    organizationId: '1',
-    organizationName: 'Farm',
-    permissions: [],
-    planFeatures: { modules: [], farmTypes: [] }
-  };
 
   const [view, setView] = useState<View>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);

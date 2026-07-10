@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { farmsAPI, cropsAPI, livestockAPI, financeAPI, tasksAPI, attendanceAPI } from '@/lib/api';
 import { Card, LoadingSpinner } from '@/components/ui';
+import { useAuth } from '@/lib/auth';
 
 const FARM_TYPE_LABELS: Record<string, string> = {
   CROP: 'Crop',
@@ -39,16 +40,7 @@ interface KPI {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const user = {
-    id: '1',
-    firstName: 'User',
-    fullName: 'User',
-    role: 'ADMIN',
-    organizationId: '1',
-    organizationName: 'Farm',
-    permissions: [],
-    planFeatures: { modules: [], farmTypes: [] }
-  };
+  const { user } = useAuth();
   const [kpis, setKpis] = useState<KPI[]>([
     { label: 'Total Farms', value: '—', icon: '🏡', color: 'bg-green-50 text-green-700' },
     { label: 'Active Crops', value: '—', icon: '🌾', color: 'bg-yellow-50 text-yellow-700' },
@@ -118,7 +110,7 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user?.fullName || 'Farmer'}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user ? `${user.firstName} ${user.lastName}` : 'Farmer'}</h1>
         <p className="text-gray-500 mt-1">Here's what's happening on your farm today.</p>
       </div>
 

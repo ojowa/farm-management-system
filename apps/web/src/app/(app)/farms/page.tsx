@@ -53,16 +53,6 @@ const PAGE_SIZE = 10;
 export default function FarmsPage() {
   const router = useRouter();
   const { success, error: toastError } = useToasts();
-  const user = {
-    id: '1',
-    firstName: 'User',
-    fullName: 'User',
-    role: 'ADMIN',
-    organizationId: '1',
-    organizationName: 'Farm',
-    permissions: [],
-    planFeatures: { modules: [], farmTypes: [] }
-  };
   const farmTypeOptions = useMemo(() => FARM_TYPE_OPTIONS, []);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);

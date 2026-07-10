@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 import {
   LayoutDashboard,
   Users,
@@ -69,15 +70,18 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const user = { firstName: 'A', fullName: 'Admin User', role: 'SUPER_ADMIN', organizationName: 'My Organization', planFeatures: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'worker', 'finance', 'reporting', 'task'] } };
+  const { user } = useAuth();
   const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.role?.name === 'SUPER_ADMIN';
 
   const filteredNav = navigation.filter((item) => {
     if (item.adminOnly && !isSuperAdmin) return false;
-    if (item.module && user?.planFeatures?.modules && !user.planFeatures.modules.includes(item.module)) return false;
+    if (item.module && user?.role?.permissions) {
+      const modules = user.role.permissions.flatMap((p: any) => p.permission?.map((pp: any) => pp.name?.split('.')[0]) || []);
+      if (modules.length > 0 && !modules.includes(item.module)) return false;
+    }
     if (item.permission && !hasPermission(item.permission)) return false;
     return true;
   });
@@ -134,13 +138,13 @@ export function Sidebar() {
         <div className="flex items-center gap-3 px-3 py-2">
           <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
             <span className="text-primary-foreground text-sm font-medium">
-              {user?.firstName?.[0] || 'U'}
+              {user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` : 'U'}
             </span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.fullName || 'User'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.role}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user ? `${user.firstName} ${user.lastName}` : 'User'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.role?.name?.replace('_', ' ') || 'User'}</p>
             </div>
           )}
         </div>
