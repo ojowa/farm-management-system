@@ -10,6 +10,7 @@ import {
   Req,
   UsePipes,
   UseGuards,
+  Inject,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { NotificationApplicationService } from '../../application/services/notification.service';
@@ -111,7 +112,7 @@ export class NotificationController {
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('devices')
 export class DeviceController {
-  constructor(private readonly deviceTokenRepo: DeviceTokenRepository) {}
+  constructor(@Inject('DeviceTokenRepository') private readonly deviceTokenRepo: DeviceTokenRepository) {}
 
   @Permission('notification.write')
   @Post('tokens')
