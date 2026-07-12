@@ -207,28 +207,6 @@ services:
       - key: ORGANIZATION_SERVICE_PORT
         value: "4009"
 
-  # Inventory Service
-  - type: web
-    name: inventory-service
-    plan: starter
-    runtime: node
-    buildCommand: |
-      corepack prepare pnpm@10.27.0 --activate
-      pnpm install --frozen-lockfile
-      pnpm --filter @farm/database build
-      pnpm --filter @farm/types build
-      pnpm --filter @farm/utils build
-      pnpm --filter @farm/validation build
-      pnpm --filter @farm/inventory-service build
-    startCommand: pnpm --filter @farm/inventory-service start
-    envVars:
-      - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
-      - key: INVENTORY_SERVICE_PORT
-        value: "4010"
-
   # Crop Service
   - type: web
     name: crop-service
@@ -286,8 +264,8 @@ services:
       pnpm --filter @farm/utils build
       pnpm --filter @farm/auth build
       pnpm --filter @farm/validation build
-      pnpm --filter @farm/platform-service build
-    startCommand: pnpm --filter @farm/platform-service start
+      pnpm --filter platform-service build
+    startCommand: pnpm --filter platform-service start
     envVars:
       - key: DATABASE_URL
         value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
@@ -336,8 +314,6 @@ services:
         value: "http://reporting-service:4008"
       - key: ORGANIZATION_SERVICE_URL
         value: "http://organization-service:4009"
-      - key: INVENTORY_SERVICE_URL
-        value: "http://inventory-service:4010"
       - key: CROP_SERVICE_URL
         value: "http://crop-service:4011"
       - key: HR_SERVICE_URL
