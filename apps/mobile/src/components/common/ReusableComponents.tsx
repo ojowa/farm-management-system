@@ -8,21 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-
-const colors = {
-  primary: '#2E7D32',
-  secondary: '#1976D2',
-  success: '#4CAF50',
-  error: '#F44336',
-  warning: '#FF9800',
-  info: '#2196F3',
-  light: '#F5F5F5',
-  dark: '#212121',
-  border: '#BDBDBD',
-  text: '#424242',
-  textLight: '#616161',
-  white: '#FFFFFF',
-};
+import { colors } from './UIComponents';
 
 const styles = StyleSheet.create({
   badge: {
@@ -43,7 +29,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: colors.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     width: '100%',
     maxHeight: '80%',
@@ -97,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statsCard: {
-    backgroundColor: colors.white,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -193,7 +179,7 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.white,
+    color: '#FFFFFF',
   },
   cancelButton: {
     flex: 1,

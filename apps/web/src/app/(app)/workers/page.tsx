@@ -9,7 +9,7 @@ import Pagination from '@/components/Pagination';
 import FilterBar from '@/components/FilterBar';
 import { useToasts } from '@/lib/toasts';
 
-interface Worker { id: string; fullName: string; role: string; phone?: string; farmId: string; farmName?: string; status: string; }
+interface Worker { id: string; firstName: string; middleName?: string; lastName: string; position: string; phone?: string; farmId: string; farmName?: string; status: string; }
 const STATUS_COLORS: Record<string, string> = { active: 'green', inactive: 'gray', on_leave: 'yellow' };
 const PAGE_SIZE = 10;
 
@@ -20,7 +20,7 @@ export default function WorkersPage() {
   const [farms, setFarms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ fullName: '', role: '', phone: '', farmId: '', email: '' });
+  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', phone: '', farmId: '', email: '', position: '' });
   const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState('');
@@ -46,7 +46,7 @@ export default function WorkersPage() {
     if (search) {
       const q = search.toLowerCase();
       result = result.filter((w) =>
-        w.fullName.toLowerCase().includes(q) || w.role?.toLowerCase().includes(q)
+        `${w.firstName} ${w.lastName}`.toLowerCase().includes(q) || w.position?.toLowerCase().includes(q)
       );
     }
     if (farmFilter) {
@@ -65,7 +65,7 @@ export default function WorkersPage() {
       await workersAPI.create(form);
       success('Worker added');
       setShowAdd(false);
-      setForm({ fullName: '', role: '', phone: '', farmId: '', email: '' });
+      setForm({ firstName: '', middleName: '', lastName: '', phone: '', farmId: '', email: '', position: '' });
       load();
     } catch (err: any) { toastError(err.response?.data?.message || 'Failed to add'); }
     finally { setSaving(false); }
@@ -84,7 +84,7 @@ export default function WorkersPage() {
       <FilterBar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by name or role…"
+        searchPlaceholder="Search by name or position…"
         filters={[
           {
             key: 'farmId',
@@ -104,8 +104,8 @@ export default function WorkersPage() {
         emptyIcon="👷"
         onRowClick={(w) => router.push(`/workers/${w.id}`)}
         columns={[
-          { key: 'fullName', label: 'Name', render: (w) => <span className="font-medium">{w.fullName}</span> },
-          { key: 'role', label: 'Role' },
+          { key: 'firstName', label: 'Name', render: (w) => <span className="font-medium">{w.firstName} {w.middleName ? `${w.middleName} ` : ''}{w.lastName}</span> },
+          { key: 'position', label: 'Position' },
           { key: 'phone', label: 'Phone', render: (w) => w.phone || '—' },
           { key: 'farmName', label: 'Farm', render: (w) => w.farmName || '—' },
           { key: 'status', label: 'Status', render: (w) => <Badge color={STATUS_COLORS[w.status] || 'gray'}>{w.status}</Badge> },
@@ -123,8 +123,10 @@ export default function WorkersPage() {
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Worker">
         <form onSubmit={handleAdd}>
-          <Input label="Full Name" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          <Input label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="e.g. Farmhand, Manager" />
+          <Input label="First Name" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+          <Input label="Middle Name" value={form.middleName} onChange={(e) => setForm({ ...form, middleName: e.target.value })} />
+          <Input label="Last Name" required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+          <Input label="Position" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="e.g. Farmhand, Manager" />
           <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <Select label="Farm" required value={form.farmId} onChange={(e) => setForm({ ...form, farmId: e.target.value })}>

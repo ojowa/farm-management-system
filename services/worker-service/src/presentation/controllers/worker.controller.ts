@@ -25,7 +25,7 @@ export class WorkerController {
   @Post()
   @UsePipes(new ZodValidationPipe(createWorkerSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: { farmId: string; name: string; role: string }) {
+  async create(@Body() data: { farmId: string; firstName: string; lastName: string; position: string; status?: string }) {
     return this.workerService.createWorker(data);
   }
 
@@ -44,7 +44,7 @@ export class WorkerController {
   @Permission('hr.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateWorkerSchema))
-  async update(@Param('id') id: string, @Body() data: { farmId?: string; name?: string; role?: string }) {
+  async update(@Param('id') id: string, @Body() data: { farmId?: string; firstName?: string; lastName?: string; position?: string }) {
     return this.workerService.updateWorker(id, data);
   }
 

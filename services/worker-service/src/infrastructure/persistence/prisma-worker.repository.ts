@@ -14,7 +14,7 @@ export class PrismaWorkerRepository implements WorkerRepository {
   }
 
   async create(data: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>): Promise<Worker> {
-    return prisma.worker.create({ data }) as Promise<Worker>;
+    return prisma.worker.create({ data: data as any }) as Promise<Worker>;
   }
 
   async update(id: string, data: Partial<Worker>): Promise<Worker> {

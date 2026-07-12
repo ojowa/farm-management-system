@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { platformBroadcastsAPI } from '@/lib/api';
+import { platformBroadcastsAPI, platformOptionsAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
+
+interface Option { value: string; label: string; }
 
 interface Broadcast {
   id: string;
@@ -19,30 +22,47 @@ export default function BroadcastsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', message: '', type: 'INFO' });
+  const [typeOptions, setTypeOptions] = useState<Option[]>([]);
 
   const loadBroadcasts = async () => {
     setLoading(true);
     try {
       const { data } = await platformBroadcastsAPI.list();
       setBroadcasts(data.broadcasts);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 
-  useEffect(() => { loadBroadcasts(); }, []);
+  useEffect(() => { loadBroadcasts(); loadOptions(); }, []);
+
+  const loadOptions = async () => {
+    try {
+      const { data } = await platformOptionsAPI.broadcastTypes();
+      setTypeOptions(data.types);
+      if (data.types.length > 0 && !form.type) {
+        setForm((prev) => ({ ...prev, type: data.types[0].value }));
+      }
+    } catch (err) { toastError(getErrorMessage(err)); }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await platformBroadcastsAPI.create(form);
-    setShowForm(false);
-    setForm({ title: '', message: '', type: 'INFO' });
-    loadBroadcasts();
+    try {
+      await platformBroadcastsAPI.create(form);
+      setShowForm(false);
+      setForm({ title: '', message: '', type: 'INFO' });
+      toastSuccess('Broadcast created');
+      loadBroadcasts();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this broadcast?')) return;
-    await platformBroadcastsAPI.delete(id);
-    loadBroadcasts();
+    try {
+      await platformBroadcastsAPI.delete(id);
+      toastSuccess('Broadcast deleted');
+      loadBroadcasts();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const typeStyles: Record<string, string> = {
@@ -51,6 +71,8 @@ export default function BroadcastsPage() {
     CRITICAL: 'bg-red-50 text-red-700',
     MAINTENANCE: 'bg-purple-50 text-purple-700',
   };
+
+  const getTypeStyle = (type: string) => typeStyles[type] || 'bg-gray-50 text-gray-700';
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -120,10 +142,9 @@ export default function BroadcastsPage() {
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-colors bg-white"
                   >
-                    <option value="INFO">Info</option>
-                    <option value="WARNING">Warning</option>
-                    <option value="CRITICAL">Critical</option>
-                    <option value="MAINTENANCE">Maintenance</option>
+                    {typeOptions.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -195,7 +216,7 @@ export default function BroadcastsPage() {
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{b.message}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${typeStyles[b.type] || 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getTypeStyle(b.type)}`}>
                       {b.type}
                     </span>
                   </td>

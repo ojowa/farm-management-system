@@ -113,6 +113,18 @@ export const financeAPI = {
   deleteSale: (id: string) => apiClient.delete(`/finance/sales/${id}`),
 };
 
+export const budgetsAPI = {
+  list: (params?: any) => apiClient.get('/finance/budgets', { params }),
+  get: (id: string) => apiClient.get(`/finance/budgets/${id}`),
+  create: (data: any) => apiClient.post('/finance/budgets', data),
+  update: (id: string, data: any) => apiClient.put(`/finance/budgets/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/finance/budgets/${id}`),
+  addCategory: (budgetId: string, data: any) => apiClient.post(`/finance/budgets/${budgetId}/categories`, data),
+  updateCategory: (categoryId: string, data: any) => apiClient.put(`/finance/budgets/categories/${categoryId}`, data),
+  deleteCategory: (categoryId: string) => apiClient.delete(`/finance/budgets/categories/${categoryId}`),
+  refresh: (budgetId: string) => apiClient.post(`/finance/budgets/${budgetId}/refresh`),
+};
+
 export const reportsAPI = {
   list: (params?: any) => apiClient.get('/reporting/reports', { params }),
   get: (id: string) => apiClient.get(`/reporting/reports/${id}`),

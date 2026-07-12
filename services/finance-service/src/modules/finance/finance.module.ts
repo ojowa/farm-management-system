@@ -4,6 +4,7 @@ import { SaleController } from './sale.controller';
 import { ProfitabilityController } from './profitability.controller';
 import { ContractController } from './contract.controller';
 import { MarketplaceController } from './marketplace.controller';
+import { BudgetController } from './budget.controller';
 import { FinanceService } from './finance.service';
 import { FinanceRepository } from './finance.repository';
 
@@ -14,6 +15,7 @@ import { FinanceRepository } from './finance.repository';
     ProfitabilityController,
     ContractController,
     MarketplaceController,
+    BudgetController,
   ],
   providers: [FinanceService, FinanceRepository],
   exports: [FinanceService],

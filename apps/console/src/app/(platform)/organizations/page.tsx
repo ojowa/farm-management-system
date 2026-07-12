@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { platformOrgsAPI } from '@/lib/api';
+import { platformOrgsAPI, platformOptionsAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
 interface Org {
   id: string;
@@ -16,6 +17,8 @@ interface Org {
   createdAt: string;
 }
 
+interface Option { value: string; label: string; id?: string; }
+
 export default function OrganizationsPage() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [total, setTotal] = useState(0);
@@ -24,6 +27,8 @@ export default function OrganizationsPage() {
   const [planFilter, setPlanFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [planOptions, setPlanOptions] = useState<Option[]>([]);
+  const [statusOptions, setStatusOptions] = useState<Option[]>([]);
 
   const loadOrgs = async () => {
     setLoading(true);
@@ -34,21 +39,39 @@ export default function OrganizationsPage() {
       const { data } = await platformOrgsAPI.list(params);
       setOrgs(data.organizations);
       setTotal(data.total);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 
+  const loadOptions = async () => {
+    try {
+      const [plansRes, statusesRes] = await Promise.all([
+        platformOptionsAPI.plans(),
+        platformOptionsAPI.statuses(),
+      ]);
+      setPlanOptions(plansRes.data.plans);
+      setStatusOptions(statusesRes.data.statuses);
+    } catch (err) { toastError(getErrorMessage(err)); }
+  };
+
+  useEffect(() => { loadOptions(); }, []);
   useEffect(() => { loadOrgs(); }, [page, search, planFilter, statusFilter]);
 
   const handleSuspend = async (id: string) => {
     if (!confirm('Suspend this organization? All users will be logged out.')) return;
-    await platformOrgsAPI.suspend(id);
-    loadOrgs();
+    try {
+      await platformOrgsAPI.suspend(id);
+      toastSuccess('Organization suspended');
+      loadOrgs();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const handleActivate = async (id: string) => {
-    await platformOrgsAPI.activate(id);
-    loadOrgs();
+    try {
+      await platformOrgsAPI.activate(id);
+      toastSuccess('Organization activated');
+      loadOrgs();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const totalPages = Math.ceil(total / 20);
@@ -84,10 +107,9 @@ export default function OrganizationsPage() {
                 className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-colors"
               >
                 <option value="">All Plans</option>
-                <option value="FREE">FREE</option>
-                <option value="STARTER">STARTER</option>
-                <option value="PRO">PRO</option>
-                <option value="ENTERPRISE">ENTERPRISE</option>
+                {planOptions.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
               </select>
               <select
                 value={statusFilter}
@@ -95,10 +117,9 @@ export default function OrganizationsPage() {
                 className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a] transition-colors"
               >
                 <option value="">All Statuses</option>
-                <option value="TRIAL">TRIAL</option>
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="SUSPENDED">SUSPENDED</option>
-                <option value="CANCELLED">CANCELLED</option>
+                {statusOptions.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -240,30 +261,36 @@ export default function OrganizationsPage() {
 }
 
 function PlanBadge({ plan }: { plan: string }) {
-  const styles: Record<string, string> = {
+  const styleMap: Record<string, string> = {
     FREE: 'bg-gray-100 text-gray-700',
     STARTER: 'bg-blue-100 text-blue-700',
     PRO: 'bg-[#16a34a]/10 text-[#16a34a]',
     ENTERPRISE: 'bg-purple-100 text-purple-700',
   };
+  const fallbackColors = ['bg-gray-100 text-gray-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-purple-100 text-purple-700', 'bg-amber-100 text-amber-700'];
+  const hash = plan.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const style = styleMap[plan] || fallbackColors[hash % fallbackColors.length];
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${styles[plan] || 'bg-gray-100 text-gray-700'}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${style}`}>
       {plan}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
+  const styleMap: Record<string, string> = {
     TRIAL: 'bg-amber-100 text-amber-700',
     ACTIVE: 'bg-[#16a34a]/10 text-[#16a34a]',
     SUSPENDED: 'bg-red-100 text-red-700',
     CANCELLED: 'bg-gray-100 text-gray-700',
   };
+  const fallbackColors = ['bg-gray-100 text-gray-700', 'bg-green-100 text-green-700', 'bg-amber-100 text-amber-700', 'bg-red-100 text-red-700', 'bg-blue-100 text-blue-700'];
+  const hash = status.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const style = styleMap[status] || fallbackColors[hash % fallbackColors.length];
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${styles[status] || 'bg-gray-100 text-gray-700'}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${style}`}>
       {status}
     </span>
   );

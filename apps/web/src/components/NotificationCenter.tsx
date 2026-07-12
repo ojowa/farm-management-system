@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSocketContext } from '@/lib/socket';
 import { notificationsAPI, Notification } from '@/lib/notifications';
 import { usePushNotifications, initializePushNotifications } from '@/lib/pushNotifications';
+import { useAuth } from '@/lib/auth';
 
 const TYPE_COLORS: Record<string, string> = {
   INFO: 'bg-blue-100 text-blue-800',
@@ -22,6 +23,7 @@ const TYPE_ICONS: Record<string, string> = {
 
 export default function NotificationCenter() {
   const router = useRouter();
+  const { user } = useAuth();
   const { socket, connected } = useSocketContext();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -39,24 +41,27 @@ export default function NotificationCenter() {
   } = usePushNotifications();
 
   const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
     setLoading(true);
     try {
       const [listRes, countRes] = await Promise.all([
-        notificationsAPI.list('1', { limit: 20 }),
-        notificationsAPI.getUnreadCount('1'),
+        notificationsAPI.list(user.id, { limit: 20 }),
+        notificationsAPI.getUnreadCount(user.id),
       ]);
       if (!mountedRef.current) return;
       setNotifications(listRes.data || []);
       setUnreadCount(countRes.data.count || 0);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.warn('Failed to fetch notifications:', err);
+    }
     finally { if (mountedRef.current) setLoading(false); }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     mountedRef.current = true;
     fetchNotifications();
     return () => { mountedRef.current = false; };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, user?.id]);
 
   // Initialize push notifications
   useEffect(() => {
@@ -121,15 +126,20 @@ export default function NotificationCenter() {
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.warn('Failed to mark notification as read:', err);
+    }
   };
 
   const handleMarkAllRead = async () => {
+    if (!user?.id) return;
     try {
-      await notificationsAPI.markAllAsRead('1');
+      await notificationsAPI.markAllAsRead(user.id);
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.warn('Failed to mark all notifications as read:', err);
+    }
   };
 
   const handleClick = (notification: Notification) => {

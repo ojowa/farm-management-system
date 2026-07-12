@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ChartCard, FarmAreaChart, FarmBarChart, FarmPieChart } from '@/components/charts';
-import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI } from '@/lib/api';
+import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI, profitabilityAPI } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
 import { useReadOnly } from '@/lib/useReadOnly';
 
@@ -126,12 +126,13 @@ function DashboardContent() {
   const { data: salesData } = useFetch('dashboard-sales', () => financeAPI.listSales({ limit: 50 }));
   const { data: tasksData } = useFetch('dashboard-tasks', () => tasksAPI.list({ status: 'PENDING' }));
   const { data: attendanceData } = useFetch('dashboard-attendance', () => attendanceAPI.getToday());
+  const { data: profitabilityData } = useFetch('dashboard-profitability', () => profitabilityAPI.summary(), { cacheTime: 60_000 });
 
   const stats = [
-    { name: 'Total Farms', value: String(farmsData?.total ?? farmsData?.data?.total ?? '—'), change: '+2', changeType: 'up' as const, icon: Home, color: 'bg-blue-500', href: '/farms' },
-    { name: 'Active Crops', value: String(cropsData?.total ?? cropsData?.data?.total ?? '—'), change: '+5', changeType: 'up' as const, icon: Sprout, color: 'bg-green-500', href: '/crops' },
-    { name: 'Livestock', value: String(livestockData?.total ?? livestockData?.data?.total ?? '—'), change: '+12', changeType: 'up' as const, icon: Beef, color: 'bg-amber-500', href: '/livestock' },
-    { name: 'Poultry Birds', value: String(poultryData?.total ?? poultryData?.data?.total ?? '—'), change: '-3%', changeType: 'down' as const, icon: Egg, color: 'bg-orange-500', href: '/poultry' },
+    { name: 'Total Farms', value: String(farmsData?.total ?? farmsData?.data?.total ?? '—'), change: '', changeType: 'up' as const, icon: Home, color: 'bg-blue-500', href: '/farms' },
+    { name: 'Active Crops', value: String(cropsData?.total ?? cropsData?.data?.total ?? '—'), change: '', changeType: 'up' as const, icon: Sprout, color: 'bg-green-500', href: '/crops' },
+    { name: 'Livestock', value: String(livestockData?.total ?? livestockData?.data?.total ?? '—'), change: '', changeType: 'up' as const, icon: Beef, color: 'bg-amber-500', href: '/livestock' },
+    { name: 'Poultry Birds', value: String(poultryData?.total ?? poultryData?.data?.total ?? '—'), change: '', changeType: 'up' as const, icon: Egg, color: 'bg-orange-500', href: '/poultry' },
   ];
 
   // Build financial chart data from real expenses/sales
@@ -155,6 +156,12 @@ function DashboardContent() {
   const totalIncome = sales.reduce((sum: number, s: any) => sum + (s.total || s.amount || 0), 0);
   const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
+  // Use profitability summary from backend when available
+  const profitSummary = profitabilityData?.data;
+  const displayIncome = profitSummary?.totalRevenue ?? totalIncome;
+  const displayExpenses = profitSummary?.totalExpenses ?? totalExpenses;
+  const displayProfit = profitSummary?.netProfit ?? (displayIncome - displayExpenses);
+
   const expenseCategories = React.useMemo(() => {
     const cats: Record<string, number> = {};
     expenses.forEach((e: any) => { cats[e.category || 'Other'] = (cats[e.category || 'Other'] || 0) + (e.amount || 0); });
@@ -176,7 +183,7 @@ function DashboardContent() {
   const alerts = [
     ...(attendanceSummary.absent > 0 ? [{ title: 'Workers Absent', description: `${attendanceSummary.absent} worker(s) absent today`, severity: 'warning', action: 'View Attendance', href: '/workers/attendance' }] : []),
     ...(pendingTasks.length > 0 ? [{ title: 'Pending Tasks', description: `${pendingTasks.length} task(s) awaiting completion`, severity: 'warning', action: 'View Tasks', href: '/tasks' }] : []),
-    ...(totalExpenses > totalIncome && totalIncome > 0 ? [{ title: 'Expenses Exceed Income', description: 'Monthly expenses are higher than income', severity: 'destructive', action: 'View Finance', href: '/finance' }] : []),
+    ...(displayExpenses > displayIncome && displayIncome > 0 ? [{ title: 'Expenses Exceed Income', description: 'Monthly expenses are higher than income', severity: 'destructive', action: 'View Finance', href: '/finance' }] : []),
   ];
 
   return (
@@ -299,16 +306,16 @@ function DashboardContent() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
                   <span className="text-sm font-medium">Total Income</span>
-                  <span className="text-lg font-bold text-green-600">${totalIncome.toLocaleString()}</span>
+                  <span className="text-lg font-bold text-green-600">${displayIncome.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                   <span className="text-sm font-medium">Total Expenses</span>
-                  <span className="text-lg font-bold text-red-600">${totalExpenses.toLocaleString()}</span>
+                  <span className="text-lg font-bold text-red-600">${displayExpenses.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
                   <span className="text-sm font-medium">Net Profit</span>
-                  <span className={`text-lg font-bold ${(totalIncome - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${(totalIncome - totalExpenses).toLocaleString()}
+                  <span className={`text-lg font-bold ${displayProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${displayProfit.toLocaleString()}
                   </span>
                 </div>
                 <Link href="/finance" className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full">

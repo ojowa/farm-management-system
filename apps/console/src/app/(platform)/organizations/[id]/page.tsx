@@ -3,22 +3,16 @@
 import React, { useEffect, useState, use, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { platformOrgsAPI, platformFeaturesAPI } from '@/lib/api';
+import { platformOrgsAPI, platformFeaturesAPI, platformOptionsAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
-const PLAN_OPTIONS = ['FREE', 'STARTER', 'PRO', 'ENTERPRISE'];
-const STATUS_OPTIONS = ['TRIAL', 'ACTIVE', 'SUSPENDED', 'CANCELLED'];
+interface Option { value: string; label: string; id?: string; }
 
 const PLAN_BADGE: Record<string, string> = {
-  FREE: 'bg-gray-100 text-gray-700',
-  STARTER: 'bg-blue-100 text-blue-700',
-  PRO: 'bg-[#16a34a]/10 text-[#16a34a]',
-  ENTERPRISE: 'bg-purple-100 text-purple-700',
+  default: 'bg-gray-100 text-gray-700',
 };
 const STATUS_BADGE: Record<string, string> = {
-  TRIAL: 'bg-amber-100 text-amber-700',
-  ACTIVE: 'bg-[#16a34a]/10 text-[#16a34a]',
-  SUSPENDED: 'bg-red-100 text-red-700',
-  CANCELLED: 'bg-gray-100 text-gray-700',
+  default: 'bg-gray-100 text-gray-700',
 };
 
 export default function OrgDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,9 +25,22 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
   const [features, setFeatures] = useState<any[]>([]);
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [toggling, setToggling] = useState<string | null>(null);
+  const [planOptions, setPlanOptions] = useState<Option[]>([]);
+  const [statusOptions, setStatusOptions] = useState<Option[]>([]);
 
-  useEffect(() => { loadOrg(); }, [id]);
+  useEffect(() => { loadOrg(); loadOptions(); }, [id]);
   useEffect(() => { if (tab === 'modules') loadModules(); }, [tab, id]);
+
+  async function loadOptions() {
+    try {
+      const [plansRes, statusesRes] = await Promise.all([
+        platformOptionsAPI.plans(),
+        platformOptionsAPI.statuses(),
+      ]);
+      setPlanOptions(plansRes.data.plans);
+      setStatusOptions(statusesRes.data.statuses);
+    } catch (err) { toastError(getErrorMessage(err)); }
+  }
 
   async function loadOrg() {
     try {
@@ -58,7 +65,7 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
         if (orgOv) ovMap[mod.id] = orgOv.isEnabled;
       }
       setOverrides(ovMap);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
   }
 
   async function handleToggleModule(featureId: string) {
@@ -67,12 +74,14 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
       if (overrides[featureId] !== undefined) {
         await platformFeaturesAPI.deleteOverride(featureId, id);
         setOverrides((prev) => { const n = { ...prev }; delete n[featureId]; return n; });
+        toastSuccess('Module override removed');
       } else {
         const feature = features.find((f) => f.id === featureId);
         await platformFeaturesAPI.setOverride(featureId, { organizationId: id, isEnabled: !feature?.isEnabled });
         setOverrides((prev) => ({ ...prev, [featureId]: !feature?.isEnabled }));
+        toastSuccess('Module override set');
       }
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setToggling(null);
   }
 
@@ -81,7 +90,8 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
     try {
       await platformOrgsAPI.updateSubscription(id, { subscriptionPlan: plan, subscriptionStatus: status });
       await loadOrg();
-    } catch { /* ignore */ }
+      toastSuccess('Subscription updated');
+    } catch (err) { toastError(getErrorMessage(err)); }
     finally { setSaving(false); }
   }
 
@@ -89,7 +99,8 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
     try {
       await platformOrgsAPI.toggleUserActive(userId);
       await loadOrg();
-    } catch { /* ignore */ }
+      toastSuccess('User status toggled');
+    } catch (err) { toastError(getErrorMessage(err)); }
   }
 
   if (loading) {
@@ -339,24 +350,24 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
                   Change Plan
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {PLAN_OPTIONS.map((plan) => (
+                  {planOptions.map((plan) => (
                     <button
-                      key={plan}
-                      onClick={() => handleSubscriptionUpdate(plan, org.subscriptionStatus)}
-                      disabled={saving || org.subscriptionPlan === plan}
+                      key={plan.value}
+                      onClick={() => handleSubscriptionUpdate(plan.value, org.subscriptionStatus)}
+                      disabled={saving || org.subscriptionPlan === plan.value}
                       className={`p-4 rounded-xl border-2 transition-all ${
-                        org.subscriptionPlan === plan
+                        org.subscriptionPlan === plan.value
                           ? 'border-[#16a34a] bg-[#16a34a]/5 shadow-sm'
                           : 'border-gray-200 bg-white hover:border-[#16a34a]/50 hover:bg-gray-50'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center">
                         <span className={`text-sm font-bold ${
-                          org.subscriptionPlan === plan ? 'text-[#16a34a]' : 'text-gray-900'
+                          org.subscriptionPlan === plan.value ? 'text-[#16a34a]' : 'text-gray-900'
                         }`}>
-                          {plan}
+                          {plan.label}
                         </span>
-                        {org.subscriptionPlan === plan && (
+                        {org.subscriptionPlan === plan.value && (
                           <div className="mt-2">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#16a34a]/10 text-[#16a34a]">
                               Current
@@ -377,24 +388,24 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
                   Change Status
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {STATUS_OPTIONS.map((status) => (
+                  {statusOptions.map((status) => (
                     <button
-                      key={status}
-                      onClick={() => handleSubscriptionUpdate(org.subscriptionPlan, status)}
-                      disabled={saving || org.subscriptionStatus === status}
+                      key={status.value}
+                      onClick={() => handleSubscriptionUpdate(org.subscriptionPlan, status.value)}
+                      disabled={saving || org.subscriptionStatus === status.value}
                       className={`p-4 rounded-xl border-2 transition-all ${
-                        org.subscriptionStatus === status
+                        org.subscriptionStatus === status.value
                           ? 'border-[#16a34a] bg-[#16a34a]/5 shadow-sm'
                           : 'border-gray-200 bg-white hover:border-[#16a34a]/50 hover:bg-gray-50'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div className="text-center">
                         <span className={`text-sm font-bold ${
-                          org.subscriptionStatus === status ? 'text-[#16a34a]' : 'text-gray-900'
+                          org.subscriptionStatus === status.value ? 'text-[#16a34a]' : 'text-gray-900'
                         }`}>
-                          {status}
+                          {status.label}
                         </span>
-                        {org.subscriptionStatus === status && (
+                        {org.subscriptionStatus === status.value && (
                           <div className="mt-2">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#16a34a]/10 text-[#16a34a]">
                               Current

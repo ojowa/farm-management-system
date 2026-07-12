@@ -96,8 +96,8 @@ export default function DashboardPage() {
           typeBreakdown[type] = (typeBreakdown[type] || 0) + 1;
         });
         setFarmTypeBreakdown(typeBreakdown);
-      } catch {
-        // KPIs remain as '—' on error
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
       } finally {
         setLoading(false);
       }

@@ -28,8 +28,10 @@ interface AttendanceRecord {
 
 interface Worker {
   id: string;
-  name: string;
-  role: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  position: string;
 }
 
 interface WorkerRow {
@@ -105,10 +107,11 @@ export default function AttendancePage() {
 
     return workers.map((w) => {
       const record = recordMap.get(w.id);
+      const fullName = `${w.firstName} ${w.middleName ? `${w.middleName} ` : ''}${w.lastName}`;
       if (record) {
         return {
           workerId: w.id,
-          workerName: record.workerName || w.name,
+          workerName: record.workerName || fullName,
           clockIn: record.clockIn || null,
           clockOut: record.clockOut || null,
           hoursWorked: record.hoursWorked,
@@ -118,7 +121,7 @@ export default function AttendancePage() {
       }
       return {
         workerId: w.id,
-        workerName: w.name,
+        workerName: fullName,
         clockIn: null,
         clockOut: null,
         hoursWorked: null,
@@ -145,10 +148,11 @@ export default function AttendancePage() {
     const worker = workers.find((w) => w.id === selectedWorkerId);
     if (!worker) return;
 
+    const workerName = `${worker.firstName} ${worker.middleName ? `${worker.middleName} ` : ''}${worker.lastName}`;
     setClockingIn(true);
     try {
-      await attendanceAPI.clockIn({ workerId: selectedWorkerId, workerName: worker.name });
-      success(`${worker.name} clocked in successfully`);
+      await attendanceAPI.clockIn({ workerId: selectedWorkerId, workerName });
+      success(`${workerName} clocked in successfully`);
       setShowClockInModal(false);
       setSelectedWorkerId('');
       clearFetchCache('attendance');
@@ -351,7 +355,7 @@ export default function AttendancePage() {
           >
             <option value="">Select a worker</option>
             {notClockedInWorkers.map((w) => (
-              <option key={w.id} value={w.id}>{w.name} ({w.role})</option>
+              <option key={w.id} value={w.id}>{w.firstName} {w.middleName ? `${w.middleName} ` : ''}{w.lastName} ({w.position})</option>
             ))}
           </Select>
           {notClockedInWorkers.length === 0 && (

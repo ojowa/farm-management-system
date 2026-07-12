@@ -60,4 +60,71 @@ export class FinanceRepository {
   async getFarmById(id: string) {
     return prisma.farm.findUnique({ where: { id } });
   }
+
+  async createBudget(data: { name: string; description?: string; farmId?: string; startDate: Date; endDate: Date }, organizationId: string) {
+    return prisma.budget.create({
+      data: { ...data, organizationId, farmId: data.farmId || null },
+      include: { categories: true },
+    });
+  }
+
+  async getBudgetById(id: string) {
+    return prisma.budget.findUnique({ where: { id }, include: { categories: true } });
+  }
+
+  async getAllBudgets(organizationId: string, filters?: { status?: string; farmId?: string }) {
+    const where: any = { organizationId };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.farmId) where.farmId = filters.farmId;
+    return prisma.budget.findMany({
+      where,
+      include: { categories: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateBudget(id: string, data: any) {
+    return prisma.budget.update({ where: { id }, data, include: { categories: true } });
+  }
+
+  async deleteBudget(id: string) {
+    return prisma.budget.delete({ where: { id } });
+  }
+
+  async addCategory(budgetId: string, data: { name: string; budgetAmount: number }) {
+    return prisma.budgetCategory.create({ data: { ...data, budgetId } });
+  }
+
+  async updateCategory(id: string, data: { name?: string; budgetAmount?: number; spentAmount?: number }) {
+    return prisma.budgetCategory.update({ where: { id }, data });
+  }
+
+  async deleteCategory(id: string) {
+    return prisma.budgetCategory.delete({ where: { id } });
+  }
+
+  async getCategoriesByBudget(budgetId: string) {
+    return prisma.budgetCategory.findMany({ where: { budgetId } });
+  }
+
+  async computeSpentAmounts(budgetId: string, organizationId: string) {
+    const budget = await prisma.budget.findUnique({ where: { id: budgetId }, include: { categories: true } });
+    if (!budget) return;
+
+    for (const cat of budget.categories) {
+      const result = await prisma.expense.aggregate({
+        where: {
+          organizationId,
+          ...(budget.farmId ? { farmId: budget.farmId } : {}),
+          title: { contains: cat.name, mode: 'insensitive' },
+          date: { gte: budget.startDate, lte: budget.endDate },
+        },
+        _sum: { amount: true },
+      });
+      await prisma.budgetCategory.update({
+        where: { id: cat.id },
+        data: { spentAmount: result._sum.amount || 0 },
+      });
+    }
+  }
 }

@@ -33,6 +33,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useToast } from '@/lib/toasts';
+import { useFetch } from '@/hooks/useFetch';
 
 interface ReportTemplate {
   id: string;
@@ -101,40 +102,31 @@ const reportTemplates: ReportTemplate[] = [
   },
 ];
 
-const recentReports = [
-  {
-    id: '1',
-    name: 'Monthly Farm Summary - June 2026',
-    type: 'Farm Summary',
-    date: '2026-06-28',
-    status: 'completed' as const,
-  },
-  {
-    id: '2',
-    name: 'Q2 Financial Report',
-    type: 'Financial Report',
-    date: '2026-06-25',
-    status: 'completed' as const,
-  },
-  {
-    id: '3',
-    name: 'Crop Yield Analysis - Season 2',
-    type: 'Crop Report',
-    date: '2026-06-20',
-    status: 'completed' as const,
-  },
-  {
-    id: '4',
-    name: 'Poultry Health Audit',
-    type: 'Poultry Report',
-    date: '2026-06-15',
-    status: 'completed' as const,
-  },
-];
+interface ReportRecord {
+  id: string;
+  name: string;
+  type: string;
+  date: string;
+  status: 'completed' | 'pending' | 'failed';
+}
 
 export default function ReportsPage() {
   const { toast } = useToast();
   const [generating, setGenerating] = useState<string | null>(null);
+
+  const { data: reportsData } = useFetch<{ data: { reports: any[] } }>(
+    'reports-list',
+    () => reportsAPI.list({ limit: 50 }),
+    { cacheTime: 30_000 }
+  );
+
+  const recentReports: ReportRecord[] = (reportsData?.data?.reports || []).map((r: any) => ({
+    id: r.id,
+    name: r.title || r.name || 'Untitled Report',
+    type: r.type || r.template || 'Report',
+    date: r.createdAt || r.date || new Date().toISOString(),
+    status: (r.status || 'completed') as 'completed' | 'pending' | 'failed',
+  }));
 
   const handleGenerate = async (template: ReportTemplate) => {
     setGenerating(template.id);

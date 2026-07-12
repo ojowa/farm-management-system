@@ -12,7 +12,8 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { cropsAPI, farmsAPI } from '../../../../src/services/api';
+import { farmsAPI } from '../../../../src/services/api';
+import { offlineCropsAPI } from '../../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -258,7 +259,7 @@ export default function EditCropScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await cropsAPI.get(id);
+      const response = await offlineCropsAPI.get(id);
       const cropData = response.data.data || response.data;
       setCrop(cropData);
       setFormData({
@@ -358,7 +359,7 @@ export default function EditCropScreen() {
         status: formData.status,
       };
 
-      await cropsAPI.update(id, cropData);
+      await offlineCropsAPI.update(id, cropData);
       success('Crop updated successfully');
       router.back();
     } catch (error: any) {

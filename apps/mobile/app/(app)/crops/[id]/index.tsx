@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { cropsAPI } from '../../../../src/services/api';
+import { offlineCropsAPI } from '../../../../src/services/offlineApi';
 import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -271,7 +271,7 @@ export default function CropDetailScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await cropsAPI.get(id);
+      const response = await offlineCropsAPI.get(id);
       const cropData = response.data.data || response.data;
       setCrop(cropData);
       dispatch(setSelectedCropId(id));
@@ -306,7 +306,7 @@ export default function CropDetailScreen() {
   const handleUpdateHealth = async (newHealth: number) => {
     if (!crop) return;
     try {
-      await cropsAPI.update(crop.id, { health: newHealth });
+      await offlineCropsAPI.update(crop.id, { health: newHealth });
       setCrop({ ...crop, health: newHealth });
       success('Health updated');
     } catch (error: any) {
@@ -317,7 +317,7 @@ export default function CropDetailScreen() {
   const handleUpdateStatus = async (newStatus: CropData['status']) => {
     if (!crop) return;
     try {
-      await cropsAPI.update(crop.id, { status: newStatus });
+      await offlineCropsAPI.update(crop.id, { status: newStatus });
       setCrop({ ...crop, status: newStatus });
       success('Status updated');
     } catch (error: any) {
@@ -340,7 +340,7 @@ export default function CropDetailScreen() {
   const confirmDelete = async () => {
     if (!crop) return;
     try {
-      await cropsAPI.delete(crop.id);
+      await offlineCropsAPI.delete(crop.id);
       success('Crop deleted successfully');
       dispatch(setSelectedCropId(null));
       router.back();

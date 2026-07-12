@@ -14,11 +14,11 @@ import {
   ConflictException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
@@ -27,7 +27,7 @@ function getOrgId(req: Request): string {
 export class LeaveTypesController {
   @Permission('hr.read')
   @Get()
-  async findAll(@Req() req: Request) {
+  async findAll(@Req() req: any) {
     const orgId = getOrgId(req);
     return scopedPrisma.leaveType.findMany({
       where: { organizationId: orgId },
@@ -39,7 +39,7 @@ export class LeaveTypesController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Req() req: Request, @Body() body: { name: string; daysPerYear?: number; isPaid?: boolean }) {
+  async create(@Req() req: any, @Body() body: { name: string; daysPerYear?: number; isPaid?: boolean }) {
     const orgId = getOrgId(req);
     const { name, daysPerYear, isPaid } = body;
     if (!name) throw new BadRequestException('Name is required');

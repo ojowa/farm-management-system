@@ -49,14 +49,16 @@ export class HrApplicationService {
 
   async createWorker(data: {
     organizationId: string;
-    userId: string;
+    farmId: string;
+    userId?: string;
     firstName: string;
+    middleName?: string;
     lastName: string;
-    email: string;
+    email?: string;
     phone?: string;
     position: string;
     department?: string;
-    hireDate: Date;
+    hireDate?: Date;
   }) {
     const worker = await this.workerRepo.create({
       ...data,

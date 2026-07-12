@@ -46,11 +46,14 @@ export const inventoryFormSchema = z.object({
 });
 
 export const workerFormSchema = z.object({
-  fullName: z.string().min(1, 'Name is required'),
-  role: z.string().optional(),
-  phone: z.string().optional(),
-  farmId: z.string().min(1, 'Farm is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  position: z.string().optional(),
+  department: z.string().optional(),
+  farmId: z.string().min(1, 'Farm is required'),
 });
 
 export const saleFormSchema = z.object({

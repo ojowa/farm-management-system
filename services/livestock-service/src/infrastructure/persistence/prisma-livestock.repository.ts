@@ -56,7 +56,7 @@ export class PrismaLivestockRepository implements LivestockRepository {
   }
 
   async create(data: Omit<Livestock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Livestock> {
-    return prisma.livestock.create({ data });
+    return prisma.livestock.create({ data: data as any });
   }
 
   async update(id: string, data: Partial<Livestock>): Promise<Livestock> {

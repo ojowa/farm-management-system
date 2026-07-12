@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { financeAPI } from '../../../src/services/api';
+import { offlineFinanceAPI } from '../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
 import { useToasts } from '../../../src/hooks/useToasts';
 import { describeApiError } from '../../../src/utils/apiError';
@@ -153,7 +153,7 @@ export default function AddTransactionScreen() {
         date: formData.date,
         icon: getIcon(),
       };
-      await financeAPI.create(data);
+      await offlineFinanceAPI.create(data);
       success('Transaction added successfully');
       router.back();
     } catch (error: any) {

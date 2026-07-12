@@ -1,6 +1,5 @@
 import { Controller, Get, Req } from '@nestjs/common';
 import { RoutingService } from '../../application/services/routing.service';
-import { Request } from 'express';
 
 @Controller('health')
 export class HealthController {
@@ -30,7 +29,7 @@ export class HealthController {
   }
 
   @Get('routes')
-  getRoutes(@Req() req: Request) {
+  getRoutes() {
     return {
       routes: this.routingService.getAllRoutes(),
     };

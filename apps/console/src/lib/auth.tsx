@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { startInactivityTracker } from '@/lib/inactivity';
+import { platformClient } from '@/lib/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -48,8 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await authClient.get('/auth/me');
       const user = res.data;
-      // Platform console requires SUPER_ADMIN or SUPPORT_ADMIN
-      if (user.role?.name !== 'SUPER_ADMIN' && user.role?.name !== 'SUPPORT_ADMIN') {
+
+      let platformAdminRoles: string[] = [];
+      try {
+        const optsRes = await platformClient.get('/api/platform-options/platform-admin-roles');
+        platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
+      } catch {
+        platformAdminRoles = ['SUPER_ADMIN', 'SUPPORT_ADMIN'];
+      }
+
+      if (!platformAdminRoles.includes(user.role?.name)) {
         setState({ user: null, isLoading: false, isAuthenticated: false });
         return;
       }
@@ -73,10 +82,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const profileRes = await authClient.get('/auth/me');
     const user = profileRes.data;
-    if (user.role?.name !== 'SUPER_ADMIN' && user.role?.name !== 'SUPPORT_ADMIN') {
+
+    let platformAdminRoles: string[] = [];
+    try {
+      const optsRes = await platformClient.get('/api/platform-options/platform-admin-roles');
+      platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
+    } catch {
+      platformAdminRoles = ['SUPER_ADMIN', 'SUPPORT_ADMIN'];
+    }
+
+    if (!platformAdminRoles.includes(user.role?.name)) {
       await authClient.post('/auth/logout').catch(() => {});
       setState({ user: null, isLoading: false, isAuthenticated: false });
-      throw new Error('Access denied: Admin/Support role required');
+      throw new Error('Access denied: Platform admin role required');
     }
 
     setState({ user, isLoading: false, isAuthenticated: true });

@@ -6,9 +6,11 @@ import {
   livestockAPI,
   poultryAPI,
   financeAPI,
+  tasksAPI,
+  attendanceAPI,
 } from '../services/api';
 
-type ModuleKey = 'farms' | 'crops' | 'livestocks' | 'poultry' | 'finance';
+type ModuleKey = 'farms' | 'crops' | 'livestocks' | 'poultry' | 'finance' | 'tasks' | 'attendance';
 
 function isOnline(): boolean {
   return store.getState().sync.isOnline;
@@ -57,6 +59,7 @@ export const offlineFarmsAPI = {
 export const offlineCropsAPI = {
   list: (params?: any) => cropsAPI.list(params),
   get: (id: string) => cropsAPI.get(id),
+  listCycles: (params?: any) => cropsAPI.listCycles(params),
   create: (data: any) => {
     if (!isOnline()) {
       queueWrite('crops', 'POST', '/crops', data);
@@ -109,6 +112,8 @@ export const offlineLivestockAPI = {
 export const offlinePoultryAPI = {
   list: (params?: any) => poultryAPI.list(params),
   get: (id: string) => poultryAPI.get(id),
+  listPens: (params?: any) => poultryAPI.listPens(params),
+  listBreeds: (params?: any) => poultryAPI.listBreeds(params),
   create: (data: any) => {
     if (!isOnline()) {
       queueWrite('poultry', 'POST', '/poultry/flocks', data);
@@ -157,5 +162,80 @@ export const offlineFinanceAPI = {
       return Promise.resolve({ data: { success: true } } as any);
     }
     return financeAPI.delete(id);
+  },
+};
+
+export const offlineTasksAPI = {
+  list: (params?: any) => tasksAPI.list(params),
+  get: (id: string) => tasksAPI.get(id),
+  create: (data: any) => {
+    if (!isOnline()) {
+      queueWrite('tasks', 'POST', '/tasks', data);
+      return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
+    }
+    return tasksAPI.create(data);
+  },
+  update: (id: string, data: any) => {
+    if (!isOnline()) {
+      queueWrite('tasks', 'PUT', `/tasks/${id}`, data);
+      return Promise.resolve({ data: { ...data, id } } as any);
+    }
+    return tasksAPI.update(id, data);
+  },
+  updateStatus: (id: string, status: string) => {
+    if (!isOnline()) {
+      queueWrite('tasks', 'PUT', `/tasks/${id}/status`, { status });
+      return Promise.resolve({ data: { id, status } } as any);
+    }
+    return tasksAPI.updateStatus(id, status);
+  },
+  delete: (id: string) => {
+    if (!isOnline()) {
+      queueWrite('tasks', 'DELETE', `/tasks/${id}`);
+      return Promise.resolve({ data: { success: true } } as any);
+    }
+    return tasksAPI.delete(id);
+  },
+};
+
+export const offlineAttendanceAPI = {
+  list: (params?: any) => attendanceAPI.list(params),
+  getToday: () => attendanceAPI.getToday(),
+  getSummary: (params: { workerId: string; month?: number; year?: number }) =>
+    attendanceAPI.getSummary(params),
+  create: (data: any) => {
+    if (!isOnline()) {
+      queueWrite('attendance', 'POST', '/attendance', data);
+      return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
+    }
+    return attendanceAPI.create(data);
+  },
+  clockIn: (data: { workerId: string; workerName: string }) => {
+    if (!isOnline()) {
+      queueWrite('attendance', 'POST', '/attendance/clock-in', data);
+      return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
+    }
+    return attendanceAPI.clockIn(data);
+  },
+  clockOut: (data: { workerId: string }) => {
+    if (!isOnline()) {
+      queueWrite('attendance', 'POST', '/attendance/clock-out', data);
+      return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
+    }
+    return attendanceAPI.clockOut(data);
+  },
+  update: (id: string, data: any) => {
+    if (!isOnline()) {
+      queueWrite('attendance', 'PUT', `/attendance/${id}`, data);
+      return Promise.resolve({ data: { ...data, id } } as any);
+    }
+    return attendanceAPI.update(id, data);
+  },
+  bulkCreate: (records: any[]) => {
+    if (!isOnline()) {
+      queueWrite('attendance', 'POST', '/attendance/bulk', { records });
+      return Promise.resolve({ data: { success: true } } as any);
+    }
+    return attendanceAPI.bulkCreate(records);
   },
 };

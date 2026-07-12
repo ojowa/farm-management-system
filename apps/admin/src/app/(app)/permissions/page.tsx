@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { permissionsAPI } from '@/lib/api';
+import { useToast } from '@/lib/toasts';
 import { Card, Badge, Input, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function PermissionsPage() {
+  const { toast } = useToast();
   const [grouped, setGrouped] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -17,7 +19,9 @@ export default function PermissionsPage() {
       const { data } = await permissionsAPI.list();
       setGrouped(data.grouped || {});
       setExpandedCategories(new Set(Object.keys(data.grouped || {})));
-    } catch { /* ignore */ }
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to load permissions', message: err.response?.data?.message || 'An error occurred' });
+    }
     finally { setLoading(false); }
   }
 

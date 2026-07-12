@@ -1,30 +1,12 @@
 'use client';
 
 import { useAuth } from './auth';
-
-/**
- * Permission matching with wildcard support.
- * Mirrors the server-side logic in @farm/auth/roles.ts.
- */
-function matchesPermission(granted: string, required: string): boolean {
-  if (granted === '*') return true;
-  if (granted === required) return true;
-  if (granted.endsWith('.*')) {
-    const prefix = granted.slice(0, -2);
-    return required === prefix || required.startsWith(`${prefix}.`);
-  }
-  return false;
-}
+import { matchesPermission, extractPermissions } from './permissions';
 
 export function usePermission() {
   const { user } = useAuth();
 
-  // Extract flat permission names from the user's role
-  const permissions: string[] =
-    user?.role?.permissions?.flatMap(
-      (rp: any) => rp.permission?.map((p: any) => p.name) ?? []
-    ) ?? [];
-
+  const permissions = extractPermissions(user);
   const role: string = user?.role?.name ?? '';
 
   const hasPermission = (permission: string): boolean => {

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { platformFeaturesAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
 interface Feature {
   id: string;
@@ -23,15 +24,18 @@ export default function FeaturesPage() {
     try {
       const { data } = await platformFeaturesAPI.list();
       setFeatures(data.features);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 
   useEffect(() => { loadFeatures(); }, []);
 
   const handleToggle = async (id: string, current: boolean) => {
-    await platformFeaturesAPI.toggle(id, { isEnabled: !current });
-    loadFeatures();
+    try {
+      await platformFeaturesAPI.toggle(id, { isEnabled: !current });
+      toastSuccess(`Feature ${current ? 'disabled' : 'enabled'}`);
+      loadFeatures();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const filtered = filter === 'all' ? features : features.filter((f) => f.category === filter);

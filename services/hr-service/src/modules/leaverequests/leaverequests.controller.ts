@@ -15,20 +15,20 @@ import {
   ConflictException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 import { createNotification } from '../../lib/notificationClient';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserId(req: Request): string {
+function getUserId(req: any): string {
   return String((req as any).user?.sub || '');
 }
 
-function getUserRole(req: Request): string {
+function getUserRole(req: any): string {
   return String((req as any).user?.role || '');
 }
 
@@ -42,7 +42,7 @@ export class LeaveRequestsController {
   @Permission('hr.read')
   @Get()
   async findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('userId') filterUserId?: string,
   ) {
@@ -72,7 +72,7 @@ export class LeaveRequestsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { leaveTypeId: string; startDate: string; endDate: string; reason?: string },
   ) {
     const orgId = getOrgId(req);
@@ -120,7 +120,7 @@ export class LeaveRequestsController {
 
   @Permission('hr.write')
   @Put(':id/approve')
-  async approve(@Param('id') id: string, @Req() req: Request) {
+  async approve(@Param('id') id: string, @Req() req: any) {
     const role = getUserRole(req);
     if (!canApprove(role)) throw new ForbiddenException('Not authorized to approve leave');
 
@@ -174,7 +174,7 @@ export class LeaveRequestsController {
   @Put(':id/reject')
   async reject(
     @Param('id') id: string,
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { rejectionReason?: string },
   ) {
     const role = getUserRole(req);
@@ -214,7 +214,7 @@ export class LeaveRequestsController {
 
   @Permission('hr.write')
   @Put(':id/cancel')
-  async cancel(@Param('id') id: string, @Req() req: Request) {
+  async cancel(@Param('id') id: string, @Req() req: any) {
     const userId = getUserId(req);
     const existing = await scopedPrisma.leaveRequest.findFirst({ where: { id } });
     if (!existing) throw new NotFoundException('Leave request not found');

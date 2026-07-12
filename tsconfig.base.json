@@ -23,7 +23,6 @@
       "@farm/validation": ["packages/validation/dist"],
       "@farm/validation/*": ["packages/validation/dist/*"],
       "@farm/auth": ["packages/auth/dist"],
-      "@farm/auth/express": ["packages/auth/dist/express/index"],
       "@farm/auth/nestjs": ["packages/auth/dist/nestjs/index"],
       "@farm/domain-core": ["packages/domain-core/dist"],
       "@farm/domain-core/*": ["packages/domain-core/dist/*"],

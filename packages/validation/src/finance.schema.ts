@@ -34,3 +34,30 @@ export const updateSaleSchema = z.object({
   date: dateSchema.optional(),
 });
 
+export const createBudgetSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  farmId: z.string().uuid().optional(),
+  startDate: dateSchema,
+  endDate: dateSchema,
+});
+
+export const updateBudgetSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  farmId: z.string().uuid().optional(),
+  startDate: dateSchema.optional(),
+  endDate: dateSchema.optional(),
+  status: z.enum(['ACTIVE', 'CLOSED', 'ARCHIVED']).optional(),
+});
+
+export const createBudgetCategorySchema = z.object({
+  name: z.string().min(1),
+  budgetAmount: z.number().positive(),
+});
+
+export const updateBudgetCategorySchema = z.object({
+  name: z.string().min(1).optional(),
+  budgetAmount: z.number().positive().optional(),
+});
+

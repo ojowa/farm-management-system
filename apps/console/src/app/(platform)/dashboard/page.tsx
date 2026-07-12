@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { platformOrgsAPI, platformUsersAPI, platformHealthAPI } from '@/lib/api';
+import { toastError, getErrorMessage } from '@/lib/toast';
 
 interface Stats {
   totalOrgs: number;
@@ -23,14 +24,16 @@ export default function DashboardPage() {
   useEffect(() => {
     Promise.all([
       platformOrgsAPI.list({ limit: 1 }).catch(() => ({ data: { total: 0 } })),
+      platformOrgsAPI.list({ subscriptionStatus: 'ACTIVE', limit: 1 }).catch(() => ({ data: { total: 0 } })),
+      platformOrgsAPI.list({ subscriptionStatus: 'SUSPENDED', limit: 1 }).catch(() => ({ data: { total: 0 } })),
       platformUsersAPI.list({ limit: 1 }).catch(() => ({ data: { total: 0 } })),
-      platformHealthAPI.status().catch(() => ({ data: { services: [] } })),
-    ]).then(([orgRes, userRes, healthRes]) => {
+      platformHealthAPI.status().catch((err) => { toastError('Failed to load health data'); return { data: { services: [] } }; }),
+    ]).then(([orgRes, activeRes, suspendedRes, userRes, healthRes]) => {
       setStats({
         totalOrgs: orgRes.data.total || 0,
         totalUsers: userRes.data.total || 0,
-        activeOrgs: 0,
-        suspendedOrgs: 0,
+        activeOrgs: activeRes.data.total || 0,
+        suspendedOrgs: suspendedRes.data.total || 0,
       });
       setHealth(healthRes.data.services || []);
       setLoading(false);
@@ -167,12 +170,6 @@ function StatCard({ title, value, icon, color }: { title: string; value: number;
           style={{ backgroundColor: `${color}15`, color }}
         >
           {icon}
-        </div>
-      </div>
-      <div className="mt-4 pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
-          <span className="text-xs text-gray-500">Updated just now</span>
         </div>
       </div>
     </div>

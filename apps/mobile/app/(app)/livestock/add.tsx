@@ -12,7 +12,8 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { livestockAPI, poultryAPI, farmsAPI } from '../../../src/services/api';
+import { farmsAPI } from '../../../src/services/api';
+import { offlineLivestockAPI, offlinePoultryAPI } from '../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
 import { useToasts } from '../../../src/hooks/useToasts';
 import { describeApiError } from '../../../src/utils/apiError';
@@ -197,7 +198,7 @@ export default function AddAnimalScreen() {
 
   const fetchPens = async () => {
     try {
-      const response = await poultryAPI.listPens();
+      const response = await offlinePoultryAPI.listPens();
       const data = response.data.data || response.data;
       setPens(
         Array.isArray(data)
@@ -209,7 +210,7 @@ export default function AddAnimalScreen() {
 
   const fetchBreeds = async () => {
     try {
-      const response = await poultryAPI.listBreeds();
+      const response = await offlinePoultryAPI.listBreeds();
       const data = response.data.data || response.data;
       setBreeds(
         Array.isArray(data)
@@ -250,9 +251,9 @@ export default function AddAnimalScreen() {
         breedId: formData.breedId || undefined,
       };
       if (formData.type === 'livestock') {
-        await livestockAPI.create(data);
+        await offlineLivestockAPI.create(data);
       } else {
-        await poultryAPI.create(data);
+        await offlinePoultryAPI.create(data);
       }
       success(`${formData.type === 'livestock' ? 'Livestock' : 'Poultry'} added successfully`);
       router.back();

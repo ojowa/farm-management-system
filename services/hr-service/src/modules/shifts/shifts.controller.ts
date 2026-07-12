@@ -14,11 +14,10 @@ import {
   ConflictException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
@@ -27,7 +26,7 @@ function getOrgId(req: Request): string {
 export class ShiftsController {
   @Permission('hr.read')
   @Get()
-  async findAll(@Req() req: Request) {
+  async findAll(@Req() req: any) {
     const orgId = getOrgId(req);
     return scopedPrisma.shift.findMany({
       where: { organizationId: orgId },
@@ -40,7 +39,7 @@ export class ShiftsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { name: string; startTime: string; endTime: string; color?: string },
   ) {
     const orgId = getOrgId(req);

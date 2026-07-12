@@ -13,7 +13,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { financeAPI } from '../../services/api';
+import { offlineFinanceAPI } from '../../services/offlineApi';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAuth';
@@ -190,7 +190,7 @@ export default function FinanceScreen() {
         if (financeFilter.dateFrom) params.dateFrom = financeFilter.dateFrom;
         if (financeFilter.dateTo) params.dateTo = financeFilter.dateTo;
 
-        const response = await financeAPI.list(params);
+        const response = await offlineFinanceAPI.list(params);
         // Backend returns separate expenses + sales; financeAPI.list merges them.
         // We detect which type each item is by checking for sale-specific fields.
         const rawItems = extractArray<any>(response);

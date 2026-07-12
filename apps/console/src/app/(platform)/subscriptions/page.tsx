@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { platformSubscriptionsAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
 interface Plan {
   id: string;
@@ -29,7 +30,7 @@ export default function SubscriptionsPage() {
     try {
       const { data } = await platformSubscriptionsAPI.listPlans();
       setPlans(data.plans);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 
@@ -37,16 +38,22 @@ export default function SubscriptionsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await platformSubscriptionsAPI.createPlan(form);
-    setShowForm(false);
-    setForm({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100 });
-    loadPlans();
+    try {
+      await platformSubscriptionsAPI.createPlan(form);
+      setShowForm(false);
+      setForm({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100 });
+      toastSuccess('Plan created');
+      loadPlans();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this plan?')) return;
-    await platformSubscriptionsAPI.deletePlan(id);
-    loadPlans();
+    try {
+      await platformSubscriptionsAPI.deletePlan(id);
+      toastSuccess('Plan deleted');
+      loadPlans();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   return (

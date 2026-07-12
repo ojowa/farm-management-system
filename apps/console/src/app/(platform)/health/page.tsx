@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { platformHealthAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
 interface ServiceHealth {
   name: string;
@@ -36,7 +37,7 @@ export default function HealthPage() {
       setDbStatus(data.database?.status || 'unknown');
       setDbLatency(data.database?.latencyMs || 0);
       setLastUpdated(data.lastUpdated || '');
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 
@@ -46,8 +47,9 @@ export default function HealthPage() {
       const { data } = await platformHealthAPI.check();
       setSummary(data.summary);
       setLastUpdated(data.checkedAt);
+      toastSuccess('Health check completed');
       await loadHealth();
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setChecking(false);
   };
 

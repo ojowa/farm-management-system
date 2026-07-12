@@ -214,11 +214,11 @@ GET  /auth/profile  → axios.get  → auth-service:4001/auth/me (with auth head
 - Has its own `/auth/refresh` (JWT-based, no DB storage)
 - Has its own `/auth/me` (protected by `platformAdminGuard`)
 
-### Backend Express Services (farm, crop, livestock, poultry, finance, inventory, hr, worker, reporting)
+### Backend NestJS Services (farm, crop, livestock, poultry, finance, inventory, hr, worker, reporting)
 
-**Env loading:** `dotenv.config({ path: path.resolve(__dirname, '../../../.env') })`
+**Env loading:** `ConfigModule.forRoot()` with `envFilePath`
 
-**Auth pattern:** All use `@farm/auth/express` middleware or `rlsMiddleware` from `@farm/database`. The gateway's ProxyMiddleware already verified the token and set `x-user-*` headers. The backend services trust these headers for user identity. They also apply `rlsMiddleware` for row-level security.
+**Auth pattern:** All use `JwtAuthGuard` and `AuthorizationGuard` from `@farm/auth/nestjs`. The gateway's ProxyMiddleware already verified the token and set `x-user-*` headers. The backend services trust these headers for user identity. They also apply `rlsMiddleware` for row-level security.
 
 ### Organization Service & Notification Service (NestJS)
 

@@ -14,11 +14,10 @@ import {
   ConflictException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
@@ -28,7 +27,7 @@ export class ShiftAssignmentsController {
   @Permission('hr.read')
   @Get()
   async findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('userId') userId?: string,
@@ -54,7 +53,7 @@ export class ShiftAssignmentsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { shiftId: string; userId: string; date: string; notes?: string },
   ) {
     const orgId = getOrgId(req);
@@ -87,7 +86,7 @@ export class ShiftAssignmentsController {
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
   async bulkCreate(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { assignments: { shiftId: string; userId: string; date: string; notes?: string }[] },
   ) {
     const orgId = getOrgId(req);

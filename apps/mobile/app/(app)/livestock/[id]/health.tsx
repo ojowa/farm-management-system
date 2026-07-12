@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { livestockAPI, poultryAPI } from '../../../../src/services/api';
+import { offlineLivestockAPI, offlinePoultryAPI } from '../../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -133,7 +133,7 @@ export default function AnimalHealthScreen() {
     setLoadError(null);
 
     try {
-      const response = await livestockAPI.get(id);
+      const response = await offlineLivestockAPI.get(id);
       const data = response.data.data || response.data;
       setAnimal({ ...data, type: 'livestock' });
       setHealthData({
@@ -142,7 +142,7 @@ export default function AnimalHealthScreen() {
       });
     } catch {
       try {
-        const response = await poultryAPI.get(id);
+        const response = await offlinePoultryAPI.get(id);
         const data = response.data.data || response.data;
         setAnimal({ ...data, type: 'poultry' });
         setHealthData({
@@ -184,9 +184,9 @@ export default function AnimalHealthScreen() {
       };
 
       if (animal.type === 'livestock') {
-        await livestockAPI.update(animal.id, data);
+        await offlineLivestockAPI.update(animal.id, data);
       } else {
-        await poultryAPI.update(animal.id, data);
+        await offlinePoultryAPI.update(animal.id, data);
       }
 
       success('Health updated successfully');

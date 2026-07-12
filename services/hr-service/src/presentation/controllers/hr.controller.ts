@@ -12,23 +12,23 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { HrApplicationService } from '../../application/services/hr.service';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserId(req: Request): string {
+function getUserId(req: any): string {
   return String((req as any).user?.sub || (req as any)['x-user-id'] || (req as any).user?.id || '');
 }
 
-function getUserRole(req: Request): string {
+function getUserRole(req: any): string {
   return String((req as any).user?.role || '');
 }
 
-function getUserName(req: Request): string {
+function getUserName(req: any): string {
   const user = (req as any).user;
   return user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User';
 }
@@ -40,7 +40,7 @@ export class WorkerController {
 
   @Permission('hr.read')
   @Get()
-  findAll(@Req() req: Request) {
+  findAll(@Req() req: any) {
     return this.hrService.getAllWorkers(getOrgId(req));
   }
 
@@ -53,7 +53,7 @@ export class WorkerController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createWorker({ ...body, organizationId: getOrgId(req) });
   }
 
@@ -79,7 +79,7 @@ export class AttendanceController {
   @Permission('hr.read')
   @Get()
   findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('workerId') workerId?: string,
     @Query('date') date?: string,
     @Query('startDate') startDate?: string,
@@ -91,14 +91,14 @@ export class AttendanceController {
 
   @Permission('hr.read')
   @Get('today')
-  today(@Req() req: Request) {
+  today(@Req() req: any) {
     return this.hrService.getTodayAttendance(getOrgId(req));
   }
 
   @Permission('hr.read')
   @Get('summary')
   summary(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('workerId') workerId?: string,
     @Query('month') month?: string,
     @Query('year') year?: string,
@@ -114,20 +114,20 @@ export class AttendanceController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createAttendance(getOrgId(req), body);
   }
 
   @Permission('hr.write')
   @Post('clock-in')
   @HttpCode(HttpStatus.CREATED)
-  clockIn(@Req() req: Request, @Body() body: { workerId: string; workerName: string }) {
+  clockIn(@Req() req: any, @Body() body: { workerId: string; workerName: string }) {
     return this.hrService.clockIn(getOrgId(req), body.workerId, body.workerName);
   }
 
   @Permission('hr.write')
   @Post('clock-out')
-  clockOut(@Req() req: Request, @Body() body: { workerId: string }) {
+  clockOut(@Req() req: any, @Body() body: { workerId: string }) {
     return this.hrService.clockOut(getOrgId(req), body.workerId);
   }
 
@@ -140,7 +140,7 @@ export class AttendanceController {
   @Permission('hr.write')
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
-  bulkCreate(@Req() req: Request, @Body() body: { records: any[] }) {
+  bulkCreate(@Req() req: any, @Body() body: { records: any[] }) {
     return this.hrService.bulkCreateAttendance(getOrgId(req), body.records);
   }
 }
@@ -153,7 +153,7 @@ export class TasksController {
   @Permission('hr.read')
   @Get()
   findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('priority') priority?: string,
     @Query('assignedToId') assignedToId?: string,
@@ -178,13 +178,13 @@ export class TasksController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createTask(getOrgId(req), getUserRole(req), (req as any).user, body);
   }
 
   @Permission('hr.write')
   @Put(':id')
-  update(@Param('id') id: string, @Req() req: Request, @Body() body: any) {
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateTask(id, getUserRole(req), getUserId(req), body);
   }
 
@@ -209,14 +209,14 @@ export class ShiftsController {
 
   @Permission('hr.read')
   @Get()
-  findAll(@Req() req: Request) {
+  findAll(@Req() req: any) {
     return this.hrService.getShifts(getOrgId(req));
   }
 
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createShift(getOrgId(req), body);
   }
 
@@ -242,7 +242,7 @@ export class ShiftAssignmentsController {
   @Permission('hr.read')
   @Get()
   findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('userId') userId?: string,
@@ -253,14 +253,14 @@ export class ShiftAssignmentsController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createShiftAssignment(getOrgId(req), body);
   }
 
   @Permission('hr.write')
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
-  bulkCreate(@Req() req: Request, @Body() body: { assignments: any[] }) {
+  bulkCreate(@Req() req: any, @Body() body: { assignments: any[] }) {
     return this.hrService.bulkCreateShiftAssignments(getOrgId(req), body.assignments);
   }
 
@@ -279,14 +279,14 @@ export class LeaveTypesController {
 
   @Permission('hr.read')
   @Get()
-  findAll(@Req() req: Request) {
+  findAll(@Req() req: any) {
     return this.hrService.getLeaveTypes(getOrgId(req));
   }
 
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createLeaveType(getOrgId(req), body);
   }
 
@@ -312,7 +312,7 @@ export class LeaveRequestsController {
   @Permission('hr.read')
   @Get()
   findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('userId') filterUserId?: string,
   ) {
@@ -325,25 +325,25 @@ export class LeaveRequestsController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createLeaveRequest(getOrgId(req), getUserId(req), body);
   }
 
   @Permission('hr.write')
   @Put(':id/approve')
-  approve(@Param('id') id: string, @Req() req: Request) {
+  approve(@Param('id') id: string, @Req() req: any) {
     return this.hrService.approveLeaveRequest(id, getUserId(req), getUserRole(req));
   }
 
   @Permission('hr.write')
   @Put(':id/reject')
-  reject(@Param('id') id: string, @Req() req: Request, @Body() body: { rejectionReason?: string }) {
+  reject(@Param('id') id: string, @Req() req: any, @Body() body: { rejectionReason?: string }) {
     return this.hrService.rejectLeaveRequest(id, getUserId(req), getUserRole(req), body.rejectionReason);
   }
 
   @Permission('hr.write')
   @Put(':id/cancel')
-  cancel(@Param('id') id: string, @Req() req: Request) {
+  cancel(@Param('id') id: string, @Req() req: any) {
     return this.hrService.cancelLeaveRequest(id, getUserId(req));
   }
 }
@@ -356,7 +356,7 @@ export class LeaveBalanceController {
   @Permission('hr.read')
   @Get()
   findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('userId') queryUserId?: string,
     @Query('year') yearStr?: string,
   ) {
@@ -367,7 +367,7 @@ export class LeaveBalanceController {
 
   @Permission('hr.write')
   @Put()
-  upsert(@Req() req: Request, @Body() body: any) {
+  upsert(@Req() req: any, @Body() body: any) {
     return this.hrService.upsertLeaveBalance(getOrgId(req), body);
   }
 }
@@ -379,39 +379,39 @@ export class MessagesController {
 
   @Permission('hr.read')
   @Get('inbox')
-  inbox(@Req() req: Request) {
+  inbox(@Req() req: any) {
     return this.hrService.getInbox(getOrgId(req), getUserId(req));
   }
 
   @Permission('hr.read')
   @Get('sent')
-  sent(@Req() req: Request) {
+  sent(@Req() req: any) {
     return this.hrService.getSentMessages(getOrgId(req), getUserId(req));
   }
 
   @Permission('hr.read')
   @Get('unread-count')
-  unreadCount(@Req() req: Request) {
+  unreadCount(@Req() req: any) {
     return this.hrService.getUnreadCount(getOrgId(req), getUserId(req));
   }
 
   @Permission('hr.read')
   @Get(':id')
-  findOne(@Param('id') id: string, @Req() req: Request) {
+  findOne(@Param('id') id: string, @Req() req: any) {
     return this.hrService.getMessageById(id, getUserId(req), getOrgId(req));
   }
 
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createMessage(getOrgId(req), getUserId(req), getUserName(req), body);
   }
 
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string, @Req() req: Request) {
+  remove(@Param('id') id: string, @Req() req: any) {
     return this.hrService.deleteMessage(id, getUserId(req), getOrgId(req));
   }
 }
@@ -424,7 +424,7 @@ export class CorrespondenceController {
   @Permission('hr.read')
   @Get()
   findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('type') type?: string,
     @Query('category') category?: string,
@@ -435,7 +435,7 @@ export class CorrespondenceController {
 
   @Permission('hr.read')
   @Get('stats')
-  stats(@Req() req: Request) {
+  stats(@Req() req: any) {
     return this.hrService.getCorrespondenceStats(getOrgId(req));
   }
 
@@ -454,7 +454,7 @@ export class CorrespondenceController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Req() req: Request, @Body() body: any) {
+  create(@Req() req: any, @Body() body: any) {
     return this.hrService.createCorrespondence(getOrgId(req), getUserId(req), getUserName(req), body);
   }
 
@@ -486,7 +486,7 @@ export class CorrespondenceController {
   @Permission('hr.write')
   @Post(':id/attachments')
   @HttpCode(HttpStatus.CREATED)
-  addAttachment(@Param('id') id: string, @Req() req: Request, @Body() body: any) {
+  addAttachment(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.addCorrespondenceAttachment(id, getOrgId(req), getUserId(req), body);
   }
 

@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePermission } from '../../hooks/usePermission';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { tasksAPI, workersAPI } from '../../services/api';
+import { offlineTasksAPI } from '../../services/offlineApi';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -135,9 +136,11 @@ export default function TasksScreen() {
     try {
       const params: any = {};
       if (filter !== 'all') params.status = filter.toUpperCase();
-      const res = await tasksAPI.list(params);
+      const res = await offlineTasksAPI.list(params);
       setTasks(res.data);
-    } catch { /* ignore */ }
+    } catch {
+      console.warn('[TasksScreen] Failed to load tasks');
+    }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter]);
 
@@ -145,7 +148,9 @@ export default function TasksScreen() {
 
   useEffect(() => {
     if (canManageTasks) {
-      workersAPI.list().then((res) => setWorkers(res.data)).catch(() => {});
+      workersAPI.list().then((res) => setWorkers(res.data)).catch(() => {
+        console.warn('[TasksScreen] Failed to load workers');
+      });
     }
   }, []);
 
@@ -186,9 +191,9 @@ export default function TasksScreen() {
         payload.assignedToName = w ? `${w.firstName} ${w.lastName}` : '';
       }
       if (editingTask) {
-        await tasksAPI.update(editingTask.id, payload);
+        await offlineTasksAPI.update(editingTask.id, payload);
       } else {
-        await tasksAPI.create(payload);
+        await offlineTasksAPI.create(payload);
       }
       setShowModal(false);
       await loadTasks();
@@ -199,7 +204,7 @@ export default function TasksScreen() {
 
   const handleStatusChange = async (task: any, newStatus: string) => {
     try {
-      await tasksAPI.update(task.id, { status: newStatus });
+      await offlineTasksAPI.update(task.id, { status: newStatus });
       await loadTasks();
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.error || 'Failed to update');
@@ -214,7 +219,7 @@ export default function TasksScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await tasksAPI.delete(task.id);
+            await offlineTasksAPI.delete(task.id);
             await loadTasks();
           } catch (err: any) {
             Alert.alert('Error', err?.response?.data?.error || 'Failed to delete');

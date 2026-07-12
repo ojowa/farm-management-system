@@ -51,8 +51,10 @@ interface AttendanceRecord {
 
 interface Worker {
   id: string;
-  name: string;
-  role: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  position: string;
 }
 
 interface TableRow {
@@ -142,10 +144,11 @@ export default function AttendancePage() {
 
     return workers.map((w) => {
       const record = recordMap.get(w.id);
+      const fullName = `${w.firstName} ${w.middleName ? `${w.middleName} ` : ''}${w.lastName}`;
       if (record) {
         return {
           workerId: w.id,
-          workerName: record.workerName || w.name,
+          workerName: record.workerName || fullName,
           clockIn: record.clockIn || null,
           clockOut: record.clockOut || null,
           hoursWorked: record.hoursWorked,
@@ -155,7 +158,7 @@ export default function AttendancePage() {
       }
       return {
         workerId: w.id,
-        workerName: w.name,
+        workerName: fullName,
         clockIn: null,
         clockOut: null,
         hoursWorked: null,
@@ -177,10 +180,11 @@ export default function AttendancePage() {
     const worker = workers.find((w) => w.id === selectedWorkerId);
     if (!worker) return;
 
+    const workerName = `${worker.firstName} ${worker.middleName ? `${worker.middleName} ` : ''}${worker.lastName}`;
     setClockingIn(true);
     try {
-      await attendanceAPI.clockIn({ workerId: selectedWorkerId, workerName: worker.name });
-      toast({ type: 'success', title: `${worker.name} clocked in successfully` });
+      await attendanceAPI.clockIn({ workerId: selectedWorkerId, workerName });
+      toast({ type: 'success', title: `${workerName} clocked in successfully` });
       setShowClockInDialog(false);
       setSelectedWorkerId('');
       clearFetchCache('attendance');
@@ -451,7 +455,7 @@ export default function AttendancePage() {
               placeholder="Select a worker"
               options={notClockedInWorkers.map((w) => ({
                 value: w.id,
-                label: `${w.name} (${w.role})`,
+                label: `${w.firstName} ${w.middleName ? `${w.middleName} ` : ''}${w.lastName} (${w.position})`,
               }))}
               value={selectedWorkerId}
               onChange={(e) => setSelectedWorkerId(e.target.value)}
@@ -466,7 +470,7 @@ export default function AttendancePage() {
             <div>
               <label className="text-sm font-medium mb-1 block">Name</label>
               <Input
-                value={workers.find((w) => w.id === selectedWorkerId)?.name || ''}
+                value={(() => { const w = workers.find((w) => w.id === selectedWorkerId); return w ? `${w.firstName} ${w.middleName ? `${w.middleName} ` : ''}${w.lastName}` : ''; })()}
                 disabled
               />
             </div>

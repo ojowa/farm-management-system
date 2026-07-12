@@ -339,9 +339,9 @@ async function main() {
 
   await prisma.cropCycle.createMany({
     data: [
-      { fieldId: field1.id, cropId: maizeCrop.id, plantingDate: new Date('2026-03-01'), status: 'growing', health: 85 },
-      { fieldId: field2.id, cropId: cassavaCrop.id, plantingDate: new Date('2026-02-15'), status: 'growing', health: 90 },
-      { fieldId: field1.id, cropId: tomatoCrop.id, plantingDate: new Date('2025-11-01'), harvestDate: new Date('2026-02-01'), status: 'harvested', health: 100 },
+      { organizationId: demoOrg.id, fieldId: field1.id, cropId: maizeCrop.id, plantingDate: new Date('2026-03-01'), status: 'growing', health: 85 },
+      { organizationId: demoOrg.id, fieldId: field2.id, cropId: cassavaCrop.id, plantingDate: new Date('2026-02-15'), status: 'growing', health: 90 },
+      { organizationId: demoOrg.id, fieldId: field1.id, cropId: tomatoCrop.id, plantingDate: new Date('2025-11-01'), harvestDate: new Date('2026-02-01'), status: 'harvested', health: 100 },
     ],
     skipDuplicates: true,
   })
@@ -350,23 +350,23 @@ async function main() {
   // 14. Create Demo Livestock
   await prisma.livestock.createMany({
     data: [
-      { farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Female', birthDate: new Date('2023-06-15'), status: 'healthy' },
-      { farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Male', birthDate: new Date('2023-03-10'), status: 'healthy' },
-      { farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-01-20'), status: 'healthy' },
-      { farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-03-05'), status: 'healthy' },
+      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Female', birthDate: new Date('2023-06-15'), status: 'healthy' },
+      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Male', birthDate: new Date('2023-03-10'), status: 'healthy' },
+      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-01-20'), status: 'healthy' },
+      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-03-05'), status: 'healthy' },
     ],
     skipDuplicates: true,
   })
   console.log('  Created 4 demo livestock')
 
-  // 15. Create Demo Workers (simple Worker model: farmId, name, role)
+  // 15. Create Demo Workers (detailed Worker model)
   await prisma.worker.createMany({
     data: [
-      { farmId: farm1.id, name: 'Farm Manager', role: 'FARM_MANAGER' },
-      { farmId: farm1.id, name: 'John Worker', role: 'WORKER' },
-      { farmId: farm1.id, name: 'Jane Supervisor', role: 'SUPERVISOR' },
-      { farmId: farm2.id, name: 'Vet Doctor', role: 'VETERINARIAN' },
-      { farmId: farm2.id, name: 'Ranch Hand', role: 'WORKER' },
+      { organizationId: demoOrg.id, farmId: farm1.id, firstName: 'Farm', lastName: 'Manager', position: 'FARM_MANAGER', status: 'ACTIVE' },
+      { organizationId: demoOrg.id, farmId: farm1.id, firstName: 'John', lastName: 'Worker', position: 'WORKER', status: 'ACTIVE' },
+      { organizationId: demoOrg.id, farmId: farm1.id, firstName: 'Jane', lastName: 'Supervisor', position: 'SUPERVISOR', status: 'ACTIVE' },
+      { organizationId: demoOrg.id, farmId: farm2.id, firstName: 'Vet', lastName: 'Doctor', position: 'VETERINARIAN', status: 'ACTIVE' },
+      { organizationId: demoOrg.id, farmId: farm2.id, firstName: 'Ranch', lastName: 'Hand', position: 'WORKER', status: 'ACTIVE' },
     ],
     skipDuplicates: true,
   })
@@ -386,9 +386,9 @@ async function main() {
   // 17. Create Demo Inventory
   await prisma.inventory.createMany({
     data: [
-      { farmId: farm1.id, name: 'NPK Fertilizer', category: 'Fertilizer', quantity: 50, unit: 'bags', minimumQuantity: 10 },
-      { farmId: farm1.id, name: 'Maize Seeds', category: 'Seeds', quantity: 20, unit: 'kg', minimumQuantity: 5 },
-      { farmId: farm2.id, name: 'Animal Feed', category: 'Feed', quantity: 100, unit: 'kg', minimumQuantity: 20 },
+      { organizationId: demoOrg.id, farmId: farm1.id, name: 'NPK Fertilizer', category: 'Fertilizer', quantity: 50, unit: 'bags', minimumQuantity: 10 },
+      { organizationId: demoOrg.id, farmId: farm1.id, name: 'Maize Seeds', category: 'Seeds', quantity: 20, unit: 'kg', minimumQuantity: 5 },
+      { organizationId: demoOrg.id, farmId: farm2.id, name: 'Animal Feed', category: 'Feed', quantity: 100, unit: 'kg', minimumQuantity: 20 },
     ],
     skipDuplicates: true,
   })

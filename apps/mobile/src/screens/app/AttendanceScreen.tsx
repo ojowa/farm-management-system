@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { attendanceAPI, workersAPI } from '../../services/api';
+import { offlineAttendanceAPI } from '../../services/offlineApi';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -85,12 +86,12 @@ export default function AttendanceScreen() {
     try {
       const [workersRes, attendanceRes] = await Promise.all([
         workersAPI.list(),
-        attendanceAPI.getToday(),
+        offlineAttendanceAPI.getToday(),
       ]);
       setWorkers(workersRes.data || []);
       setAttendance(attendanceRes.data || []);
     } catch {
-      /* ignore */
+      console.warn('[AttendanceScreen] Failed to load attendance data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -122,7 +123,7 @@ export default function AttendanceScreen() {
         onPress: async () => {
           setClockingId(worker.id);
           try {
-            await attendanceAPI.clockIn({
+            await offlineAttendanceAPI.clockIn({
               workerId: worker.id,
               workerName: name,
             });
@@ -146,7 +147,7 @@ export default function AttendanceScreen() {
         onPress: async () => {
           setClockingId(worker.id);
           try {
-            await attendanceAPI.clockOut({ workerId: worker.id });
+            await offlineAttendanceAPI.clockOut({ workerId: worker.id });
             await loadData();
           } catch (err: any) {
             Alert.alert('Error', err?.response?.data?.error || 'Failed to clock out');

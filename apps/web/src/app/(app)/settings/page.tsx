@@ -30,8 +30,8 @@ export default function SettingsPage() {
     try {
       const { data } = await settingsAPI.getProfile();
       setUser(data);
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.error('Failed to load user profile:', err);
     }
   };
 

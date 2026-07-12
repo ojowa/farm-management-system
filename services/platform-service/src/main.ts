@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import { AppModule } from './app.module';
 
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
@@ -11,13 +10,6 @@ async function bootstrap() {
 
   app.use(helmet());
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 100,
-      message: 'Too many requests from this IP, please try again later.',
-    }),
-  );
 
   app.useGlobalPipes(
     new ValidationPipe({

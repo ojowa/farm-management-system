@@ -5,7 +5,7 @@ export interface OfflineOperation {
   method: 'POST' | 'PUT' | 'DELETE';
   endpoint: string;
   data?: any;
-  module: 'farms' | 'crops' | 'livestocks' | 'poultry' | 'finance';
+  module: 'farms' | 'crops' | 'livestocks' | 'poultry' | 'finance' | 'tasks' | 'attendance';
   createdAt: number;
   retryCount: number;
 }

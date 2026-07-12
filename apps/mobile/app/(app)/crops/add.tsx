@@ -12,7 +12,8 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { cropsAPI, farmsAPI } from '../../../src/services/api';
+import { farmsAPI } from '../../../src/services/api';
+import { offlineCropsAPI } from '../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
 import { useToasts } from '../../../src/hooks/useToasts';
 import { describeApiError } from '../../../src/utils/apiError';
@@ -315,7 +316,7 @@ export default function AddCropScreen() {
         status: formData.status,
       };
 
-      await cropsAPI.create(cropData);
+      await offlineCropsAPI.create(cropData);
       success('Crop added successfully');
       router.back();
     } catch (error: any) {

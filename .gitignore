@@ -60,3 +60,6 @@ Thumbs.db
 .aider*
 .claude
 
+#Files 
+agent.md
+DDD_REFACTORING_PLAN.md

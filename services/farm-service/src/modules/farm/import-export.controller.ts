@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Query, Body, Res, Header, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
-import { Response } from 'express';
+
 import { scopedPrisma } from '@farm/database';
 
 function getOrgIdFromRequest(req: any): string {
@@ -12,7 +12,7 @@ function getOrgIdFromRequest(req: any): string {
 export class ImportExportController {
   @Permission('farm.read')
   @Get('export/farms')
-  async exportFarms(@Query('format') format: string, @Res() res: Response, req?: any) {
+  async exportFarms(@Query('format') format: string, @Res() res: any, req?: any) {
     const farms = await scopedPrisma.farm.findMany({
       where: { organizationId: getOrgIdFromRequest(req) },
     });
@@ -29,7 +29,7 @@ export class ImportExportController {
 
   @Permission('farm.write')
   @Post('import/farms')
-  async importFarms(@Body() body: any, @Res() res: Response, req?: any) {
+  async importFarms(@Body() body: any, @Res() res: any, req?: any) {
     const { data } = body;
     const orgId = getOrgIdFromRequest(req);
     const created = await scopedPrisma.farm.createMany({
@@ -48,7 +48,7 @@ export class ImportExportController {
 
   @Permission('farm.read')
   @Get('export/crops')
-  async exportCrops(@Query('format') format: string, @Res() res: Response) {
+  async exportCrops(@Query('format') format: string, @Res() res: any) {
     const crops = await scopedPrisma.crop.findMany();
     if (format === 'csv') {
       const headers = 'Name\n';
@@ -62,7 +62,7 @@ export class ImportExportController {
 
   @Permission('farm.read')
   @Get('export/workers')
-  async exportWorkers(@Query('format') format: string, @Res() res: Response) {
+  async exportWorkers(@Query('format') format: string, @Res() res: any) {
     const workers = await scopedPrisma.worker.findMany();
     if (format === 'csv') {
       const headers = 'Name,Role\n';

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { platformAuditAPI } from '@/lib/api';
+import { toastError, getErrorMessage } from '@/lib/toast';
 
 interface AuditLog {
   id: string;
@@ -28,7 +29,7 @@ export default function AuditPage() {
       const { data } = await platformAuditAPI.list({ page, limit: 50, action: action || undefined, entity: entity || undefined });
       setLogs(data.logs);
       setTotal(data.total);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 

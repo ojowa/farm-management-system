@@ -82,4 +82,76 @@ export class FinanceService {
     await emitFinanceEvent('deleted', { id });
     return { deleted: true };
   }
+
+  async createBudget(data: any, organizationId: string) {
+    if (data.farmId) await this.assertFarmExists(data.farmId);
+    const budget = await this.repository.createBudget({
+      name: data.name,
+      description: data.description,
+      farmId: data.farmId,
+      startDate: this.toDate(data.startDate),
+      endDate: this.toDate(data.endDate),
+    }, organizationId);
+    await emitFinanceEvent('created', budget);
+    return budget;
+  }
+
+  async getBudgetById(id: string) {
+    const budget = await this.repository.getBudgetById(id);
+    if (!budget) throw new NotFoundException(`Budget with ID ${id} not found`);
+    return budget;
+  }
+
+  async getAllBudgets(organizationId: string, filters?: { status?: string; farmId?: string }) {
+    return this.repository.getAllBudgets(organizationId, filters);
+  }
+
+  async updateBudget(id: string, data: any) {
+    await this.getBudgetById(id);
+    if (data.farmId) await this.assertFarmExists(data.farmId);
+    const updateData: any = { ...data };
+    if (data.startDate) updateData.startDate = this.toDate(data.startDate);
+    if (data.endDate) updateData.endDate = this.toDate(data.endDate);
+    const budget = await this.repository.updateBudget(id, updateData);
+    await emitFinanceEvent('updated', budget);
+    return budget;
+  }
+
+  async deleteBudget(id: string) {
+    await this.getBudgetById(id);
+    await this.repository.deleteBudget(id);
+    await emitFinanceEvent('deleted', { id });
+    return { deleted: true };
+  }
+
+  async addCategory(budgetId: string, data: { name: string; budgetAmount: number }) {
+    await this.getBudgetById(budgetId);
+    const category = await this.repository.addCategory(budgetId, data);
+    await emitFinanceEvent('updated', { id: budgetId });
+    return category;
+  }
+
+  async updateCategory(id: string, data: { name?: string; budgetAmount?: number; spentAmount?: number }) {
+    const categories = await this.repository.getCategoriesByBudget('any');
+    const category = categories.find((c: any) => c.id === id);
+    if (!category) throw new NotFoundException(`Category with ID ${id} not found`);
+    const updated = await this.repository.updateCategory(id, data);
+    await emitFinanceEvent('updated', { id: category.budgetId });
+    return updated;
+  }
+
+  async deleteCategory(id: string) {
+    const categories = await this.repository.getCategoriesByBudget('any');
+    const category = categories.find((c: any) => c.id === id);
+    if (!category) throw new NotFoundException(`Category with ID ${id} not found`);
+    await this.repository.deleteCategory(id);
+    await emitFinanceEvent('updated', { id: category.budgetId });
+    return { deleted: true };
+  }
+
+  async refreshSpentAmounts(budgetId: string, organizationId: string) {
+    await this.getBudgetById(budgetId);
+    await this.repository.computeSpentAmounts(budgetId, organizationId);
+    return this.getBudgetById(budgetId);
+  }
 }

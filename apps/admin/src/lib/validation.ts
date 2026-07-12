@@ -153,8 +153,13 @@ export const inventoryFormSchema = z.object({
 export type InventoryFormInput = z.infer<typeof inventoryFormSchema>;
 
 export const workerFormSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  role: z.string().min(1, 'Role is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  position: z.string().min(1, 'Position is required'),
+  department: z.string().optional(),
   farmId: z.string().min(1, 'Farm is required'),
 });
 

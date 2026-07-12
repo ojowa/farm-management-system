@@ -99,7 +99,7 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
         plantingDate: data.plantingDate,
         harvestDate: data.harvestDate,
         status: data.status,
-      },
+      } as any,
       include: { crop: true, field: true },
     });
   }

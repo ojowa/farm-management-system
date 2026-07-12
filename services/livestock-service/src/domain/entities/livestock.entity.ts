@@ -1,5 +1,6 @@
 export interface Livestock {
   id: string;
+  organizationId?: string;
   farmId: string;
   species: string;
   breed: string | null;

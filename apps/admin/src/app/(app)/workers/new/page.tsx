@@ -20,7 +20,7 @@ export default function NewWorkerPage() {
   const router = useRouter();
   const readOnly = useReadOnly();
   const { toast } = useToast();
-  const [form, setForm] = useState({ name: '', role: '', farmId: '' });
+  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -52,8 +52,13 @@ export default function NewWorkerPage() {
     setSaving(true);
     try {
       await workersAPI.create({
-        name: form.name,
-        role: form.role,
+        firstName: form.firstName,
+        middleName: form.middleName || undefined,
+        lastName: form.lastName,
+        email: form.email || undefined,
+        phone: form.phone || undefined,
+        position: form.position,
+        department: form.department || undefined,
         farmId: form.farmId,
       });
       toast({ type: 'success', title: 'Worker created successfully' });
@@ -97,38 +102,100 @@ export default function NewWorkerPage() {
       <Card>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Worker Name <span className="text-destructive">*</span>
-              </label>
-              <Input
-                placeholder="e.g. John Doe"
-                value={form.name}
-                onChange={(e) => {
-                  setForm({ ...form, name: e.target.value });
-                  if (errors.name) setErrors({ ...errors, name: '' });
-                }}
-              />
-              {errors.name && (
-                <p className="text-sm text-destructive mt-1">{errors.name}</p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  First Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="e.g. John"
+                  value={form.firstName}
+                  onChange={(e) => {
+                    setForm({ ...form, firstName: e.target.value });
+                    if (errors.firstName) setErrors({ ...errors, firstName: '' });
+                  }}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive mt-1">{errors.firstName}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Middle Name</label>
+                <Input
+                  placeholder="e.g. Michael"
+                  value={form.middleName}
+                  onChange={(e) => setForm({ ...form, middleName: e.target.value })}
+                />
+              </div>
             </div>
 
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Role <span className="text-destructive">*</span>
+                Last Name <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="e.g. Farm Manager, Field Worker, Mechanic"
-                value={form.role}
+                placeholder="e.g. Doe"
+                value={form.lastName}
                 onChange={(e) => {
-                  setForm({ ...form, role: e.target.value });
-                  if (errors.role) setErrors({ ...errors, role: '' });
+                  setForm({ ...form, lastName: e.target.value });
+                  if (errors.lastName) setErrors({ ...errors, lastName: '' });
                 }}
               />
-              {errors.role && (
-                <p className="text-sm text-destructive mt-1">{errors.role}</p>
+              {errors.lastName && (
+                <p className="text-sm text-destructive mt-1">{errors.lastName}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Position <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="e.g. Farm Manager"
+                  value={form.position}
+                  onChange={(e) => {
+                    setForm({ ...form, position: e.target.value });
+                    if (errors.position) setErrors({ ...errors, position: '' });
+                  }}
+                />
+                {errors.position && (
+                  <p className="text-sm text-destructive mt-1">{errors.position}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Department</label>
+                <Input
+                  placeholder="e.g. Operations"
+                  value={form.department}
+                  onChange={(e) => setForm({ ...form, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Email</label>
+                <Input
+                  placeholder="e.g. john@example.com"
+                  value={form.email}
+                  onChange={(e) => {
+                    setForm({ ...form, email: e.target.value });
+                    if (errors.email) setErrors({ ...errors, email: '' });
+                  }}
+                />
+                {errors.email && (
+                  <p className="text-sm text-destructive mt-1">{errors.email}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Phone</label>
+                <Input
+                  placeholder="e.g. +1234567890"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                />
+              </div>
             </div>
 
             <div>

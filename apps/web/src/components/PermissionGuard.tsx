@@ -3,19 +3,7 @@
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-
-/**
- * Permission matching with wildcard support.
- */
-function matchesPermission(granted: string, required: string): boolean {
-  if (granted === '*') return true;
-  if (granted === required) return true;
-  if (granted.endsWith('.*')) {
-    const prefix = granted.slice(0, -2);
-    return required === prefix || required.startsWith(`${prefix}.`);
-  }
-  return false;
-}
+import { matchesPermission, extractPermissions } from '@/lib/permissions';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -39,10 +27,7 @@ export default function PermissionGuard({
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  const userPermissions: string[] =
-    user?.role?.permissions?.flatMap(
-      (rp: any) => rp.permission?.map((p: any) => p.name) ?? []
-    ) ?? [];
+  const userPermissions = extractPermissions(user);
 
   const hasAccess = permission
     ? userPermissions.some((p) => matchesPermission(p, permission))

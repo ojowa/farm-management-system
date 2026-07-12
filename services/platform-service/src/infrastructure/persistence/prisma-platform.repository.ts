@@ -6,6 +6,8 @@ import {
   SubscriptionPlanRepository,
   AuditLogRepository,
   SystemHealthRepository,
+  BroadcastRepository,
+  PlatformConfigRepository,
 } from '../../domain/repositories/platform.repository';
 import {
   FeatureFlag,
@@ -13,6 +15,8 @@ import {
   SubscriptionPlan,
   AuditLog,
   SystemHealth,
+  Broadcast,
+  PlatformConfig,
 } from '../../domain/entities/platform.entity';
 
 @Injectable()
@@ -74,23 +78,28 @@ export class PrismaFeatureFlagOverrideRepository implements FeatureFlagOverrideR
 @Injectable()
 export class PrismaSubscriptionPlanRepository implements SubscriptionPlanRepository {
   async findById(id: string): Promise<SubscriptionPlan | null> {
-    return prisma.subscriptionPlan.findUnique({ where: { id } }) as Promise<SubscriptionPlan | null>;
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id } });
+    return plan ? (plan as unknown as SubscriptionPlan) : null;
   }
 
   async findByName(name: string): Promise<SubscriptionPlan | null> {
-    return prisma.subscriptionPlan.findUnique({ where: { name } }) as Promise<SubscriptionPlan | null>;
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { name } });
+    return plan ? (plan as unknown as SubscriptionPlan) : null;
   }
 
   async findMany(): Promise<SubscriptionPlan[]> {
-    return prisma.subscriptionPlan.findMany({ orderBy: { sortOrder: 'asc' } }) as Promise<SubscriptionPlan[]>;
+    const plans = await prisma.subscriptionPlan.findMany({ orderBy: { sortOrder: 'asc' } });
+    return plans.map(p => p as unknown as SubscriptionPlan);
   }
 
   async create(data: Omit<SubscriptionPlan, 'id' | 'createdAt' | 'updatedAt'>): Promise<SubscriptionPlan> {
-    return prisma.subscriptionPlan.create({ data }) as Promise<SubscriptionPlan>;
+    const plan = await prisma.subscriptionPlan.create({ data: data as any });
+    return plan as unknown as SubscriptionPlan;
   }
 
   async update(id: string, data: Partial<SubscriptionPlan>): Promise<SubscriptionPlan> {
-    return prisma.subscriptionPlan.update({ where: { id }, data }) as Promise<SubscriptionPlan>;
+    const plan = await prisma.subscriptionPlan.update({ where: { id }, data: data as any });
+    return plan as unknown as SubscriptionPlan;
   }
 
   async delete(id: string): Promise<void> {
@@ -147,14 +156,61 @@ export class PrismaSystemHealthRepository implements SystemHealthRepository {
   }
 
   async upsert(serviceName: string, data: Partial<SystemHealth>): Promise<SystemHealth> {
+    const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = data;
     return prisma.systemHealth.upsert({
       where: { serviceName },
-      update: data,
-      create: { serviceName, ...data } as any,
+      update: rest as any,
+      create: { serviceName, ...rest } as any,
     }) as Promise<SystemHealth>;
   }
 
   async queryRaw(query: string): Promise<any> {
     return prisma.$queryRaw`SELECT 1`;
+  }
+}
+
+@Injectable()
+export class PrismaBroadcastRepository implements BroadcastRepository {
+  async findById(id: string): Promise<Broadcast | null> {
+    return prisma.broadcast.findUnique({ where: { id } }) as Promise<Broadcast | null>;
+  }
+
+  async findMany(): Promise<Broadcast[]> {
+    return prisma.broadcast.findMany({ orderBy: { createdAt: 'desc' } }) as Promise<Broadcast[]>;
+  }
+
+  async create(data: Omit<Broadcast, 'id' | 'createdAt' | 'updatedAt'>): Promise<Broadcast> {
+    return prisma.broadcast.create({ data: data as any }) as Promise<Broadcast>;
+  }
+
+  async update(id: string, data: Partial<Broadcast>): Promise<Broadcast> {
+    return prisma.broadcast.update({ where: { id }, data: data as any }) as Promise<Broadcast>;
+  }
+
+  async delete(id: string): Promise<void> {
+    await prisma.broadcast.delete({ where: { id } });
+  }
+}
+
+@Injectable()
+export class PrismaPlatformConfigRepository implements PlatformConfigRepository {
+  async findMany(): Promise<PlatformConfig[]> {
+    return prisma.platformConfig.findMany({ orderBy: { key: 'asc' } }) as Promise<PlatformConfig[]>;
+  }
+
+  async findByKey(key: string): Promise<PlatformConfig | null> {
+    return prisma.platformConfig.findUnique({ where: { key } }) as Promise<PlatformConfig | null>;
+  }
+
+  async upsert(key: string, value: any, description?: string): Promise<PlatformConfig> {
+    return prisma.platformConfig.upsert({
+      where: { key },
+      update: { value, description: description ?? undefined },
+      create: { key, value, description: description || null },
+    }) as Promise<PlatformConfig>;
+  }
+
+  async delete(key: string): Promise<void> {
+    await prisma.platformConfig.delete({ where: { key } });
   }
 }

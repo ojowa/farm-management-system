@@ -1,5 +1,4 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { Request } from 'express';
 import { extractBearerToken, verifyAccessToken, type VerifiedUser } from '@farm/auth';
 
 /**
@@ -11,7 +10,7 @@ export class JwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context
       .switchToHttp()
-      .getRequest<Request & { user?: VerifiedUser }>();
+      .getRequest<any>();
     const token = extractBearerToken(req.headers.authorization);
     if (!token) {
       throw new UnauthorizedException('Authentication required');

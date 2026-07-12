@@ -49,7 +49,7 @@ const NAV_SECTIONS = [
       { href: '/inventory/low-stock', label: 'Low Stock', icon: '⚠️', permission: 'inventory.read', module: 'inventory' },
       { href: '/equipment', label: 'Equipment', icon: '🔧', permission: 'inventory.read', module: 'inventory' },
       { href: '/sales', label: 'Sales', icon: '💰', permission: 'finance.read', module: 'finance' },
-      { href: '/reports', label: 'Finance', icon: '📈', permission: 'finance.read', module: 'finance' },
+      { href: '/finance', label: 'Finance', icon: '📈', permission: 'finance.read', module: 'finance' },
       { href: '/finance/profitability', label: 'Profitability', icon: '💹', permission: 'finance.read', module: 'finance' },
       { href: '/contracts', label: 'Contracts', icon: '📝', permission: 'finance.read', module: 'finance' },
       { href: '/marketplace', label: 'Marketplace', icon: '🏪', permission: 'finance.read', module: 'finance' },

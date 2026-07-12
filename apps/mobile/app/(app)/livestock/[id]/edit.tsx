@@ -12,7 +12,8 @@ import {
   FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { livestockAPI, poultryAPI, farmsAPI } from '../../../../src/services/api';
+import { farmsAPI } from '../../../../src/services/api';
+import { offlineLivestockAPI, offlinePoultryAPI } from '../../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -186,7 +187,7 @@ export default function EditAnimalScreen() {
     setLoadError(null);
 
     try {
-      const response = await livestockAPI.get(id);
+      const response = await offlineLivestockAPI.get(id);
       const data = response.data.data || response.data;
         setAnimal({ ...data, type: 'livestock' });
         setFormData({
@@ -202,7 +203,7 @@ export default function EditAnimalScreen() {
         });
       } catch {
         try {
-          const response = await poultryAPI.get(id);
+          const response = await offlinePoultryAPI.get(id);
           const data = response.data.data || response.data;
           setAnimal({ ...data, type: 'poultry' });
           setFormData({
@@ -242,7 +243,7 @@ export default function EditAnimalScreen() {
 
   const fetchPens = async () => {
     try {
-      const response = await poultryAPI.listPens();
+      const response = await offlinePoultryAPI.listPens();
       const data = response.data.data || response.data;
       setPens(
         Array.isArray(data)
@@ -254,7 +255,7 @@ export default function EditAnimalScreen() {
 
   const fetchBreeds = async () => {
     try {
-      const response = await poultryAPI.listBreeds();
+      const response = await offlinePoultryAPI.listBreeds();
       const data = response.data.data || response.data;
       setBreeds(
         Array.isArray(data)
@@ -296,9 +297,9 @@ export default function EditAnimalScreen() {
       };
 
       if (animal.type === 'livestock') {
-        await livestockAPI.update(animal.id, data);
+        await offlineLivestockAPI.update(animal.id, data);
       } else {
-        await poultryAPI.update(animal.id, data);
+        await offlinePoultryAPI.update(animal.id, data);
       }
 
       success('Animal updated successfully');

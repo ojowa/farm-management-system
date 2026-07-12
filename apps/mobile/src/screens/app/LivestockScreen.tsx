@@ -12,7 +12,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { livestockAPI, poultryAPI, farmsAPI } from '../../services/api';
+import { farmsAPI } from '../../services/api';
+import { offlineLivestockAPI, offlinePoultryAPI } from '../../services/offlineApi';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAuth';
@@ -185,13 +186,18 @@ export default function LivestockScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [farms, setFarms] = useState<FarmOption[]>([]);
   const [showFarmModal, setShowFarmModal] = useState(false);
+  const orgId = useAppSelector((state) => state.auth.user?.organizationId);
 
   const fetchFarms = async () => {
     try {
-      const response = await farmsAPI.list();
+      const filter: any = {};
+      if (orgId) filter.organizationId = orgId;
+      const response = await farmsAPI.list(filter);
       const farms = extractArray<{ id: string; name: string }>(response);
       setFarms(farms.map((f) => ({ id: f.id, name: f.name })));
-    } catch { /* ignore */ }
+    } catch {
+      console.warn('[LivestockScreen] Failed to load farms for filter');
+    }
   };
 
   const fetchAnimals = useCallback(
@@ -201,8 +207,8 @@ export default function LivestockScreen() {
         const params = { page: pageNum, limit: PAGE_SIZE };
 
         const [livestockRes, poultryRes] = await Promise.all([
-          livestockAPI.list(params),
-          poultryAPI.list(params),
+        offlineLivestockAPI.list(params),
+        offlinePoultryAPI.list(params),
         ]);
 
         // Build a farm name lookup from the farms already loaded

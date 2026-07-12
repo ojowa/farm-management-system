@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { cropsAPI, farmsAPI } from '../../services/api';
+import { offlineCropsAPI } from '../../services/offlineApi';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAuth';
@@ -209,13 +210,18 @@ export default function CropsScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [farms, setFarms] = useState<FarmOption[]>([]);
   const [showFarmModal, setShowFarmModal] = useState(false);
+  const orgId = useAppSelector((state) => state.auth.user?.organizationId);
 
   const fetchFarms = async () => {
     try {
-      const response = await farmsAPI.list();
+      const filter: any = {};
+      if (orgId) filter.organizationId = orgId;
+      const response = await farmsAPI.list(filter);
       const farms = extractArray<{ id: string; name: string }>(response);
       setFarms(farms.map((f) => ({ id: f.id, name: f.name })));
-    } catch { /* ignore */ }
+    } catch {
+      console.warn('[CropsScreen] Failed to load farms for filter');
+    }
   };
 
   const fetchCrops = useCallback(
@@ -224,8 +230,8 @@ export default function CropsScreen() {
         setLoadError(null);
         // Fetch crops + crop-cycles in parallel; merge to enrich crop data
         const [cropsRes, cyclesRes] = await Promise.all([
-          cropsAPI.list({ page: pageNum, limit: PAGE_SIZE }),
-          cropsAPI.listCycles().catch(() => ({ data: [] })),
+        offlineCropsAPI.list({ page: pageNum, limit: PAGE_SIZE }),
+        offlineCropsAPI.listCycles().catch(() => ({ data: [] })),
         ]);
 
         const farmNameMap = new Map(farms.map((f) => [f.id, f.name]));

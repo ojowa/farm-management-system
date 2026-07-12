@@ -15,17 +15,16 @@ import {
   ForbiddenException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 const CAN_CREATE_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserRole(req: Request): string {
+function getUserRole(req: any): string {
   return String((req as any).user?.role || '');
 }
 
@@ -35,7 +34,7 @@ export class TasksController {
   @Permission('hr.read')
   @Get()
   async findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('priority') priority?: string,
     @Query('assignedToId') assignedToId?: string,
@@ -92,7 +91,7 @@ export class TasksController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: {
       title: string;
       description?: string;
@@ -136,7 +135,7 @@ export class TasksController {
   @Put(':id')
   async update(
     @Param('id') id: string,
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: {
       title?: string;
       description?: string;

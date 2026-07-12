@@ -5,8 +5,8 @@ import { WorkerRepository } from '../../domain/repositories/worker.repository';
 export class WorkerApplicationService {
   constructor(private readonly workerRepo: WorkerRepository) {}
 
-  async createWorker(data: { farmId: string; name: string; role: string }) {
-    return this.workerRepo.create(data);
+  async createWorker(data: { farmId: string; firstName: string; lastName: string; position: string; status?: string }) {
+    return this.workerRepo.create({ ...data, status: data.status || 'ACTIVE' });
   }
 
   async getWorkerById(id: string) {
@@ -19,7 +19,7 @@ export class WorkerApplicationService {
     return this.workerRepo.findAll();
   }
 
-  async updateWorker(id: string, data: Partial<{ farmId: string; name: string; role: string }>) {
+  async updateWorker(id: string, data: Partial<{ farmId: string; firstName: string; lastName: string; position: string }>) {
     await this.getWorkerById(id);
     return this.workerRepo.update(id, data);
   }

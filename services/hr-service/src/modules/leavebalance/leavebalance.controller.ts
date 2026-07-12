@@ -8,15 +8,15 @@ import {
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserId(req: Request): string {
+function getUserId(req: any): string {
   return String((req as any).user?.sub || '');
 }
 
@@ -26,7 +26,7 @@ export class LeaveBalanceController {
   @Permission('hr.read')
   @Get()
   async findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('userId') queryUserId?: string,
     @Query('year') yearStr?: string,
   ) {
@@ -60,7 +60,7 @@ export class LeaveBalanceController {
   @Permission('hr.write')
   @Put()
   async upsert(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { userId: string; leaveTypeId: string; year: number; totalDays: number },
   ) {
     const orgId = getOrgId(req);

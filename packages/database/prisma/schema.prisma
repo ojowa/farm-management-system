@@ -24,6 +24,12 @@ model Organization {
 
   users     User[]
   farms     Farm[]
+  workers   Worker[]
+  inventory Inventory[]
+  expenses  Expense[]
+  sales     Sale[]
+  livestock Livestock[]
+  budgets   Budget[]
   memberships UserOrganization[]
   roles      Role[]
   featureOverrides FeatureFlagOverride[]
@@ -161,6 +167,12 @@ model Farm {
   fields          Field[]
   poultryHouses   PoultryHouse[]
   flocks          Flock[]
+  workers         Worker[]
+  inventory       Inventory[]
+  expenses        Expense[]
+  sales           Sale[]
+  livestock       Livestock[]
+  budgets         Budget[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -312,46 +324,59 @@ model Crop {
 }
 
 model CropCycle {
-  id            String @id @default(uuid())
-  fieldId       String
-  cropId        String
+  id             String   @id @default(uuid())
+  organizationId String
+  fieldId        String
+  cropId         String
 
-  plantingDate  DateTime
-  harvestDate   DateTime?
-  health        Int    @default(100)
-  status        String @default("growing")
+  plantingDate   DateTime
+  harvestDate    DateTime?
+  health         Int      @default(100)
+  status         String   @default("growing")
 
-  field         Field @relation(fields: [fieldId], references: [id])
-  crop          Crop @relation(fields: [cropId], references: [id])
+  field          Field    @relation(fields: [fieldId], references: [id])
+  crop           Crop     @relation(fields: [cropId], references: [id])
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([fieldId])
+  @@index([cropId])
 }
 
 model Inventory {
-  id        String @id @default(uuid())
-  farmId    String
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
 
-  name      String
-  category  String
-  quantity  Float
-  unit      String
-  minimumQuantity Float @default(0)
+  name             String
+  category         String
+  quantity         Float
+  unit             String
+  minimumQuantity  Float @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  farm             Farm         @relation(fields: [farmId], references: [id])
 
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizationId])
   @@index([farmId])
 }
 
 model Expense {
-  id             String @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
   farmId         String
 
   title     String
   amount    Float
   date      DateTime
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  farm         Farm         @relation(fields: [farmId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -360,7 +385,7 @@ model Expense {
 }
 
 model Sale {
-  id             String @id @default(uuid())
+  id             String   @id @default(uuid())
   organizationId String
   farmId         String
 
@@ -371,21 +396,79 @@ model Sale {
 
   date      DateTime
 
+  organization Organization @relation(fields: [organizationId], references: [id])
+  farm         Farm         @relation(fields: [farmId], references: [id])
+
   createdAt DateTime @default(now())
 
   @@index([organizationId])
   @@index([farmId])
 }
 
+model Budget {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String?
+  name           String
+  description    String?
+  startDate      DateTime
+  endDate        DateTime
+  status         String   @default("ACTIVE")
+
+  categories     BudgetCategory[]
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm?        @relation(fields: [farmId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([status])
+}
+
+model BudgetCategory {
+  id             String   @id @default(uuid())
+  budgetId       String
+  name           String
+  budgetAmount   Float
+  spentAmount    Float   @default(0)
+
+  budget         Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([budgetId])
+}
+
 model Worker {
-  id        String @id @default(uuid())
-  farmId    String
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
 
-  name      String
-  role      String
+  userId         String?
+  firstName      String
+  middleName     String?
+  lastName       String
+  email          String?
+  phone          String?
+  position       String
+  department     String?
+  hireDate       DateTime?
+  status         String   @default("ACTIVE")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm         @relation(fields: [farmId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([userId])
+  @@index([status])
 }
 
 model AuditLog {
@@ -424,16 +507,21 @@ model SyncQueue {
 }
 
 model Livestock {
-  id        String   @id @default(uuid())
-  farmId    String
-  species   String
-  breed     String?
-  gender    String
-  birthDate DateTime
-  status    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+  species        String
+  breed          String?
+  gender         String
+  birthDate      DateTime
+  status         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm         @relation(fields: [farmId], references: [id])
+
+  @@index([organizationId])
   @@index([farmId])
 }
 

@@ -2,10 +2,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
-function jwtAuthMiddleware(req: Request, _res: Response, next: NextFunction) {
+function jwtAuthMiddleware(req: any, _res: any, next: () => void) {
   let token: string | null = null;
 
   if (req.cookies?.accessToken) {
@@ -23,16 +22,16 @@ function jwtAuthMiddleware(req: Request, _res: Response, next: NextFunction) {
   if (token) {
     try {
       const secret = process.env.JWT_SECRET || 'dev-secret';
-      if (!(req as any).__loggedSecret) {
+      if (!req.__loggedSecret) {
         console.log('[jwtAuthMiddleware] JWT_SECRET present:', !!process.env.JWT_SECRET, 'length:', process.env.JWT_SECRET?.length);
-        (req as any).__loggedSecret = true;
+        req.__loggedSecret = true;
       }
       const decoded = jwt.verify(token, secret);
-      (req as any).user = decoded;
+      req.user = decoded;
     } catch (err: any) {
-      if (!(req as any).__loggedErr) {
+      if (!req.__loggedErr) {
         console.log('[jwtAuthMiddleware] JWT verify failed:', err?.message);
-        (req as any).__loggedErr = true;
+        req.__loggedErr = true;
       }
     }
   }

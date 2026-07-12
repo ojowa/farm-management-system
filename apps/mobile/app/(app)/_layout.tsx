@@ -22,7 +22,6 @@ const TAB_CONFIG = [
   { name: 'equipment', title: 'Equipment', icon: '🔧', permission: 'inventory.read', module: 'inventory' },
   { name: 'contracts', title: 'Contracts', icon: '📝', permission: 'finance.read', module: 'finance' },
   { name: 'marketplace', title: 'Marketplace', icon: '🏪', permission: 'finance.read', module: 'finance' },
-  { name: 'weather', title: 'Weather', icon: '🌤️', permission: null, module: null },
   { name: 'settings', title: 'Settings', icon: '⚙️', permission: null, module: null },
 ];
 

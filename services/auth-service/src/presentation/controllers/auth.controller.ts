@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode } from '@nestjs/common';
-import { Request, Response } from 'express';
+
 import { AuthService } from '../../application/services/auth.service';
 
 @Controller('auth')
@@ -7,19 +7,19 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { email: string; password: string }, @Req() req: Request) {
+  async login(@Body() body: { email: string; password: string }, @Req() req: any) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     return this.authService.login(body, ctx);
   }
 
   @Post('verify-mfa')
-  async verifyMFA(@Body() body: { mfaToken: string; code: string }, @Req() req: Request) {
+  async verifyMFA(@Body() body: { mfaToken: string; code: string }, @Req() req: any) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     return this.authService.verifyMFA(body.mfaToken, body.code, ctx);
   }
 
   @Post('register')
-  async register(@Body() body: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, @Req() req: Request) {
+  async register(@Body() body: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, @Req() req: any) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     return this.authService.register(body, ctx);
   }
@@ -50,7 +50,7 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refreshToken(@Body() body: { refreshToken: string }, @Req() req: Request) {
+  async refreshToken(@Body() body: { refreshToken: string }, @Req() req: any) {
     return this.authService.refreshToken(body.refreshToken, { ipAddress: req.ip });
   }
 

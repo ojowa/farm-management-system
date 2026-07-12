@@ -13,7 +13,7 @@ export default function WorkerDetailPage() {
   const [worker, setWorker] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
-  const [form, setForm] = useState({ fullName: '', role: '', phone: '', email: '', notes: '' });
+  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', phone: '', email: '', position: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -21,7 +21,7 @@ export default function WorkerDetailPage() {
       const { data } = await workersAPI.get(id);
       const w = data.worker || data;
       setWorker(w);
-      setForm({ fullName: w.fullName || '', role: w.role || '', phone: w.phone || '', email: w.email || '', notes: w.notes || '' });
+      setForm({ firstName: w.firstName || '', middleName: w.middleName || '', lastName: w.lastName || '', phone: w.phone || '', email: w.email || '', position: w.position || '', notes: w.notes || '' });
     } catch { router.push('/workers'); }
     finally { setLoading(false); }
   };
@@ -54,8 +54,8 @@ export default function WorkerDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <button onClick={() => router.push('/workers')} className="text-sm text-gray-500 hover:text-gray-700 mb-2">← Back</button>
-          <h1 className="text-2xl font-bold text-gray-900">{worker.fullName}</h1>
-          <p className="text-gray-500">{worker.role || 'No role assigned'}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{worker.firstName} {worker.middleName ? `${worker.middleName} ` : ''}{worker.lastName}</h1>
+          <p className="text-gray-500">{worker.position || 'No position assigned'}</p>
         </div>
         <div className="flex gap-3">
           <Button variant="secondary" onClick={() => setShowEdit(true)}>Edit</Button>
@@ -71,8 +71,10 @@ export default function WorkerDetailPage() {
 
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit Worker">
         <form onSubmit={handleUpdate}>
-          <Input label="Full Name" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          <Input label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+          <Input label="First Name" required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+          <Input label="Middle Name" value={form.middleName} onChange={(e) => setForm({ ...form, middleName: e.target.value })} />
+          <Input label="Last Name" required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+          <Input label="Position" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
           <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <TextArea label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />

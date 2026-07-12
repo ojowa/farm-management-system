@@ -24,8 +24,14 @@ import { useReadOnly } from '@/lib/useReadOnly';
 
 interface Worker {
   id: string;
-  name: string;
-  role: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  position: string;
+  department?: string;
+  email?: string;
+  phone?: string;
+  hireDate?: string;
   farmId: string;
   farm?: { id: string; name: string };
   createdAt: string;
@@ -59,7 +65,7 @@ export default function WorkerDetailPage() {
   useRealtime('worker', handleRealtimeEvent);
 
   const handleDelete = async () => {
-    if (!worker || !confirm(`Delete "${worker.name}"? This action cannot be undone.`))
+    if (!worker || !confirm(`Delete "${worker.firstName} ${worker.lastName}"? This action cannot be undone.`))
       return;
     try {
       await workersAPI.delete(id);
@@ -107,9 +113,9 @@ export default function WorkerDetailPage() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{worker.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{worker.firstName} {worker.middleName ? `${worker.middleName} ` : ''}{worker.lastName}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary">{worker.role}</Badge>
+              <Badge variant="secondary">{worker.position}</Badge>
               {worker.farm && (
                 <span className="text-muted-foreground text-sm">• {worker.farm.name}</span>
               )}
@@ -145,7 +151,7 @@ export default function WorkerDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Name</p>
-                <p className="text-lg font-semibold">{worker.name}</p>
+                <p className="text-lg font-semibold">{worker.firstName} {worker.middleName ? `${worker.middleName} ` : ''}{worker.lastName}</p>
               </div>
             </div>
           </CardContent>
@@ -157,8 +163,8 @@ export default function WorkerDetailPage() {
                 <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Role</p>
-                <p className="text-lg font-semibold">{worker.role}</p>
+                <p className="text-sm text-muted-foreground">Position</p>
+                <p className="text-lg font-semibold">{worker.position}</p>
               </div>
             </div>
           </CardContent>
@@ -187,12 +193,30 @@ export default function WorkerDetailPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <p className="text-sm text-muted-foreground">Full Name</p>
-              <p className="font-medium">{worker.name}</p>
+              <p className="font-medium">{worker.firstName} {worker.middleName ? `${worker.middleName} ` : ''}{worker.lastName}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Role</p>
-              <p className="font-medium">{worker.role}</p>
+              <p className="text-sm text-muted-foreground">Position</p>
+              <p className="font-medium">{worker.position}</p>
             </div>
+            {worker.department && (
+              <div>
+                <p className="text-sm text-muted-foreground">Department</p>
+                <p className="font-medium">{worker.department}</p>
+              </div>
+            )}
+            {worker.email && (
+              <div>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="font-medium">{worker.email}</p>
+              </div>
+            )}
+            {worker.phone && (
+              <div>
+                <p className="text-sm text-muted-foreground">Phone</p>
+                <p className="font-medium">{worker.phone}</p>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground">Farm</p>
               <p className="font-medium">{worker.farm?.name || 'Not assigned'}</p>

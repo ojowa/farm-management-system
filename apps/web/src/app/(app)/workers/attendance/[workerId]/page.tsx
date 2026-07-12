@@ -9,8 +9,10 @@ import { useFetch } from '@/hooks/useFetch';
 
 interface Worker {
   id: string;
-  name: string;
-  role: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  position: string;
 }
 
 interface Summary {
@@ -121,9 +123,9 @@ export default function WorkerAttendancePage() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{worker.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{worker.firstName} {worker.middleName ? `${worker.middleName} ` : ''}{worker.lastName}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge color="blue">{worker.role}</Badge>
+              <Badge color="blue">{worker.position}</Badge>
               <span className="text-gray-500 text-sm">Attendance History</span>
             </div>
           </div>

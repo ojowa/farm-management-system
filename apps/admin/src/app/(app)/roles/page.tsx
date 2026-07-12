@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { rolesAPI } from '@/lib/api';
+import { useToast } from '@/lib/toasts';
 import { Card, Badge, Input, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function RolesPage() {
+  const { toast } = useToast();
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -15,7 +17,9 @@ export default function RolesPage() {
     try {
       const { data } = await rolesAPI.list();
       setRoles(data);
-    } catch { /* ignore */ }
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to load roles', message: err.response?.data?.message || 'An error occurred' });
+    }
     finally { setLoading(false); }
   }
 

@@ -75,7 +75,7 @@ export class CropRepository {
         cropId: data.cropId,
         plantingDate: data.plantingDate,
         harvestDate: data.harvestDate,
-      },
+      } as any,
       include: {
         crop: true,
         field: true,

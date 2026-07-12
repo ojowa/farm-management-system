@@ -14,19 +14,19 @@ import {
   BadRequestException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserId(req: Request): string {
+function getUserId(req: any): string {
   return String((req as any)['x-user-id'] || (req as any).user?.id || '');
 }
 
-function getUserName(req: Request): string {
+function getUserName(req: any): string {
   const user = (req as any).user;
   return user?.fullName || 'User';
 }
@@ -45,7 +45,7 @@ export class CorrespondenceController {
   @Permission('hr.read')
   @Get()
   async findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('type') type?: string,
     @Query('category') category?: string,
@@ -72,7 +72,7 @@ export class CorrespondenceController {
 
   @Permission('hr.read')
   @Get('stats')
-  async stats(@Req() req: Request) {
+  async stats(@Req() req: any) {
     const orgId = getOrgId(req);
     const [total, draft, sent, received, archived] = await Promise.all([
       scopedPrisma.correspondence.count({ where: { organizationId: orgId } }),
@@ -107,7 +107,7 @@ export class CorrespondenceController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: {
       title: string;
       type: string;
@@ -223,7 +223,7 @@ export class CorrespondenceController {
   @HttpCode(HttpStatus.CREATED)
   async addAttachment(
     @Param('id') id: string,
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { fileName: string; fileSize?: number; fileUrl: string; fileType?: string },
   ) {
     const orgId = getOrgId(req);

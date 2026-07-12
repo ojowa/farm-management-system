@@ -62,9 +62,11 @@ export interface Broadcast {
   title: string;
   message: string;
   type: string;
-  targetAudience: string;
-  organizationId: string | null;
+  targetOrgs: string[];
   isActive: boolean;
+  startsAt: Date;
+  expiresAt: Date | null;
+  createdById: string;
   createdAt: Date;
   updatedAt: Date;
 }

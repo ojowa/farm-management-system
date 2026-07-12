@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { livestockAPI, poultryAPI } from '../../../../src/services/api';
+import { offlineLivestockAPI, offlinePoultryAPI } from '../../../../src/services/offlineApi';
 import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -113,12 +113,12 @@ export default function AnimalDetailScreen() {
     setLoadError(null);
 
     try {
-      const response = await livestockAPI.get(id);
+      const response = await offlineLivestockAPI.get(id);
       setAnimal({ ...(response.data.data || response.data), type: 'livestock' });
       dispatch(setSelectedLivestockId(id));
     } catch {
       try {
-        const response = await poultryAPI.get(id);
+        const response = await offlinePoultryAPI.get(id);
         setAnimal({ ...(response.data.data || response.data), type: 'poultry' });
         dispatch(setSelectedLivestockId(id));
       } catch (error: any) {
@@ -147,9 +147,9 @@ export default function AnimalDetailScreen() {
     if (!animal) return;
     try {
       if (animal.type === 'livestock') {
-        await livestockAPI.delete(animal.id);
+        await offlineLivestockAPI.delete(animal.id);
       } else {
-        await poultryAPI.delete(animal.id);
+        await offlinePoultryAPI.delete(animal.id);
       }
       success('Animal deleted successfully');
       dispatch(setSelectedLivestockId(null));

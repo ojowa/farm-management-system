@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { financeAPI } from '../../../../src/services/api';
+import { offlineFinanceAPI } from '../../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -123,7 +123,7 @@ export default function EditTransactionScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await financeAPI.get(id);
+      const response = await offlineFinanceAPI.get(id);
       const data = response.data.data || response.data;
       setTransaction(data);
       setFormData({
@@ -198,7 +198,7 @@ export default function EditTransactionScreen() {
         date: formData.date,
         icon: getIcon(),
       };
-      await financeAPI.update(id, data);
+      await offlineFinanceAPI.update(id, data);
       success('Transaction updated successfully');
       router.back();
     } catch (error: any) {

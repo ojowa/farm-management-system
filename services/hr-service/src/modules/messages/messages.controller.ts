@@ -13,16 +13,16 @@ import {
   ForbiddenException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 import { createBulkNotifications } from '../../lib/notificationClient';
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserId(req: Request): string {
+function getUserId(req: any): string {
   return String((req as any)['x-user-id'] || (req as any).user?.id || '');
 }
 
@@ -31,7 +31,7 @@ function getUserId(req: Request): string {
 export class MessagesController {
   @Permission('hr.read')
   @Get('inbox')
-  async inbox(@Req() req: Request) {
+  async inbox(@Req() req: any) {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
 
@@ -51,7 +51,7 @@ export class MessagesController {
 
   @Permission('hr.read')
   @Get('sent')
-  async sent(@Req() req: Request) {
+  async sent(@Req() req: any) {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
 
@@ -64,7 +64,7 @@ export class MessagesController {
 
   @Permission('hr.read')
   @Get('unread-count')
-  async unreadCount(@Req() req: Request) {
+  async unreadCount(@Req() req: any) {
     const userId = getUserId(req);
     const orgId = getOrgId(req);
 
@@ -77,7 +77,7 @@ export class MessagesController {
 
   @Permission('hr.read')
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: Request) {
+  async findOne(@Param('id') id: string, @Req() req: any) {
     const userId = getUserId(req);
     const orgId = getOrgId(req);
 
@@ -105,7 +105,7 @@ export class MessagesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { subject: string; body: string; recipientIds: string[]; priority?: string },
   ) {
     const orgId = getOrgId(req);
@@ -170,7 +170,7 @@ export class MessagesController {
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string, @Req() req: Request) {
+  async remove(@Param('id') id: string, @Req() req: any) {
     const userId = getUserId(req);
     const orgId = getOrgId(req);
 

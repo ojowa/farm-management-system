@@ -8,10 +8,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./express": {
-      "types": "./dist/express/index.d.ts",
-      "default": "./dist/express/index.js"
-    },
     "./nestjs": {
       "types": "./dist/nestjs/index.d.ts",
       "default": "./dist/nestjs/index.js"
@@ -32,21 +28,17 @@
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "express": "^4.21.0"
+    "@nestjs/core": "^11.0.0"
   },
   "peerDependenciesMeta": {
     "@nestjs/common": { "optional": true },
-    "@nestjs/core": { "optional": true },
-    "express": { "optional": true }
+    "@nestjs/core": { "optional": true }
   },
   "devDependencies": {
     "@nestjs/common": "^11.0.10",
     "@nestjs/core": "^11.0.10",
-    "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^22.13.5",
-    "express": "^4.21.2",
     "typescript": "^5.8.3",
     "tsx": "^4.19.2"
   }

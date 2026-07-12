@@ -30,8 +30,10 @@ import { LoadingSpinner } from '@/components/ui/loading';
 
 interface Worker {
   id: string;
-  name: string;
-  role: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  position: string;
 }
 
 interface Summary {
@@ -189,9 +191,9 @@ export default function WorkerAttendancePage() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{worker.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{worker.firstName} {worker.middleName ? `${worker.middleName} ` : ''}{worker.lastName}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary">{worker.role}</Badge>
+              <Badge variant="secondary">{worker.position}</Badge>
               <span className="text-muted-foreground text-sm">Attendance History</span>
             </div>
           </div>

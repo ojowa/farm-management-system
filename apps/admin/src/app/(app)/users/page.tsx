@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { useReadOnly } from '@/lib/useReadOnly';
+import { useToast } from '@/lib/toasts';
 import { Card, CardContent, Badge, Input, Button, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function UsersPage() {
   const readOnly = useReadOnly();
+  const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -18,7 +20,10 @@ export default function UsersPage() {
     try {
       const { data } = await apiClient.get('/admin/users');
       setUsers(data);
-    } catch { setUsers([]); }
+    } catch (err: any) {
+      setUsers([]);
+      toast({ type: 'error', title: 'Failed to load users', message: err.response?.data?.message || 'An error occurred' });
+    }
     finally { setLoading(false); }
   }
 
@@ -26,7 +31,9 @@ export default function UsersPage() {
     try {
       await apiClient.put(`/admin/users/${userId}/toggle-active`);
       loadUsers();
-    } catch { /* ignore */ }
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to toggle user', message: err.response?.data?.message || 'An error occurred' });
+    }
   }
 
   const filtered = users.filter((u) => {

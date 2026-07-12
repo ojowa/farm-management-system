@@ -38,6 +38,30 @@ export interface Contract {
   updatedAt: Date;
 }
 
+export interface Budget {
+  id: string;
+  organizationId: string;
+  farmId: string | null;
+  name: string;
+  description: string | null;
+  startDate: Date;
+  endDate: Date;
+  status: string;
+  categories?: BudgetCategory[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BudgetCategory {
+  id: string;
+  budgetId: string;
+  name: string;
+  budgetAmount: number;
+  spentAmount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Buyer {
   id: string;
   organizationId: string;

@@ -7,6 +7,9 @@ import { PermissionsController } from './presentation/controllers/permissions.co
 import { AdminController } from './presentation/controllers/admin.controller';
 import { OrgAdminController } from './presentation/controllers/org-admin.controller';
 import { ApiKeysController } from './presentation/controllers/api-keys.controller';
+import { PlatformRolesController } from './presentation/controllers/platform-roles.controller';
+import { PlatformPermissionsController } from './presentation/controllers/platform-permissions.controller';
+import { PlatformApiKeysController } from './presentation/controllers/platform-api-keys.controller';
 import { AuthService } from './application/services/auth.service';
 import { RolesService } from './application/services/roles.service';
 import { PermissionsService } from './application/services/permissions.service';
@@ -29,6 +32,9 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
     AdminController,
     OrgAdminController,
     ApiKeysController,
+    PlatformRolesController,
+    PlatformPermissionsController,
+    PlatformApiKeysController,
   ],
   providers: [
     AuthService,

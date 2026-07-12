@@ -12,5 +12,9 @@ export const MFA_SESSION_KEY = 'mfa_session';
  * the redux-persist whitelist (ui slice) and the authSlice token keys.
  */
 export async function clearAllStorage() {
-  // No-op: auth removed
+  try {
+    await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY, MFA_SESSION_KEY]);
+  } catch {
+    console.warn('[storage] Failed to clear storage');
+  }
 }

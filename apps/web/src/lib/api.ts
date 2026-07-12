@@ -45,8 +45,20 @@ export const weightAPI = client.weight;
 
 export const poultryAPI = client.poultry;
 export const poultryHousesAPI = client.poultryHouses;
-export const pensAPI = { list: client.poultry.listPens, get: async () => ({ data: {} }), create: async () => ({ data: {} }), update: async () => ({ data: {} }), delete: async () => ({}) };
-export const breedsAPI = { list: client.poultry.listBreeds, get: async () => ({ data: {} }), create: async () => ({ data: {} }), update: async () => ({ data: {} }), delete: async () => ({}) };
+export const pensAPI = {
+  list: (params?: any) => apiClient.get('/poultry/pens', { params }),
+  get: (id: string) => apiClient.get(`/poultry/pens/${id}`),
+  create: (data: any) => apiClient.post('/poultry/pens', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/pens/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/pens/${id}`),
+};
+export const breedsAPI = {
+  list: (params?: any) => apiClient.get('/poultry/breeds', { params }),
+  get: (id: string) => apiClient.get(`/poultry/breeds/${id}`),
+  create: (data: any) => apiClient.post('/poultry/breeds', data),
+  update: (id: string, data: any) => apiClient.put(`/poultry/breeds/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/poultry/breeds/${id}`),
+};
 export const flocksAPI = client.poultry;
 export const feedingRecordsAPI = client.feedingRecords;
 export const vaccinationRecordsAPI = client.vaccinationRecords;

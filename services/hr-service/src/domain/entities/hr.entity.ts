@@ -1,14 +1,16 @@
 export interface Worker {
   id: string;
   organizationId: string;
-  userId: string;
+  farmId: string;
+  userId?: string | null;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
-  email: string;
-  phone: string | null;
+  email?: string | null;
+  phone?: string | null;
   position: string;
-  department: string | null;
-  hireDate: Date;
+  department?: string | null;
+  hireDate?: Date | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;

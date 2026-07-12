@@ -20,6 +20,22 @@ export class ApiKeysService {
     });
   }
 
+  async listAll() {
+    return prisma.apiKey.findMany({
+      select: {
+        id: true,
+        name: true,
+        keyPrefix: true,
+        service: true,
+        isActive: true,
+        lastUsedAt: true,
+        createdAt: true,
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async create(userId: string, data: { name: string; service: string }) {
     const rawKey = crypto.randomBytes(32).toString('hex');
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');

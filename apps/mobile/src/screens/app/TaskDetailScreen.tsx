@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Card, Button, colors } from '../../components/common/UIComponents';
-import { tasksAPI } from '../../services/api';
+import { offlineTasksAPI } from '../../services/offlineApi';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -100,7 +100,7 @@ export default function TaskDetailScreen() {
   const loadTask = useCallback(async () => {
     if (!id) return;
     try {
-      const res = await tasksAPI.list({ id });
+      const res = await offlineTasksAPI.list({ id });
       const found = res.data?.find?.((t: any) => t.id === id) || res.data;
       setTask(found);
     } catch {
@@ -118,7 +118,7 @@ export default function TaskDetailScreen() {
     if (!task) return;
     setUpdating(true);
     try {
-      await tasksAPI.update(task.id, { status: newStatus });
+      await offlineTasksAPI.update(task.id, { status: newStatus });
       setTask({ ...task, status: newStatus });
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.error || 'Failed to update status');
@@ -139,7 +139,7 @@ export default function TaskDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await tasksAPI.delete(task.id);
+            await offlineTasksAPI.delete(task.id);
             router.back();
           } catch (err: any) {
             Alert.alert('Error', err?.response?.data?.error || 'Failed to delete');

@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { farmsAPI } from '../../services/api';
+import { offlineFarmsAPI } from '../../services/offlineApi';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAuth';
@@ -143,6 +143,7 @@ export default function FarmsScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const orgId = useAppSelector((state) => state.auth.user?.organizationId);
 
   const PAGE_SIZE = 20;
 
@@ -150,20 +151,13 @@ export default function FarmsScreen() {
     async (pageNum: number = 1, append: boolean = false) => {
       try {
         setLoadError(null);
-        
-        // Build filter object from current state
+
         const filter: any = {};
-        
-        // Add organization ID from auth state if available
-        const orgId = useAppSelector((state) => state.auth.user?.organizationId);
         if (orgId) {
           filter.organizationId = orgId;
         }
-        
-        // Add search term if we implement search in the future
-        // For now, we'll keep the status filter as client-side since it's simple
-        
-        const response = await farmsAPI.list({
+
+        const response = await offlineFarmsAPI.list({
           page: pageNum,
           limit: PAGE_SIZE,
           ...filter
@@ -235,7 +229,7 @@ export default function FarmsScreen() {
 
   const confirmDeleteFarm = async (farmId: string) => {
     try {
-      await farmsAPI.delete(farmId);
+      await offlineFarmsAPI.delete(farmId);
       setFarms(farms.filter((f) => f.id !== farmId));
       dispatch(setSelectedFarmId(null));
       success('Farm deleted successfully');

@@ -14,13 +14,13 @@ import {
   ConflictException,
   UseGuards,
 } from '@nestjs/common';
-import { Request } from 'express';
+
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 const prisma = scopedPrisma as any;
 
-function getOrgId(req: Request): string {
+function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
@@ -30,7 +30,7 @@ export class AttendanceController {
   @Permission('hr.read')
   @Get()
   async findAll(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('workerId') workerId?: string,
     @Query('date') date?: string,
     @Query('startDate') startDate?: string,
@@ -61,7 +61,7 @@ export class AttendanceController {
 
   @Permission('hr.read')
   @Get('today')
-  async today(@Req() req: Request) {
+  async today(@Req() req: any) {
     const orgId = getOrgId(req);
     const today = new Date();
     const start = new Date(today); start.setHours(0, 0, 0, 0);
@@ -86,7 +86,7 @@ export class AttendanceController {
   @Permission('hr.read')
   @Get('summary')
   async summary(
-    @Req() req: Request,
+    @Req() req: any,
     @Query('workerId') workerId?: string,
     @Query('month') month?: string,
     @Query('year') year?: string,
@@ -129,7 +129,7 @@ export class AttendanceController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: {
       workerId: string;
       workerName: string;
@@ -167,7 +167,7 @@ export class AttendanceController {
   @Post('clock-in')
   @HttpCode(HttpStatus.CREATED)
   async clockIn(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { workerId: string; workerName: string },
   ) {
     const orgId = getOrgId(req);
@@ -207,7 +207,7 @@ export class AttendanceController {
   @Permission('hr.write')
   @Post('clock-out')
   async clockOut(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: { workerId: string },
   ) {
     const orgId = getOrgId(req);
@@ -262,7 +262,7 @@ export class AttendanceController {
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
   async bulkCreate(
-    @Req() req: Request,
+    @Req() req: any,
     @Body() body: {
       records: {
         workerId: string;

@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { financeAPI } from '../../../../src/services/api';
+import { offlineFinanceAPI } from '../../../../src/services/offlineApi';
 import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/components/feedback';
 import { useToasts } from '../../../../src/hooks/useToasts';
@@ -126,7 +126,7 @@ export default function TransactionDetailScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await financeAPI.get(id);
+      const response = await offlineFinanceAPI.get(id);
       setTransaction(response.data.data || response.data);
     } catch (error: any) {
       const message = describeApiError(error, 'Failed to load transaction.');
@@ -152,7 +152,7 @@ export default function TransactionDetailScreen() {
   const confirmDelete = async () => {
     if (!transaction) return;
     try {
-      await financeAPI.delete(transaction.id);
+      await offlineFinanceAPI.delete(transaction.id);
       success('Transaction deleted successfully');
       router.back();
     } catch (error: any) {

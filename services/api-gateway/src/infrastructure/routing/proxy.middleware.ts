@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
-import { createProxyMiddleware, RequestHandler } from 'http-proxy-middleware';
-import { Request, Response, NextFunction } from 'express';
+import { HttpService } from '@nestjs/axios';
+import { AxiosResponse } from 'axios';
+import { lastValueFrom } from 'rxjs';
 import jwt from 'jsonwebtoken';
 import { ServiceRoute } from '../../domain/routes';
 import { RoutingService } from '../../application/services/routing.service';
@@ -15,71 +16,15 @@ const jwtVerify = (jwt as any).verify as (token: string, secret: string) => any;
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private readonly logger = new Logger(ProxyMiddleware.name);
-  private proxyHandlers: Record<string, RequestHandler> = {};
 
-  constructor(private readonly routingService: RoutingService) {
-    this.initProxies();
+  constructor(
+    private readonly routingService: RoutingService,
+    private readonly httpService: HttpService,
+  ) {
+    this.logger.log('ProxyMiddleware initialized');
   }
 
-  private initProxies() {
-    const routes = this.routingService.getAllRoutes();
-    const groupedByTarget = new Map<string, ServiceRoute[]>();
-
-    for (const route of routes) {
-      const existing = groupedByTarget.get(route.target) || [];
-      existing.push(route);
-      groupedByTarget.set(route.target, existing);
-    }
-
-    for (const [target, targetRoutes] of groupedByTarget) {
-      const pathFilter = (path: string) => {
-        return targetRoutes.some(r => path === r.path || path.startsWith(r.path + '/'));
-      };
-
-      const mainRoute = targetRoutes[0];
-      const handler = createProxyMiddleware({
-        target,
-        changeOrigin: true,
-        pathFilter,
-        pathRewrite: mainRoute.rewrite !== false
-          ? (url) => {
-              for (const route of targetRoutes) {
-                if (url === route.path || url.startsWith(route.path + '/')) {
-                  return url.replace(new RegExp(`^${route.path}`), '') || '/';
-                }
-              }
-              return url;
-            }
-          : undefined,
-        on: {
-          proxyReq: (proxyReq: any, req: any, _res: any) => {
-            if (req.body) {
-              const contentType = req.headers['content-type'];
-              if (contentType && contentType.includes('application/json')) {
-                const bodyData = JSON.stringify(req.body);
-                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-                proxyReq.write(bodyData);
-              } else if (contentType && contentType.includes('application/x-www-form-urlencoded')) {
-                const bodyData = new URLSearchParams(req.body).toString();
-                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-                proxyReq.write(bodyData);
-              }
-            }
-          },
-          proxyRes: (proxyRes: any, req: any) => {
-            const service = this.routingService.getServiceName(req.url.split('?')[0]);
-            this.logger.debug(`${req.method} ${req.url} -> ${service} (${proxyRes.statusCode})`);
-          },
-        },
-      });
-
-      for (const route of targetRoutes) {
-        this.proxyHandlers[route.path] = handler;
-      }
-    }
-  }
-
-  use(req: Request, res: Response, next: NextFunction) {
+  use(req: any, res: any, next: () => void) {
     if (req.method === 'OPTIONS') {
       return next();
     }
@@ -126,12 +71,73 @@ export class ProxyMiddleware implements NestMiddleware {
       }
     }
 
-    for (const [routePath, handler] of Object.entries(this.proxyHandlers)) {
-      if (path === routePath || path.startsWith(routePath + '/')) {
-        return handler(req, res, next);
+    const route = this.routingService.findRoute(path);
+    if (!route) {
+      return next();
+    }
+
+    this.forwardRequest(req, res, route, token).catch((error) => {
+      this.logger.error(`Proxy error: ${error.message}`);
+      if (!res.headersSent) {
+        res.status(502).json({
+          statusCode: 502,
+          message: 'Service unavailable',
+        });
+      }
+    });
+  }
+
+  private async forwardRequest(
+    req: any,
+    res: any,
+    route: ServiceRoute,
+    token: string | null,
+  ): Promise<void> {
+    const targetUrl = this.buildTargetUrl(req, route);
+    const serviceName = route.service;
+
+    const headers: Record<string, string> = {
+      'content-type': req.headers['content-type'] || 'application/json',
+    };
+
+    if (req.headers['x-user-id']) headers['x-user-id'] = req.headers['x-user-id'] as string;
+    if (req.headers['x-user-role']) headers['x-user-role'] = req.headers['x-user-role'] as string;
+    if (req.headers['x-organization-id']) headers['x-organization-id'] = req.headers['x-organization-id'] as string;
+    if (req.headers['x-user-email']) headers['x-user-email'] = req.headers['x-user-email'] as string;
+    if (token) headers['authorization'] = `Bearer ${token}`;
+
+    this.logger.debug(`${req.method} ${req.url} -> ${serviceName} (${targetUrl})`);
+
+    const response: AxiosResponse = await lastValueFrom(
+      this.httpService.request({
+        method: req.method,
+        url: targetUrl,
+        headers,
+        data: req.body,
+        validateStatus: () => true,
+      }),
+    );
+
+    const skipHeaders = ['transfer-encoding', 'content-encoding', 'content-length'];
+    for (const [key, value] of Object.entries(response.headers)) {
+      if (!skipHeaders.includes(key.toLowerCase())) {
+        res.setHeader(key, value as string | string[]);
       }
     }
 
-    next();
+    res.status(response.status).json(response.data);
+  }
+
+  private buildTargetUrl(req: any, route: ServiceRoute): string {
+    const target = new URL(route.target);
+    const path = req.url.split('?')[0];
+    const queryString = req.url.includes('?') ? `?${req.url.split('?')[1]}` : '';
+
+    if (route.rewrite !== false) {
+      const rewrittenPath = this.routingService.rewritePath(path);
+      return `${target.origin}${rewrittenPath}${queryString}`;
+    }
+
+    return `${target.origin}${path}${queryString}`;
   }
 }

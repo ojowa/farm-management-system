@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { platformUsersAPI } from '@/lib/api';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
 interface User {
   id: string;
@@ -29,7 +30,7 @@ export default function UsersPage() {
       const { data } = await platformUsersAPI.list({ page, limit: 20, search: search || undefined });
       setUsers(data.users);
       setTotal(data.total);
-    } catch { /* ignore */ }
+    } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };
 
@@ -37,14 +38,19 @@ export default function UsersPage() {
 
   const handleDeactivate = async (id: string) => {
     if (!confirm('Deactivate this user?')) return;
-    await platformUsersAPI.deactivate(id);
-    loadUsers();
+    try {
+      await platformUsersAPI.deactivate(id);
+      toastSuccess('User deactivated');
+      loadUsers();
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const handleForceLogout = async (id: string) => {
     if (!confirm('Force logout all sessions?')) return;
-    await platformUsersAPI.forceLogout(id);
-    alert('Sessions terminated');
+    try {
+      await platformUsersAPI.forceLogout(id);
+      toastSuccess('Sessions terminated');
+    } catch (err) { toastError(getErrorMessage(err)); }
   };
 
   const totalPages = Math.ceil(total / 20);

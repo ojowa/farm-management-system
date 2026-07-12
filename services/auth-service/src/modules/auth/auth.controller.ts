@@ -8,7 +8,7 @@ import { ZodValidationPipe } from '@farm/utils';
 import { loginSchema, registerSchema } from '@farm/validation';
 import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
-import { Response } from 'express';
+
 
 @Controller('auth')
 export class AuthController {
@@ -16,7 +16,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body(new ZodValidationPipe(loginSchema)) body: any, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async login(@Body(new ZodValidationPipe(loginSchema)) body: any, @Req() req: any, @Res({ passthrough: true }) res: any) {
     const result = await this.authService.login(body, {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
@@ -30,7 +30,7 @@ export class AuthController {
 
   @Post('verify-mfa')
   @HttpCode(HttpStatus.OK)
-  async verifyMFA(@Body() body: any, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async verifyMFA(@Body() body: any, @Req() req: any, @Res({ passthrough: true }) res: any) {
     const { mfaToken, code } = body;
     const result = await this.authService.verifyMFA(mfaToken, code, {
       ipAddress: req.ip, userAgent: req.headers['user-agent'],
@@ -41,7 +41,7 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body(new ZodValidationPipe(registerSchema)) body: any, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async register(@Body(new ZodValidationPipe(registerSchema)) body: any, @Req() req: any, @Res({ passthrough: true }) res: any) {
     const result = await this.authService.register(body, {
       ipAddress: req.ip, userAgent: req.headers['user-agent'],
     });
@@ -57,7 +57,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body('refreshToken') refreshToken: string, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async refresh(@Body('refreshToken') refreshToken: string, @Req() req: any, @Res({ passthrough: true }) res: any) {
     const token = refreshToken || req.cookies?.refreshToken;
     if (!token) throw new BadRequestException('Refresh token required');
     const wasReused = await this.authService.detectRefreshTokenReuse(token);
@@ -102,7 +102,7 @@ export class AuthController {
   }
 
   @Put('password')
-  async changePassword(@Req() req: any, @Body() body: any, @Res({ passthrough: true }) res: Response) {
+  async changePassword(@Req() req: any, @Body() body: any, @Res({ passthrough: true }) res: any) {
     const { currentPassword, newPassword } = body;
     if (!currentPassword || !newPassword) throw new BadRequestException('Current and new password are required');
     const fullUser = await prisma.user.findUnique({ where: { id: req.user.sub } });
@@ -135,7 +135,7 @@ export class AuthController {
 
   @Post('switch-organization')
   @HttpCode(HttpStatus.OK)
-  async switchOrganization(@Req() req: any, @Body('organizationId') organizationId: string, @Res({ passthrough: true }) res: Response) {
+  async switchOrganization(@Req() req: any, @Body('organizationId') organizationId: string, @Res({ passthrough: true }) res: any) {
     if (!organizationId) throw new BadRequestException('organizationId required');
     const membership = await prisma.userOrganization.findUnique({ where: { userId_organizationId: { userId: req.user.sub, organizationId } } });
     if (!membership || !membership.isActive) throw new ForbiddenException('Not a member of this organization');
@@ -152,7 +152,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: any) {
     await this.authService.logout(req.user.sub);
     this.clearAuthCookies(res);
     return { message: 'Logged out successfully' };
@@ -202,13 +202,13 @@ export class AuthController {
     return { message: 'All sessions revoked' };
   }
 
-  private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+  private setAuthCookies(res: any, accessToken: string, refreshToken: string) {
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('accessToken', accessToken, { httpOnly: true, secure: isProduction, sameSite: isProduction ? 'none' : 'lax', maxAge: 15 * 60 * 1000, path: '/' });
     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: isProduction, sameSite: isProduction ? 'none' : 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
   }
 
-  private clearAuthCookies(res: Response) {
+  private clearAuthCookies(res: any) {
     res.clearCookie('accessToken', { path: '/' });
     res.clearCookie('refreshToken', { path: '/' });
   }
