@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import { RoleRepository } from '../../domain/repositories/role.repository';
 
 @Injectable()
 export class RolesService {
-  constructor(private readonly roleRepo: RoleRepository) {}
+  constructor(@Inject('RoleRepository') private readonly roleRepo: RoleRepository) {}
 
   async findAll() {
     return prisma.role.findMany({

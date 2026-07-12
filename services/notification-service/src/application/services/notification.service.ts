@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Notification } from '../../domain/entities/notification.entity';
 import { CreateNotificationRequest } from '../../presentation/dto/notification.dto';
 import { NotificationRepository } from '../../domain/repositories/notification.repository';
@@ -11,11 +11,10 @@ import { scopedPrisma } from '@farm/database';
 export class NotificationApplicationService {
   private readonly logger = new Logger(NotificationApplicationService.name);
 
-  constructor(
-    private readonly repository: NotificationRepository,
-    private readonly gateway: NotificationGateway,
-    private readonly emailService: EmailService,
-    private readonly pushService: PushService,
+  constructor(@Inject('NotificationRepository') private readonly repository: NotificationRepository, 
+    private readonly gateway: NotificationGateway, 
+    private readonly emailService: EmailService, 
+    private readonly pushService: PushService, 
   ) {}
 
   async create(createDto: CreateNotificationRequest): Promise<Notification> {

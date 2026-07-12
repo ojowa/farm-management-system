@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { OrganizationRepository } from '../../domain/repositories/organization.repository';
 import { CreateOrganizationRequest } from '@farm/types';
 
 @Injectable()
 export class OrganizationApplicationService {
-  constructor(private readonly orgRepo: OrganizationRepository) {}
+  constructor(@Inject('OrganizationRepository') private readonly orgRepo: OrganizationRepository) {}
 
   async create(createDto: CreateOrganizationRequest) {
     const existingBySlug = await this.orgRepo.findBySlug(createDto.slug);

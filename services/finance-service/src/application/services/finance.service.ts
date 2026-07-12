@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
 import {
   ExpenseRepository,
   SaleRepository,
@@ -11,14 +11,8 @@ import { FinanceEventService } from '../../infrastructure/messaging/finance.even
 
 @Injectable()
 export class FinanceApplicationService {
-  constructor(
-    private readonly expenseRepo: ExpenseRepository,
-    private readonly saleRepo: SaleRepository,
-    private readonly contractRepo: ContractRepository,
-    private readonly buyerRepo: BuyerRepository,
-    private readonly marketListingRepo: MarketListingRepository,
-    private readonly farmLookupRepo: FarmLookupRepository,
-    private readonly eventService: FinanceEventService,
+  constructor(@Inject('ExpenseRepository') private readonly expenseRepo: ExpenseRepository, @Inject('SaleRepository') private readonly saleRepo: SaleRepository, @Inject('ContractRepository') private readonly contractRepo: ContractRepository, @Inject('BuyerRepository') private readonly buyerRepo: BuyerRepository, @Inject('MarketListingRepository') private readonly marketListingRepo: MarketListingRepository, @Inject('FarmLookupRepository') private readonly farmLookupRepo: FarmLookupRepository, 
+    private readonly eventService: FinanceEventService, 
   ) {}
 
   private async assertFarmExists(farmId: string) {
@@ -32,7 +26,7 @@ export class FinanceApplicationService {
 
   // ── Expense CRUD ──────────────────────────────────────
 
-  async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string }, organizationId: string) {
+  async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string },  organizationId: string) {
     await this.assertFarmExists(data.farmId);
     const expense = await this.expenseRepo.create({
       farmId: data.farmId,

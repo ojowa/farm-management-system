@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PoultryRepository } from '../../infrastructure/persistence/poultry.repository';
 import { emitPoultryEvent } from '@farm/utils';
 
 @Injectable()
 export class PoultryApplicationService {
-  constructor(private readonly repository: PoultryRepository) {}
+  constructor(@Inject('PoultryHouseRepository') private readonly repository: PoultryRepository) {}
 
   // --- PoultryHouse ---
   async createPoultryHouse(data: any) {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import {
   FeatureFlagRepository,
   FeatureFlagOverrideRepository,
@@ -11,10 +11,7 @@ import {
 
 @Injectable()
 export class PlatformFeatureFlagService {
-  constructor(
-    private readonly featureFlagRepo: FeatureFlagRepository,
-    private readonly overrideRepo: FeatureFlagOverrideRepository,
-    private readonly auditLogRepo: AuditLogRepository,
+  constructor(@Inject('FeatureFlagRepository') private readonly featureFlagRepo: FeatureFlagRepository, @Inject('FeatureFlagOverrideRepository') private readonly overrideRepo: FeatureFlagOverrideRepository, @Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository, 
   ) {}
 
   async findAll() {
@@ -28,7 +25,7 @@ export class PlatformFeatureFlagService {
     return feature;
   }
 
-  async update(id: string, data: { isEnabled?: boolean; name?: string; description?: string }, auditUserId: string) {
+  async update(id: string,  data: { isEnabled?: boolean; name?: string; description?: string },  auditUserId: string) {
     await this.findOne(id);
     const updated = await this.featureFlagRepo.update(id, data);
     await this.auditLogRepo.create({ userId: auditUserId, action: 'feature.toggle', entity: 'FeatureFlag', entityId: id });
@@ -40,7 +37,7 @@ export class PlatformFeatureFlagService {
     return { overrides };
   }
 
-  async setOverride(featureId: string, data: { organizationId: string; isEnabled: boolean }, auditUserId: string) {
+  async setOverride(featureId: string,  data: { organizationId: string; isEnabled: boolean },  auditUserId: string) {
     if (!data.organizationId || data.isEnabled === undefined) {
       throw new BadRequestException('organizationId and isEnabled are required');
     }
@@ -50,7 +47,7 @@ export class PlatformFeatureFlagService {
     return override;
   }
 
-  async deleteOverride(featureId: string, orgId: string, auditUserId: string) {
+  async deleteOverride(featureId: string,  orgId: string,  auditUserId: string) {
     const override = await this.overrideRepo.findByIds(featureId, orgId);
     if (!override) throw new NotFoundException('Override not found');
     await this.overrideRepo.delete(featureId, orgId);
@@ -62,8 +59,7 @@ export class PlatformFeatureFlagService {
 @Injectable()
 export class PlatformSubscriptionService {
   constructor(
-    private readonly planRepo: SubscriptionPlanRepository,
-    private readonly auditLogRepo: AuditLogRepository,
+    @Inject('SubscriptionPlanRepository') private readonly planRepo: SubscriptionPlanRepository, @Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository, 
   ) {}
 
   async findAllPlans() {
@@ -89,7 +85,7 @@ export class PlatformSubscriptionService {
     maxStorage?: number;
     features?: any;
     sortOrder?: number;
-  }, auditUserId: string) {
+  },  auditUserId: string) {
     if (!data.name || !data.displayName) throw new BadRequestException('name and displayName are required');
     const existingPlan = await this.planRepo.findByName(data.name);
     if (existingPlan) throw new ConflictException('Plan with this name already exists');
@@ -113,7 +109,7 @@ export class PlatformSubscriptionService {
     return plan;
   }
 
-  async updatePlan(id: string, data: Partial<{
+  async updatePlan(id: string,  data: Partial<{
     displayName: string;
     description: string;
     price: number;
@@ -125,14 +121,14 @@ export class PlatformSubscriptionService {
     features: any;
     isActive: boolean;
     sortOrder: number;
-  }>, auditUserId: string) {
+  }>,  auditUserId: string) {
     await this.findOnePlan(id);
     const updated = await this.planRepo.update(id, data);
     await this.auditLogRepo.create({ userId: auditUserId, action: 'subscription.plan.update', entity: 'SubscriptionPlan', entityId: id });
     return updated;
   }
 
-  async deletePlan(id: string, auditUserId: string) {
+  async deletePlan(id: string,  auditUserId: string) {
     await this.findOnePlan(id);
     await this.planRepo.delete(id);
     await this.auditLogRepo.create({ userId: auditUserId, action: 'subscription.plan.delete', entity: 'SubscriptionPlan', entityId: id });
@@ -142,7 +138,7 @@ export class PlatformSubscriptionService {
 
 @Injectable()
 export class PlatformAuditService {
-  constructor(private readonly auditLogRepo: AuditLogRepository) {}
+  constructor(@Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
 
   async findAll(query: {
     page?: number;
@@ -165,7 +161,7 @@ export class PlatformAuditService {
 
 @Injectable()
 export class PlatformHealthService {
-  constructor(private readonly healthRepo: SystemHealthRepository) {}
+  constructor(@Inject('SystemHealthRepository') private readonly healthRepo: SystemHealthRepository) {}
 
   async getHealth() {
     const services = await this.healthRepo.findMany();
@@ -255,7 +251,7 @@ export class PlatformHealthService {
 
 @Injectable()
 export class PlatformUserService {
-  constructor(private readonly auditLogRepo: AuditLogRepository) {}
+  constructor(@Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
 
   async findAllUsers(query: { page?: number; limit?: number; search?: string }) {
     const { prisma } = await import('@farm/database');
@@ -387,7 +383,7 @@ export class PlatformUserService {
 
 @Injectable()
 export class PlatformOrganizationService {
-  constructor(private readonly auditLogRepo: AuditLogRepository) {}
+  constructor(@Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
 
   async findAllOrganizations(query: { page?: number; limit?: number; search?: string; subscriptionPlan?: string; subscriptionStatus?: string }) {
     const { prisma } = await import('@farm/database');
@@ -589,7 +585,7 @@ export class PlatformOrganizationService {
 
 @Injectable()
 export class PlatformBroadcastService {
-  constructor(private readonly broadcastRepo: BroadcastRepository, private readonly auditLogRepo: AuditLogRepository) {}
+  constructor(@Inject('BroadcastRepository') private readonly broadcastRepo: BroadcastRepository, @Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
 
   async findAllBroadcasts() {
     const broadcasts = await this.broadcastRepo.findMany();
@@ -637,7 +633,7 @@ export class PlatformBroadcastService {
 
 @Injectable()
 export class PlatformConfigService {
-  constructor(private readonly configRepo: PlatformConfigRepository, private readonly auditLogRepo: AuditLogRepository) {}
+  constructor(@Inject('PlatformConfigRepository') private readonly configRepo: PlatformConfigRepository, @Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
 
   async findAllConfig() {
     const configs = await this.configRepo.findMany();

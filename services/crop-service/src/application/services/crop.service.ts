@@ -1,14 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CropRepository, CropCycleRepository } from '../../domain/repositories/crop.repository';
 import { CropEventService } from '../../infrastructure/messaging/crop.event.service';
 
 @Injectable()
 export class CropApplicationService {
-  constructor(
-    private readonly cropRepo: CropRepository,
-    private readonly cropCycleRepo: CropCycleRepository,
-    private readonly eventService: CropEventService,
-  ) {}
+  constructor(@Inject('CropRepository') private readonly cropRepo: CropRepository, @Inject('CropCycleRepository') private readonly cropCycleRepo: CropCycleRepository, 
+    private readonly eventService: CropEventService) {}
 
   async createCrop(data: { name: string }) {
     const crop = await this.cropRepo.create({ name: data.name });

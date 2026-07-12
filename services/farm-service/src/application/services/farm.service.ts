@@ -1,14 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
 import { FarmRepository, FieldRepository } from '../../domain/repositories/farm.repository';
 import { FarmEventService } from '../../infrastructure/messaging/farm.event.service';
 
 @Injectable()
 export class FarmApplicationService {
-  constructor(
-    private readonly farmRepo: FarmRepository,
-    private readonly fieldRepo: FieldRepository,
-    private readonly eventService: FarmEventService,
-  ) {}
+  constructor(@Inject('FarmRepository') private readonly farmRepo: FarmRepository, @Inject('FieldRepository') private readonly fieldRepo: FieldRepository, 
+    private readonly eventService: FarmEventService) {}
 
   async createFarm(data: {
     organizationId: string;

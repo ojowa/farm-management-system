@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import {
   WorkerRepository,
   AttendanceRepository,
@@ -20,20 +20,8 @@ const CAN_APPROVE_LEAVE_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVIS
 
 @Injectable()
 export class HrApplicationService {
-  constructor(
-    private readonly workerRepo: WorkerRepository,
-    private readonly attendanceRepo: AttendanceRepository,
-    private readonly taskRepo: TaskRepository,
-    private readonly shiftRepo: ShiftRepository,
-    private readonly shiftAssignmentRepo: ShiftAssignmentRepository,
-    private readonly leaveTypeRepo: LeaveTypeRepository,
-    private readonly leaveRequestRepo: LeaveRequestRepository,
-    private readonly leaveBalanceRepo: LeaveBalanceRepository,
-    private readonly messageRepo: MessageRepository,
-    private readonly messageRecipientRepo: MessageRecipientRepository,
-    private readonly correspondenceRepo: CorrespondenceRepository,
-    private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository,
-    private readonly eventService: HrEventService,
+  constructor(@Inject('WorkerRepository') private readonly workerRepo: WorkerRepository, @Inject('AttendanceRepository') private readonly attendanceRepo: AttendanceRepository, @Inject('TaskRepository') private readonly taskRepo: TaskRepository, @Inject('ShiftRepository') private readonly shiftRepo: ShiftRepository, @Inject('ShiftAssignmentRepository') private readonly shiftAssignmentRepo: ShiftAssignmentRepository, @Inject('LeaveTypeRepository') private readonly leaveTypeRepo: LeaveTypeRepository, @Inject('LeaveRequestRepository') private readonly leaveRequestRepo: LeaveRequestRepository, @Inject('LeaveBalanceRepository') private readonly leaveBalanceRepo: LeaveBalanceRepository, @Inject('MessageRepository') private readonly messageRepo: MessageRepository, @Inject('MessageRecipientRepository') private readonly messageRecipientRepo: MessageRecipientRepository, @Inject('CorrespondenceRepository') private readonly correspondenceRepo: CorrespondenceRepository, @Inject('CorrespondenceAttachmentRepository') private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository, 
+    private readonly eventService: HrEventService, 
   ) {}
 
   // Worker operations
@@ -70,7 +58,7 @@ export class HrApplicationService {
     return worker;
   }
 
-  async updateWorker(id: string, data: Partial<{
+  async updateWorker(id: string,  data: Partial<{
     firstName: string;
     lastName: string;
     email: string;
@@ -92,7 +80,7 @@ export class HrApplicationService {
   }
 
   // Attendance operations
-  async getAttendance(organizationId: string, filters?: {
+  async getAttendance(organizationId: string,  filters?: {
     workerId?: string;
     date?: string;
     startDate?: string;

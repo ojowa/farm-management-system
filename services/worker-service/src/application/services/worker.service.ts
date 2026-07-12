@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
 import { WorkerRepository } from '../../domain/repositories/worker.repository';
 
 @Injectable()
 export class WorkerApplicationService {
-  constructor(private readonly workerRepo: WorkerRepository) {}
+  constructor(@Inject('WorkerRepository') private readonly workerRepo: WorkerRepository) {}
 
   async createWorker(data: { farmId: string; firstName: string; lastName: string; position: string; status?: string }) {
     return this.workerRepo.create({ ...data, status: data.status || 'ACTIVE' });

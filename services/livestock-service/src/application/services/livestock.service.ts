@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
 import {
   LivestockRepository,
   HealthRecordRepository,
@@ -12,13 +12,8 @@ import { Livestock, HealthRecord, BreedingRecord, WeightRecord, VaccinationSched
 
 @Injectable()
 export class LivestockApplicationService {
-  constructor(
-    private readonly livestockRepo: LivestockRepository,
-    private readonly healthRepo: HealthRecordRepository,
-    private readonly breedingRepo: BreedingRecordRepository,
-    private readonly weightRepo: WeightRecordRepository,
-    private readonly vaccinationRepo: VaccinationScheduleRepository,
-    private readonly eventService: LivestockEventService,
+  constructor(@Inject('LivestockRepository') private readonly livestockRepo: LivestockRepository, @Inject('HealthRecordRepository') private readonly healthRepo: HealthRecordRepository, @Inject('BreedingRecordRepository') private readonly breedingRepo: BreedingRecordRepository, @Inject('WeightRecordRepository') private readonly weightRepo: WeightRecordRepository, @Inject('VaccinationScheduleRepository') private readonly vaccinationRepo: VaccinationScheduleRepository, 
+    private readonly eventService: LivestockEventService, 
   ) {}
 
   async createLivestock(data: {
@@ -53,16 +48,16 @@ export class LivestockApplicationService {
   }
 
   async getAllLivestock(
-    filter: LivestockFilter = {},
-    sortBy: string = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc',
-    page: number = 1,
-    limit: number = 20,
+    filter: LivestockFilter = {}, 
+    sortBy: string = 'createdAt', 
+    sortOrder: 'asc' | 'desc' = 'desc', 
+    page: number = 1, 
+    limit: number = 20, 
   ) {
     return this.livestockRepo.findAll(filter, { sortBy, sortOrder, page, limit });
   }
 
-  async updateLivestock(id: string, data: Partial<{
+  async updateLivestock(id: string,  data: Partial<{
     farmId: string;
     species: string;
     breed: string | null;
@@ -94,7 +89,7 @@ export class LivestockApplicationService {
     return { deleted: true };
   }
 
-  async getHealthHistory(livestockId: string, organizationId: string): Promise<HealthRecord[]> {
+  async getHealthHistory(livestockId: string,  organizationId: string): Promise<HealthRecord[]> {
     return this.healthRepo.findByLivestockId(livestockId, organizationId);
   }
 

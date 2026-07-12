@@ -1,13 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
 import { MedicationRepository } from '../../infrastructure/persistence/medication.repository';
 import { PoultryApplicationService } from './poultry.service';
 import { emitPoultryEvent } from '@farm/utils';
 
 @Injectable()
 export class MedicationService {
-  constructor(
-    private readonly repository: MedicationRepository,
-    private readonly poultryService: PoultryApplicationService,
+  constructor(@Inject('MedicationRepository') private readonly repository: MedicationRepository, 
+    private readonly poultryService: PoultryApplicationService, 
   ) {}
 
   async create(data: any) {
@@ -41,7 +40,7 @@ export class MedicationService {
     return this.repository.getAll(params);
   }
 
-  async update(id: string, data: any) {
+  async update(id: string,  data: any) {
     await this.getById(id);
     if (data.flockId) {
       await this.poultryService.getFlockById(data.flockId);

@@ -1,14 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ReportRepository, ScheduledReportRepository } from '../../domain/repositories/report.repository';
 
 @Injectable()
 export class ReportApplicationService {
-  constructor(
-    private readonly reportRepo: ReportRepository,
-    private readonly scheduledReportRepo: ScheduledReportRepository,
+  constructor(@Inject('ReportRepository') private readonly reportRepo: ReportRepository, @Inject('ScheduledReportRepository') private readonly scheduledReportRepo: ScheduledReportRepository, 
   ) {}
 
-  async getAllReports(organizationId: string, options: {
+  async getAllReports(organizationId: string,  options: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -18,13 +16,13 @@ export class ReportApplicationService {
     return this.reportRepo.findByOrganizationId(organizationId, options);
   }
 
-  async getReportById(id: string, organizationId: string) {
+  async getReportById(id: string,  organizationId: string) {
     const report = await this.reportRepo.findById(id);
     if (!report) throw new NotFoundException(`Report with ID ${id} not found`);
     return report;
   }
 
-  async createReport(data: { farmId: string; title: string; status?: string; parameters?: Record<string, any> }, organizationId: string) {
+  async createReport(data: { farmId: string; title: string; status?: string; parameters?: Record<string, any> },  organizationId: string) {
     if (!data?.farmId || !data?.title) throw new BadRequestException('farmId and title are required');
     return this.reportRepo.create({
       farmId: data.farmId,
@@ -34,12 +32,12 @@ export class ReportApplicationService {
     });
   }
 
-  async updateReport(id: string, data: Partial<{ farmId: string; title: string; status: string; parameters: Record<string, any> }>, organizationId: string) {
+  async updateReport(id: string,  data: Partial<{ farmId: string; title: string; status: string; parameters: Record<string, any> }>,  organizationId: string) {
     await this.getReportById(id, organizationId);
     return this.reportRepo.update(id, data);
   }
 
-  async deleteReport(id: string, organizationId: string) {
+  async deleteReport(id: string,  organizationId: string) {
     await this.getReportById(id, organizationId);
     return this.reportRepo.delete(id);
   }

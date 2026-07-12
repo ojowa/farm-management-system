@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -15,13 +15,10 @@ function getJwtRefreshSecret() { return process.env.JWT_REFRESH_SECRET || 'dev-r
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly userRepo: UserRepository,
-    private readonly refreshTokenRepo: RefreshTokenRepository,
-    private readonly roleRepo: RoleRepository,
+  constructor(@Inject('UserRepository') private readonly userRepo: UserRepository, @Inject('RefreshTokenRepository') private readonly refreshTokenRepo: RefreshTokenRepository, @Inject('RoleRepository') private readonly roleRepo: RoleRepository, 
   ) {}
 
-  async login(data: { email: string; password: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
+  async login(data: { email: string; password: string },  ctx?: { ipAddress?: string; userAgent?: string }) {
     const user = await this.userRepo.findByEmail(data.email);
     if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
