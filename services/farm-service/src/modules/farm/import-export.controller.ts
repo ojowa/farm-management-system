@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Query, Body, Res, Header } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Res, Header, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { Response } from 'express';
 import { scopedPrisma } from '@farm/database';
 
@@ -6,8 +7,10 @@ function getOrgIdFromRequest(req: any): string {
   return String(req.headers['x-organization-id'] || req.user?.organizationId || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller()
 export class ImportExportController {
+  @Permission('farm.read')
   @Get('export/farms')
   async exportFarms(@Query('format') format: string, @Res() res: Response, req?: any) {
     const farms = await scopedPrisma.farm.findMany({
@@ -24,6 +27,7 @@ export class ImportExportController {
     return res.json(farms);
   }
 
+  @Permission('farm.write')
   @Post('import/farms')
   async importFarms(@Body() body: any, @Res() res: Response, req?: any) {
     const { data } = body;
@@ -42,6 +46,7 @@ export class ImportExportController {
     return res.status(201).json({ count: created.count, message: `${created.count} farms imported` });
   }
 
+  @Permission('farm.read')
   @Get('export/crops')
   async exportCrops(@Query('format') format: string, @Res() res: Response) {
     const crops = await scopedPrisma.crop.findMany();
@@ -55,6 +60,7 @@ export class ImportExportController {
     return res.json(crops);
   }
 
+  @Permission('farm.read')
   @Get('export/workers')
   async exportWorkers(@Query('format') format: string, @Res() res: Response) {
     const workers = await scopedPrisma.worker.findMany();

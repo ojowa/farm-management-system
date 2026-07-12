@@ -1,0 +1,5 @@
+export enum BuyerType {
+  INDIVIDUAL = 'INDIVIDUAL',
+  COMPANY = 'COMPANY',
+  COOPERATIVE = 'COOPERATIVE',
+}

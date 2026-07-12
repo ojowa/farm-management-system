@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('irrigation')
 export class IrrigationController {
+  @Permission('crop.read')
   @Get('schedule')
   async getActiveSchedules(@Query('organizationId') orgId: string, @Query('farmId') farmId?: string) {
     const where: any = { organizationId: orgId, isActive: true };
@@ -10,6 +13,7 @@ export class IrrigationController {
     return scopedPrisma.irrigationSchedule.findMany({ where, orderBy: { nextRun: 'asc' } });
   }
 
+  @Permission('crop.write')
   @Post('schedule')
   @HttpCode(HttpStatus.CREATED)
   async createSchedule(@Body() body: any, @Query('organizationId') orgId: string) {
@@ -24,6 +28,7 @@ export class IrrigationController {
     });
   }
 
+  @Permission('crop.write')
   @Put('schedule/:id')
   async updateSchedule(@Param('id') id: string, @Body() body: any) {
     const updateData: any = {};
@@ -36,12 +41,14 @@ export class IrrigationController {
     return scopedPrisma.irrigationSchedule.update({ where: { id }, data: updateData });
   }
 
+  @Permission('crop.delete')
   @Delete('schedule/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSchedule(@Param('id') id: string) {
     await scopedPrisma.irrigationSchedule.delete({ where: { id } });
   }
 
+  @Permission('crop.write')
   @Post('log')
   @HttpCode(HttpStatus.CREATED)
   async recordLog(@Body() body: any, @Query('organizationId') orgId: string) {
@@ -58,6 +65,7 @@ export class IrrigationController {
     return log;
   }
 
+  @Permission('crop.read')
   @Get('log')
   async getLogs(@Query('organizationId') orgId: string, @Query('farmId') farmId?: string, @Query('scheduleId') scheduleId?: string) {
     const where: any = { organizationId: orgId };

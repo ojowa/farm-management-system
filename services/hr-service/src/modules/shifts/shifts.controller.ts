@@ -12,16 +12,20 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgId(req: Request): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('shifts')
 export class ShiftsController {
+  @Permission('hr.read')
   @Get()
   async findAll(@Req() req: Request) {
     const orgId = getOrgId(req);
@@ -32,6 +36,7 @@ export class ShiftsController {
     });
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -58,6 +63,7 @@ export class ShiftsController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id')
   async update(
     @Param('id') id: string,
@@ -79,6 +85,7 @@ export class ShiftsController {
     });
   }
 
+  @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {

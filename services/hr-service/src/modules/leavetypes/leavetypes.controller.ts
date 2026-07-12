@@ -12,16 +12,20 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgId(req: Request): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('leave/types')
 export class LeaveTypesController {
+  @Permission('hr.read')
   @Get()
   async findAll(@Req() req: Request) {
     const orgId = getOrgId(req);
@@ -32,6 +36,7 @@ export class LeaveTypesController {
     });
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: Request, @Body() body: { name: string; daysPerYear?: number; isPaid?: boolean }) {
@@ -52,6 +57,7 @@ export class LeaveTypesController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id')
   async update(@Param('id') id: string, @Body() body: { name?: string; daysPerYear?: number; isPaid?: boolean; isActive?: boolean }) {
     const existing = await scopedPrisma.leaveType.findFirst({ where: { id } });
@@ -69,6 +75,7 @@ export class LeaveTypesController {
     });
   }
 
+  @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {

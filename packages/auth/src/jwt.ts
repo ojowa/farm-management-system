@@ -8,10 +8,10 @@ const verify = (jwt as any).verify as (
 ) => unknown;
 
 export interface VerifiedUser {
-
   id: string;
   email: string | null;
   role: string;
+  permissions: string[];
   organizationId: string | null;
 }
 
@@ -31,7 +31,6 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
   // jsonwebtoken typings vary by version; keep runtime typing explicit.
   const decoded = verify(token, resolveSecret()) as any;
 
-
   if (!decoded || !decoded.sub || !decoded.role) {
     throw new Error('Invalid token payload');
   }
@@ -40,10 +39,10 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
     id: decoded.sub,
     email: decoded.email ?? null,
     role: decoded.role,
+    permissions: decoded.permissions ?? [],
     organizationId: decoded.organizationId ?? null,
   };
 };
-
 
 export const extractBearerToken = (authorization?: string | null): string | null => {
   if (!authorization) {

@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('contracts')
 export class ContractController {
+  @Permission('finance.read')
   @Get()
   async findAll(@Query('type') type?: string, @Query('status') status?: string, @Query('organizationId') orgId?: string) {
     const where: any = {};
@@ -12,6 +15,7 @@ export class ContractController {
     return scopedPrisma.contract.findMany({ where, orderBy: { createdAt: 'desc' } });
   }
 
+  @Permission('finance.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() body: any, @Query('organizationId') orgId?: string) {
@@ -26,6 +30,7 @@ export class ContractController {
     });
   }
 
+  @Permission('finance.write')
   @Put(':id')
   async update(@Param('id') id: string, @Body() body: any) {
     const updateData: any = {};
@@ -39,6 +44,7 @@ export class ContractController {
     return scopedPrisma.contract.update({ where: { id }, data: updateData });
   }
 
+  @Permission('finance.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {

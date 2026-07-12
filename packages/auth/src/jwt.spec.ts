@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import { verifyAccessToken, extractBearerToken } from './jwt';
-import { roleHasPermission, userHasAnyRole, ROLES } from './roles';
+import { userHasPermission, userHasAnyRole, ROLES } from './roles';
 
 const SECRET = 'test-secret';
 
@@ -11,7 +11,7 @@ test('verifyAccessToken rejects an expired token', () => {
   process.env.JWT_SECRET = SECRET;
   try {
     const token = jwt.sign(
-      { sub: 'u1', role: ROLES.WORKER, organizationId: 'o1' },
+      { sub: 'u1', role: ROLES.WORKER, permissions: [], organizationId: 'o1' },
       SECRET,
       { expiresIn: '-1s' },
     );
@@ -30,7 +30,7 @@ test('verifyAccessToken returns the verified principal on a valid token', () => 
   process.env.JWT_SECRET = SECRET;
   try {
     const token = jwt.sign(
-      { sub: 'u1', role: ROLES.FARM_MANAGER, organizationId: 'o1', email: 'a@b.c' },
+      { sub: 'u1', role: ROLES.FARM_MANAGER, permissions: ['farm.read', 'farm.write'], organizationId: 'o1', email: 'a@b.c' },
       SECRET,
       { expiresIn: '5m' },
     );
@@ -39,6 +39,7 @@ test('verifyAccessToken returns the verified principal on a valid token', () => 
       id: 'u1',
       email: 'a@b.c',
       role: ROLES.FARM_MANAGER,
+      permissions: ['farm.read', 'farm.write'],
       organizationId: 'o1',
     });
   } finally {
@@ -65,21 +66,21 @@ test('extractBearerToken parses the header', () => {
   assert.equal(extractBearerToken(''), null);
 });
 
-test('roleHasPermission grants wildcard to SUPER_ADMIN', () => {
-  assert.equal(roleHasPermission(ROLES.SUPER_ADMIN, 'farm.write'), true);
+test('userHasPermission grants wildcard to SUPER_ADMIN', () => {
+  assert.equal(userHasPermission(['*'], 'farm.write'), true);
 });
 
-test('roleHasPermission matches explicit grants', () => {
-  assert.equal(roleHasPermission(ROLES.FARM_MANAGER, 'farm.write'), true);
-  assert.equal(roleHasPermission(ROLES.WORKER, 'farm.write'), false);
+test('userHasPermission matches explicit grants', () => {
+  assert.equal(userHasPermission(['farm.read', 'farm.write'], 'farm.write'), true);
+  assert.equal(userHasPermission(['farm.read'], 'farm.write'), false);
 });
 
-test('roleHasPermission matches wildcards on the granted permission', () => {
-  assert.equal(roleHasPermission(ROLES.ORGANIZATION_OWNER, 'finance.delete'), true);
+test('userHasPermission matches wildcards on the granted permission', () => {
+  assert.equal(userHasPermission(['finance.*'], 'finance.delete'), true);
 });
 
-test('roleHasPermission returns false for unknown roles', () => {
-  assert.equal(roleHasPermission('UNKNOWN_ROLE', 'farm.read'), false);
+test('userHasPermission returns false for empty permissions', () => {
+  assert.equal(userHasPermission([], 'farm.read'), false);
 });
 
 test('userHasAnyRole works for allowed and denied roles', () => {

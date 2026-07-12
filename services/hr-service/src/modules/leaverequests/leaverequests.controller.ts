@@ -13,8 +13,10 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 import { createNotification } from '../../lib/notificationClient';
 
@@ -34,8 +36,10 @@ function canApprove(role: string): boolean {
   return ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'].includes(role);
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('leave/requests')
 export class LeaveRequestsController {
+  @Permission('hr.read')
   @Get()
   async findAll(
     @Req() req: Request,
@@ -64,6 +68,7 @@ export class LeaveRequestsController {
     });
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -113,6 +118,7 @@ export class LeaveRequestsController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id/approve')
   async approve(@Param('id') id: string, @Req() req: Request) {
     const role = getUserRole(req);
@@ -164,6 +170,7 @@ export class LeaveRequestsController {
     return updated;
   }
 
+  @Permission('hr.write')
   @Put(':id/reject')
   async reject(
     @Param('id') id: string,
@@ -205,6 +212,7 @@ export class LeaveRequestsController {
     return updated;
   }
 
+  @Permission('hr.write')
   @Put(':id/cancel')
   async cancel(@Param('id') id: string, @Req() req: Request) {
     const userId = getUserId(req);

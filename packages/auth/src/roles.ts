@@ -19,179 +19,15 @@ export const ROLES = {
 export type RoleName = (typeof ROLES)[keyof typeof ROLES];
 
 /**
- * A coarse-grained authorization matrix grouped by domain. Services should
- * pick the role set that matches their surface (e.g. workers can read farms
- * but cannot delete them). Roles not listed here implicitly have no access.
+ * Permission matching with wildcard support.
+ * Permissions are now stored in the database and loaded at login time.
+ * This utility is used by the AuthorizationGuard to check permissions.
  */
-export const ROLE_PERMISSIONS = {
-  // Cross-cutting / platform level
-  SUPER_ADMIN: ['*'],
-  SUPPORT_ADMIN: ['*.read'],
-
-  // Organization-wide authority
-  ORGANIZATION_OWNER: [
-    'farm.read',
-    'farm.write',
-    'farm.delete',
-    'crop.read',
-    'crop.write',
-    'crop.delete',
-    'livestock.read',
-    'livestock.write',
-    'livestock.delete',
-    'poultry.read',
-    'poultry.write',
-    'poultry.delete',
-    'inventory.read',
-    'inventory.write',
-    'inventory.delete',
-    'finance.read',
-    'finance.write',
-    'finance.delete',
-    'worker.read',
-    'worker.write',
-    'worker.delete',
-    'task.read',
-    'task.write',
-    'task.delete',
-    'leave.read',
-    'leave.write',
-    'leave.approve',
-    'roster.read',
-    'roster.write',
-    'messaging.read',
-    'messaging.write',
-    'correspondence.read',
-    'correspondence.write',
-    'correspondence.archive',
-    'notification.read',
-    'notification.write',
-    'reporting.read',
-    'reporting.write',
-    'organization.read',
-    'organization.write',
-    'organization.delete',
-    'organization.manage',
-    'users.manage',
-    'billing.manage',
-  ],
-
-  // Domain managers
-  FARM_MANAGER: [
-    'farm.read',
-    'farm.write',
-    'farm.delete',
-    'crop.read',
-    'crop.write',
-    'crop.delete',
-    'livestock.read',
-    'livestock.write',
-    'livestock.delete',
-    'poultry.read',
-    'poultry.write',
-    'poultry.delete',
-    'inventory.read',
-    'inventory.write',
-    'worker.read',
-    'worker.write',
-    'task.read',
-    'task.write',
-    'task.delete',
-    'leave.read',
-    'leave.write',
-    'leave.approve',
-    'roster.read',
-    'roster.write',
-    'messaging.read',
-    'messaging.write',
-    'correspondence.read',
-    'correspondence.write',
-    'correspondence.archive',
-    'finance.read',
-    'finance.write',
-    'notification.read',
-    'reporting.read',
-  ],
-  ACCOUNTANT: [
-    'finance.read',
-    'finance.write',
-    'farm.read',
-    'inventory.read',
-    'task.read',
-    'messaging.read',
-    'messaging.write',
-    'correspondence.read',
-    'reporting.read',
-  ],
-  SUPERVISOR: [
-    'farm.read',
-    'crop.read',
-    'crop.write',
-    'livestock.read',
-    'livestock.write',
-    'poultry.read',
-    'poultry.write',
-    'worker.read',
-    'worker.write',
-    'task.read',
-    'task.write',
-    'task.delete',
-    'leave.read',
-    'leave.write',
-    'leave.approve',
-    'roster.read',
-    'roster.write',
-    'messaging.read',
-    'messaging.write',
-    'correspondence.read',
-    'correspondence.write',
-    'notification.read',
-    'reporting.read',
-  ],
-  VETERINARIAN: [
-    'livestock.read',
-    'livestock.write',
-    'livestock.delete',
-    'poultry.read',
-    'poultry.write',
-    'farm.read',
-    'task.read',
-    'task.write',
-    'messaging.read',
-    'messaging.write',
-    'correspondence.read',
-    'notification.read',
-  ],
-
-  // Field operators
-  WORKER: [
-    'farm.read',
-    'crop.read',
-    'livestock.read',
-    'poultry.read',
-    'inventory.read',
-    'worker.read',
-    'task.read',
-    'task.write',
-    'leave.read',
-    'leave.write',
-    'roster.read',
-    'messaging.read',
-    'messaging.write',
-    'correspondence.read',
-    'notification.read',
-  ],
-} as const satisfies Record<string, readonly string[]>;
-
 const WILDCARD = '*';
 
-const matches = (granted: string, required: string): boolean => {
-  if (granted === WILDCARD) {
-    return true;
-  }
-  if (granted === required) {
-    return true;
-  }
+export const matchesPermission = (granted: string, required: string): boolean => {
+  if (granted === WILDCARD) return true;
+  if (granted === required) return true;
   if (granted.endsWith('.*')) {
     const prefix = granted.slice(0, -2);
     return required === prefix || required.startsWith(`${prefix}.`);
@@ -200,15 +36,11 @@ const matches = (granted: string, required: string): boolean => {
 };
 
 /**
- * Returns true if the role grants the required permission. SUPER_ADMIN and
- * platform-wide wildcards short-circuit to true.
+ * Returns true if the user's permissions grant the required permission.
+ * Permissions are loaded from DB at login and embedded in the JWT.
  */
-export const roleHasPermission = (role: string, permission: string): boolean => {
-  const grants = ROLE_PERMISSIONS[role as RoleName];
-  if (!grants) {
-    return false;
-  }
-  return grants.some((g) => matches(g, permission));
+export const userHasPermission = (userPermissions: string[], required: string): boolean => {
+  return userPermissions.some((p) => matchesPermission(p, required));
 };
 
 /**
@@ -218,8 +50,6 @@ export const userHasAnyRole = (
   userRole: string,
   allowed: readonly string[],
 ): boolean => {
-  if (!userRole || allowed.length === 0) {
-    return false;
-  }
+  if (!userRole || allowed.length === 0) return false;
   return allowed.includes(userRole);
 };

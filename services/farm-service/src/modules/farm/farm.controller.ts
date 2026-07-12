@@ -10,15 +10,19 @@ import {
   UsePipes,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { FarmService } from './farm.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createFarmSchema, updateFarmSchema } from '@farm/validation';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('farms')
 export class FarmController {
   constructor(private readonly farmService: FarmService) {}
 
+  @Permission('farm.write')
   @Post()
   @UsePipes(new ZodValidationPipe(createFarmSchema))
   @HttpCode(HttpStatus.CREATED)
@@ -26,6 +30,7 @@ export class FarmController {
     return this.farmService.createFarm(data);
   }
 
+  @Permission('farm.read')
   @Get()
   async findAll(
     @Query('page') page?: string,
@@ -52,17 +57,20 @@ export class FarmController {
     );
   }
 
+  @Permission('farm.read')
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.farmService.getFarmById(id);
   }
 
+  @Permission('farm.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateFarmSchema))
   async update(@Param('id') id: string, @Body() data: any) {
     return this.farmService.updateFarm(id, data);
   }
 
+  @Permission('farm.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {

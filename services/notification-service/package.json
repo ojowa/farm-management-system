@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@farm/auth": "workspace:*",
+    "@farm/domain-core": "workspace:*",
+    "@farm/notification-domain": "workspace:*",
     "@farm/database": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/utils": "workspace:*",

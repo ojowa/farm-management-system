@@ -10,15 +10,19 @@ import {
   UsePipes,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { CropService } from './crop.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createCropSchema, updateCropSchema, createCropCycleSchema, updateCropCycleSchema } from '@farm/validation';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('crops')
 export class CropController {
   constructor(private readonly cropService: CropService) {}
 
+  @Permission('crop.write')
   @Post()
   @UsePipes(new ZodValidationPipe(createCropSchema))
   @HttpCode(HttpStatus.CREATED)
@@ -26,6 +30,7 @@ export class CropController {
     return this.cropService.createCrop(data);
   }
 
+  @Permission('crop.read')
   @Get()
   async getAllCrops(
     @Query('page') page?: string,
@@ -39,23 +44,27 @@ export class CropController {
     return this.cropService.getAllCrops(filter, sortBy || 'createdAt', sortOrder || 'desc', parseInt(page || '1'), parseInt(limit || '20'));
   }
 
+  @Permission('crop.read')
   @Get(':id')
   async getCropById(@Param('id') id: string) {
     return this.cropService.getCropById(id);
   }
 
+  @Permission('crop.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateCropSchema))
   async updateCrop(@Param('id') id: string, @Body() data: any) {
     return this.cropService.updateCrop(id, data);
   }
 
+  @Permission('crop.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteCrop(@Param('id') id: string) {
     return this.cropService.deleteCrop(id);
   }
 
+  @Permission('crop.write')
   @Post('cycles')
   @UsePipes(new ZodValidationPipe(createCropCycleSchema))
   @HttpCode(HttpStatus.CREATED)
@@ -63,6 +72,7 @@ export class CropController {
     return this.cropService.createCropCycle(data);
   }
 
+  @Permission('crop.read')
   @Get('cycles')
   async getAllCropCycles(
     @Query('page') page?: string,
@@ -80,17 +90,20 @@ export class CropController {
     return this.cropService.getAllCropCycles(filter, sortBy || 'createdAt', sortOrder || 'desc', parseInt(page || '1'), parseInt(limit || '20'));
   }
 
+  @Permission('crop.read')
   @Get('cycles/:id')
   async getCropCycleById(@Param('id') id: string) {
     return this.cropService.getCropCycleById(id);
   }
 
+  @Permission('crop.write')
   @Put('cycles/:id')
   @UsePipes(new ZodValidationPipe(updateCropCycleSchema))
   async updateCropCycle(@Param('id') id: string, @Body() data: any) {
     return this.cropService.updateCropCycle(id, data);
   }
 
+  @Permission('crop.delete')
   @Delete('cycles/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteCropCycle(@Param('id') id: string) {

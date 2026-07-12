@@ -1,23 +1,46 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PlatformAuthModule } from './modules/platform-auth/platform-auth.module';
-import { PlatformUsersModule } from './modules/platform-users/platform-users.module';
-import { PlatformOrganizationsModule } from './modules/platform-organizations/platform-organizations.module';
-import { PlatformFeaturesModule } from './modules/platform-features/platform-features.module';
-import { PlatformSubscriptionsModule } from './modules/platform-subscriptions/platform-subscriptions.module';
-import { PlatformHealthModule } from './modules/platform-health/platform-health.module';
-import { PlatformAuditModule } from './modules/platform-audit/platform-audit.module';
+import { join } from 'path';
+import { PlatformFeaturesController } from './presentation/controllers/platform-features.controller';
+import { PlatformSubscriptionsController } from './presentation/controllers/platform-subscriptions.controller';
+import { PlatformAuditController } from './presentation/controllers/platform-audit.controller';
+import { PlatformHealthController } from './presentation/controllers/platform-health.controller';
+import {
+  PlatformFeatureFlagService,
+  PlatformSubscriptionService,
+  PlatformAuditService,
+  PlatformHealthService,
+} from './application/services/platform.service';
+import {
+  PrismaFeatureFlagRepository,
+  PrismaFeatureFlagOverrideRepository,
+  PrismaSubscriptionPlanRepository,
+  PrismaAuditLogRepository,
+  PrismaSystemHealthRepository,
+} from './infrastructure/persistence/prisma-platform.repository';
+import { PlatformAdminGuard } from './guards/platform-admin.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    PlatformAuthModule,
-    PlatformUsersModule,
-    PlatformOrganizationsModule,
-    PlatformFeaturesModule,
-    PlatformSubscriptionsModule,
-    PlatformHealthModule,
-    PlatformAuditModule,
+  ],
+  controllers: [
+    PlatformFeaturesController,
+    PlatformSubscriptionsController,
+    PlatformAuditController,
+    PlatformHealthController,
+  ],
+  providers: [
+    PlatformFeatureFlagService,
+    PlatformSubscriptionService,
+    PlatformAuditService,
+    PlatformHealthService,
+    PlatformAdminGuard,
+    { provide: 'FeatureFlagRepository', useClass: PrismaFeatureFlagRepository },
+    { provide: 'FeatureFlagOverrideRepository', useClass: PrismaFeatureFlagOverrideRepository },
+    { provide: 'SubscriptionPlanRepository', useClass: PrismaSubscriptionPlanRepository },
+    { provide: 'AuditLogRepository', useClass: PrismaAuditLogRepository },
+    { provide: 'SystemHealthRepository', useClass: PrismaSystemHealthRepository },
   ],
 })
 export class AppModule {}

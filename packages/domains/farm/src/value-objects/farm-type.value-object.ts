@@ -1,0 +1,7 @@
+export enum FarmType {
+  CROP = 'CROP',
+  LIVESTOCK = 'LIVESTOCK',
+  POULTRY = 'POULTRY',
+  DAIRY = 'DAIRY',
+  AQUACULTURE = 'AQUACULTURE',
+}

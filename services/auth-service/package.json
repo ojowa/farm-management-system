@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@farm/auth": "workspace:*",
+    "@farm/domain-core": "workspace:*",
+    "@farm/identity-domain": "workspace:*",
     "@farm/database": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/utils": "workspace:*",

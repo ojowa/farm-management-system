@@ -5,7 +5,7 @@ import {
   verifyAccessToken,
   type VerifiedUser,
 } from '../jwt';
-import { roleHasPermission, userHasAnyRole } from '../roles';
+import { userHasPermission, userHasAnyRole } from '../roles';
 
 export interface AuthenticatedRequest extends Request {
   user: VerifiedUser;
@@ -45,7 +45,7 @@ export const authMiddleware = (options: RequireAuthOptions = {}) => {
     if (options.roles && options.roles.length > 0 && !userHasAnyRole(user.role, options.roles)) {
       return sendAuthError(res, new AuthError(403, 'Insufficient role'));
     }
-    if (options.permission && !roleHasPermission(user.role, options.permission)) {
+    if (options.permission && !userHasPermission(user.permissions, options.permission)) {
       return sendAuthError(res, new AuthError(403, 'Insufficient permission'));
     }
 

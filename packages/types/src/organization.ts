@@ -5,8 +5,8 @@ export interface Organization {
   logo?: string;
   website?: string;
   industry?: string;
-  subscriptionPlan: 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
-  subscriptionStatus: 'ACTIVE' | 'INACTIVE' | 'TRIAL' | 'PAST_DUE';
+  subscriptionPlan: string;
+  subscriptionStatus: string;
   settings: OrganizationSettings;
   createdAt: Date;
   updatedAt: Date;

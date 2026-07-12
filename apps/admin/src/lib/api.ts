@@ -224,10 +224,6 @@ export const orgAdminAPI = {
 export const rolesAPI = {
   list: () => apiClient.get('/roles'),
   get: (id: string) => apiClient.get(`/roles/${id}`),
-  create: (data: any) => apiClient.post('/roles', data),
-  update: (id: string, data: any) => apiClient.put(`/roles/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/roles/${id}`),
-  setPermissions: (id: string, permissionIds: string[]) => apiClient.put(`/roles/${id}/permissions`, { permissionIds }),
 };
 
 export const permissionsAPI = {

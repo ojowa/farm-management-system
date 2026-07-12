@@ -1,15 +1,45 @@
 'use client';
 
+import { useAuth } from './auth';
+
+/**
+ * Permission matching with wildcard support.
+ * Mirrors the server-side logic in @farm/auth/roles.ts.
+ */
+function matchesPermission(granted: string, required: string): boolean {
+  if (granted === '*') return true;
+  if (granted === required) return true;
+  if (granted.endsWith('.*')) {
+    const prefix = granted.slice(0, -2);
+    return required === prefix || required.startsWith(`${prefix}.`);
+  }
+  return false;
+}
+
 export function usePermission() {
-  const hasPermission = (_permission: string): boolean => true;
+  const { user } = useAuth();
 
-  const hasAnyPermission = (..._perms: string[]): boolean => true;
+  // Extract flat permission names from the user's role
+  const permissions: string[] =
+    user?.role?.permissions?.flatMap(
+      (rp: any) => rp.permission?.map((p: any) => p.name) ?? []
+    ) ?? [];
 
-  const canCreate = (_domain: string) => true;
-  const canRead = (_domain: string) => true;
-  const canUpdate = (_domain: string) => true;
-  const canDelete = (_domain: string) => true;
-  const canApprove = (_domain: string) => true;
+  const role: string = user?.role?.name ?? '';
 
-  return { hasPermission, hasAnyPermission, canCreate, canRead, canUpdate, canDelete, canApprove, permissions: [], role: 'SUPER_ADMIN' };
+  const hasPermission = (permission: string): boolean => {
+    return permissions.some((p) => matchesPermission(p, permission));
+  };
+
+  const hasAnyPermission = (...perms: string[]): boolean => {
+    return perms.some((p) => hasPermission(p));
+  };
+
+  const canCreate = (domain: string) => hasPermission(`${domain}.write`);
+  const canRead = (domain: string) => hasPermission(`${domain}.read`);
+  const canUpdate = (domain: string) => hasPermission(`${domain}.write`);
+  const canDelete = (domain: string) => hasPermission(`${domain}.delete`);
+  const canApprove = (domain: string) => hasPermission(`${domain}.manage`);
+
+  return { hasPermission, hasAnyPermission, canCreate, canRead, canUpdate, canDelete, canApprove, permissions, role };
 }

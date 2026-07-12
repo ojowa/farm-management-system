@@ -14,12 +14,10 @@ function matches(granted: string, required: string): boolean {
 
 export function usePermission() {
   const { user } = useAuth();
-  const permissions = user?.permissions || [];
-  const role = user?.role || '';
+  const permissions = user?.permissions ?? [];
+  const role = user?.role ?? '';
 
   const hasPermission = (permission: string): boolean => {
-    if (role === 'SUPER_ADMIN') return true;
-    if (role === 'SUPPORT_ADMIN' && permission.endsWith('.read')) return true;
     return permissions.some((p) => matches(p, permission));
   };
 
@@ -31,7 +29,9 @@ export function usePermission() {
   const canRead = (domain: string) => hasPermission(`${domain}.read`);
   const canUpdate = (domain: string) => hasPermission(`${domain}.write`);
   const canDelete = (domain: string) => hasPermission(`${domain}.delete`);
-  const canApprove = (domain: string) => hasPermission(`${domain}.approve`);
+  const canApprove = (domain: string) => hasPermission(`${domain}.manage`);
 
-  return { hasPermission, hasAnyPermission, canCreate, canRead, canUpdate, canDelete, canApprove, permissions, role };
+  const isReadOnly = !permissions.some((p) => p === WILDCARD || p.endsWith('.write'));
+
+  return { hasPermission, hasAnyPermission, canCreate, canRead, canUpdate, canDelete, canApprove, isReadOnly, permissions, role };
 }

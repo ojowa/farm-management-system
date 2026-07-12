@@ -1,13 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('marketplace')
 export class MarketplaceController {
+  @Permission('finance.read')
   @Get('buyers')
   async findBuyers(@Query('organizationId') orgId?: string) {
     return scopedPrisma.buyer.findMany({ where: { organizationId: orgId || '' }, orderBy: { name: 'asc' } });
   }
 
+  @Permission('finance.write')
   @Post('buyers')
   @HttpCode(HttpStatus.CREATED)
   async createBuyer(@Body() body: any, @Query('organizationId') orgId?: string) {
@@ -22,6 +26,7 @@ export class MarketplaceController {
     });
   }
 
+  @Permission('finance.write')
   @Put('buyers/:id')
   async updateBuyer(@Param('id') id: string, @Body() body: any) {
     const updateData: any = {};
@@ -32,12 +37,14 @@ export class MarketplaceController {
     return scopedPrisma.buyer.update({ where: { id }, data: updateData });
   }
 
+  @Permission('finance.delete')
   @Delete('buyers/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteBuyer(@Param('id') id: string) {
     await scopedPrisma.buyer.delete({ where: { id } });
   }
 
+  @Permission('finance.read')
   @Get('listings')
   async findListings(@Query('status') status?: string, @Query('entityType') entityType?: string, @Query('organizationId') orgId?: string) {
     const where: any = {};
@@ -47,6 +54,7 @@ export class MarketplaceController {
     return scopedPrisma.marketListing.findMany({ where, include: { buyer: true }, orderBy: { listedDate: 'desc' } });
   }
 
+  @Permission('finance.write')
   @Post('listings')
   @HttpCode(HttpStatus.CREATED)
   async createListing(@Body() body: any, @Query('organizationId') orgId?: string) {
@@ -62,6 +70,7 @@ export class MarketplaceController {
     });
   }
 
+  @Permission('finance.write')
   @Put('listings/:id')
   async updateListing(@Param('id') id: string, @Body() body: any) {
     const updateData: any = {};
@@ -72,6 +81,7 @@ export class MarketplaceController {
     return scopedPrisma.marketListing.update({ where: { id }, data: updateData });
   }
 
+  @Permission('finance.delete')
   @Delete('listings/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteListing(@Param('id') id: string) {

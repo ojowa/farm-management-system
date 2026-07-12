@@ -41,6 +41,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: null, permission: null },
   { name: 'Users', href: '/users', icon: UserCog, adminOnly: true, module: null, permission: 'users.manage' },
   { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true, module: null, permission: null },
+  { name: 'Permissions', href: '/permissions', icon: Shield, adminOnly: true, module: null, permission: null },
   { name: 'Farms', href: '/farms', icon: Home, module: 'farm', permission: 'farm.read' },
   { name: 'Farm Map', href: '/farms/map', icon: MapPin, module: 'farm', permission: 'farm.read' },
   { name: 'Crops', href: '/crops', icon: Sprout, module: 'crop', permission: 'crop.read' },

@@ -22,7 +22,7 @@ export class AuthService {
       const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getJwtSecret(), { expiresIn: '5m' });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { requiresMFA: false, user: userWithoutPassword, accessToken, refreshToken };
@@ -36,7 +36,7 @@ export class AuthService {
     const { authenticator } = await import('otplib');
     const isValid = authenticator.verify({ token: code, secret: user.twoFactorSecret! });
     if (!isValid) throw new UnauthorizedException('Invalid MFA code');
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { user: userWithoutPassword, accessToken, refreshToken };
@@ -51,7 +51,7 @@ export class AuthService {
       data: { email: data.email, passwordHash, firstName: data.firstName, lastName: data.lastName, roleId: defaultRole?.id || '', organizationId: data.organizationId || null },
       include: { role: true },
     });
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash: _, twoFactorSecret: __, ...userWithoutPassword } = user as any;
     return { user: userWithoutPassword, accessToken, refreshToken };
@@ -69,7 +69,7 @@ export class AuthService {
     await prisma.refreshToken.update({ where: { id: stored.id }, data: { revoked: true } });
     const user = await prisma.user.findUnique({ where: { id: stored.userId }, include: { role: true } });
     if (!user) throw new NotFoundException('User not found');
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     return { accessToken, refreshToken };
   }
@@ -87,8 +87,21 @@ export class AuthService {
     return rawToken;
   }
 
-  generateAccessToken(user: any) {
-    return jwt.sign({ sub: user.id, email: user.email, role: user.role?.name, organizationId: user.organizationId }, getJwtSecret(), { expiresIn: '15m' });
+  async generateAccessToken(user: any) {
+    // Load permissions from database for DB-driven RBAC
+    let permissions: string[] = [];
+    if (user.roleId) {
+      const rolePermissions = await prisma.rolePermission.findMany({
+        where: { roleId: user.roleId },
+        select: { permission: { select: { name: true } } },
+      });
+      permissions = rolePermissions.map((rp) => rp.permission.name);
+    }
+    return jwt.sign(
+      { sub: user.id, email: user.email, role: user.role?.name, permissions, organizationId: user.organizationId },
+      getJwtSecret(),
+      { expiresIn: '15m' },
+    );
   }
 
   async logout(userId: string) {

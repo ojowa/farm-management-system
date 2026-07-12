@@ -1,0 +1,8 @@
+export enum HealthRecordType {
+  VACCINATION = 'VACCINATION',
+  TREATMENT = 'TREATMENT',
+  CHECKUP = 'CHECKUP',
+  SURGERY = 'SURGERY',
+  DEWORMING = 'DEWORMING',
+  OTHER = 'OTHER',
+}

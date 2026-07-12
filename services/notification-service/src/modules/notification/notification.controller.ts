@@ -8,33 +8,40 @@ import {
   Param,
   Query,
   UsePipes,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { NotificationService } from './notification.service';
 import { Notification, CreateNotificationRequest } from '@farm/types';
 import { ZodValidationPipe } from '@farm/utils';
 import { createNotificationSchema, updateNotificationSchema } from '@farm/validation';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
+  @Permission('notification.write')
   @Post()
   @UsePipes(new ZodValidationPipe(createNotificationSchema))
   async create(@Body() createDto: CreateNotificationRequest): Promise<Notification> {
     return this.notificationService.create(createDto);
   }
 
+  @Permission('notification.write')
   @Post('bulk')
   @UsePipes(new ZodValidationPipe(createNotificationSchema))
   async createBulk(@Body() notifications: CreateNotificationRequest[]): Promise<Notification[]> {
     return this.notificationService.createBulk(notifications);
   }
 
+  @Permission('notification.read')
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Notification> {
     return this.notificationService.findById(id);
   }
 
+  @Permission('notification.read')
   @Get('user/:userId')
   async findByUser(
     @Param('userId') userId: string,
@@ -49,12 +56,14 @@ export class NotificationController {
     });
   }
 
+  @Permission('notification.read')
   @Get('user/:userId/unread-count')
   async getUnreadCount(@Param('userId') userId: string): Promise<{ count: number }> {
     const count = await this.notificationService.getUnreadCount(userId);
     return { count };
   }
 
+  @Permission('notification.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateNotificationSchema))
   async update(
@@ -66,22 +75,26 @@ export class NotificationController {
     );
   }
 
+  @Permission('notification.write')
   @Put(':id/read')
   async markAsRead(@Param('id') id: string): Promise<Notification> {
     return this.notificationService.markAsRead(id);
   }
 
+  @Permission('notification.write')
   @Put('user/:userId/read-all')
   async markAllAsRead(@Param('userId') userId: string): Promise<{ count: number }> {
     const count = await this.notificationService.markAllAsRead(userId);
     return { count };
   }
 
+  @Permission('notification.write')
   @Delete(':id')
   async delete(@Param('id') id: string): Promise<void> {
     return this.notificationService.delete(id);
   }
 
+  @Permission('notification.read')
   @Get()
   async findAll(
     @Query('limit') limit?: string,

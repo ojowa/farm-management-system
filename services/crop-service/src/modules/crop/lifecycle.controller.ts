@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('lifecycle')
 export class LifecycleController {
+  @Permission('crop.read')
   @Get('calendar')
   async getCalendar(
     @Query('organizationId') orgId: string,
@@ -28,6 +31,7 @@ export class LifecycleController {
     });
   }
 
+  @Permission('crop.read')
   @Get('crop-cycle/:cropCycleId/stages')
   async getStages(@Param('cropCycleId') cropCycleId: string) {
     return (scopedPrisma as any).cropStage.findMany({
@@ -36,6 +40,7 @@ export class LifecycleController {
     });
   }
 
+  @Permission('crop.write')
   @Post('crop-cycle/:cropCycleId/stages')
   @HttpCode(HttpStatus.CREATED)
   async addStage(@Param('cropCycleId') cropCycleId: string, @Body() body: any, @Query('organizationId') orgId: string) {
@@ -50,6 +55,7 @@ export class LifecycleController {
     });
   }
 
+  @Permission('crop.write')
   @Put('stages/:id')
   async updateStage(@Param('id') id: string, @Body() body: any) {
     const updateData: any = {};
@@ -60,6 +66,7 @@ export class LifecycleController {
     return (scopedPrisma as any).cropStage.update({ where: { id }, data: updateData });
   }
 
+  @Permission('crop.delete')
   @Delete('stages/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteStage(@Param('id') id: string) {

@@ -11,8 +11,10 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 import { createBulkNotifications } from '../../lib/notificationClient';
 
@@ -24,8 +26,10 @@ function getUserId(req: Request): string {
   return String((req as any)['x-user-id'] || (req as any).user?.id || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('messages')
 export class MessagesController {
+  @Permission('hr.read')
   @Get('inbox')
   async inbox(@Req() req: Request) {
     const orgId = getOrgId(req);
@@ -45,6 +49,7 @@ export class MessagesController {
     }));
   }
 
+  @Permission('hr.read')
   @Get('sent')
   async sent(@Req() req: Request) {
     const orgId = getOrgId(req);
@@ -57,6 +62,7 @@ export class MessagesController {
     });
   }
 
+  @Permission('hr.read')
   @Get('unread-count')
   async unreadCount(@Req() req: Request) {
     const userId = getUserId(req);
@@ -69,6 +75,7 @@ export class MessagesController {
     return { count };
   }
 
+  @Permission('hr.read')
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req: Request) {
     const userId = getUserId(req);
@@ -94,6 +101,7 @@ export class MessagesController {
     return { ...message, isRead: true };
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -159,6 +167,7 @@ export class MessagesController {
     return message;
   }
 
+  @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string, @Req() req: Request) {

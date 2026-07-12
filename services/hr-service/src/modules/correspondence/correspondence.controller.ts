@@ -12,8 +12,10 @@ import {
   HttpStatus,
   NotFoundException,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgId(req: Request): string {
@@ -37,8 +39,10 @@ async function generateRefNumber(orgId: string): Promise<string> {
   return `COR-${year}-${String(count + 1).padStart(3, '0')}`;
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('correspondence')
 export class CorrespondenceController {
+  @Permission('hr.read')
   @Get()
   async findAll(
     @Req() req: Request,
@@ -66,6 +70,7 @@ export class CorrespondenceController {
     });
   }
 
+  @Permission('hr.read')
   @Get('stats')
   async stats(@Req() req: Request) {
     const orgId = getOrgId(req);
@@ -79,6 +84,7 @@ export class CorrespondenceController {
     return { total, draft, sent, received, archived };
   }
 
+  @Permission('hr.read')
   @Get('attachments/:id')
   async findAttachment(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondenceAttachment.findFirst({ where: { id } });
@@ -86,6 +92,7 @@ export class CorrespondenceController {
     return existing;
   }
 
+  @Permission('hr.read')
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const item = await scopedPrisma.correspondence.findFirst({
@@ -96,6 +103,7 @@ export class CorrespondenceController {
     return item;
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -141,6 +149,7 @@ export class CorrespondenceController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id')
   async update(
     @Param('id') id: string,
@@ -176,6 +185,7 @@ export class CorrespondenceController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id/archive')
   async archive(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
@@ -187,6 +197,7 @@ export class CorrespondenceController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id/unarchive')
   async unarchive(@Param('id') id: string) {
     const existing = await scopedPrisma.correspondence.findFirst({ where: { id } });
@@ -198,6 +209,7 @@ export class CorrespondenceController {
     });
   }
 
+  @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
@@ -206,6 +218,7 @@ export class CorrespondenceController {
     await scopedPrisma.correspondence.delete({ where: { id } });
   }
 
+  @Permission('hr.write')
   @Post(':id/attachments')
   @HttpCode(HttpStatus.CREATED)
   async addAttachment(
@@ -234,6 +247,7 @@ export class CorrespondenceController {
     });
   }
 
+  @Permission('hr.delete')
   @Delete('attachments/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeAttachment(@Param('id') id: string) {

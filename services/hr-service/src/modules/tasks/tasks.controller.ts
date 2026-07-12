@@ -13,8 +13,10 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 const CAN_CREATE_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
@@ -27,8 +29,10 @@ function getUserRole(req: Request): string {
   return String((req as any).user?.role || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('tasks')
 export class TasksController {
+  @Permission('hr.read')
   @Get()
   async findAll(
     @Req() req: Request,
@@ -76,6 +80,7 @@ export class TasksController {
     return { data: tasks, stats };
   }
 
+  @Permission('hr.read')
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const task = await scopedPrisma.task.findUnique({ where: { id } });
@@ -83,6 +88,7 @@ export class TasksController {
     return task;
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -126,6 +132,7 @@ export class TasksController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id')
   async update(
     @Param('id') id: string,
@@ -180,6 +187,7 @@ export class TasksController {
     return scopedPrisma.task.update({ where: { id }, data: updateData });
   }
 
+  @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
@@ -188,6 +196,7 @@ export class TasksController {
     await scopedPrisma.task.delete({ where: { id } });
   }
 
+  @Permission('hr.write')
   @Put(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
     const { status } = body;

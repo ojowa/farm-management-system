@@ -141,7 +141,7 @@ export class AuthController {
     if (!membership || !membership.isActive) throw new ForbiddenException('Not a member of this organization');
     const fullUser = await prisma.user.findUnique({ where: { id: req.user.sub }, include: { role: { include: { permissions: { include: { permission: true } } } }, organization: { include: { subscriptionPlanRef: true } } } });
     if (!fullUser) throw new NotFoundException('User not found');
-    const accessToken = (this.authService as any).generateAccessToken({ ...fullUser, organizationId });
+    const accessToken = await this.authService.generateAccessToken({ ...fullUser, organizationId });
     const refreshToken = await this.authService.generateRefreshToken(req.user.sub, { ipAddress: req.ip });
     this.setAuthCookies(res, accessToken, refreshToken);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = fullUser as any;

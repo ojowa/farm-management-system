@@ -23,7 +23,9 @@
     "@farm/database": "workspace:*",
     "@farm/validation": "workspace:*",
     "@farm/utils": "workspace:*",
-    "@farm/auth": "workspace:*"
+    "@farm/auth": "workspace:*",
+    "@farm/crop-domain": "workspace:*",
+    "@farm/domain-core": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.4",

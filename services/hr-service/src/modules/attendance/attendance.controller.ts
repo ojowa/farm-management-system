@@ -12,8 +12,10 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 const prisma = scopedPrisma as any;
@@ -22,8 +24,10 @@ function getOrgId(req: Request): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('attendance')
 export class AttendanceController {
+  @Permission('hr.read')
   @Get()
   async findAll(
     @Req() req: Request,
@@ -55,6 +59,7 @@ export class AttendanceController {
     });
   }
 
+  @Permission('hr.read')
   @Get('today')
   async today(@Req() req: Request) {
     const orgId = getOrgId(req);
@@ -78,6 +83,7 @@ export class AttendanceController {
     return { records, summary };
   }
 
+  @Permission('hr.read')
   @Get('summary')
   async summary(
     @Req() req: Request,
@@ -119,6 +125,7 @@ export class AttendanceController {
     return { records, summary: summaryData };
   }
 
+  @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -156,6 +163,7 @@ export class AttendanceController {
     });
   }
 
+  @Permission('hr.write')
   @Post('clock-in')
   @HttpCode(HttpStatus.CREATED)
   async clockIn(
@@ -196,6 +204,7 @@ export class AttendanceController {
     });
   }
 
+  @Permission('hr.write')
   @Post('clock-out')
   async clockOut(
     @Req() req: Request,
@@ -229,6 +238,7 @@ export class AttendanceController {
     });
   }
 
+  @Permission('hr.write')
   @Put(':id')
   async update(
     @Param('id') id: string,
@@ -248,6 +258,7 @@ export class AttendanceController {
     return prisma.attendance.update({ where: { id }, data: updateData });
   }
 
+  @Permission('hr.write')
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
   async bulkCreate(

@@ -1,4 +1,5 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function categorizeExpense(title: string): string {
@@ -14,8 +15,10 @@ function categorizeExpense(title: string): string {
   return 'Other';
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('profitability')
 export class ProfitabilityController {
+  @Permission('finance.read')
   @Get('farm')
   async getByFarm(
     @Query('farmId') farmId?: string,
@@ -63,6 +66,7 @@ export class ProfitabilityController {
     return results;
   }
 
+  @Permission('finance.read')
   @Get('summary')
   async getSummary(
     @Query('startDate') startDate?: string,

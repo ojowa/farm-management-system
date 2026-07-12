@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus, ConflictException, ForbiddenException, UseGuards } from '@nestjs/common';
 import { prisma } from '@farm/database';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 
 @Controller('roles')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class RolesController {
   @Get()
+  @Permission('organization.read')
   async findAll() {
     return prisma.role.findMany({ include: { _count: { select: { permissions: true, users: true } } }, orderBy: { name: 'asc' } });
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Permission('organization.manage')
   async create(@Body() body: any) {
     const { name, description, permissionIds } = body;
     const existing = await prisma.role.findFirst({ where: { name, organizationId: null } });
@@ -21,11 +25,13 @@ export class RolesController {
   }
 
   @Get(':id')
+  @Permission('organization.read')
   async findOne(@Param('id') id: string) {
     return prisma.role.findUnique({ where: { id }, include: { permissions: { include: { permission: true } }, _count: { select: { permissions: true, users: true } } } });
   }
 
   @Put(':id')
+  @Permission('organization.manage')
   async update(@Param('id') id: string, @Body() body: any) {
     const existing = await prisma.role.findUnique({ where: { id } });
     if (existing?.isSystem && body.name && body.name !== existing.name) throw new ForbiddenException('Cannot rename system roles');
@@ -34,6 +40,7 @@ export class RolesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @Permission('organization.manage')
   async delete(@Param('id') id: string) {
     const existing = await prisma.role.findUnique({ where: { id }, include: { _count: { select: { users: true } } } });
     if (existing?.isSystem) throw new ForbiddenException('Cannot delete system roles');
@@ -45,6 +52,7 @@ export class RolesController {
 
   @Post(':id/permissions')
   @HttpCode(HttpStatus.OK)
+  @Permission('organization.manage')
   async replacePermissions(@Param('id') id: string, @Body('permissionIds') permissionIds: string[]) {
     await prisma.rolePermission.deleteMany({ where: { roleId: id } });
     if (permissionIds.length > 0) {

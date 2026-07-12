@@ -23,6 +23,24 @@ export interface User {
   twoFactorEnabled?: boolean;
 }
 
+/**
+ * Transform backend user response to mobile-friendly format.
+ * Backend returns { role: { name, permissions: [{ permission: { name } }] } }
+ * Mobile expects { role: string, permissions: string[] }
+ */
+function transformUser(raw: any): User {
+  const roleName = raw.role?.name ?? raw.role ?? '';
+  const rawPermissions = raw.role?.permissions ?? raw.permissions ?? [];
+  const permissions: string[] = rawPermissions.map((rp: any) =>
+    typeof rp === 'string' ? rp : rp.permission?.name ?? rp.name ?? ''
+  ).filter(Boolean);
+  return {
+    ...raw,
+    role: roleName,
+    permissions,
+  };
+}
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -142,10 +160,10 @@ const authSlice = createSlice({
         if (action.payload.requiresMFA) {
           state.mfaRequired = true;
           state.mfaSessionToken = action.payload.mfaToken ?? null;
-          state.user = action.payload.user ?? null;
+          state.user = action.payload.user ? transformUser(action.payload.user) : null;
         } else {
           state.isAuthenticated = true;
-          state.user = action.payload.user ?? null;
+          state.user = action.payload.user ? transformUser(action.payload.user) : null;
           state.accessToken = action.payload.accessToken ?? null;
           state.refreshToken = action.payload.refreshToken ?? null;
           state.lastLoginAt = new Date().toISOString();
@@ -165,7 +183,7 @@ const authSlice = createSlice({
       .addCase(verifyMFA.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.user = transformUser(action.payload.user);
         state.accessToken = action.payload.accessToken ?? null;
         state.refreshToken = action.payload.refreshToken ?? null;
         state.mfaRequired = false;
@@ -178,7 +196,7 @@ const authSlice = createSlice({
       })
       // fetchProfile
       .addCase(fetchProfile.fulfilled, (state, action) => {
-        state.user = action.payload;
+        state.user = transformUser(action.payload);
         state.isAuthenticated = true;
         state.bootstrapped = true;
       })

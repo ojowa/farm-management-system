@@ -103,17 +103,20 @@ export async function checkSubscriptionLimit(
 
   const plan = org.subscriptionPlanRef;
   if (!plan) {
-    // No plan assigned — use FREE plan limits
-    const freePlan = await prisma.subscriptionPlan.findUnique({ where: { name: 'FREE' } });
-    if (!freePlan) return 'No subscription plan configured';
+    // No plan assigned — use the first active plan as default
+    const defaultPlan = await prisma.subscriptionPlan.findFirst({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    if (!defaultPlan) return 'No subscription plan configured';
 
     const count = resource === 'users'
       ? await prisma.user.count({ where: { organizationId } })
       : await prisma.farm.count({ where: { organizationId } });
 
-    const limit = resource === 'users' ? freePlan.maxUsers : freePlan.maxFarms;
+    const limit = resource === 'users' ? defaultPlan.maxUsers : defaultPlan.maxFarms;
     if (count >= limit) {
-      return `${resource.charAt(0).toUpperCase() + resource.slice(1)} limit reached (${limit}) for FREE plan`;
+      return `${resource.charAt(0).toUpperCase() + resource.slice(1)} limit reached (${limit}) for ${defaultPlan.name} plan`;
     }
 
     return null;
@@ -191,13 +194,16 @@ export async function checkFarmTypeAllowed(
 
   const plan = org.subscriptionPlanRef;
   if (!plan) {
-    // No plan assigned — use FREE plan limits
-    const freePlan = await prisma.subscriptionPlan.findUnique({ where: { name: 'FREE' } });
-    if (!freePlan) return 'No subscription plan configured';
+    // No plan assigned — use the first active plan as default
+    const defaultPlan = await prisma.subscriptionPlan.findFirst({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    if (!defaultPlan) return 'No subscription plan configured';
 
-    const allowedTypes = (freePlan.features as any)?.farmTypes ?? ['CROP'];
+    const allowedTypes = (defaultPlan.features as any)?.farmTypes ?? ['CROP'];
     if (!allowedTypes.includes(farmType)) {
-      return `Farm type '${farmType}' is not available on the FREE plan. Allowed: ${allowedTypes.join(', ')}`;
+      return `Farm type '${farmType}' is not available on the ${defaultPlan.name} plan. Allowed: ${allowedTypes.join(', ')}`;
     }
     return null;
   }

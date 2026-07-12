@@ -14,7 +14,7 @@ import {
   verifyAccessToken,
   type VerifiedUser,
 } from '../jwt';
-import { roleHasPermission, userHasAnyRole } from '../roles';
+import { userHasPermission, userHasAnyRole } from '../roles';
 
 export const AUTH_ROLES_KEY = 'farm:auth:roles';
 export const AUTH_PERMISSION_KEY = 'farm:auth:permission';
@@ -68,6 +68,9 @@ export class JwtAuthGuard implements CanActivate {
  * Authorization guard that reads role/permission metadata set by the
  * `Roles` and `Permission` decorators. Always pair with `JwtAuthGuard` so
  * `req.user` is populated before the role check runs.
+ *
+ * Permissions are now DB-driven: they are loaded at login time and embedded
+ * in the JWT. This guard checks against the embedded permissions.
  */
 @Injectable()
 export class AuthorizationGuard implements CanActivate {
@@ -100,7 +103,7 @@ export class AuthorizationGuard implements CanActivate {
       }
     }
     if (requiredPermission) {
-      if (!roleHasPermission(user.role, requiredPermission)) {
+      if (!userHasPermission(user.permissions, requiredPermission)) {
         throw new ForbiddenException('Insufficient permission');
       }
     }

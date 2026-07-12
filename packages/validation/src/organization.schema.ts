@@ -12,7 +12,7 @@ export const createOrganizationSchema = z.object({
   name: z.string().min(2).max(100),
   slug: z.string().min(2).max(50).regex(/^[a-z0-9-]+$/),
   adminEmail: z.string().email(),
-  subscriptionPlan: z.enum(['FREE', 'BASIC', 'PREMIUM', 'ENTERPRISE']).optional(),
+  subscriptionPlan: z.string().optional(),
   settings: organizationSettingsSchema.optional(),
 });
 

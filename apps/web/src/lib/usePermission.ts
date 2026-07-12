@@ -1,19 +1,44 @@
 'use client';
 
+import { useAuth } from './auth';
+
+/**
+ * Permission matching with wildcard support.
+ * Mirrors the server-side logic in @farm/auth/roles.ts.
+ */
+function matchesPermission(granted: string, required: string): boolean {
+  if (granted === '*') return true;
+  if (granted === required) return true;
+  if (granted.endsWith('.*')) {
+    const prefix = granted.slice(0, -2);
+    return required === prefix || required.startsWith(`${prefix}.`);
+  }
+  return false;
+}
+
 export function usePermission() {
+  const { user } = useAuth();
+
+  const permissions: string[] =
+    user?.role?.permissions?.flatMap(
+      (rp: any) => rp.permission?.map((p: any) => p.name) ?? []
+    ) ?? [];
+
+  const role: string = user?.role?.name ?? '';
+
   const hasPermission = (permission: string): boolean => {
-    return true;
+    return permissions.some((p) => matchesPermission(p, permission));
   };
 
   const hasAnyPermission = (...perms: string[]): boolean => {
-    return true;
+    return perms.some((p) => hasPermission(p));
   };
 
-  const canCreate = (domain: string) => true;
-  const canRead = (domain: string) => true;
-  const canUpdate = (domain: string) => true;
-  const canDelete = (domain: string) => true;
-  const canApprove = (domain: string) => true;
+  const canCreate = (domain: string) => hasPermission(`${domain}.write`);
+  const canRead = (domain: string) => hasPermission(`${domain}.read`);
+  const canUpdate = (domain: string) => hasPermission(`${domain}.write`);
+  const canDelete = (domain: string) => hasPermission(`${domain}.delete`);
+  const canApprove = (domain: string) => hasPermission(`${domain}.manage`);
 
-  return { hasPermission, hasAnyPermission, canCreate, canRead, canUpdate, canDelete, canApprove, permissions: [], role: 'ADMIN' };
+  return { hasPermission, hasAnyPermission, canCreate, canRead, canUpdate, canDelete, canApprove, permissions, role };
 }

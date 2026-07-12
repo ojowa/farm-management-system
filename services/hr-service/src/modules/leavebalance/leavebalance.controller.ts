@@ -6,8 +6,10 @@ import {
   Query,
   Req,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgId(req: Request): string {
@@ -18,8 +20,10 @@ function getUserId(req: Request): string {
   return String((req as any).user?.sub || '');
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('leave/balance')
 export class LeaveBalanceController {
+  @Permission('hr.read')
   @Get()
   async findAll(
     @Req() req: Request,
@@ -53,6 +57,7 @@ export class LeaveBalanceController {
     });
   }
 
+  @Permission('hr.write')
   @Put()
   async upsert(
     @Req() req: Request,

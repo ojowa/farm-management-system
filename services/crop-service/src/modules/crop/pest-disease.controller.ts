@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('pest-disease')
 export class PestDiseaseController {
+  @Permission('crop.read')
   @Get()
   async findAll(@Query('organizationId') orgId: string, @Query('type') type?: string, @Query('severity') severity?: string, @Query('farmId') farmId?: string) {
     const where: any = { organizationId: orgId };
@@ -12,6 +15,7 @@ export class PestDiseaseController {
     return scopedPrisma.pestDiseaseRecord.findMany({ where, orderBy: { identifiedDate: 'desc' } });
   }
 
+  @Permission('crop.read')
   @Get('active')
   async findActive(@Query('organizationId') orgId: string) {
     return scopedPrisma.pestDiseaseRecord.findMany({
@@ -20,6 +24,7 @@ export class PestDiseaseController {
     });
   }
 
+  @Permission('crop.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() body: any, @Query('organizationId') orgId: string) {
@@ -34,6 +39,7 @@ export class PestDiseaseController {
     });
   }
 
+  @Permission('crop.write')
   @Put(':id')
   async update(@Param('id') id: string, @Body() body: any) {
     const updateData: any = {};
@@ -45,6 +51,7 @@ export class PestDiseaseController {
     return scopedPrisma.pestDiseaseRecord.update({ where: { id }, data: updateData });
   }
 
+  @Permission('crop.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {

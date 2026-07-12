@@ -4,7 +4,9 @@ import {
   Delete,
   Body,
   Req,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { PushService } from './push.service';
 import { scopedPrisma as prisma } from '@farm/database';
 
@@ -13,10 +15,12 @@ interface RegisterDeviceTokenRequest {
   platform: 'web' | 'ios' | 'android';
 }
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('devices')
 export class PushController {
   constructor(private readonly pushService: PushService) {}
 
+  @Permission('notification.write')
   @Post('tokens')
   async registerToken(
     @Req() req: any,
@@ -54,6 +58,7 @@ export class PushController {
     }
   }
 
+  @Permission('notification.write')
   @Delete('tokens')
   async unregisterToken(
     @Req() req: any,

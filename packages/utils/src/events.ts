@@ -57,3 +57,7 @@ export function emitFinanceEvent(action: 'created' | 'updated' | 'deleted', data
 export function emitMedicationEvent(action: 'created' | 'updated' | 'deleted', data: any) {
   return emitRealtimeEvent({ entity: 'medication', action, data });
 }
+
+export function emitHrEvent(action: 'created' | 'updated' | 'deleted', data: any) {
+  return emitRealtimeEvent({ entity: 'hr', action, data });
+}

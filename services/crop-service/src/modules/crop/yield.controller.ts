@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Param, Body, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('yield')
 export class YieldController {
+  @Permission('crop.read')
   @Get('crop/:cropId')
   async getYieldHistory(@Param('cropId') cropId: string, @Query('organizationId') orgId: string) {
     return scopedPrisma.yieldRecord.findMany({
@@ -11,6 +14,7 @@ export class YieldController {
     });
   }
 
+  @Permission('crop.write')
   @Post('crop/:cropId')
   @HttpCode(HttpStatus.CREATED)
   async recordYield(@Param('cropId') cropId: string, @Body() body: any, @Query('organizationId') orgId: string) {
@@ -25,6 +29,7 @@ export class YieldController {
     });
   }
 
+  @Permission('crop.read')
   @Get('crop/:cropId/summary')
   async getYieldSummary(@Param('cropId') cropId: string, @Query('organizationId') orgId: string) {
     const records = await scopedPrisma.yieldRecord.findMany({
