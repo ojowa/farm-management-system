@@ -29,8 +29,9 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
     $allModels: {
       async create({ args, query }) {
         const orgId = getOrganizationId();
-        if (orgId && args.data && !args.data.organizationId) {
-          args.data.organizationId = orgId;
+        const data = args.data as any;
+        if (orgId && data && !data.organizationId) {
+          data.organizationId = orgId;
         }
         return query(args);
       },
@@ -46,9 +47,10 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
       },
       async upsert({ args, query }) {
         const orgId = getOrganizationId();
+        const create = args.create as any;
         if (orgId) {
-          if (args.create && !args.create.organizationId) {
-            args.create.organizationId = orgId;
+          if (create && !create.organizationId) {
+            create.organizationId = orgId;
           }
         }
         return query(args);
