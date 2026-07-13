@@ -59,16 +59,8 @@ export const DOMAIN_ROUTES: ServiceRoute[] = [
   { path: '/messages', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
   { path: '/correspondence', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
 
-  // Platform Administration Context
-  { path: '/platform', target: 'http://localhost:4020', service: 'platform-service', rewrite: true },
-  { path: '/platform-options', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/platform-subscriptions', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/platform-audit', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/platform-health', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/platform-broadcasts', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/platform-config', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/weather', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-  { path: '/documents', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
+  // Platform Administration Context (platform-service uses /api global prefix)
+  { path: '/api', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
 ];
 
 export const PUBLIC_PATHS = new Set([

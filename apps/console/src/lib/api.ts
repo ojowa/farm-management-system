@@ -4,7 +4,7 @@ const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:400
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:4001';
 
 export const platformClient = axios.create({
-  baseURL: API_GATEWAY_URL,
+  baseURL: `${API_GATEWAY_URL}/api`,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
