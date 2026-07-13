@@ -14,7 +14,6 @@ export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
   const {
     user,
-    accessToken,
     isAuthenticated,
     loading,
     error,
@@ -59,7 +58,6 @@ export const useAuth = () => {
 
   return {
     user,
-    accessToken,
     isAuthenticated,
     loading,
     error,

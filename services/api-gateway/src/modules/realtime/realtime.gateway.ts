@@ -10,6 +10,17 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { verifyAccessToken } from '@farm/auth';
+import cookieParser from 'cookie-parser';
+
+function parseCookies(cookieHeader: string | undefined): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  if (!cookieHeader) return cookies;
+  for (const pair of cookieHeader.split(';')) {
+    const [key, ...rest] = pair.split('=');
+    if (key) cookies[key.trim()] = rest.join('=').trim();
+  }
+  return cookies;
+}
 
 export interface RealtimeEvent {
   entity: string;
@@ -34,7 +45,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   handleConnection(client: Socket): void {
     try {
-      const token = client.handshake.auth?.token || client.handshake.query?.token;
+      let token = client.handshake.auth?.token || client.handshake.query?.token;
+
+      if (!token && client.handshake.headers?.cookie) {
+        const cookies = parseCookies(client.handshake.headers.cookie);
+        token = cookies.accessToken;
+      }
+
       if (!token || typeof token !== 'string') {
         this.logger.warn(`Client rejected: no token (${client.id})`);
         client.disconnect();

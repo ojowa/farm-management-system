@@ -1,13 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-
-declare const process: { env?: Record<string, string | undefined> };
-
-const API_BASE_URL =
-  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:4000';
+import { apiClient } from './api';
 
 const isExpoGo =
   Constants.executionEnvironment === 'storeClient';
@@ -70,16 +64,9 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 export async function sendTokenToServer(expoPushToken: string): Promise<void> {
   try {
-    const authToken = await AsyncStorage.getItem('accessToken');
-    if (!authToken) return;
-
-    await fetch(`${API_BASE_URL}/notifications/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ token: expoPushToken, platform: Platform.OS }),
+    await apiClient.axiosInstance.post('/notifications/register', {
+      token: expoPushToken,
+      platform: Platform.OS,
     });
   } catch {
     // Silent fail — will retry on next app launch
@@ -89,17 +76,10 @@ export async function sendTokenToServer(expoPushToken: string): Promise<void> {
 export async function unregisterFromNotifications(): Promise<void> {
   if (!Notifications) return;
   try {
-    const authToken = await AsyncStorage.getItem('accessToken');
     const token = await Notifications.getExpoPushTokenAsync();
-
-    if (authToken && token.data) {
-      await fetch(`${API_BASE_URL}/notifications/unregister`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ token: token.data }),
+    if (token.data) {
+      await apiClient.axiosInstance.post('/notifications/unregister', {
+        token: token.data,
       });
     }
   } catch {

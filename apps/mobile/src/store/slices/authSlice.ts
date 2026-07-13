@@ -23,11 +23,6 @@ export interface User {
   twoFactorEnabled?: boolean;
 }
 
-/**
- * Transform backend user response to mobile-friendly format.
- * Backend returns { role: { name, permissions: [{ permission: { name } }] } }
- * Mobile expects { role: string, permissions: string[] }
- */
 function transformUser(raw: any): User {
   const roleName = raw.role?.name ?? raw.role ?? '';
   const rawPermissions = raw.role?.permissions ?? raw.permissions ?? [];
@@ -43,8 +38,6 @@ function transformUser(raw: any): User {
 
 interface AuthState {
   user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -52,12 +45,11 @@ interface AuthState {
   mfaSessionToken: string | null;
   lastLoginAt: string | null;
   bootstrapped: boolean;
+  socketAccessToken: string | null;
 }
 
 const initialState: AuthState = {
   user: null,
-  accessToken: null,
-  refreshToken: null,
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -65,6 +57,7 @@ const initialState: AuthState = {
   mfaSessionToken: null,
   lastLoginAt: null,
   bootstrapped: false,
+  socketAccessToken: null,
 };
 
 export const login = createAsyncThunk(
@@ -75,11 +68,11 @@ export const login = createAsyncThunk(
       if (res.requiresMFA) {
         return { requiresMFA: true, mfaToken: res.mfaToken, user: res.user };
       }
+      const profileRes = await authAPI.getProfile();
       return {
         requiresMFA: false,
-        user: res.user,
-        accessToken: res.accessToken || null,
-        refreshToken: res.refreshToken || null,
+        user: profileRes.data,
+        socketAccessToken: res.accessToken || null,
       };
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Login failed');
@@ -92,11 +85,8 @@ export const verifyMFA = createAsyncThunk(
   async ({ mfaToken, code }: { mfaToken: string; code: string }, { rejectWithValue }) => {
     try {
       const res = await authAPI.verifyMFA(mfaToken, code);
-      return {
-        user: res.user,
-        accessToken: res.accessToken || null,
-        refreshToken: res.refreshToken || null,
-      };
+      const profileRes = await authAPI.getProfile();
+      return { user: profileRes.data, socketAccessToken: res.accessToken || null };
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'MFA verification failed');
     }
@@ -150,7 +140,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // login
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -164,8 +153,7 @@ const authSlice = createSlice({
         } else {
           state.isAuthenticated = true;
           state.user = action.payload.user ? transformUser(action.payload.user) : null;
-          state.accessToken = action.payload.accessToken ?? null;
-          state.refreshToken = action.payload.refreshToken ?? null;
+          state.socketAccessToken = action.payload.socketAccessToken ?? null;
           state.lastLoginAt = new Date().toISOString();
           state.mfaRequired = false;
           state.mfaSessionToken = null;
@@ -175,7 +163,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // verifyMFA
       .addCase(verifyMFA.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -184,8 +171,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = transformUser(action.payload.user);
-        state.accessToken = action.payload.accessToken ?? null;
-        state.refreshToken = action.payload.refreshToken ?? null;
+        state.socketAccessToken = action.payload.socketAccessToken ?? null;
         state.mfaRequired = false;
         state.mfaSessionToken = null;
         state.lastLoginAt = new Date().toISOString();
@@ -194,32 +180,24 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
       })
-      // fetchProfile
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.user = transformUser(action.payload);
         state.isAuthenticated = true;
         state.bootstrapped = true;
       })
-      .addCase(fetchProfile.rejected, (state, action: any) => {
+      .addCase(fetchProfile.rejected, (state) => {
         state.bootstrapped = true;
-        const status = action.payload?.status;
-        if (status === 401 || status === 403 || !state.accessToken) {
-          state.isAuthenticated = false;
-          state.user = null;
-          state.accessToken = null;
-          state.refreshToken = null;
-        }
+        state.isAuthenticated = false;
+        state.user = null;
       })
-      // logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
-        state.accessToken = null;
-        state.refreshToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.mfaRequired = false;
         state.mfaSessionToken = null;
         state.lastLoginAt = null;
+        state.socketAccessToken = null;
       });
   },
 });

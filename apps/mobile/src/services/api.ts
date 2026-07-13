@@ -17,22 +17,14 @@ if (__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('loc
 }
 
 class APIClient {
-  private client: AxiosInstance;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
+  public client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
-    });
-
-    // Request interceptor — attach Bearer token
-    this.client.interceptors.request.use((config) => {
-      if (this.accessToken) {
-        config.headers.Authorization = `Bearer ${this.accessToken}`;
-      }
-      return config;
+      withCredentials: true,
+      headers: { 'Content-Type': 'application/json' },
     });
 
     // Response interceptor — auto-refresh on 401
@@ -59,18 +51,11 @@ class APIClient {
           originalRequest._retry = true;
           isRefreshing = true;
           try {
-            if (this.refreshToken) {
-              const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-                refreshToken: this.refreshToken,
-              });
-              this.setTokens(res.data.accessToken, res.data.refreshToken);
-              processQueue(null);
-              return this.client(originalRequest);
-            }
-            throw new Error('No refresh token');
+            await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+            processQueue(null);
+            return this.client(originalRequest);
           } catch (e) {
             processQueue(e);
-            this.clearTokens();
             return Promise.reject(e);
           } finally {
             isRefreshing = false;
@@ -83,16 +68,6 @@ class APIClient {
 
   get axiosInstance() {
     return this.client;
-  }
-
-  setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-  }
-
-  clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
   }
 }
 
@@ -617,25 +592,17 @@ export const marketplaceAPI = {
 export const authAPI = {
   login: async (email: string, password: string) => {
     const res = await apiClient.axiosInstance.post('/auth/login', { email, password });
-    const data = res.data;
-    if (data.accessToken && data.refreshToken) {
-      apiClient.setTokens(data.accessToken, data.refreshToken);
-    }
-    return data;
+    return res.data;
   },
   verifyMFA: async (mfaToken: string, code: string) => {
     const res = await apiClient.axiosInstance.post('/auth/verify-mfa', { mfaToken, code });
-    const data = res.data;
-    if (data.accessToken && data.refreshToken) {
-      apiClient.setTokens(data.accessToken, data.refreshToken);
-    }
-    return data;
+    return res.data;
   },
   logout: async () => {
     try {
       await apiClient.axiosInstance.post('/auth/logout');
-    } finally {
-      apiClient.clearTokens();
+    } catch {
+      // ignore
     }
   },
   getProfile: () => apiClient.axiosInstance.get('/auth/me'),

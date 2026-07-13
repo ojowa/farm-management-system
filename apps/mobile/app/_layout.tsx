@@ -50,15 +50,10 @@ function RootLayoutNav() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
-  const accessToken = useAppSelector((state) => state.auth.accessToken);
-  const refreshToken = useAppSelector((state) => state.auth.refreshToken);
 
-  // Bootstrap: verify session on mount
+  // Bootstrap: verify session on mount (cookie-based like web frontend)
   useEffect(() => {
     if (isAuthenticated) {
-      if (accessToken && refreshToken) {
-        apiClient.setTokens(accessToken, refreshToken);
-      }
       dispatch(fetchProfile()).unwrap().catch(() => {});
     } else {
       dispatch(setBootstrapped());

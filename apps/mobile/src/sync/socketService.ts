@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient } from '../services/api';
 
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 
@@ -41,13 +41,14 @@ class SocketService {
   private onConnectionChange: ((connected: boolean) => void) | null = null;
   private onReconnecting: ((attempt: number) => void) | null = null;
 
-  async connect() {
+  async connect(accessToken?: string) {
     if (this.socket?.connected) return;
 
-    const token = await AsyncStorage.getItem('accessToken');
+    const token = accessToken || undefined;
 
     this.socket = io(SOCKET_URL, {
-      auth: { token },
+      auth: token ? { token } : undefined,
+      withCredentials: true,
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,

@@ -23,8 +23,6 @@ const mockUser: User = {
 
 const initialState = {
   user: null,
-  accessToken: null,
-  refreshToken: null,
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -32,6 +30,7 @@ const initialState = {
   mfaSessionToken: null,
   lastLoginAt: null,
   bootstrapped: false,
+  socketAccessToken: null,
 };
 
 describe('authSlice — synchronous reducers', () => {
@@ -73,8 +72,7 @@ describe('authSlice — login thunk', () => {
       payload: {
         requiresMFA: false,
         user: mockUser,
-        accessToken: 'acc123',
-        refreshToken: 'ref123',
+        socketAccessToken: 'acc123',
       },
     };
     const state = authReducer(initialState, action);
@@ -110,7 +108,7 @@ describe('authSlice — verifyMFA thunk', () => {
   it('verifyMFA.fulfilled sets auth and clears MFA', () => {
     const action = {
       type: verifyMFA.fulfilled.type,
-      payload: { user: mockUser },
+      payload: { user: mockUser, socketAccessToken: 'acc123' },
     };
     const state = authReducer(
       { ...initialState, mfaRequired: true, mfaSessionToken: 'mfa' },
@@ -164,12 +162,12 @@ describe('authSlice — logout thunk', () => {
         mfaSessionToken: 'mfa',
         lastLoginAt: '2024-01-01',
         error: 'err',
+        socketAccessToken: 'acc123',
       },
       action
     );
     expect(state.isAuthenticated).toBe(false);
-    expect(state.accessToken).toBeNull();
-    expect(state.refreshToken).toBeNull();
+    expect(state.socketAccessToken).toBeNull();
     expect(state.user).toBeNull();
     expect(state.error).toBeNull();
     expect(state.mfaRequired).toBe(false);

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
-import { useAppDispatch } from './useAuth';
+import { useAppDispatch, useAppSelector } from './useAuth';
 import { setIsOnline, setSocketConnected, setReconnectAttempt } from '../store/slices/syncSlice';
 import { socketService } from '../sync/socketService';
 import { reconcileOfflineQueue } from '../sync/reconcileQueue';
@@ -8,6 +8,7 @@ import { reconcileOfflineQueue } from '../sync/reconcileQueue';
 export function useNetworkSync() {
   const dispatch = useAppDispatch();
   const reconcileRef = useRef<ReturnType<typeof reconcileOfflineQueue> | null>(null);
+  const socketAccessToken = useAppSelector((state) => state.auth.socketAccessToken);
 
   useEffect(() => {
     const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
@@ -15,7 +16,7 @@ export function useNetworkSync() {
       dispatch(setIsOnline(online));
 
       if (online && !socketService.isConnected) {
-        socketService.connect();
+        socketService.connect(socketAccessToken || undefined);
       }
     });
 
@@ -27,7 +28,7 @@ export function useNetworkSync() {
       dispatch(setReconnectAttempt(attempt));
     });
 
-    socketService.connect();
+    socketService.connect(socketAccessToken || undefined);
 
     reconcileRef.current = reconcileOfflineQueue(dispatch);
 
@@ -36,5 +37,5 @@ export function useNetworkSync() {
       socketService.disconnect();
       reconcileRef.current?.stop();
     };
-  }, [dispatch]);
+  }, [dispatch, socketAccessToken]);
 }
