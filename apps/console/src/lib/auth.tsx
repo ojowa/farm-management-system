@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const optsRes = await platformClient.get('/platform-options/platform-admin-roles');
         platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
       } catch {
-        platformAdminRoles = ['SUPER_ADMIN', 'SUPPORT_ADMIN'];
+        platformAdminRoles = [];
       }
 
       const roleName = user.roleName || user.role?.name;
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const optsRes = await platformClient.get('/platform-options/platform-admin-roles');
       platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
     } catch {
-      platformAdminRoles = ['SUPER_ADMIN', 'SUPPORT_ADMIN'];
+      platformAdminRoles = [];
     }
 
     const roleName = user.roleName || user.role?.name;

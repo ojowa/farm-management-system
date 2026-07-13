@@ -40,8 +40,8 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: null, permission: null },
   { name: 'Users', href: '/users', icon: UserCog, adminOnly: true, module: null, permission: 'users.manage' },
-  { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true, module: null, permission: null },
-  { name: 'Permissions', href: '/permissions', icon: Shield, adminOnly: true, module: null, permission: null },
+  { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true, module: null, permission: 'users.manage' },
+  { name: 'Permissions', href: '/permissions', icon: Shield, adminOnly: true, module: null, permission: 'users.manage' },
   { name: 'Farms', href: '/farms', icon: Home, module: 'farm', permission: 'farm.read' },
   { name: 'Farm Map', href: '/farms/map', icon: MapPin, module: 'farm', permission: 'farm.read' },
   { name: 'Crops', href: '/crops', icon: Sprout, module: 'crop', permission: 'crop.read' },
@@ -75,10 +75,8 @@ export function Sidebar() {
   const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
 
-  const isSuperAdmin = user?.role?.name === 'SUPER_ADMIN';
-
   const filteredNav = navigation.filter((item) => {
-    if (item.adminOnly && !isSuperAdmin) return false;
+    if (item.adminOnly && item.permission && !hasPermission(item.permission)) return false;
     if (item.module && user?.role?.permissions) {
       const modules = user.role.permissions.flatMap((p: any) => p.permission?.map((pp: any) => pp.name?.split('.')[0]) || []);
       if (modules.length > 0 && !modules.includes(item.module)) return false;

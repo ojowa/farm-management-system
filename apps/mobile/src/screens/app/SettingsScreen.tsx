@@ -111,7 +111,7 @@ export default function SettingsScreen() {
   const [roleDesc, setRoleDesc] = useState('');
   const [roleSaving, setRoleSaving] = useState(false);
 
-  const canManageRoles = ['SUPER_ADMIN', 'SUPPORT_ADMIN', 'ORGANIZATION_OWNER'].includes(user?.role || '');
+  const canManageRoles = user?.permissions?.includes('organization.manage') ?? false;
 
   useEffect(() => {
     checkNotificationStatus();

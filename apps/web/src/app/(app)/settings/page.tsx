@@ -5,14 +5,17 @@ import { orgAdminAPI, settingsAPI } from '@/lib/api';
 import { useToasts } from '@/lib/toasts';
 import { Card, Button, Input, Badge } from '@/components/ui';
 
-const canManageOrg = (role?: string) =>
-  ['SUPER_ADMIN', 'SUPPORT_ADMIN', 'ORGANIZATION_OWNER'].includes(role || '');
+import { useAuth } from '@/lib/auth';
+import { usePermission } from '@/lib/usePermission';
 
 export default function SettingsPage() {
   const { success, error: toastError } = useToasts();
+  const { user } = useAuth();
+  const { hasPermission } = usePermission();
+  const canManageOrg = hasPermission('organization.manage');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [user, setUser] = useState<any>({
+  const [orgData, setOrgData] = useState<any>({
     id: '',
     firstName: '',
     lastName: '',
@@ -28,8 +31,7 @@ export default function SettingsPage() {
 
   const refreshUser = async () => {
     try {
-      const { data } = await settingsAPI.getProfile();
-      setUser(data);
+      await settingsAPI.getProfile();
     } catch (err) {
       console.error('Failed to load user profile:', err);
     }
@@ -87,7 +89,6 @@ export default function SettingsPage() {
           settingsAPI.getPreferences(),
         ]);
         const profile = profileRes.data;
-        setUser(profile);
         setForm({
           firstName: profile.firstName || '',
           lastName: profile.lastName || '',
@@ -110,7 +111,7 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (canManageOrg(user?.role)) {
+    if (canManageOrg) {
       loadOrg();
       loadRoles();
     }
@@ -302,7 +303,7 @@ export default function SettingsPage() {
         >
           Profile
         </button>
-        {canManageOrg(user?.role) && (
+        {canManageOrg && (
           <button
             onClick={() => setTab('organization')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
@@ -312,7 +313,7 @@ export default function SettingsPage() {
             Organization
           </button>
         )}
-        {canManageOrg(user?.role) && (
+        {canManageOrg && (
           <button
             onClick={() => setTab('roles')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
@@ -425,7 +426,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === 'organization' && canManageOrg(user?.role) && (
+      {tab === 'organization' && canManageOrg && (
         <div className="max-w-2xl space-y-6">
           {orgLoading ? (
             <Card><div className="p-8 text-center text-gray-500">Loading organization...</div></Card>
@@ -496,7 +497,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === 'roles' && canManageOrg(user?.role) && (
+      {tab === 'roles' && canManageOrg && (
         <div className="max-w-3xl space-y-6">
           <Card>
             <div className="flex items-center justify-between mb-4">
