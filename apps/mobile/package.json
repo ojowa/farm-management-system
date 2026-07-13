@@ -22,6 +22,7 @@
     "@reduxjs/toolkit": "^2.0.1",
     "axios": "^1.7.9",
     "expo": "~54.0.35",
+    "expo-constants": "^18.0.13",
     "expo-file-system": "~19.0.23",
     "expo-image-picker": "~17.0.11",
     "expo-linking": "^8.0.12",

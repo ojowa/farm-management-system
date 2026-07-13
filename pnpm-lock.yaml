@@ -221,6 +221,9 @@ importers:
       expo:
         specifier: ~54.0.35
         version: 54.0.35(@babel/core@7.29.7)(@expo/metro-runtime@6.1.2)(expo-router@6.0.24)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@18.3.31)(react@19.1.0))(react@19.1.0)(typescript@5.8.3)
+      expo-constants:
+        specifier: ^18.0.13
+        version: 18.0.13(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@18.3.31)(react@19.1.0))
       expo-file-system:
         specifier: ~19.0.23
         version: 19.0.23(expo@54.0.35)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@18.3.31)(react@19.1.0))

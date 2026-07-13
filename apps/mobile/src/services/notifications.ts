@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -9,15 +9,24 @@ const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
   'http://localhost:4000';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient';
+
+let Notifications: typeof import('expo-notifications') | null = null;
+
+if (!isExpoGo) {
+  const N = require('expo-notifications');
+  Notifications = N;
+  N.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export interface NotificationData {
   type?: string;
@@ -27,6 +36,7 @@ export interface NotificationData {
 }
 
 export async function registerForPushNotifications(): Promise<string | null> {
+  if (!Notifications) return null;
   try {
     const perms = (await Notifications.getPermissionsAsync()) as { status: string };
     let finalStatus = perms.status;
@@ -77,6 +87,7 @@ export async function sendTokenToServer(expoPushToken: string): Promise<void> {
 }
 
 export async function unregisterFromNotifications(): Promise<void> {
+  if (!Notifications) return;
   try {
     const authToken = await AsyncStorage.getItem('accessToken');
     const token = await Notifications.getExpoPushTokenAsync();
@@ -97,11 +108,12 @@ export async function unregisterFromNotifications(): Promise<void> {
 }
 
 export async function getNotificationPermissions(): Promise<boolean> {
+  if (!Notifications) return false;
   const perms = (await Notifications.getPermissionsAsync()) as { status: string };
   return perms.status === 'granted';
 }
 
-function handleNotificationResponse(response: Notifications.NotificationResponse) {
+function handleNotificationResponse(response: any) {
   const data = response.notification.request.content.data as NotificationData;
 
   if (!data) return;
@@ -139,9 +151,10 @@ function resolveRoute(data: NotificationData): string | null {
   return null;
 }
 
-let responseListener: Notifications.Subscription | null = null;
+let responseListener: any = null;
 
 export function setupNotificationListeners() {
+  if (!Notifications) return () => {};
   if (responseListener) {
     responseListener.remove();
   }
