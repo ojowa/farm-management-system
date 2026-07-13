@@ -1,9 +1,12 @@
-import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
+import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth';
 
-const COOKIE_OPTS = { httpOnly: true, secure: false, sameSite: 'lax' as const, path: '/' };
+const isProduction = process.env.NODE_ENV === 'production';
+const COOKIE_OPTS = { httpOnly: true, secure: isProduction, sameSite: 'lax' as const, path: '/' };
 const ACCESS_MAX_AGE = 15 * 60 * 1000;
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
@@ -12,6 +15,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   async login(@Body() body: { email: string; password: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     const result = await this.authService.login(body, ctx);
@@ -25,43 +29,28 @@ export class AuthController {
   }
 
   @Post('verify-mfa')
-  async verifyMFA(@Body() body: { mfaToken: string; code: string }, @Req() req: any) {
+  @Throttle({ default: { ttl: 300000, limit: 5 } })
+  async verifyMFA(@Body() body: { mfaToken: string; code: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-    return this.authService.verifyMFA(body.mfaToken, body.code, ctx);
+    const result = await this.authService.verifyMFA(body.mfaToken, body.code, ctx);
+
+    if (result.accessToken && result.refreshToken) {
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTS, maxAge: REFRESH_MAX_AGE });
+    }
+
+    return result;
   }
 
   @Post('register')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   async register(@Body() body: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, @Req() req: any) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     return this.authService.register(body, ctx);
   }
 
-  @Get('me')
-  async getProfile(@Req() req: any) {
-    return this.authService.getProfile(req.user?.sub);
-  }
-
-  @Put('profile')
-  async updateProfile(@Req() req: any, @Body() body: { firstName?: string; lastName?: string; email?: string; phone?: string; avatar?: string }) {
-    return this.authService.updateProfile(req.user?.sub, body);
-  }
-
-  @Put('password')
-  async changePassword(@Req() req: any, @Body() body: { currentPassword: string; newPassword: string }) {
-    return this.authService.changePassword(req.user?.sub, body.currentPassword, body.newPassword);
-  }
-
-  @Get('preferences')
-  async getPreferences(@Req() req: any) {
-    return this.authService.getNotificationPreferences(req.user?.sub);
-  }
-
-  @Put('preferences')
-  async updatePreferences(@Req() req: any, @Body() body: any) {
-    return this.authService.updateNotificationPreferences(req.user?.sub, body);
-  }
-
   @Post('refresh')
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   async refreshToken(@Body() body: { refreshToken: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refreshToken || body?.refreshToken;
     const result = await this.authService.refreshToken(refreshToken, { ipAddress: req.ip });
@@ -74,8 +63,39 @@ export class AuthController {
     return result;
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Req() req: any) {
+    return this.authService.getProfile(req.user?.sub);
+  }
+
+  @Put('profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@Req() req: any, @Body() body: { firstName?: string; lastName?: string; email?: string; phone?: string; avatar?: string }) {
+    return this.authService.updateProfile(req.user?.sub, body);
+  }
+
+  @Put('password')
+  @UseGuards(JwtAuthGuard)
+  async changePassword(@Req() req: any, @Body() body: { currentPassword: string; newPassword: string }) {
+    return this.authService.changePassword(req.user?.sub, body.currentPassword, body.newPassword);
+  }
+
+  @Get('preferences')
+  @UseGuards(JwtAuthGuard)
+  async getPreferences(@Req() req: any) {
+    return this.authService.getNotificationPreferences(req.user?.sub);
+  }
+
+  @Put('preferences')
+  @UseGuards(JwtAuthGuard)
+  async updatePreferences(@Req() req: any, @Body() body: any) {
+    return this.authService.updateNotificationPreferences(req.user?.sub, body);
+  }
+
   @Post('logout')
   @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
   async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     await this.authService.logout(req.user?.sub);
     res.clearCookie('accessToken', { path: '/' });
@@ -84,22 +104,40 @@ export class AuthController {
   }
 
   @Get('sessions')
+  @UseGuards(JwtAuthGuard)
   async getSessions(@Req() req: any) {
     return this.authService.getActiveSessions(req.user?.sub);
   }
 
+  @Delete('sessions/:tokenId')
+  @UseGuards(JwtAuthGuard)
+  async revokeSession(@Req() req: any, @Req() req2: any) {
+    await this.authService.revokeSession(req2.user?.sub, req2.params.tokenId);
+    return { message: 'Session revoked' };
+  }
+
+  @Delete('sessions')
+  @UseGuards(JwtAuthGuard)
+  async revokeAllSessions(@Req() req: any) {
+    await this.authService.logoutAllSessions(req.user?.sub);
+    return { message: 'All sessions revoked' };
+  }
+
   @Post('2fa/generate')
+  @UseGuards(JwtAuthGuard)
   async generate2fa(@Req() req: any) {
     return this.authService.enable2fa(req.user?.sub);
   }
 
   @Post('2fa/enable')
+  @UseGuards(JwtAuthGuard)
   async enable2fa(@Req() req: any, @Body() body: { code: string }) {
     await this.authService.confirm2fa(req.user?.sub, body.code);
     return { message: '2FA enabled successfully' };
   }
 
   @Post('2fa/disable')
+  @UseGuards(JwtAuthGuard)
   async disable2fa(@Req() req: any) {
     await this.authService.disable2fa(req.user?.sub);
     return { message: '2FA disabled successfully' };

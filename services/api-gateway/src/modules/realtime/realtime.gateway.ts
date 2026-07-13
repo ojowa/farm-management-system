@@ -8,7 +8,8 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
+import { verifyAccessToken } from '@farm/auth';
 
 export interface RealtimeEvent {
   entity: string;
@@ -19,7 +20,8 @@ export interface RealtimeEvent {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://localhost:3004', 'http://localhost:3005', 'http://localhost:8081', 'http://localhost:8082'],
+    credentials: true,
   },
   namespace: '/',
 })
@@ -31,17 +33,35 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   private userSockets: Map<string, Set<string>> = new Map();
 
   handleConnection(client: Socket): void {
-    this.logger.log(`Client connected: ${client.id}`);
+    try {
+      const token = client.handshake.auth?.token || client.handshake.query?.token;
+      if (!token || typeof token !== 'string') {
+        this.logger.warn(`Client rejected: no token (${client.id})`);
+        client.disconnect();
+        return;
+      }
+      const user = verifyAccessToken(token);
+      (client as any).userId = user.id;
+      (client as any).userEmail = user.email;
+      this.logger.log(`Client connected: ${client.id} (user: ${user.id})`);
+    } catch {
+      this.logger.warn(`Client rejected: invalid token (${client.id})`);
+      client.disconnect();
+    }
   }
 
   handleDisconnect(client: Socket): void {
-    this.logger.log(`Client disconnected: ${client.id}`);
-    this.userSockets.forEach((sockets, userId) => {
-      sockets.delete(client.id);
-      if (sockets.size === 0) {
-        this.userSockets.delete(userId);
+    const userId = (client as any).userId as string | undefined;
+    this.logger.log(`Client disconnected: ${client.id}${userId ? ` (user: ${userId})` : ''}`);
+    if (userId) {
+      const sockets = this.userSockets.get(userId);
+      if (sockets) {
+        sockets.delete(client.id);
+        if (sockets.size === 0) {
+          this.userSockets.delete(userId);
+        }
       }
-    });
+    }
   }
 
   @SubscribeMessage('join')
@@ -49,7 +69,17 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId: string }
   ): { event: string; data: { success: boolean; userId: string } } {
+    const authenticatedUserId = (client as any).userId as string;
+    if (!authenticatedUserId) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+
     const { userId } = data;
+    if (userId !== authenticatedUserId) {
+      this.logger.warn(`User ${authenticatedUserId} attempted to join room for ${userId}`);
+      return { event: 'error', data: { success: false, userId } };
+    }
+
     const roomName = `user:${userId}`;
     client.join(roomName);
 
@@ -67,7 +97,12 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId: string }
   ): { event: string; data: { success: boolean; userId: string } } {
+    const authenticatedUserId = (client as any).userId as string;
     const { userId } = data;
+    if (userId !== authenticatedUserId) {
+      return { event: 'error', data: { success: false, userId } };
+    }
+
     const roomName = `user:${userId}`;
     client.leave(roomName);
 

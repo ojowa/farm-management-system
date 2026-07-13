@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Req, HttpCode, HttpStatus, BadRequestException, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Req, HttpCode, HttpStatus, BadRequestException, NotFoundException, ConflictException, ForbiddenException, UseGuards } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 
 @Controller('org-admin')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class OrgAdminController {
   @Get('me')
   async getOrg(@Req() req: any) {

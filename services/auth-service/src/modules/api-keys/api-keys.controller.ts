@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, HttpCode, HttpStatus, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Req, HttpCode, HttpStatus, BadRequestException, NotFoundException, UseGuards } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth';
 
 @Controller('api-keys')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class ApiKeysController {
   @Get()
   async findAll(@Req() req: any) {

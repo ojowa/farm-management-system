@@ -8,8 +8,17 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret'; }
-function getJwtRefreshSecret() { return process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret'; }
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  return secret;
+}
+
+function getJwtRefreshSecret(): string {
+  const secret = process.env.JWT_REFRESH_SECRET;
+  if (!secret) throw new Error('JWT_REFRESH_SECRET environment variable is required');
+  return secret;
+}
 
 @Injectable()
 export class AuthService {

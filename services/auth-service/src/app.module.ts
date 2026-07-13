@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { join } from 'path';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { RolesController } from './presentation/controllers/roles.controller';
@@ -24,6 +26,11 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    ThrottlerModule.forRoot([
+      { name: 'default', ttl: 60000, limit: 30 },
+      { name: 'auth', ttl: 60000, limit: 10 },
+      { name: '2fa', ttl: 300000, limit: 5 },
+    ]),
   ],
   controllers: [
     AuthController,
@@ -37,6 +44,7 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
     PlatformApiKeysController,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     AuthService,
     RolesService,
     PermissionsService,

@@ -5,13 +5,23 @@ import crypto from 'crypto';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { RefreshTokenRepository } from '../../domain/repositories/refresh-token.repository';
 import { RoleRepository } from '../../domain/repositories/role.repository';
+import { prisma } from '@farm/database';
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function getJwtSecret() { return process.env.JWT_SECRET || 'dev-secret'; }
-function getJwtRefreshSecret() { return process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret'; }
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  return secret;
+}
+
+function getJwtRefreshSecret(): string {
+  const secret = process.env.JWT_REFRESH_SECRET;
+  if (!secret) throw new Error('JWT_REFRESH_SECRET environment variable is required');
+  return secret;
+}
 
 @Injectable()
 export class AuthService {
@@ -98,9 +108,17 @@ export class AuthService {
     return rawToken;
   }
 
-  generateAccessToken(user: any) {
+  async generateAccessToken(user: any) {
+    let permissions: string[] = [];
+    if (user.roleId) {
+      const rolePermissions = await prisma.rolePermission.findMany({
+        where: { roleId: user.roleId },
+        select: { permission: { select: { name: true } } },
+      });
+      permissions = rolePermissions.map((rp) => rp.permission.name);
+    }
     return jwt.sign(
-      { sub: user.id, email: user.email, role: user.role?.name || user.roleName, organizationId: user.organizationId },
+      { sub: user.id, email: user.email, role: user.role?.name || user.roleName, permissions, organizationId: user.organizationId },
       getJwtSecret(),
       { expiresIn: '15m' }
     );

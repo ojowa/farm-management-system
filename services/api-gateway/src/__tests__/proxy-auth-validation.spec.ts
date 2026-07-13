@@ -10,7 +10,7 @@ const { sign } = require('jsonwebtoken') as typeof import('jsonwebtoken');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const createTestAccessToken = (payload: any) => {
-  const secret = process.env.JWT_SECRET || 'secret';
+  const secret = process.env.JWT_SECRET!;
   return sign(payload, secret, { expiresIn: '15m' });
 };
 

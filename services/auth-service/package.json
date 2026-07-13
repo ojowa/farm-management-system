@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@farm/auth": "workspace:*",
+    "@farm/database": "workspace:*",
     "@farm/domain-core": "workspace:*",
     "@farm/identity-domain": "workspace:*",
-    "@farm/database": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/utils": "workspace:*",
     "@farm/validation": "workspace:*",
@@ -24,6 +24,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.10",
     "@nestjs/platform-express": "^11.0.10",
+    "@nestjs/throttler": "^6.5.0",
     "@otplib/plugin-base32-scure": "^13.4.1",
     "@otplib/plugin-crypto-node": "^13.4.1",
     "bcryptjs": "^2.4.3",

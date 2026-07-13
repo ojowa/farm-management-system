@@ -9,7 +9,7 @@ import { AuthController } from './controllers/auth.controller';
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'secret',
+      secret: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })(),
       signOptions: { expiresIn: '15m' },
     }),
   ],

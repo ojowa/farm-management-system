@@ -16,7 +16,8 @@ export class PlatformAdminGuard implements CanActivate {
     }
 
     const token = authHeader.split(' ')[1];
-    const jwtSecret = this.configService.get<string>('JWT_SECRET') || 'secret';
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    if (!jwtSecret) throw new Error('JWT_SECRET environment variable is required');
 
     let decoded: any;
     try {
@@ -67,7 +68,8 @@ export class SuperAdminGuard implements CanActivate {
     }
 
     const token = authHeader.split(' ')[1];
-    const jwtSecret = this.configService.get<string>('JWT_SECRET') || 'secret';
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    if (!jwtSecret) throw new Error('JWT_SECRET environment variable is required');
 
     let decoded: any;
     try {

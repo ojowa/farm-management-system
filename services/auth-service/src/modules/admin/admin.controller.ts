@@ -1,14 +1,18 @@
-import { Controller, Get, Put, Param, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
 import { prisma } from '@farm/database';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 
 @Controller('admin/organizations')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class AdminController {
   @Get()
+  @Permission('platform.manage')
   async findAll() {
     return prisma.organization.findMany({ include: { _count: { select: { users: true, farms: true } } }, orderBy: { createdAt: 'desc' } });
   }
 
   @Get(':id')
+  @Permission('platform.manage')
   async findOne(@Param('id') id: string) {
     return prisma.organization.findUnique({
       where: { id },
@@ -21,12 +25,14 @@ export class AdminController {
   }
 
   @Put(':id/subscription')
+  @Permission('platform.manage')
   async updateSubscription(@Param('id') id: string, @Body() body: any) {
     const { subscriptionPlan, subscriptionStatus } = body;
     return prisma.organization.update({ where: { id }, data: { ...(subscriptionPlan && { subscriptionPlan }), ...(subscriptionStatus && { subscriptionStatus }) } });
   }
 
   @Get(':id/users')
+  @Permission('platform.manage')
   async getUsers(@Param('id') id: string) {
     return prisma.user.findMany({
       where: { organizationId: id },
@@ -36,7 +42,7 @@ export class AdminController {
   }
 
   @Put('users/:id/toggle-active')
-  @HttpCode(HttpStatus.OK)
+  @Permission('platform.manage')
   async toggleActive(@Param('id') id: string) {
     const user = await prisma.user.findUnique({ where: { id }, select: { isActive: true } });
     return prisma.user.update({ where: { id }, data: { isActive: !user?.isActive }, select: { id: true, firstName: true, lastName: true, email: true, isActive: true } });

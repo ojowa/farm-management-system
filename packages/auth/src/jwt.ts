@@ -15,8 +15,6 @@ export interface VerifiedUser {
   organizationId: string | null;
 }
 
-const DEFAULT_SECRET = 'secret';
-
 const resolveSecret = (): string => {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET environment variable is required');

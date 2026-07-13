@@ -115,7 +115,7 @@ export default function SettingsPage() {
       loadOrg();
       loadRoles();
     }
-  }, [user?.role]);
+  }, [user?.role?.name]);
 
   async function loadRoles() {
     try {
@@ -412,7 +412,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">Role</p>
-                  <p className="text-xs text-gray-500">{user?.role || 'N/A'}</p>
+                  <p className="text-xs text-gray-500">{typeof user?.role === 'object' ? (user.role as any)?.name : user?.role || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between">

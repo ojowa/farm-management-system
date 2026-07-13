@@ -21,11 +21,8 @@ function jwtAuthMiddleware(req: any, _res: any, next: () => void) {
 
   if (token) {
     try {
-      const secret = process.env.JWT_SECRET || 'dev-secret';
-      if (!req.__loggedSecret) {
-        console.log('[jwtAuthMiddleware] JWT_SECRET present:', !!process.env.JWT_SECRET, 'length:', process.env.JWT_SECRET?.length);
-        req.__loggedSecret = true;
-      }
+      const secret = process.env.JWT_SECRET;
+      if (!secret) throw new Error('JWT_SECRET environment variable is required');
       const decoded = jwt.verify(token, secret);
       req.user = decoded;
     } catch (err: any) {
