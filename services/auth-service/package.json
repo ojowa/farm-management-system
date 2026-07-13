@@ -28,6 +28,8 @@
     "@otplib/plugin-base32-scure": "^13.4.1",
     "@otplib/plugin-crypto-node": "^13.4.1",
     "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.4",
     "cookie-parser": "^1.4.6",
     "jsonwebtoken": "^9.0.3",
     "otplib": "^13.4.1",

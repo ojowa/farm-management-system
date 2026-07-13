@@ -6,6 +6,11 @@ const verify = (jwt as any).verify as (
   token: string,
   secret: string
 ) => unknown;
+const sign = (jwt as any).sign as (
+  payload: string | object,
+  secret: string,
+  options?: object
+) => string;
 
 export interface VerifiedUser {
   id: string;
@@ -15,9 +20,30 @@ export interface VerifiedUser {
   organizationId: string | null;
 }
 
+export interface ServiceTokenPayload {
+  /** The authenticated user's ID */
+  userId: string;
+  /** The user's email */
+  email: string | null;
+  /** The user's role name */
+  role: string;
+  /** The user's permissions */
+  permissions: string[];
+  /** The user's organization ID */
+  organizationId: string | null;
+  /** Token type marker */
+  type: 'service';
+}
+
 const resolveSecret = (): string => {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  return secret;
+};
+
+const resolveServiceSecret = (): string => {
+  const secret = process.env.SERVICE_SECRET;
+  if (!secret) throw new Error('SERVICE_SECRET environment variable is required');
   return secret;
 };
 
@@ -39,6 +65,49 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
     role: decoded.role,
     permissions: decoded.permissions ?? [],
     organizationId: decoded.organizationId ?? null,
+  };
+};
+
+/**
+ * Sign a service-to-service token. The API gateway calls this when forwarding
+ * requests to downstream services. The token proves the request was routed
+ * through the gateway after JWT verification.
+ *
+ * Services must call `verifyServiceToken()` before trusting x-* headers.
+ */
+export const signServiceToken = (user: VerifiedUser): string => {
+  const payload: ServiceTokenPayload = {
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    permissions: user.permissions,
+    organizationId: user.organizationId,
+    type: 'service',
+  };
+  return sign(payload, resolveServiceSecret(), { expiresIn: '30s' });
+};
+
+/**
+ * Verify a service token signed by the API gateway. Returns the verified
+ * user context or throws if the token is invalid/expired/missing.
+ *
+ * Use in downstream services before trusting x-user-id, x-organization-id,
+ * etc. headers.
+ */
+export const verifyServiceToken = (token: string): ServiceTokenPayload => {
+  const decoded = verify(token, resolveServiceSecret()) as any;
+
+  if (!decoded || decoded.type !== 'service' || !decoded.userId) {
+    throw new Error('Invalid service token payload');
+  }
+
+  return {
+    userId: decoded.userId,
+    email: decoded.email ?? null,
+    role: decoded.role,
+    permissions: decoded.permissions ?? [],
+    organizationId: decoded.organizationId ?? null,
+    type: 'service',
   };
 };
 

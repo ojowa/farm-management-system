@@ -1,0 +1,513 @@
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────────────
+  - type: database
+    name: fms-database
+    plan: starter
+    databaseName: FMS
+    ipAllowList: []
+
+  # ──────────────────────────────────────────────
+  # API Gateway — Port 4000
+  # ──────────────────────────────────────────────
+  - type: web
+    name: api-gateway
+    plan: standard
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/api-gateway run build
+    startCommand: pnpm --filter @farm/api-gateway run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+    dependsOn:
+      - auth-service
+      - farm-service
+      - livestock-service
+      - poultry-service
+      - notification-service
+      - finance-service
+      - worker-service
+      - reporting-service
+      - organization-service
+      - inventory-service
+      - crop-service
+      - hr-service
+      - platform-service
+
+  # ──────────────────────────────────────────────
+  # Auth Service — Port 4001
+  # ──────────────────────────────────────────────
+  - type: web
+    name: auth-service
+    plan: standard
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/auth-service run build
+    startCommand: pnpm --filter @farm/auth-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Farm Service — Port 4002
+  # ──────────────────────────────────────────────
+  - type: web
+    name: farm-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/farm-service run build
+    startCommand: pnpm --filter @farm/farm-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4002
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Livestock Service — Port 4003
+  # ──────────────────────────────────────────────
+  - type: web
+    name: livestock-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/livestock-service run build
+    startCommand: pnpm --filter @farm/livestock-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4003
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Poultry Service — Port 4004
+  # ──────────────────────────────────────────────
+  - type: web
+    name: poultry-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/poultry-service run build
+    startCommand: pnpm --filter @farm/poultry-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4004
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Notification Service — Port 4005
+  # ──────────────────────────────────────────────
+  - type: web
+    name: notification-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/notification-service run build
+    startCommand: pnpm --filter @farm/notification-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4005
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+  # ──────────────────────────────────────────────
+  # Finance Service — Port 4006
+  # ──────────────────────────────────────────────
+  - type: web
+    name: finance-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/finance-service run build
+    startCommand: pnpm --filter @farm/finance-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4006
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Worker Service — Port 4007
+  # ──────────────────────────────────────────────
+  - type: web
+    name: worker-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/worker-service run build
+    startCommand: pnpm --filter @farm/worker-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4007
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Reporting Service — Port 4008
+  # ──────────────────────────────────────────────
+  - type: web
+    name: reporting-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/reporting-service run build
+    startCommand: pnpm --filter @farm/reporting-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4008
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Organization Service — Port 4009
+  # ──────────────────────────────────────────────
+  - type: web
+    name: organization-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/organization-service run build
+    startCommand: pnpm --filter @farm/organization-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4009
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Inventory Service — Port 4010
+  # ──────────────────────────────────────────────
+  - type: web
+    name: inventory-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/inventory-service run build
+    startCommand: pnpm --filter @farm/inventory-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4010
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Crop Service — Port 4011
+  # ──────────────────────────────────────────────
+  - type: web
+    name: crop-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/crop-service run build
+    startCommand: pnpm --filter @farm/crop-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4011
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # HR Service — Port 4012
+  # ──────────────────────────────────────────────
+  - type: web
+    name: hr-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter @farm/hr-service run build
+    startCommand: pnpm --filter @farm/hr-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4012
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # ──────────────────────────────────────────────
+  # Platform Service — Port 4020
+  # ──────────────────────────────────────────────
+  - type: web
+    name: platform-service
+    plan: starter
+    runtime: node
+    buildCommand: pnpm install && pnpm --filter platform-service run build
+    startCommand: pnpm --filter platform-service run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4020
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: DIRECT_DATABASE_URL
+        fromDatabase:
+          name: fms-database
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MFA_SECRET
+        sync: false
+      - key: SERVICE_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d

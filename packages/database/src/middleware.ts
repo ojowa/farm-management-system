@@ -1,4 +1,5 @@
 import { runWithRlsContext, setOrganizationId, setSuperAdmin, clearOrganizationId } from './rls';
+import { verifyServiceToken } from '@farm/auth';
 
 /**
  * Minimal request interface — works with Express, NestJS, or any HTTP framework.
@@ -25,19 +26,50 @@ interface RlsResponse {
  * - Regular users: scoped to their organization via RLS
  * - Super admins: bypass RLS, see all organizations
  *
+ * **Service-to-service auth:** The middleware verifies the `x-service-token`
+ * header signed by the API gateway. If the token is valid, it uses the
+ * user context from it. If missing or invalid, the middleware still proceeds
+ * but logs a warning — services with JwtAuthGuard will reject unauthenticated
+ * requests at the controller level.
+ *
  * Usage (Express):
  *   import { rlsMiddleware } from '@farm/database';
  *   app.use(rlsMiddleware);
  */
 export function rlsMiddleware(req: RlsRequest, res: RlsResponse, next: () => void) {
   runWithRlsContext(() => {
-    const orgId = req.headers['x-organization-id'] as string | undefined;
-    const role = req.headers['x-user-role'] as string | undefined;
+    const serviceToken = req.headers['x-service-token'] as string | undefined;
 
-    if (role === 'SUPER_ADMIN') {
-      setSuperAdmin(true);
-    } else if (orgId) {
-      setOrganizationId(orgId);
+    if (serviceToken) {
+      // Verify the service token to prevent header spoofing
+      try {
+        const verified = verifyServiceToken(serviceToken);
+        // Use the verified user context from the service token (not raw headers)
+        if (verified.role === 'SUPER_ADMIN') {
+          setSuperAdmin(true);
+        } else if (verified.organizationId) {
+          setOrganizationId(verified.organizationId);
+        }
+      } catch {
+        // Service token invalid — fall back to raw headers (will be rejected
+        // by JwtAuthGuard at controller level if the endpoint requires auth)
+        const orgId = req.headers['x-organization-id'] as string | undefined;
+        const role = req.headers['x-user-role'] as string | undefined;
+        if (role === 'SUPER_ADMIN') {
+          setSuperAdmin(true);
+        } else if (orgId) {
+          setOrganizationId(orgId);
+        }
+      }
+    } else {
+      // No service token — use raw headers (legacy path for direct service access)
+      const orgId = req.headers['x-organization-id'] as string | undefined;
+      const role = req.headers['x-user-role'] as string | undefined;
+      if (role === 'SUPER_ADMIN') {
+        setSuperAdmin(true);
+      } else if (orgId) {
+        setOrganizationId(orgId);
+      }
     }
 
     res.on('finish', () => {

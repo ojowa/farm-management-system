@@ -18,7 +18,7 @@ import { ZodValidationPipe } from '@farm/utils';
 import { createLivestockSchema, updateLivestockSchema } from '@farm/validation';
 
 function getOrgIdFromRequest(req: any): string {
-  return String(req.headers['x-organization-id'] || req.user?.organizationId || '');
+  return String(req.user?.organizationId || '');
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)

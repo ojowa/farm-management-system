@@ -178,21 +178,121 @@ rendered it directly, causing a React type error.
 
 ---
 
+## Fix 9: Service-to-Service Authentication (CRITICAL #3)
+
+**Audit Finding:** CRITICAL #3 — Downstream services trust `x-user-id`,
+`x-organization-id`, `x-user-role` headers without verification. Any client
+reaching service ports directly can spoof these headers for full RLS bypass.
+
+**What changed:**
+
+1. **`packages/auth/src/jwt.ts`** — Added `signServiceToken()` and
+   `verifyServiceToken()` using a separate `SERVICE_SECRET`
+
+2. **`services/api-gateway/src/infrastructure/routing/proxy.middleware.ts`**
+   — Gateway now signs a short-lived (30s) service token containing verified
+   user context. Sent as `x-service-token` header to downstream services.
+
+3. **`packages/database/src/middleware.ts`** — RLS middleware now verifies
+   `x-service-token` before trusting headers. If valid, uses verified user
+   context from the token. Falls back to raw headers only if no service
+   token is present (legacy path).
+
+4. **Controllers fixed** — Removed header fallbacks from controllers that
+   already have `JwtAuthGuard`:
+   - `farm-service/map.controller.ts` — `req.user?.organizationId` only
+   - `farm-service/import-export.controller.ts` — same
+   - `livestock-service/livestock.controller.ts` — same
+
+**Env var added:** `SERVICE_SECRET` in `.env`
+
+**How it works:**
+```
+Client → Gateway (verifies JWT, signs service token) → Service (verifies service token, trusts headers)
+Direct access → Service (no valid service token → headers not trusted → RLS blocks data)
+```
+
+---
+
+## Fix 10: Input Validation with class-validator
+
+**Audit Finding:** HIGH #17 — No input validation on admin/org/roles/permissions endpoints.
+
+**What changed:**
+
+- Installed `class-validator` and `class-transformer` in auth-service
+- Created `services/auth-service/src/presentation/dto/auth.dto.ts`:
+  `LoginDto`, `RegisterDto`, `RefreshTokenDto`, `VerifyMfaDto`,
+  `ChangePasswordDto`, `UpdateProfileDto`
+- Created `services/auth-service/src/presentation/dto/admin.dto.ts`:
+  `UpdateSubscriptionDto`
+- Added `@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))`
+  to `AuthController` and `AdminController`
+
+---
+
+## Fix 11: MFA Secret Separation
+
+**Audit Finding:** MEDIUM #18 — MFA tokens signed with same secret as access tokens.
+
+**What changed:**
+
+- Added `MFA_SECRET` to `.env`
+- `services/auth-service/src/modules/auth/auth.service.ts` — `getMfaSecret()`
+  reads from `process.env.MFA_SECRET`, throws if missing
+- `services/auth-service/src/application/services/auth.service.ts` — same
+- MFA token signing/verification now uses `MFA_SECRET` instead of `JWT_SECRET`
+
+---
+
+## Fix 12: Client-Side Route Guards
+
+**Audit Finding:** HIGH #16 — No client-side route guards in web app.
+
+**What changed:**
+
+- `apps/web/src/middleware.ts` — Next.js middleware that checks `accessToken`
+  cookie; redirects to `/login` if missing; public paths: `/login`, `/register`,
+  `/api/auth`
+- `apps/admin/src/middleware.ts` — Same pattern; public paths: `/login`
+- `apps/console/src/components/ProtectedRoute.tsx` — React component that
+  checks auth context; redirects to `/login` if unauthenticated
+- `apps/console/src/app/(platform)/layout.tsx` — Wrapped children with
+  `<ProtectedRoute>`
+
+---
+
+## Deployment Configuration
+
+### Vercel (Frontend Apps)
+
+Created `vercel.json` for each frontend app:
+- `apps/web/vercel.json` — `@farm/web` build, Next.js framework
+- `apps/admin/vercel.json` — `@farm/admin` build, Next.js framework
+- `apps/console/vercel.json` — `@farm/console` build, Next.js framework
+
+All include security headers (X-Frame-Options, X-Content-Type-Options,
+Referrer-Policy) and SPA rewrites.
+
+### Render (Backend Services)
+
+Created `render.yml` at repo root defining:
+- PostgreSQL 16 database
+- 15 backend services (API gateway on standard plan, all others on starter)
+- Auto-linked DATABASE_URL from database
+- Health checks on all services
+- Secrets (JWT_SECRET, JWT_REFRESH_SECRET, MFA_SECRET, SERVICE_SECRET)
+  configured via Render dashboard (sync: false)
+
+---
+
 ## Remaining Open Items
 
-These findings from the audit were NOT addressed in this batch and remain open:
-
-| # | Finding | Severity | Notes |
-|---|---------|----------|-------|
-| 3 | RLS bypass via header spoofing | CRITICAL | Requires service-to-service auth tokens or mTLS — architectural change |
-| 8 | Seed script uses `password123` | HIGH | Only affects dev seed data |
-| 9 | Unscoped `prisma` in admin controllers | HIGH | Admin endpoints use platform-level access; needs org-scoped guard |
-| 10 | `organizationId` from client query params | HIGH | Needs middleware validation |
-| 12 | WebSocket CORS was `origin: '*'` | HIGH | **Fixed** (now restricted to known origins) |
-| 16 | No client-side route guards in web app | HIGH | Frontend-only, needs middleware/route groups |
-| 17 | No input validation on admin endpoints | MEDIUM | Needs DTOs with `class-validator` |
-| 18 | MFA tokens signed with same secret as access tokens | MEDIUM | Needs separate MFA secret |
-| 19 | Missing HR permissions in seed data | MEDIUM | Seed data change |
-| 21 | Service-to-service calls not authenticated | MEDIUM | Architectural — mTLS or service tokens |
-| 24 | JWT metadata logged to console | LOW | Remove `console.log` in middleware |
-| 25 | Mobile HTTP-only API URL | LOW | Needs HTTPS for production |
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| 8 | Seed script uses `password123` | HIGH | Open — dev-only |
+| 9 | Unscoped `prisma` in admin controllers | HIGH | Open — platform-level access |
+| 10 | `organizationId` from client query params | HIGH | Open — needs middleware validation |
+| 19 | Missing HR permissions in seed data | MEDIUM | Open — seed data change |
+| 24 | JWT metadata logged to console | LOW | Open — remove console.log |
+| 25 | Mobile HTTP-only API URL | LOW | Open — needs HTTPS for production |

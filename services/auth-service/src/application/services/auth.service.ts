@@ -23,6 +23,12 @@ function getJwtRefreshSecret(): string {
   return secret;
 }
 
+function getMfaSecret(): string {
+  const secret = process.env.MFA_SECRET;
+  if (!secret) throw new Error('MFA_SECRET environment variable is required');
+  return secret;
+}
+
 @Injectable()
 export class AuthService {
   constructor(@Inject('UserRepository') private readonly userRepo: UserRepository, @Inject('RefreshTokenRepository') private readonly refreshTokenRepo: RefreshTokenRepository, @Inject('RoleRepository') private readonly roleRepo: RoleRepository, 
@@ -34,7 +40,7 @@ export class AuthService {
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Invalid credentials');
     if (user.twoFactorEnabled) {
-      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getJwtSecret(), { expiresIn: '5m' });
+      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: '5m' });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
     const accessToken = this.generateAccessToken(user);
@@ -44,7 +50,7 @@ export class AuthService {
   }
 
   async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const payload = jwt.verify(mfaToken, getJwtSecret()) as any;
+    const payload = jwt.verify(mfaToken, getMfaSecret()) as any;
     const user = await this.userRepo.findById(payload.sub);
     if (!user) throw new NotFoundException('User not found');
     // @ts-ignore - otplib types not available

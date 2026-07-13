@@ -1,9 +1,11 @@
-import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AdminService } from '../../application/services/admin.service';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { UpdateSubscriptionDto } from '../dto/admin.dto';
 
 @Controller('admin/organizations')
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
@@ -21,7 +23,7 @@ export class AdminController {
 
   @Put(':id/subscription')
   @Permission('platform.manage')
-  updateSubscription(@Param('id') id: string, @Body() body: { subscriptionPlan: string; subscriptionStatus: string }) {
+  updateSubscription(@Param('id') id: string, @Body() body: UpdateSubscriptionDto) {
     return this.adminService.updateOrganizationSubscription(id, body);
   }
 

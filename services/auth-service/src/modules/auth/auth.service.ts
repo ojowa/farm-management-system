@@ -20,6 +20,12 @@ function getJwtRefreshSecret(): string {
   return secret;
 }
 
+function getMfaSecret(): string {
+  const secret = process.env.MFA_SECRET;
+  if (!secret) throw new Error('MFA_SECRET environment variable is required');
+  return secret;
+}
+
 @Injectable()
 export class AuthService {
   async login(data: any, ctx?: { ipAddress?: string; userAgent?: string }) {
@@ -28,7 +34,7 @@ export class AuthService {
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Invalid credentials');
     if (user.twoFactorEnabled) {
-      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getJwtSecret(), { expiresIn: '5m' });
+      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: '5m' });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
     const accessToken = await this.generateAccessToken(user);
@@ -38,7 +44,7 @@ export class AuthService {
   }
 
   async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const payload = jwt.verify(mfaToken, getJwtSecret()) as any;
+    const payload = jwt.verify(mfaToken, getMfaSecret()) as any;
     const user = await prisma.user.findUnique({ where: { id: payload.sub }, include: { role: true } });
     if (!user) throw new NotFoundException('User not found');
     // @ts-ignore - otplib types not available

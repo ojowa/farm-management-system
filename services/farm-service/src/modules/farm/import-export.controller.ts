@@ -4,7 +4,7 @@ import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgIdFromRequest(req: any): string {
-  return String(req.headers['x-organization-id'] || req.user?.organizationId || '');
+  return String(req.user?.organizationId || '');
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)

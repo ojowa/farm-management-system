@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
 import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth';
+import { LoginDto, RegisterDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = { httpOnly: true, secure: isProduction, sameSite: 'lax' as const, path: '/' };
@@ -11,12 +12,13 @@ const ACCESS_MAX_AGE = 15 * 60 * 1000;
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 @Controller('auth')
+@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  async login(@Body() body: { email: string; password: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() body: LoginDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     const result = await this.authService.login(body, ctx);
 
@@ -30,7 +32,7 @@ export class AuthController {
 
   @Post('verify-mfa')
   @Throttle({ default: { ttl: 300000, limit: 5 } })
-  async verifyMFA(@Body() body: { mfaToken: string; code: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async verifyMFA(@Body() body: VerifyMfaDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     const result = await this.authService.verifyMFA(body.mfaToken, body.code, ctx);
 
@@ -44,14 +46,14 @@ export class AuthController {
 
   @Post('register')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async register(@Body() body: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, @Req() req: any) {
+  async register(@Body() body: RegisterDto, @Req() req: any) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     return this.authService.register(body, ctx);
   }
 
   @Post('refresh')
   @Throttle({ default: { ttl: 60000, limit: 20 } })
-  async refreshToken(@Body() body: { refreshToken: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async refreshToken(@Body() body: RefreshTokenDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refreshToken || body?.refreshToken;
     const result = await this.authService.refreshToken(refreshToken, { ipAddress: req.ip });
 
@@ -71,13 +73,13 @@ export class AuthController {
 
   @Put('profile')
   @UseGuards(JwtAuthGuard)
-  async updateProfile(@Req() req: any, @Body() body: { firstName?: string; lastName?: string; email?: string; phone?: string; avatar?: string }) {
+  async updateProfile(@Req() req: any, @Body() body: UpdateProfileDto) {
     return this.authService.updateProfile(req.user?.sub, body);
   }
 
   @Put('password')
   @UseGuards(JwtAuthGuard)
-  async changePassword(@Req() req: any, @Body() body: { currentPassword: string; newPassword: string }) {
+  async changePassword(@Req() req: any, @Body() body: ChangePasswordDto) {
     return this.authService.changePassword(req.user?.sub, body.currentPassword, body.newPassword);
   }
 

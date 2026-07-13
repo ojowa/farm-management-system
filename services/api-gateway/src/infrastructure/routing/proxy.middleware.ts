@@ -6,12 +6,44 @@ import jwt from 'jsonwebtoken';
 import { ServiceRoute } from '../../domain/routes';
 import { RoutingService } from '../../application/services/routing.service';
 
-const JWT_SECRET = () => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+const SERVICE_SECRET = (): string => {
+  const secret = process.env.SERVICE_SECRET;
+  if (!secret) throw new Error('SERVICE_SECRET environment variable is required');
   return secret;
 };
+
 const jwtVerify = (jwt as any).verify as (token: string, secret: string) => any;
+const jwtSign = (jwt as any).sign as (payload: any, secret: string, opts?: any) => string;
+
+interface VerifiedUser {
+  id: string;
+  email: string | null;
+  role: string;
+  permissions: string[];
+  organizationId: string | null;
+}
+
+function verifyAccessToken(token: string): VerifiedUser {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  const decoded = jwtVerify(token, secret) as any;
+  if (!decoded || !decoded.sub || !decoded.role) throw new Error('Invalid token payload');
+  return {
+    id: decoded.sub,
+    email: decoded.email ?? null,
+    role: decoded.role,
+    permissions: decoded.permissions ?? [],
+    organizationId: decoded.organizationId ?? null,
+  };
+}
+
+function signServiceToken(user: VerifiedUser): string {
+  return jwtSign(
+    { userId: user.id, email: user.email, role: user.role, permissions: user.permissions, organizationId: user.organizationId, type: 'service' },
+    SERVICE_SECRET(),
+    { expiresIn: '30s' },
+  );
+}
 
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
@@ -45,15 +77,15 @@ export class ProxyMiddleware implements NestMiddleware {
       }
     }
 
+    let verifiedUser: VerifiedUser | null = null;
+
     if (token) {
       try {
-        const decoded = jwtVerify(token, JWT_SECRET());
-        if (decoded && decoded.sub) {
-          req.headers['x-user-id'] = decoded.sub;
-          req.headers['x-user-role'] = decoded.role || '';
-          req.headers['x-organization-id'] = decoded.organizationId || '';
-          req.headers['x-user-email'] = decoded.email || '';
-        }
+        verifiedUser = verifyAccessToken(token);
+        req.headers['x-user-id'] = verifiedUser.id;
+        req.headers['x-user-role'] = verifiedUser.role || '';
+        req.headers['x-organization-id'] = verifiedUser.organizationId || '';
+        req.headers['x-user-email'] = verifiedUser.email || '';
       } catch {
         if (req.cookies?.accessToken) {
           res.clearCookie('accessToken', { path: '/' });
@@ -76,7 +108,16 @@ export class ProxyMiddleware implements NestMiddleware {
       return next();
     }
 
-    this.forwardRequest(req, res, route, token).catch((error) => {
+    let serviceToken: string | null = null;
+    if (verifiedUser) {
+      try {
+        serviceToken = signServiceToken(verifiedUser);
+      } catch (err: any) {
+        this.logger.error(`Failed to sign service token: ${err.message}`);
+      }
+    }
+
+    this.forwardRequest(req, res, route, token, serviceToken).catch((error) => {
       this.logger.error(`Proxy error: ${error.message}`);
       if (!res.headersSent) {
         res.status(502).json({
@@ -92,6 +133,7 @@ export class ProxyMiddleware implements NestMiddleware {
     res: any,
     route: ServiceRoute,
     token: string | null,
+    serviceToken: string | null,
   ): Promise<void> {
     const targetUrl = this.buildTargetUrl(req, route);
     const serviceName = route.service;
@@ -105,6 +147,7 @@ export class ProxyMiddleware implements NestMiddleware {
     if (req.headers['x-organization-id']) headers['x-organization-id'] = req.headers['x-organization-id'] as string;
     if (req.headers['x-user-email']) headers['x-user-email'] = req.headers['x-user-email'] as string;
     if (token) headers['authorization'] = `Bearer ${token}`;
+    if (serviceToken) headers['x-service-token'] = serviceToken;
 
     this.logger.debug(`${req.method} ${req.url} -> ${serviceName} (${targetUrl})`);
 

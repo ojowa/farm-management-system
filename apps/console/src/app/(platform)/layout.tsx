@@ -5,6 +5,7 @@ import '@/app/globals.css';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 const NAV_ITEMS = [
   { section: 'Overview', items: [
@@ -186,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
         <Header sidebarOpen={mobileOpen} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="p-6">
-          {children}
+          <ProtectedRoute>{children}</ProtectedRoute>
         </main>
       </div>
     </div>
