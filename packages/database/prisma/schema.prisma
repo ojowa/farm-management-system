@@ -93,18 +93,19 @@ model UserOrganization {
 }
 
 model Role {
-  id             String @id @default(uuid())
-  name           String
-  description    String?
-  isSystem       Boolean @default(false)
-  organizationId String?
+  id               String @id @default(uuid())
+  name             String
+  description      String?
+  isSystem         Boolean @default(false)
+  isPlatformAdmin  Boolean @default(false)
+  organizationId   String?
 
-  permissions    RolePermission[]
-  users          User[]
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions      RolePermission[]
+  users            User[]
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@unique([name, organizationId])
   @@index([organizationId])

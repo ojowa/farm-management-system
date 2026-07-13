@@ -15,9 +15,6 @@ import {
 } from '../../domain/repositories/hr.repository';
 import { HrEventService } from '../../infrastructure/messaging/hr.event.service';
 
-const CAN_CREATE_TASK_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
-const CAN_APPROVE_LEAVE_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
-
 @Injectable()
 export class HrApplicationService {
   constructor(@Inject('WorkerRepository') private readonly workerRepo: WorkerRepository, @Inject('AttendanceRepository') private readonly attendanceRepo: AttendanceRepository, @Inject('TaskRepository') private readonly taskRepo: TaskRepository, @Inject('ShiftRepository') private readonly shiftRepo: ShiftRepository, @Inject('ShiftAssignmentRepository') private readonly shiftAssignmentRepo: ShiftAssignmentRepository, @Inject('LeaveTypeRepository') private readonly leaveTypeRepo: LeaveTypeRepository, @Inject('LeaveRequestRepository') private readonly leaveRequestRepo: LeaveRequestRepository, @Inject('LeaveBalanceRepository') private readonly leaveBalanceRepo: LeaveBalanceRepository, @Inject('MessageRepository') private readonly messageRepo: MessageRepository, @Inject('MessageRecipientRepository') private readonly messageRecipientRepo: MessageRecipientRepository, @Inject('CorrespondenceRepository') private readonly correspondenceRepo: CorrespondenceRepository, @Inject('CorrespondenceAttachmentRepository') private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository, 
@@ -294,7 +291,7 @@ export class HrApplicationService {
   }
 
   // Task operations
-  async getTasks(organizationId: string, userRole: string, userId: string, filters?: {
+  async getTasks(organizationId: string, userPermissions: string[], userId: string, filters?: {
     status?: string;
     priority?: string;
     assignedToId?: string;
@@ -303,7 +300,7 @@ export class HrApplicationService {
   }) {
     const processedFilters: any = { ...filters };
 
-    if (userRole === 'WORKER') {
+    if (!userPermissions.includes('hr.write')) {
       processedFilters.assignedToId = userId;
     }
 
@@ -319,7 +316,7 @@ export class HrApplicationService {
     return task;
   }
 
-  async createTask(organizationId: string, userRole: string, user: any, data: {
+  async createTask(organizationId: string, userPermissions: string[], user: any, data: {
     title: string;
     description?: string;
     priority?: string;
@@ -329,10 +326,6 @@ export class HrApplicationService {
     farmId?: string;
     dueDate?: string;
   }) {
-    if (!CAN_CREATE_TASK_ROLES.includes(userRole)) {
-      throw new ForbiddenException('You do not have permission to create tasks');
-    }
-
     const { title, description, priority, status, assignedToId, assignedToName, farmId, dueDate } = data;
     if (!title) throw new BadRequestException('Title is required');
 
@@ -354,7 +347,7 @@ export class HrApplicationService {
     return task;
   }
 
-  async updateTask(id: string, userRole: string, userId: string, data: {
+  async updateTask(id: string, userPermissions: string[], userId: string, data: {
     title?: string;
     description?: string;
     priority?: string;
@@ -367,7 +360,7 @@ export class HrApplicationService {
     const existing = await this.taskRepo.findById(id);
     if (!existing) throw new NotFoundException('Task not found');
 
-    if (userRole === 'WORKER') {
+    if (!userPermissions.includes('hr.write')) {
       if (existing.assignedToId !== userId) {
         throw new ForbiddenException('Cannot update tasks not assigned to you');
       }
@@ -615,14 +608,14 @@ export class HrApplicationService {
   }
 
   // Leave Request operations
-  async getLeaveRequests(organizationId: string, userRole: string, userId: string, filters?: {
+  async getLeaveRequests(organizationId: string, userPermissions: string[], userId: string, filters?: {
     status?: string;
     userId?: string;
   }) {
     const processedFilters: any = {};
     if (filters?.status) processedFilters.status = filters.status;
 
-    if (userRole === 'WORKER') {
+    if (!userPermissions.includes('hr.write')) {
       processedFilters.userId = userId;
     } else if (filters?.userId) {
       processedFilters.userId = filters.userId;
@@ -678,11 +671,7 @@ export class HrApplicationService {
     return leaveRequest;
   }
 
-  async approveLeaveRequest(id: string, approverId: string, userRole: string) {
-    if (!CAN_APPROVE_LEAVE_ROLES.includes(userRole)) {
-      throw new ForbiddenException('Not authorized to approve leave');
-    }
-
+  async approveLeaveRequest(id: string, approverId: string) {
     const existing = await this.leaveRequestRepo.findById(id);
     if (!existing) throw new NotFoundException('Leave request not found');
     if (existing.status !== 'PENDING') throw new ConflictException('Request is not pending');
@@ -707,11 +696,7 @@ export class HrApplicationService {
     return updated;
   }
 
-  async rejectLeaveRequest(id: string, approverId: string, userRole: string, rejectionReason?: string) {
-    if (!CAN_APPROVE_LEAVE_ROLES.includes(userRole)) {
-      throw new ForbiddenException('Not authorized to reject leave');
-    }
-
+  async rejectLeaveRequest(id: string, approverId: string, rejectionReason?: string) {
     const existing = await this.leaveRequestRepo.findById(id);
     if (!existing) throw new NotFoundException('Leave request not found');
     if (existing.status !== 'PENDING') throw new ConflictException('Request is not pending');

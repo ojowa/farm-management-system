@@ -18,14 +18,12 @@ import {
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
-const CAN_CREATE_ROLES = ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'];
-
 function getOrgId(req: any): string {
   return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
 }
 
-function getUserRole(req: any): string {
-  return String((req as any).user?.role || '');
+function getUserPermissions(req: any): string[] {
+  return (req as any).user?.permissions ?? [];
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -55,7 +53,7 @@ export class TasksController {
       ];
     }
 
-    if (getUserRole(req) === 'WORKER') {
+    if (!getUserPermissions(req).includes('hr.write')) {
       where.assignedToId = user?.sub;
     } else if (assignedToId) {
       where.assignedToId = assignedToId;
@@ -105,11 +103,6 @@ export class TasksController {
   ) {
     const orgId = getOrgId(req);
     const user = (req as any).user;
-    const role = getUserRole(req);
-
-    if (!CAN_CREATE_ROLES.includes(role)) {
-      throw new ForbiddenException('You do not have permission to create tasks');
-    }
 
     const { title, description, priority, status, assignedToId, assignedToName, farmId, dueDate } = body;
     if (!title) throw new BadRequestException('Title is required');
@@ -148,11 +141,10 @@ export class TasksController {
     },
   ) {
     const user = (req as any).user;
-    const role = getUserRole(req);
     const existing = await scopedPrisma.task.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Task not found');
 
-    if (role === 'WORKER') {
+    if (!getUserPermissions(req).includes('hr.write')) {
       if (existing.assignedToId !== user?.sub) {
         throw new ForbiddenException('Cannot update tasks not assigned to you');
       }

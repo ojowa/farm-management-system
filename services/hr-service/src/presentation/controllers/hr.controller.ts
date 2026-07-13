@@ -24,8 +24,8 @@ function getUserId(req: any): string {
   return String((req as any).user?.sub || (req as any)['x-user-id'] || (req as any).user?.id || '');
 }
 
-function getUserRole(req: any): string {
-  return String((req as any).user?.role || '');
+function getUserPermissions(req: any): string[] {
+  return (req as any).user?.permissions ?? [];
 }
 
 function getUserName(req: any): string {
@@ -160,7 +160,7 @@ export class TasksController {
     @Query('farmId') farmId?: string,
     @Query('search') search?: string,
   ) {
-    return this.hrService.getTasks(getOrgId(req), getUserRole(req), getUserId(req), {
+    return this.hrService.getTasks(getOrgId(req), getUserPermissions(req), getUserId(req), {
       status,
       priority,
       assignedToId,
@@ -179,13 +179,13 @@ export class TasksController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Req() req: any, @Body() body: any) {
-    return this.hrService.createTask(getOrgId(req), getUserRole(req), (req as any).user, body);
+    return this.hrService.createTask(getOrgId(req), getUserPermissions(req), (req as any).user, body);
   }
 
   @Permission('hr.write')
   @Put(':id')
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
-    return this.hrService.updateTask(id, getUserRole(req), getUserId(req), body);
+    return this.hrService.updateTask(id, getUserPermissions(req), getUserId(req), body);
   }
 
   @Permission('hr.delete')
@@ -316,7 +316,7 @@ export class LeaveRequestsController {
     @Query('status') status?: string,
     @Query('userId') filterUserId?: string,
   ) {
-    return this.hrService.getLeaveRequests(getOrgId(req), getUserRole(req), getUserId(req), {
+    return this.hrService.getLeaveRequests(getOrgId(req), getUserPermissions(req), getUserId(req), {
       status,
       userId: filterUserId,
     });
@@ -332,13 +332,13 @@ export class LeaveRequestsController {
   @Permission('hr.write')
   @Put(':id/approve')
   approve(@Param('id') id: string, @Req() req: any) {
-    return this.hrService.approveLeaveRequest(id, getUserId(req), getUserRole(req));
+    return this.hrService.approveLeaveRequest(id, getUserId(req));
   }
 
   @Permission('hr.write')
   @Put(':id/reject')
   reject(@Param('id') id: string, @Req() req: any, @Body() body: { rejectionReason?: string }) {
-    return this.hrService.rejectLeaveRequest(id, getUserId(req), getUserRole(req), body.rejectionReason);
+    return this.hrService.rejectLeaveRequest(id, getUserId(req), body.rejectionReason);
   }
 
   @Permission('hr.write')

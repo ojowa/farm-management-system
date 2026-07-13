@@ -730,7 +730,7 @@ export class PlatformOptionsService {
   async getPlatformAdminRoles() {
     const { prisma } = await import('@farm/database');
     const roles = await prisma.role.findMany({
-      where: { name: { in: ['SUPER_ADMIN', 'SUPPORT_ADMIN'] } },
+      where: { isPlatformAdmin: true },
       select: { id: true, name: true, description: true },
     });
     return { roles: roles.map((r) => ({ value: r.name, label: r.description || r.name })) };

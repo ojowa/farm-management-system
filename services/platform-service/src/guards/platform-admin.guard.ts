@@ -18,32 +18,39 @@ export class PlatformAdminGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
     const jwtSecret = this.configService.get<string>('JWT_SECRET') || 'secret';
 
+    let decoded: any;
     try {
-      const decoded = jwt.verify(token, jwtSecret) as any;
-
-      if (!decoded?.sub || !decoded?.role) {
-        throw new UnauthorizedException('Invalid token payload');
-      }
-
-      if (!['SUPER_ADMIN', 'SUPPORT_ADMIN'].includes(decoded.role)) {
-        throw new ForbiddenException('Platform admin access required');
-      }
-
-      request.user = {
-        id: decoded.sub,
-        email: decoded.email ?? null,
-        role: decoded.role,
-        organizationId: decoded.organizationId,
-        isPlatformAdmin: true,
-      };
-
-      return true;
-    } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
-        throw error;
-      }
+      decoded = jwt.verify(token, jwtSecret);
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+
+    if (!decoded?.sub) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.sub },
+      include: { role: true },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    if (!user.role?.isPlatformAdmin) {
+      throw new ForbiddenException('Platform admin access required');
+    }
+
+    request.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role.name,
+      organizationId: user.organizationId,
+      isPlatformAdmin: true,
+    };
+
+    return true;
   }
 }
 
@@ -62,31 +69,38 @@ export class SuperAdminGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
     const jwtSecret = this.configService.get<string>('JWT_SECRET') || 'secret';
 
+    let decoded: any;
     try {
-      const decoded = jwt.verify(token, jwtSecret) as any;
-
-      if (!decoded?.sub || !decoded?.role) {
-        throw new UnauthorizedException('Invalid token payload');
-      }
-
-      if (decoded.role !== 'SUPER_ADMIN') {
-        throw new ForbiddenException('Super admin access required');
-      }
-
-      request.user = {
-        id: decoded.sub,
-        email: decoded.email ?? null,
-        role: decoded.role,
-        organizationId: decoded.organizationId,
-        isPlatformAdmin: true,
-      };
-
-      return true;
-    } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
-        throw error;
-      }
+      decoded = jwt.verify(token, jwtSecret);
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+
+    if (!decoded?.sub) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.sub },
+      include: { role: true },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    if (!user.role?.isPlatformAdmin) {
+      throw new ForbiddenException('Super admin access required');
+    }
+
+    request.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role.name,
+      organizationId: user.organizationId,
+      isPlatformAdmin: true,
+    };
+
+    return true;
   }
 }

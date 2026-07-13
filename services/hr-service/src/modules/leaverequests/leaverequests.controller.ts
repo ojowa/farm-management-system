@@ -28,12 +28,8 @@ function getUserId(req: any): string {
   return String((req as any).user?.sub || '');
 }
 
-function getUserRole(req: any): string {
-  return String((req as any).user?.role || '');
-}
-
-function canApprove(role: string): boolean {
-  return ['ORGANIZATION_OWNER', 'FARM_MANAGER', 'SUPERVISOR', 'SUPER_ADMIN'].includes(role);
+function hasPermission(req: any, permission: string): boolean {
+  return ((req as any).user?.permissions ?? []).includes(permission);
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -48,12 +44,11 @@ export class LeaveRequestsController {
   ) {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
-    const role = getUserRole(req);
 
     const where: any = { organizationId: orgId };
     if (status) where.status = status;
 
-    if (role === 'WORKER') {
+    if (!hasPermission(req, 'hr.write')) {
       where.userId = userId;
     } else if (filterUserId) {
       where.userId = filterUserId;
@@ -121,8 +116,7 @@ export class LeaveRequestsController {
   @Permission('hr.write')
   @Put(':id/approve')
   async approve(@Param('id') id: string, @Req() req: any) {
-    const role = getUserRole(req);
-    if (!canApprove(role)) throw new ForbiddenException('Not authorized to approve leave');
+    if (!hasPermission(req, 'hr.write')) throw new ForbiddenException('Not authorized to approve leave');
 
     const existing = await scopedPrisma.leaveRequest.findFirst({ where: { id } });
     if (!existing) throw new NotFoundException('Leave request not found');
@@ -177,8 +171,7 @@ export class LeaveRequestsController {
     @Req() req: any,
     @Body() body: { rejectionReason?: string },
   ) {
-    const role = getUserRole(req);
-    if (!canApprove(role)) throw new ForbiddenException('Not authorized to reject leave');
+    if (!hasPermission(req, 'hr.write')) throw new ForbiddenException('Not authorized to reject leave');
 
     const existing = await scopedPrisma.leaveRequest.findFirst({ where: { id } });
     if (!existing) throw new NotFoundException('Leave request not found');
