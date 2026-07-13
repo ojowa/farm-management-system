@@ -67,6 +67,7 @@ export class AuthService {
   }
 
   async refreshToken(token: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
+    if (!token) throw new UnauthorizedException('Refresh token is required');
     const tokenHash = hashToken(token);
     const stored = await this.refreshTokenRepo.findValidByHash(tokenHash);
     if (!stored) throw new UnauthorizedException('Invalid refresh token');

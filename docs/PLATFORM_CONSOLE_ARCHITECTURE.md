@@ -1,3 +1,6 @@
+> **⚠️ SUPERSEDED** — This document has been merged into [ARCHITECTURE.md](./ARCHITECTURE.md).  
+> Content below is kept for historical reference but may be outdated.
+
 # Farm Management System — Platform Console Architecture
 
 > Master control panel for the entire Farm Management System infrastructure.

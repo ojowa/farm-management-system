@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
+declare const process: { env?: Record<string, string | undefined> };
+
 const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
   'http://localhost:4000';
@@ -12,6 +14,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -24,12 +28,12 @@ export interface NotificationData {
 
 export async function registerForPushNotifications(): Promise<string | null> {
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    const perms = (await Notifications.getPermissionsAsync()) as { status: string };
+    let finalStatus = perms.status;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    if (perms.status !== 'granted') {
+      const reqPerms = (await Notifications.requestPermissionsAsync()) as { status: string };
+      finalStatus = reqPerms.status;
     }
 
     if (finalStatus !== 'granted') {
@@ -93,8 +97,8 @@ export async function unregisterFromNotifications(): Promise<void> {
 }
 
 export async function getNotificationPermissions(): Promise<boolean> {
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === 'granted';
+  const perms = (await Notifications.getPermissionsAsync()) as { status: string };
+  return perms.status === 'granted';
 }
 
 function handleNotificationResponse(response: Notifications.NotificationResponse) {
@@ -139,7 +143,7 @@ let responseListener: Notifications.Subscription | null = null;
 
 export function setupNotificationListeners() {
   if (responseListener) {
-    Notifications.removeNotificationSubscription(responseListener);
+    responseListener.remove();
   }
 
   responseListener = Notifications.addNotificationResponseReceivedListener(
@@ -148,7 +152,7 @@ export function setupNotificationListeners() {
 
   return () => {
     if (responseListener) {
-      Notifications.removeNotificationSubscription(responseListener);
+      responseListener.remove();
       responseListener = null;
     }
   };

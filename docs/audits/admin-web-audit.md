@@ -1,7 +1,9 @@
 # Admin & Web App Audit Report
 
-**Date:** 2026-07-12
-**Apps Audited:** `apps/admin/`, `apps/web/`
+**Date:** 2026-07-12  
+**Apps Audited:** `apps/admin/`, `apps/web/`  
+**Status:** OPEN  
+**Resolution Tracking:** Issues listed below with checkboxes
 
 ---
 

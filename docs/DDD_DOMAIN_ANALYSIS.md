@@ -1,3 +1,6 @@
+> **⚠️ SUPERSEDED** — This document has been merged into [ARCHITECTURE.md](./ARCHITECTURE.md).  
+> Content below is kept for historical reference but may be outdated.
+
 # DDD Domain Analysis - Phase 1
 
 ## Bounded Context Map

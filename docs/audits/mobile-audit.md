@@ -1,5 +1,9 @@
 # Mobile App Audit Report
 
+**Date:** 2026-07-12  
+**Status:** OPEN  
+**Resolution Tracking:** Issues listed below with checkboxes
+
 ## Summary
 - **Total files audited**: 66 source files (src/ + app/)
 - **Issues found**: 16 (3 P0, 5 P1, 8 P2)

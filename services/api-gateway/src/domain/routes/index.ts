@@ -20,6 +20,9 @@ export const DOMAIN_ROUTES: ServiceRoute[] = [
   { path: '/admin', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
   { path: '/org-admin', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
   { path: '/api-keys', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
+  { path: '/platform-roles', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
+  { path: '/platform-permissions', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
+  { path: '/platform-api-keys', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
 
   // Farm Management Context
   { path: '/farms', target: 'http://localhost:4002', service: 'farm-service', rewrite: true },
@@ -58,6 +61,12 @@ export const DOMAIN_ROUTES: ServiceRoute[] = [
 
   // Platform Administration Context
   { path: '/platform', target: 'http://localhost:4020', service: 'platform-service', rewrite: true },
+  { path: '/platform-options', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
+  { path: '/platform-subscriptions', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
+  { path: '/platform-audit', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
+  { path: '/platform-health', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
+  { path: '/platform-broadcasts', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
+  { path: '/platform-config', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
   { path: '/weather', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
   { path: '/documents', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
 ];

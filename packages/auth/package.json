@@ -15,6 +15,10 @@
     "./rn": {
       "types": "./dist/rn.d.ts",
       "default": "./dist/rn.js"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "default": "./dist/storage.js"
     }
   },
   "private": true,

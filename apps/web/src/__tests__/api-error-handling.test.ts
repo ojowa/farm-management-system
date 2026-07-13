@@ -147,7 +147,7 @@ describe('Validation schemas', () => {
   it('validates worker form', async () => {
     const { workerFormSchema } = await import('@/lib/validation');
 
-    const validData = { fullName: 'John Doe', role: 'Farmhand', phone: '+1234567890', farmId: 'uuid-123', email: 'john@example.com' };
+    const validData = { firstName: 'John', lastName: 'Doe', position: 'Farmhand', phone: '+1234567890', farmId: 'uuid-123', email: 'john@example.com' };
     const result = workerFormSchema.safeParse(validData);
     expect(result.success).toBe(true);
   });

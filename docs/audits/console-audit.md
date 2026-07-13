@@ -1,8 +1,10 @@
 # Console App Audit Report
 
-**Date:** 2026-07-12
-**App:** `apps/console/` (Platform Console - port 3004)
-**Backend:** `services/platform-service/` (port 4020)
+**Date:** 2026-07-12  
+**App:** `apps/console/` (Platform Console - port 3004)  
+**Backend:** `services/platform-service/` (port 4020)  
+**Status:** OPEN  
+**Resolution Tracking:** Issues listed below with checkboxes
 
 ---
 

@@ -7,6 +7,7 @@ export interface User {
   phone: string | null;
   roleId: string;
   roleName: string | undefined;
+  passwordHash: string;
   avatar: string | null;
   isActive: boolean;
   lastLoginAt: Date | null;

@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-const PLATFORM_API_URL = process.env.NEXT_PUBLIC_PLATFORM_API_URL || 'http://localhost:4020';
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:4001';
 
 export const platformClient = axios.create({
-  baseURL: `${PLATFORM_API_URL}/api`,
+  baseURL: API_GATEWAY_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,

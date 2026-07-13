@@ -86,6 +86,7 @@ export class PrismaUserRepository implements UserRepository {
       phone: raw.phone,
       roleId: raw.roleId,
       roleName: raw.role?.name,
+      passwordHash: raw.passwordHash,
       avatar: raw.avatar,
       isActive: raw.isActive,
       lastLoginAt: raw.lastLoginAt,

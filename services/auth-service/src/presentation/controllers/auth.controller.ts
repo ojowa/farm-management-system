@@ -1,15 +1,27 @@
 import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode } from '@nestjs/common';
+import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
+
+const COOKIE_OPTS = { httpOnly: true, secure: false, sameSite: 'lax' as const, path: '/' };
+const ACCESS_MAX_AGE = 15 * 60 * 1000;
+const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { email: string; password: string }, @Req() req: any) {
+  async login(@Body() body: { email: string; password: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-    return this.authService.login(body, ctx);
+    const result = await this.authService.login(body, ctx);
+
+    if (result.accessToken && result.refreshToken) {
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTS, maxAge: REFRESH_MAX_AGE });
+    }
+
+    return result;
   }
 
   @Post('verify-mfa')
@@ -50,14 +62,24 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refreshToken(@Body() body: { refreshToken: string }, @Req() req: any) {
-    return this.authService.refreshToken(body.refreshToken, { ipAddress: req.ip });
+  async refreshToken(@Body() body: { refreshToken: string }, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refreshToken || body?.refreshToken;
+    const result = await this.authService.refreshToken(refreshToken, { ipAddress: req.ip });
+
+    if (result.accessToken && result.refreshToken) {
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTS, maxAge: REFRESH_MAX_AGE });
+    }
+
+    return result;
   }
 
   @Post('logout')
   @HttpCode(200)
-  async logout(@Req() req: any) {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     await this.authService.logout(req.user?.sub);
+    res.clearCookie('accessToken', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/' });
     return { message: 'Logged out successfully' };
   }
 
