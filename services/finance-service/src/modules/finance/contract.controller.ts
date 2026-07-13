@@ -1,15 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('contracts')
 export class ContractController {
   @Permission('finance.read')
   @Get()
-  async findAll(@Query('type') type?: string, @Query('status') status?: string, @Query('organizationId') orgId?: string) {
-    const where: any = {};
-    if (orgId) where.organizationId = orgId;
+  async findAll(@Req() req: any, @Query('type') type?: string, @Query('status') status?: string) {
+    const where: any = { organizationId: getOrgId(req) };
     if (type) where.type = type;
     if (status) where.status = status;
     return scopedPrisma.contract.findMany({ where, orderBy: { createdAt: 'desc' } });
@@ -18,11 +21,11 @@ export class ContractController {
   @Permission('finance.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: any, @Query('organizationId') orgId?: string) {
+  async create(@Req() req: any, @Body() body: any) {
     const { type, buyerSellerName, entityId, entityType, startDate, endDate, value, terms } = body;
     return scopedPrisma.contract.create({
       data: {
-        organizationId: orgId || '', type, buyerSellerName,
+        organizationId: getOrgId(req), type, buyerSellerName,
         entityId: entityId || null, entityType: entityType || null,
         startDate: new Date(startDate), endDate: endDate ? new Date(endDate) : null,
         value: Number(value), terms: terms?.trim() || null,

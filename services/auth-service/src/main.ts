@@ -25,11 +25,8 @@ function jwtAuthMiddleware(req: any, _res: any, next: () => void) {
       if (!secret) throw new Error('JWT_SECRET environment variable is required');
       const decoded = jwt.verify(token, secret);
       req.user = decoded;
-    } catch (err: any) {
-      if (!req.__loggedErr) {
-        console.log('[jwtAuthMiddleware] JWT verify failed:', err?.message);
-        req.__loggedErr = true;
-      }
+    } catch {
+      // JWT verification failed — continue unauthenticated
     }
   }
 

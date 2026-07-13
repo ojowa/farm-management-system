@@ -1,14 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('pest-disease')
 export class PestDiseaseController {
   @Permission('crop.read')
   @Get()
-  async findAll(@Query('organizationId') orgId: string, @Query('type') type?: string, @Query('severity') severity?: string, @Query('farmId') farmId?: string) {
-    const where: any = { organizationId: orgId };
+  async findAll(@Req() req: any, @Query('type') type?: string, @Query('severity') severity?: string, @Query('farmId') farmId?: string) {
+    const where: any = { organizationId: getOrgId(req) };
     if (type) where.type = type;
     if (severity) where.severity = severity;
     if (farmId) where.farmId = farmId;
@@ -17,9 +21,9 @@ export class PestDiseaseController {
 
   @Permission('crop.read')
   @Get('active')
-  async findActive(@Query('organizationId') orgId: string) {
+  async findActive(@Req() req: any) {
     return scopedPrisma.pestDiseaseRecord.findMany({
-      where: { organizationId: orgId, outcome: null },
+      where: { organizationId: getOrgId(req), outcome: null },
       orderBy: { severity: 'desc' },
     });
   }
@@ -27,11 +31,11 @@ export class PestDiseaseController {
   @Permission('crop.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: any, @Query('organizationId') orgId: string) {
+  async create(@Req() req: any, @Body() body: any) {
     const { cropCycleId, farmId, type, name, severity, identifiedDate, treatment, notes } = body;
     return scopedPrisma.pestDiseaseRecord.create({
       data: {
-        organizationId: orgId, cropCycleId: cropCycleId || null, farmId,
+        organizationId: getOrgId(req), cropCycleId: cropCycleId || null, farmId,
         type, name, severity: severity || 'LOW',
         identifiedDate: new Date(identifiedDate),
         treatment: treatment?.trim() || null, notes: notes?.trim() || null,

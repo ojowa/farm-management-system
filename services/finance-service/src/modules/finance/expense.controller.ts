@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Req,
   Query,
   UsePipes,
   HttpCode,
@@ -17,6 +18,10 @@ import { FinanceService } from './finance.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createExpenseSchema, updateExpenseSchema } from '@farm/validation';
 
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
+
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('expenses')
 export class ExpenseController {
@@ -26,8 +31,8 @@ export class ExpenseController {
   @Post()
   @UsePipes(new ZodValidationPipe(createExpenseSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any, @Query('organizationId') organizationId?: string) {
-    return this.financeService.createExpense(data, organizationId || '');
+  async create(@Req() req: any, @Body() data: any) {
+    return this.financeService.createExpense(data, getOrgId(req));
   }
 
   @Permission('finance.read')

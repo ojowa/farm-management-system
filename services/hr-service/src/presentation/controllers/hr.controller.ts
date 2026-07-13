@@ -17,7 +17,7 @@ import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { HrApplicationService } from '../../application/services/hr.service';
 
 function getOrgId(req: any): string {
-  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+  return String((req as any).user?.organizationId || (req as any)['x-organization-id'] || '');
 }
 
 function getUserId(req: any): string {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { FarmApplicationService } from '../../application/services/farm.service';
@@ -25,14 +25,14 @@ export class FarmController {
   @Permission('farm.read')
   @Get()
   findAll(
-    @Query('organizationId') organizationId?: string,
+    @Req() req: any,
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.farmService.getAllFarms({
-      organizationId,
+      organizationId: String(req.user?.organizationId || ''),
       sortBy,
       sortOrder,
       page: page ? parseInt(page) : undefined,

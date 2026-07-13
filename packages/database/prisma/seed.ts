@@ -1,7 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 const prisma = new PrismaClient()
+
+function generatePassword(): string {
+  return crypto.randomBytes(16).toString('base64url').slice(0, 16)
+}
 
 async function main() {
   console.log('Seeding database...')
@@ -76,6 +81,16 @@ async function main() {
     { name: 'organization.manage', description: 'Manage organization membership and settings', category: 'Organization' },
     { name: 'users.manage', description: 'Manage users within the organization', category: 'Administration' },
     { name: 'billing.manage', description: 'Manage subscription and billing', category: 'Administration' },
+    { name: 'hr.read', description: 'View HR data, attendance, and leave records', category: 'HR' },
+    { name: 'hr.write', description: 'Create and edit HR data, attendance, and leave records', category: 'HR' },
+    { name: 'leave.read', description: 'View leave requests', category: 'HR' },
+    { name: 'leave.write', description: 'Create and edit leave requests', category: 'HR' },
+    { name: 'leave.approve', description: 'Approve or reject leave requests', category: 'HR' },
+    { name: 'platform.manage', description: 'Manage platform-wide settings and organizations', category: 'Platform' },
+    { name: 'role.read', description: 'View roles and permissions', category: 'Administration' },
+    { name: 'role.write', description: 'Create and edit roles and permissions', category: 'Administration' },
+    { name: 'apikey.read', description: 'View API keys', category: 'Administration' },
+    { name: 'apikey.write', description: 'Create and manage API keys', category: 'Administration' },
   ]
 
   const createdPermissions = await Promise.all(
@@ -106,6 +121,7 @@ async function main() {
       'reporting.read', 'reporting.write',
       'organization.read', 'organization.write', 'organization.delete',
       'organization.manage', 'users.manage', 'billing.manage',
+      'hr.read', 'hr.write', 'leave.read', 'leave.write', 'leave.approve',
     ],
     FARM_MANAGER: [
       'farm.read', 'farm.write', 'farm.delete',
@@ -117,17 +133,19 @@ async function main() {
       'worker.read', 'worker.write',
       'communication.read', 'communication.write',
       'reporting.read',
+      'hr.read', 'hr.write', 'leave.read', 'leave.write',
     ],
-    ACCOUNTANT: ['finance.read', 'finance.write', 'farm.read', 'inventory.read', 'reporting.read'],
+    ACCOUNTANT: ['finance.read', 'finance.write', 'farm.read', 'inventory.read', 'reporting.read', 'hr.read'],
     SUPERVISOR: [
       'farm.read', 'crop.read', 'crop.write',
       'livestock.read', 'livestock.write',
       'poultry.read', 'poultry.write',
       'worker.read', 'worker.write',
       'communication.read', 'reporting.read',
+      'hr.read', 'leave.read', 'leave.write',
     ],
-    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'farm.read'],
-    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'communication.read'],
+    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'farm.read', 'hr.read'],
+    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'communication.read', 'leave.read', 'leave.write'],
   }
 
   for (const [roleName, perms] of Object.entries(rolePermissions)) {
@@ -165,21 +183,24 @@ async function main() {
 
   // 6. Create Super Admin (no org — platform developer login)
   const superAdminRole = createdRoles.find(r => r.name === 'SUPER_ADMIN')!
-  const passwordHash = await bcrypt.hash('password123', 12)
+  const superAdminPassword = generatePassword()
+  const superAdminPasswordHash = await bcrypt.hash(superAdminPassword, 12)
 
   await prisma.user.create({
     data: {
       firstName: 'Super',
       lastName: 'Admin',
       email: 'Admin@fms.com',
-      passwordHash,
+      passwordHash: superAdminPasswordHash,
       roleId: superAdminRole.id,
     },
   })
-  console.log('  Created Super Admin: Admin@fms.com / password123 (no organization)')
+  console.log(`  Created Super Admin: Admin@fms.com / ${superAdminPassword} (no organization)`)
 
   // 7. Create Demo Organization Owner (admin app login)
   const ownerRole = createdRoles.find(r => r.name === 'ORGANIZATION_OWNER')!
+  const ownerPassword = generatePassword()
+  const ownerPasswordHash = await bcrypt.hash(ownerPassword, 12)
 
   await prisma.user.create({
     data: {
@@ -187,11 +208,11 @@ async function main() {
       firstName: 'Demo',
       lastName: 'Owner',
       email: 'demo@farm.com',
-      passwordHash,
+      passwordHash: ownerPasswordHash,
       roleId: ownerRole.id,
     },
   })
-  console.log('  Created Org Owner: demo@farm.com / password123')
+  console.log(`  Created Org Owner: demo@farm.com / ${ownerPassword}`)
 
   // 8. Create Demo Workers (web/mobile login)
   const workerUsers = [
@@ -204,17 +225,19 @@ async function main() {
 
   for (const w of workerUsers) {
     const role = createdRoles.find(r => r.name === w.role)!
+    const userPassword = generatePassword()
+    const userPasswordHash = await bcrypt.hash(userPassword, 12)
     await prisma.user.create({
       data: {
         organizationId: demoOrg.id,
         firstName: w.firstName,
         lastName: w.lastName,
         email: w.email,
-        passwordHash,
+        passwordHash: userPasswordHash,
         roleId: role.id,
       },
     })
-    console.log(`  Created ${w.role}: ${w.email} / password123`)
+    console.log(`  Created ${w.role}: ${w.email} / ${userPassword}`)
   }
 
   // 9. Create Subscription Plans
@@ -398,14 +421,14 @@ async function main() {
   console.log('Seeding complete!')
   console.log('')
   console.log('--- Login Credentials ---')
-  console.log('Console (Platform Developer): Admin@fms.com / password123')
-  console.log('Admin (Farm Owner):           demo@farm.com / password123')
-  console.log('Web/Mobile (Farm Manager):    farmmanager.demo@farm.com / password123')
-  console.log('Web/Mobile (Accountant):      accountant.demo@farm.com / password123')
-  console.log('Web/Mobile (Supervisor):      supervisor.demo@farm.com / password123')
-  console.log('Web/Mobile (Veterinarian):    veterinarian.demo@farm.com / password123')
-  console.log('Web/Mobile (Worker):          worker.demo@farm.com / password123')
-  console.log('All passwords: password123')
+  console.log('Console (Platform Developer): Admin@fms.com')
+  console.log('Admin (Farm Owner):           demo@farm.com')
+  console.log('Web/Mobile (Farm Manager):    farmmanager.demo@farm.com')
+  console.log('Web/Mobile (Accountant):      accountant.demo@farm.com')
+  console.log('Web/Mobile (Supervisor):      supervisor.demo@farm.com')
+  console.log('Web/Mobile (Veterinarian):    veterinarian.demo@farm.com')
+  console.log('Web/Mobile (Worker):          worker.demo@farm.com')
+  console.log('Passwords are printed above next to each email.')
 }
 
 main()

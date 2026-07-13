@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UsePipes,
   HttpCode,
   HttpStatus,
@@ -16,6 +17,10 @@ import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { FarmService } from './farm.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createFarmSchema, updateFarmSchema } from '@farm/validation';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('farms')
@@ -33,17 +38,16 @@ export class FarmController {
   @Permission('farm.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
-    @Query('organizationId') organizationId?: string,
     @Query('farmType') farmType?: string,
     @Query('name') name?: string,
     @Query('location') location?: string,
   ) {
-    const filter: any = {};
-    if (organizationId) filter.organizationId = organizationId;
+    const filter: any = { organizationId: getOrgId(req) };
     if (farmType) filter.farmType = farmType;
     if (name) filter.name = name;
     if (location) filter.location = location;

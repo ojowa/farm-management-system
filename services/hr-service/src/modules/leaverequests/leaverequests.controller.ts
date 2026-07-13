@@ -21,7 +21,7 @@ import { scopedPrisma } from '@farm/database';
 import { createNotification } from '../../lib/notificationClient';
 
 function getOrgId(req: any): string {
-  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+  return String((req as any).user?.organizationId || (req as any)['x-organization-id'] || '');
 }
 
 function getUserId(req: any): string {

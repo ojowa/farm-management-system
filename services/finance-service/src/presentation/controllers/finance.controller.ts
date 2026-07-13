@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UsePipes,
   HttpCode,
   HttpStatus,
@@ -22,6 +23,10 @@ import {
   updateSaleSchema,
 } from '@farm/validation';
 
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
+
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('expenses')
 export class ExpenseController {
@@ -31,8 +36,8 @@ export class ExpenseController {
   @Post()
   @UsePipes(new ZodValidationPipe(createExpenseSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any, @Query('organizationId') organizationId?: string) {
-    return this.financeService.createExpense(data, organizationId || '');
+  async create(@Req() req: any, @Body() data: any) {
+    return this.financeService.createExpense(data, getOrgId(req));
   }
 
   @Permission('finance.read')
@@ -87,8 +92,8 @@ export class SaleController {
   @Post()
   @UsePipes(new ZodValidationPipe(createSaleSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any, @Query('organizationId') organizationId?: string) {
-    return this.financeService.createSale(data, organizationId || '');
+  async create(@Req() req: any, @Body() data: any) {
+    return this.financeService.createSale(data, getOrgId(req));
   }
 
   @Permission('finance.read')
@@ -142,18 +147,18 @@ export class ContractController {
   @Permission('finance.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('type') type?: string,
     @Query('status') status?: string,
-    @Query('organizationId') orgId?: string,
   ) {
-    return this.financeService.getAllContracts({ organizationId: orgId, type, status });
+    return this.financeService.getAllContracts({ organizationId: getOrgId(req), type, status });
   }
 
   @Permission('finance.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: any, @Query('organizationId') orgId?: string) {
-    return this.financeService.createContract(body, orgId || '');
+  async create(@Req() req: any, @Body() body: any) {
+    return this.financeService.createContract(body, getOrgId(req));
   }
 
   @Permission('finance.write')
@@ -177,15 +182,15 @@ export class MarketplaceController {
 
   @Permission('finance.read')
   @Get('buyers')
-  async findBuyers(@Query('organizationId') orgId?: string) {
-    return this.financeService.getAllBuyers(orgId);
+  async findBuyers(@Req() req: any) {
+    return this.financeService.getAllBuyers(getOrgId(req));
   }
 
   @Permission('finance.write')
   @Post('buyers')
   @HttpCode(HttpStatus.CREATED)
-  async createBuyer(@Body() body: any, @Query('organizationId') orgId?: string) {
-    return this.financeService.createBuyer(body, orgId || '');
+  async createBuyer(@Req() req: any, @Body() body: any) {
+    return this.financeService.createBuyer(body, getOrgId(req));
   }
 
   @Permission('finance.write')
@@ -204,18 +209,18 @@ export class MarketplaceController {
   @Permission('finance.read')
   @Get('listings')
   async findListings(
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('entityType') entityType?: string,
-    @Query('organizationId') orgId?: string,
   ) {
-    return this.financeService.getAllMarketListings({ organizationId: orgId, status, entityType });
+    return this.financeService.getAllMarketListings({ organizationId: getOrgId(req), status, entityType });
   }
 
   @Permission('finance.write')
   @Post('listings')
   @HttpCode(HttpStatus.CREATED)
-  async createListing(@Body() body: any, @Query('organizationId') orgId?: string) {
-    return this.financeService.createMarketListing(body, orgId || '');
+  async createListing(@Req() req: any, @Body() body: any) {
+    return this.financeService.createMarketListing(body, getOrgId(req));
   }
 
   @Permission('finance.write')

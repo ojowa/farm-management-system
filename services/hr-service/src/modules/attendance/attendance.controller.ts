@@ -21,7 +21,7 @@ import { scopedPrisma } from '@farm/database';
 const prisma = scopedPrisma as any;
 
 function getOrgId(req: any): string {
-  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+  return String((req as any).user?.organizationId || (req as any)['x-organization-id'] || '');
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)

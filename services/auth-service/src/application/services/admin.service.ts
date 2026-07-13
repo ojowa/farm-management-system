@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 
+/**
+ * Platform admin service — intentionally uses unscoped `prisma` (bypasses RLS)
+ * because platform admins need cross-organization access. Access is controlled
+ * by @Permission('platform.manage') guard at the controller level.
+ */
 @Injectable()
 export class AdminService {
   async listOrganizations() {

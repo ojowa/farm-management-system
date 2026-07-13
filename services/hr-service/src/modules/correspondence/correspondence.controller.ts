@@ -19,11 +19,11 @@ import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgId(req: any): string {
-  return String((req as any)['x-organization-id'] || (req as any).user?.organizationId || '');
+  return String((req as any).user?.organizationId || (req as any)['x-organization-id'] || '');
 }
 
 function getUserId(req: any): string {
-  return String((req as any)['x-user-id'] || (req as any).user?.id || '');
+  return String((req as any).user?.id || (req as any)['x-user-id'] || '');
 }
 
 function getUserName(req: any): string {

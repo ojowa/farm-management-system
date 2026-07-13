@@ -15,7 +15,9 @@ Each fix references the original audit finding and explains what changed.
 6. [Fix 6: Cookie Secure Flag](#fix-6-cookie-secure-flag)
 7. [Fix 7: Defense-in-Depth on Dead-Code Controllers](#fix-7-defense-in-depth-on-dead-code-controllers)
 8. [Fix 8: Web App Type Error (role as object)](#fix-8-web-app-type-error-role-as-object)
-9. [Remaining Open Items](#remaining-open-items)
+9. [Fix 9: organizationId from Client Query Params Removed](#fix-9-organizationid-from-client-query-params-removed)
+10. [Fix 10: Header-First getOrgId in HR Controllers](#fix-10-header-first-getorgid-in-hr-controllers)
+11. [Remaining Open Items](#remaining-open-items)
 
 ---
 
@@ -262,6 +264,63 @@ Direct access → Service (no valid service token → headers not trusted → RL
 
 ---
 
+## Fix 9: organizationId from Client Query Params Removed
+
+**Audit Finding:** HIGH #10 — Controllers accepted `organizationId` from client
+query params, allowing any authenticated user to access any organization's data.
+
+**What changed:**
+
+All controllers across finance-service, crop-service, reporting-service, and
+farm-service now extract `organizationId` from `req.user?.organizationId` (the
+verified JWT) instead of `@Query('organizationId')`.
+
+**Active controllers fixed:**
+- `finance-service/src/presentation/controllers/finance.controller.ts` — 4 controllers
+- `finance-service/src/presentation/controllers/profitability.controller.ts`
+- `reporting-service/src/presentation/controllers/report.controller.ts` — ScheduledReportController
+- `farm-service/src/presentation/controllers/farm.controller.ts` — FarmController
+
+**Dead-code module controllers updated (defense-in-depth):**
+- `finance-service/src/modules/finance/` — all 6 controllers
+- `crop-service/src/modules/crop/` — yield, pest-disease, lifecycle, irrigation
+- `farm-service/src/modules/farm/farm.controller.ts`
+
+---
+
+## Fix 10: Header-First getOrgId in HR Controllers
+
+**Audit Finding:** MEDIUM #26 — HR service controllers checked
+`req.headers['x-organization-id']` BEFORE `req.user?.organizationId`. A client
+could spoof the header to access another organization's data.
+
+**What changed:**
+
+All 9 active hr-service controllers now check JWT first:
+```typescript
+// Before (vulnerable)
+function getOrgId(req: any): string {
+  return String(req['x-organization-id'] || req.user?.organizationId || '');
+}
+
+// After (safe)
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || req['x-organization-id'] || '');
+}
+```
+
+**Controllers fixed:**
+- `tasks.controller.ts`, `attendance.controller.ts`, `shifts.controller.ts`
+- `shiftassignments.controller.ts`, `leavetypes.controller.ts`
+- `leaverequests.controller.ts`, `leavebalance.controller.ts`
+- `messages.controller.ts`, `correspondence.controller.ts`
+- `hr.controller.ts` (presentation, dead-code)
+
+Same fix applied to `getUserId` in messages.controller.ts and
+correspondence.controller.ts (JWT's `user.id` checked before `x-user-id` header).
+
+---
+
 ## Deployment Configuration
 
 ### Vercel (Frontend Apps)
@@ -290,9 +349,11 @@ Created `render.yml` at repo root defining:
 
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
-| 8 | Seed script uses `password123` | HIGH | Open — dev-only |
-| 9 | Unscoped `prisma` in admin controllers | HIGH | Open — platform-level access |
-| 10 | `organizationId` from client query params | HIGH | Open — needs middleware validation |
-| 19 | Missing HR permissions in seed data | MEDIUM | Open — seed data change |
-| 24 | JWT metadata logged to console | LOW | Open — remove console.log |
-| 25 | Mobile HTTP-only API URL | LOW | Open — needs HTTPS for production |
+| 8 | Seed script uses `password123` | HIGH | **FIXED** — random bcrypt-hashed passwords |
+| 9 | Unscoped `prisma` in admin controllers | HIGH | Documented — platform-level access, guarded by `@Permission('platform.manage')` |
+| 10 | `organizationId` from client query params | HIGH | **FIXED** — all controllers now use `req.user?.organizationId` from verified JWT |
+| 19 | Missing HR permissions in seed data | MEDIUM | **FIXED** — hr.read, hr.write, leave.read, leave.write, leave.approve added |
+| 24 | JWT metadata logged to console | LOW | **FIXED** — console.log removed |
+| 25 | Mobile HTTP-only API URL | LOW | **FIXED** — .env.example updated, dev-time HTTPS warning added to api.ts |
+| 26 | Header-first `getOrgId` in HR controllers | MEDIUM | **FIXED** — JWT now checked before `x-organization-id` header |
+| 27 | `x-organization-id` header fallback in active controllers | HIGH | **FIXED** — active controllers use JWT-only; dead-code modules updated for defense-in-depth |

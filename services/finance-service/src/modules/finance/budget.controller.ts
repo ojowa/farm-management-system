@@ -7,12 +7,17 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { FinanceService } from './finance.service';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('budgets')
@@ -22,18 +27,18 @@ export class BudgetController {
   @Permission('finance.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any, @Query('organizationId') organizationId?: string) {
-    return this.financeService.createBudget(data, organizationId || '');
+  async create(@Req() req: any, @Body() data: any) {
+    return this.financeService.createBudget(data, getOrgId(req));
   }
 
   @Permission('finance.read')
   @Get()
   async findAll(
-    @Query('organizationId') organizationId?: string,
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('farmId') farmId?: string,
   ) {
-    return this.financeService.getAllBudgets(organizationId || '', { status, farmId });
+    return this.financeService.getAllBudgets(getOrgId(req), { status, farmId });
   }
 
   @Permission('finance.read')
@@ -77,7 +82,7 @@ export class BudgetController {
 
   @Permission('finance.write')
   @Post(':id/refresh')
-  async refreshSpent(@Param('id') budgetId: string, @Query('organizationId') organizationId?: string) {
-    return this.financeService.refreshSpentAmounts(budgetId, organizationId || '');
+  async refreshSpent(@Req() req: any, @Param('id') budgetId: string) {
+    return this.financeService.refreshSpentAmounts(budgetId, getOrgId(req));
   }
 }

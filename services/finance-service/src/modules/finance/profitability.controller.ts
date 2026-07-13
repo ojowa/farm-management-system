@@ -1,6 +1,10 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 function categorizeExpense(title: string): string {
   const t = title.toLowerCase();
@@ -21,17 +25,16 @@ export class ProfitabilityController {
   @Permission('finance.read')
   @Get('farm')
   async getByFarm(
+    @Req() req: any,
     @Query('farmId') farmId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Query('organizationId') orgId?: string,
   ) {
     const dateFilter: any = {};
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
 
-    const farmWhere: any = {};
-    if (orgId) farmWhere.organizationId = orgId;
+    const farmWhere: any = { organizationId: getOrgId(req) };
     if (farmId) farmWhere.id = farmId;
 
     const farms = await scopedPrisma.farm.findMany({ where: farmWhere });
@@ -69,16 +72,15 @@ export class ProfitabilityController {
   @Permission('finance.read')
   @Get('summary')
   async getSummary(
+    @Req() req: any,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Query('organizationId') orgId?: string,
   ) {
     const dateFilter: any = {};
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
 
-    const where: any = {};
-    if (orgId) where.organizationId = orgId;
+    const where: any = { organizationId: getOrgId(req) };
     if (Object.keys(dateFilter).length) where.date = dateFilter;
 
     const [expenses, sales] = await Promise.all([

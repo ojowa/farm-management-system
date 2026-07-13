@@ -1,24 +1,28 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('marketplace')
 export class MarketplaceController {
   @Permission('finance.read')
   @Get('buyers')
-  async findBuyers(@Query('organizationId') orgId?: string) {
-    return scopedPrisma.buyer.findMany({ where: { organizationId: orgId || '' }, orderBy: { name: 'asc' } });
+  async findBuyers(@Req() req: any) {
+    return scopedPrisma.buyer.findMany({ where: { organizationId: getOrgId(req) }, orderBy: { name: 'asc' } });
   }
 
   @Permission('finance.write')
   @Post('buyers')
   @HttpCode(HttpStatus.CREATED)
-  async createBuyer(@Body() body: any, @Query('organizationId') orgId?: string) {
+  async createBuyer(@Req() req: any, @Body() body: any) {
     const { name, contactPerson, email, phone, address, type, notes } = body;
     return scopedPrisma.buyer.create({
       data: {
-        organizationId: orgId || '', name,
+        organizationId: getOrgId(req), name,
         contactPerson: contactPerson || null, email: email || null,
         phone: phone || null, address: address || null,
         type: type || 'INDIVIDUAL', notes: notes?.trim() || null,
@@ -46,9 +50,8 @@ export class MarketplaceController {
 
   @Permission('finance.read')
   @Get('listings')
-  async findListings(@Query('status') status?: string, @Query('entityType') entityType?: string, @Query('organizationId') orgId?: string) {
-    const where: any = {};
-    if (orgId) where.organizationId = orgId;
+  async findListings(@Req() req: any, @Query('status') status?: string, @Query('entityType') entityType?: string) {
+    const where: any = { organizationId: getOrgId(req) };
     if (status) where.status = status;
     if (entityType) where.entityType = entityType;
     return scopedPrisma.marketListing.findMany({ where, include: { buyer: true }, orderBy: { listedDate: 'desc' } });
@@ -57,11 +60,11 @@ export class MarketplaceController {
   @Permission('finance.write')
   @Post('listings')
   @HttpCode(HttpStatus.CREATED)
-  async createListing(@Body() body: any, @Query('organizationId') orgId?: string) {
+  async createListing(@Req() req: any, @Body() body: any) {
     const { buyerId, entityType, entityId, title, price, unit, quantity } = body;
     return scopedPrisma.marketListing.create({
       data: {
-        organizationId: orgId || '',
+        organizationId: getOrgId(req),
         buyerId: buyerId || null, entityType: entityType || null,
         entityId: entityId || null, title,
         price: Number(price), unit: unit || 'kg',

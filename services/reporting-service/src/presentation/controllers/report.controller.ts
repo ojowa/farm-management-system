@@ -30,7 +30,7 @@ export class ReportController {
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('farmId') farmId?: string,
   ) {
-    const organizationId = req.user?.organizationId || req.headers['x-organization-id'];
+    const organizationId = String(req.user?.organizationId || '');
     return this.reportService.getAllReports(organizationId, {
       sortBy: sortBy || 'createdAt',
       sortOrder: sortOrder || 'desc',
@@ -43,7 +43,7 @@ export class ReportController {
   @Permission('reporting.read')
   @Get(':id')
   async getById(@Param('id') id: string, @Req() req: any) {
-    const organizationId = req.user?.organizationId || req.headers['x-organization-id'];
+    const organizationId = String(req.user?.organizationId || '');
     return this.reportService.getReportById(id, organizationId);
   }
 
@@ -51,14 +51,14 @@ export class ReportController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() data: any, @Req() req: any) {
-    const organizationId = req.user?.organizationId || req.headers['x-organization-id'];
+    const organizationId = String(req.user?.organizationId || '');
     return this.reportService.createReport(data, organizationId);
   }
 
   @Permission('reporting.write')
   @Put(':id')
   async update(@Param('id') id: string, @Body() data: any, @Req() req: any) {
-    const organizationId = req.user?.organizationId || req.headers['x-organization-id'];
+    const organizationId = String(req.user?.organizationId || '');
     return this.reportService.updateReport(id, data, organizationId);
   }
 
@@ -66,7 +66,7 @@ export class ReportController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    const organizationId = req.user?.organizationId || req.headers['x-organization-id'];
+    const organizationId = String(req.user?.organizationId || '');
     return this.reportService.deleteReport(id, organizationId);
   }
 }
@@ -78,16 +78,16 @@ export class ScheduledReportController {
 
   @Permission('reporting.read')
   @Get()
-  async findAll(@Query('organizationId') orgId: string) {
-    return this.reportService.getAllScheduledReports(orgId);
+  async findAll(@Req() req: any) {
+    return this.reportService.getAllScheduledReports(String(req.user?.organizationId || ''));
   }
 
   @Permission('reporting.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: any, @Query('organizationId') orgId: string) {
+  async create(@Req() req: any, @Body() body: any) {
     return this.reportService.createScheduledReport({
-      organizationId: orgId,
+      organizationId: String(req.user?.organizationId || ''),
       name: body.name,
       template: body.template,
       recipients: body.recipients,

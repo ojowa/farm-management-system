@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UsePipes,
   HttpCode,
   HttpStatus,
@@ -17,6 +18,10 @@ import { FinanceService } from './finance.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createSaleSchema, updateSaleSchema } from '@farm/validation';
 
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
+
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('sales')
 export class SaleController {
@@ -26,8 +31,8 @@ export class SaleController {
   @Post()
   @UsePipes(new ZodValidationPipe(createSaleSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any, @Query('organizationId') organizationId?: string) {
-    return this.financeService.createSale(data, organizationId || '');
+  async create(@Req() req: any, @Body() data: any) {
+    return this.financeService.createSale(data, getOrgId(req));
   }
 
   @Permission('finance.read')

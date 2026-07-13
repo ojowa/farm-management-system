@@ -1,15 +1,19 @@
-import { Controller, Get, Post, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('yield')
 export class YieldController {
   @Permission('crop.read')
   @Get('crop/:cropId')
-  async getYieldHistory(@Param('cropId') cropId: string, @Query('organizationId') orgId: string) {
+  async getYieldHistory(@Req() req: any, @Param('cropId') cropId: string) {
     return scopedPrisma.yieldRecord.findMany({
-      where: { cropId, organizationId: orgId },
+      where: { cropId, organizationId: getOrgId(req) },
       orderBy: { harvestedDate: 'desc' },
     });
   }
@@ -17,11 +21,11 @@ export class YieldController {
   @Permission('crop.write')
   @Post('crop/:cropId')
   @HttpCode(HttpStatus.CREATED)
-  async recordYield(@Param('cropId') cropId: string, @Body() body: any, @Query('organizationId') orgId: string) {
+  async recordYield(@Req() req: any, @Param('cropId') cropId: string, @Body() body: any) {
     const { cropCycleId, quantity, unit, quality, harvestedDate, notes } = body;
     return scopedPrisma.yieldRecord.create({
       data: {
-        organizationId: orgId, cropId, cropCycleId: cropCycleId || null,
+        organizationId: getOrgId(req), cropId, cropCycleId: cropCycleId || null,
         quantity: Number(quantity), unit: unit || 'kg',
         quality: quality || null, harvestedDate: new Date(harvestedDate),
         notes: notes?.trim() || null,
@@ -31,9 +35,9 @@ export class YieldController {
 
   @Permission('crop.read')
   @Get('crop/:cropId/summary')
-  async getYieldSummary(@Param('cropId') cropId: string, @Query('organizationId') orgId: string) {
+  async getYieldSummary(@Req() req: any, @Param('cropId') cropId: string) {
     const records = await scopedPrisma.yieldRecord.findMany({
-      where: { cropId, organizationId: orgId },
+      where: { cropId, organizationId: getOrgId(req) },
       orderBy: { harvestedDate: 'asc' },
     });
     const totalYield = records.reduce((sum: number, r: any) => sum + r.quantity, 0);

@@ -1,6 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, Req, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
 import { scopedPrisma } from '@farm/database';
+
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('lifecycle')
@@ -8,12 +12,12 @@ export class LifecycleController {
   @Permission('crop.read')
   @Get('calendar')
   async getCalendar(
-    @Query('organizationId') orgId: string,
+    @Req() req: any,
     @Query('farmId') farmId: string,
     @Query('year') year: string,
     @Query('month') month: string,
   ) {
-    const where: any = { organizationId: orgId };
+    const where: any = { organizationId: getOrgId(req) };
     if (farmId) where.farmId = farmId;
     const startDate = new Date(Number(year), Number(month) - 1, 1);
     const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
@@ -43,11 +47,11 @@ export class LifecycleController {
   @Permission('crop.write')
   @Post('crop-cycle/:cropCycleId/stages')
   @HttpCode(HttpStatus.CREATED)
-  async addStage(@Param('cropCycleId') cropCycleId: string, @Body() body: any, @Query('organizationId') orgId: string) {
+  async addStage(@Req() req: any, @Param('cropCycleId') cropCycleId: string, @Body() body: any) {
     const { stage, startDate, endDate, notes } = body;
     return (scopedPrisma as any).cropStage.create({
       data: {
-        organizationId: orgId, cropCycleId, stage,
+        organizationId: getOrgId(req), cropCycleId, stage,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         notes: notes?.trim() || null,
