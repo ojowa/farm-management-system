@@ -13,6 +13,7 @@
   "dependencies": {
     "@prisma/client": "^6.4.1",
     "@farm/types": "workspace:*",
+    "@farm/auth": "workspace:*",
     "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
