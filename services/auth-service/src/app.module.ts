@@ -28,7 +28,7 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60000, limit: 30 },
-      { name: 'auth', ttl: 60000, limit: 10 },
+      { name: 'auth', ttl: 60000, limit: 30 },
       { name: '2fa', ttl: 300000, limit: 5 },
     ]),
   ],
