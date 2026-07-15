@@ -14,7 +14,7 @@ import { colors } from '../src/components/common/UIComponents';
 import { ThemeProvider } from '../src/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
 import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
-import { fetchProfile, setBootstrapped, logout } from '../src/store/slices/authSlice';
+import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/store/slices/authSlice';
 import { apiClient } from '../src/services/api';
 import { startInactivityTracker } from '../src/utils/inactivity';
 
@@ -54,6 +54,7 @@ function RootLayoutNav() {
   // Bootstrap: verify session on mount (cookie-based like web frontend)
   useEffect(() => {
     if (isAuthenticated) {
+      dispatch(refreshSocketToken());
       dispatch(fetchProfile()).unwrap().catch(() => {});
     } else {
       dispatch(setBootstrapped());

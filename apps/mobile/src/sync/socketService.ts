@@ -44,6 +44,12 @@ class SocketService {
   async connect(accessToken?: string) {
     if (this.socket?.connected) return;
 
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     const token = accessToken || undefined;
 
     this.socket = io(SOCKET_URL, {
@@ -69,9 +75,12 @@ class SocketService {
       }
     });
 
-    this.socket.on('connect_error', () => {
+    this.socket.on('connect_error', (err) => {
       this.reconnectAttempts++;
       this.onReconnecting?.(this.reconnectAttempts);
+      if (this.reconnectAttempts >= 3) {
+        this.socket?.disconnect();
+      }
     });
 
     this.socket.on('reconnect', () => {

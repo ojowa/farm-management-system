@@ -15,8 +15,8 @@ export function useNetworkSync() {
       const online = state.isConnected === true && state.isInternetReachable !== false;
       dispatch(setIsOnline(online));
 
-      if (online && !socketService.isConnected) {
-        socketService.connect(socketAccessToken || undefined);
+      if (online && socketAccessToken && !socketService.isConnected) {
+        socketService.connect(socketAccessToken);
       }
     });
 
@@ -28,7 +28,9 @@ export function useNetworkSync() {
       dispatch(setReconnectAttempt(attempt));
     });
 
-    socketService.connect(socketAccessToken || undefined);
+    if (socketAccessToken) {
+      socketService.connect(socketAccessToken);
+    }
 
     reconcileRef.current = reconcileOfflineQueue(dispatch);
 

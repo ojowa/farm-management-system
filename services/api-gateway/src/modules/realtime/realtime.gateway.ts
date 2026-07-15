@@ -31,7 +31,12 @@ export interface RealtimeEvent {
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://localhost:3004', 'http://localhost:3005', 'http://localhost:8081', 'http://localhost:8082'],
+    origin: [
+      'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002',
+      'http://localhost:3003', 'http://localhost:3004', 'http://localhost:3005',
+      'http://localhost:8081', 'http://localhost:8082',
+      'http://192.168.253.67:8082', 'http://192.168.253.67:3000',
+    ],
     credentials: true,
   },
   namespace: '/',
