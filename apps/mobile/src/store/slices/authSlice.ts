@@ -1,12 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import axios from 'axios';
-import { authAPI } from '../../services/api';
-
-declare const process: { env?: Record<string, string | undefined> } | undefined;
-
-const API_BASE_URL =
-  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:4000';
+import { authAPI, apiClient } from '../../services/api';
 
 export interface User {
   id: string;
@@ -119,11 +112,7 @@ export const refreshSocketToken = createAsyncThunk(
   'auth/refreshSocketToken',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/auth/refresh`,
-        {},
-        { withCredentials: true }
-      );
+      const res = await apiClient.axiosInstance.post('/auth/refresh', {});
       return res.data.accessToken as string;
     } catch {
       return null;
