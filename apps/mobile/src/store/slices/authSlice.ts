@@ -63,18 +63,23 @@ const initialState: AuthState = {
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+    if (__DEV__) console.log('[THUNK] login thunk dispatched for:', email);
     try {
       const res = await authAPI.login(email, password);
+      if (__DEV__) console.log('[THUNK] login result, requiresMFA:', res.requiresMFA);
       if (res.requiresMFA) {
         return { requiresMFA: true, mfaToken: res.mfaToken, user: res.user };
       }
+      if (__DEV__) console.log('[THUNK] login: fetching profile');
       const profileRes = await authAPI.getProfile();
+      if (__DEV__) console.log('[THUNK] login: profile fetched, user:', profileRes.data?.email);
       return {
         requiresMFA: false,
         user: profileRes.data,
         socketAccessToken: res.accessToken || null,
       };
     } catch (err: any) {
+      if (__DEV__) console.warn('[THUNK] login failed:', err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || 'Login failed');
     }
   }
@@ -83,11 +88,15 @@ export const login = createAsyncThunk(
 export const verifyMFA = createAsyncThunk(
   'auth/verifyMFA',
   async ({ mfaToken, code }: { mfaToken: string; code: string }, { rejectWithValue }) => {
+    if (__DEV__) console.log('[THUNK] verifyMFA thunk dispatched');
     try {
       const res = await authAPI.verifyMFA(mfaToken, code);
+      if (__DEV__) console.log('[THUNK] MFA verified, fetching profile');
       const profileRes = await authAPI.getProfile();
+      if (__DEV__) console.log('[THUNK] MFA: profile fetched');
       return { user: profileRes.data, socketAccessToken: res.accessToken || null };
     } catch (err: any) {
+      if (__DEV__) console.warn('[THUNK] MFA failed:', err.response?.data?.message || err.message);
       return rejectWithValue(err.response?.data?.message || 'MFA verification failed');
     }
   }
@@ -96,10 +105,13 @@ export const verifyMFA = createAsyncThunk(
 export const fetchProfile = createAsyncThunk(
   'auth/fetchProfile',
   async (_, { rejectWithValue }) => {
+    if (__DEV__) console.log('[THUNK] fetchProfile dispatched');
     try {
       const res = await authAPI.getProfile();
+      if (__DEV__) console.log('[THUNK] fetchProfile success, user:', res.data?.email);
       return res.data;
     } catch (err: any) {
+      if (__DEV__) console.warn('[THUNK] fetchProfile failed:', err.response?.status, err.response?.data?.message || err.message);
       return rejectWithValue({
         message: err.response?.data?.message || 'Failed to fetch profile',
         status: err.response?.status

@@ -52,9 +52,11 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      if (__DEV__) console.log('[NAV] Authenticated - refreshing session');
       dispatch(refreshSocketToken());
       dispatch(fetchProfile()).unwrap().catch(() => {});
     } else {
+      if (__DEV__) console.log('[NAV] Not authenticated - bootstrapping');
       dispatch(setBootstrapped());
     }
   }, []);
@@ -65,8 +67,10 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
+      if (__DEV__) console.log('[NAV] Redirecting to login (not authenticated)');
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
+      if (__DEV__) console.log('[NAV] Redirecting to app (authenticated)');
       router.replace('/(app)');
     }
   }, [isAuthenticated, bootstrapped, segments]);

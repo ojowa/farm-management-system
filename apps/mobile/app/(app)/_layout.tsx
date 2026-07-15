@@ -1,4 +1,5 @@
 import React from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { useAppSelector } from '@/hooks/useAuth';
@@ -26,8 +27,17 @@ const TAB_CONFIG = [
 ];
 
 export default function AppLayout() {
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const user = useAppSelector((state) => state.auth.user);
   const { hasPermission } = usePermission();
+
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const visibleTabs = TAB_CONFIG.filter((tab) => {
     if (tab.permission && !hasPermission(tab.permission)) return false;
@@ -68,3 +78,12 @@ export default function AppLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+});

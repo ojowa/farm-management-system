@@ -36,10 +36,35 @@ class APIClient {
       failedQueue = [];
     };
 
+    // Request interceptor — log outgoing requests
+    this.client.interceptors.request.use(
+      (config) => {
+        if (__DEV__) {
+          console.log(`[API] --> ${config.method?.toUpperCase()} ${config.url}`, config.data ? JSON.stringify(config.data).substring(0, 200) : '');
+        }
+        return config;
+      },
+      (error) => {
+        if (__DEV__) console.warn('[API] Request error:', error.message);
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor — log responses + auto-refresh on 401
     this.client.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        if (__DEV__) {
+          console.log(`[API] <-- ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+        }
+        return response;
+      },
       async (error) => {
         const originalRequest = error.config;
+        if (__DEV__) {
+          const status = error.response?.status || 'NETWORK';
+          const msg = error.response?.data?.message || error.message;
+          console.warn(`[API] <-- ${status} ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}: ${msg}`);
+        }
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (isRefreshing) {
             return new Promise((resolve, reject) => {
@@ -591,21 +616,35 @@ export const marketplaceAPI = {
 
 export const authAPI = {
   login: async (email: string, password: string) => {
-    const res = await apiClient.axiosInstance.post('/auth/login', { email, password });
-    return res.data;
+    if (__DEV__) console.log('[AUTH] Attempting login for:', email);
+    try {
+      const res = await apiClient.axiosInstance.post('/auth/login', { email, password });
+      if (__DEV__) console.log('[AUTH] Login response:', JSON.stringify(res.data).substring(0, 300));
+      return res.data;
+    } catch (err: any) {
+      if (__DEV__) console.warn('[AUTH] Login failed:', err.response?.status, err.response?.data?.message || err.message);
+      throw err;
+    }
   },
   verifyMFA: async (mfaToken: string, code: string) => {
+    if (__DEV__) console.log('[AUTH] Verifying MFA code');
     const res = await apiClient.axiosInstance.post('/auth/verify-mfa', { mfaToken, code });
+    if (__DEV__) console.log('[AUTH] MFA verified');
     return res.data;
   },
   logout: async () => {
+    if (__DEV__) console.log('[AUTH] Logging out');
     try {
       await apiClient.axiosInstance.post('/auth/logout');
+      if (__DEV__) console.log('[AUTH] Logout successful');
     } catch {
-      // ignore
+      if (__DEV__) console.log('[AUTH] Logout request failed (best-effort)');
     }
   },
-  getProfile: () => apiClient.axiosInstance.get('/auth/me'),
+  getProfile: () => {
+    if (__DEV__) console.log('[AUTH] Fetching profile');
+    return apiClient.axiosInstance.get('/auth/me');
+  },
   updateProfile: (data: any) => apiClient.axiosInstance.put('/auth/profile', data),
   changePassword: (data: any) => apiClient.axiosInstance.put('/auth/password', data),
   getPreferences: () => apiClient.axiosInstance.get('/auth/preferences'),
