@@ -220,5 +220,4 @@ const authSlice = createSlice({
 });
 
 export const { clearError, resetMFA, setUser, setBootstrapped } = authSlice.actions;
-export { refreshSocketToken };
 export default authSlice.reducer;

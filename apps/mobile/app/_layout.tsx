@@ -42,7 +42,7 @@ function hideSplash() {
   } catch {}
 }
 
-function RootLayoutInner() {
+function RootLayoutNav() {
   useNetworkSync();
   const router = useRouter();
   const segments = useSegments();
@@ -54,6 +54,8 @@ function RootLayoutInner() {
     if (isAuthenticated) {
       dispatch(refreshSocketToken());
       dispatch(fetchProfile()).unwrap().catch(() => {});
+    } else {
+      dispatch(setBootstrapped());
     }
   }, []);
 
@@ -77,63 +79,34 @@ function RootLayoutInner() {
     return cleanup;
   }, [isAuthenticated, dispatch]);
 
-  return (
-    <View style={styles.root}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen
-          name="(app)"
-          options={{ animation: 'none' }}
-        />
-        <Stack.Screen
-          name="(auth)"
-          options={{ animation: 'none' }}
-        />
-      </Stack>
-      <ConnectionBanner />
-      <ToastHost />
-    </View>
-  );
-}
-
-function RootLayoutOuter() {
-  const dispatch = useAppDispatch();
-  const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
-
-  useEffect(() => {
-    dispatch(setBootstrapped());
-  }, []);
-
-  return (
-    <View style={styles.root}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen
-          name="(app)"
-          options={{ animation: 'none' }}
-        />
-        <Stack.Screen
-          name="(auth)"
-          options={{ animation: 'none' }}
-        />
-      </Stack>
-      <ToastHost />
-    </View>
-  );
-}
-
-function RootLayoutNav() {
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  if (isAuthenticated) {
-    return <RootLayoutInner />;
+  if (!bootstrapped) {
+    return (
+      <View style={styles.bootGate}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
   }
-  return <RootLayoutOuter />;
+
+  return (
+    <View style={styles.root}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen
+          name="(app)"
+          options={{ animation: 'none' }}
+        />
+        <Stack.Screen
+          name="(auth)"
+          options={{ animation: 'none' }}
+        />
+      </Stack>
+      {isAuthenticated && <ConnectionBanner />}
+      <ToastHost />
+    </View>
+  );
 }
 
 function RootLayoutWithSplash() {
