@@ -411,6 +411,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@farm/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@farm/types':
         specifier: workspace:*
         version: link:../types
