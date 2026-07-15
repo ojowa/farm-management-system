@@ -9,8 +9,14 @@ export function useNetworkSync() {
   const dispatch = useAppDispatch();
   const reconcileRef = useRef<ReturnType<typeof reconcileOfflineQueue> | null>(null);
   const socketAccessToken = useAppSelector((state) => state.auth.socketAccessToken);
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      socketService.disconnect();
+      return;
+    }
+
     const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
       const online = state.isConnected === true && state.isInternetReachable !== false;
       dispatch(setIsOnline(online));
@@ -39,5 +45,5 @@ export function useNetworkSync() {
       socketService.disconnect();
       reconcileRef.current?.stop();
     };
-  }, [dispatch, socketAccessToken]);
+  }, [dispatch, socketAccessToken, isAuthenticated]);
 }

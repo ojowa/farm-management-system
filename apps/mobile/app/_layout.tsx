@@ -15,7 +15,6 @@ import { ThemeProvider } from '../src/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
 import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
 import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/store/slices/authSlice';
-import { apiClient } from '../src/services/api';
 import { startInactivityTracker } from '../src/utils/inactivity';
 
 interface SplashShim {
@@ -43,7 +42,7 @@ function hideSplash() {
   } catch {}
 }
 
-function RootLayoutNav() {
+function RootLayoutInner() {
   useNetworkSync();
   const router = useRouter();
   const segments = useSegments();
@@ -51,13 +50,10 @@ function RootLayoutNav() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
 
-  // Bootstrap: verify session on mount (cookie-based like web frontend)
   useEffect(() => {
     if (isAuthenticated) {
       dispatch(refreshSocketToken());
       dispatch(fetchProfile()).unwrap().catch(() => {});
-    } else {
-      dispatch(setBootstrapped());
     }
   }, []);
 
@@ -73,7 +69,6 @@ function RootLayoutNav() {
     }
   }, [isAuthenticated, bootstrapped, segments]);
 
-  // Auto-logout after 10 minutes of inactivity
   useEffect(() => {
     if (!isAuthenticated) return;
     const cleanup = startInactivityTracker(() => {
@@ -102,6 +97,43 @@ function RootLayoutNav() {
       <ToastHost />
     </View>
   );
+}
+
+function RootLayoutOuter() {
+  const dispatch = useAppDispatch();
+  const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
+
+  useEffect(() => {
+    dispatch(setBootstrapped());
+  }, []);
+
+  return (
+    <View style={styles.root}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen
+          name="(app)"
+          options={{ animation: 'none' }}
+        />
+        <Stack.Screen
+          name="(auth)"
+          options={{ animation: 'none' }}
+        />
+      </Stack>
+      <ToastHost />
+    </View>
+  );
+}
+
+function RootLayoutNav() {
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  if (isAuthenticated) {
+    return <RootLayoutInner />;
+  }
+  return <RootLayoutOuter />;
 }
 
 function RootLayoutWithSplash() {
