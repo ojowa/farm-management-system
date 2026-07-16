@@ -3,7 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
-import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth/nestjs';
 import { LoginDto, RegisterDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -46,15 +46,42 @@ export class AuthController {
 
   @Post('register')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async register(@Body() body: RegisterDto, @Req() req: any) {
+  async register(@Body() body: RegisterDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-    return this.authService.register(body, ctx);
+    const result = await this.authService.register(body, ctx);
+
+    if (result.accessToken && result.refreshToken) {
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTS, maxAge: REFRESH_MAX_AGE });
+    }
+
+    return result;
   }
 
   @Post('refresh')
   @Throttle({ default: { ttl: 60000, limit: 20 } })
   async refreshToken(@Body() body: RefreshTokenDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refreshToken || body?.refreshToken;
+
+    // Detect refresh token reuse — if a revoked token is presented, revoke
+    // all sessions for the user to prevent token theft.
+    if (refreshToken) {
+      const isReused = await this.authService.detectRefreshTokenReuse(refreshToken);
+      if (isReused) {
+        // Token was reused after rotation — this indicates potential theft.
+        // Revoke all sessions and clear cookies.
+        try {
+          const payload = require('jsonwebtoken').decode(refreshToken) as any;
+          if (payload?.sub) {
+            await this.authService.logoutAllSessions(payload.sub);
+          }
+        } catch {}
+        res.clearCookie('accessToken', { path: '/' });
+        res.clearCookie('refreshToken', { path: '/' });
+        return { error: 'Refresh token reuse detected. All sessions revoked.' };
+      }
+    }
+
     const result = await this.authService.refreshToken(refreshToken, { ipAddress: req.ip });
 
     if (result.accessToken && result.refreshToken) {
@@ -140,8 +167,11 @@ export class AuthController {
 
   @Post('2fa/disable')
   @UseGuards(JwtAuthGuard)
-  async disable2fa(@Req() req: any) {
-    await this.authService.disable2fa(req.user?.sub);
+  async disable2fa(@Req() req: any, @Body() body: { code: string }) {
+    if (!body.code || body.code.length !== 6) {
+      return { error: 'A valid 6-digit TOTP code is required to disable 2FA' };
+    }
+    await this.authService.disable2fa(req.user?.sub, body.code);
     return { message: '2FA disabled successfully' };
   }
 }

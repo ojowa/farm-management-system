@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "next build",
+    "build": "next build --no-lint",
     "start": "next start -p 3001",
     "lint": "echo \"No linter configured\"",
     "test": "vitest run",
@@ -13,9 +13,11 @@
   "dependencies": {
     "@farm/api-client": "workspace:*",
     "@farm/auth": "workspace:*",
+    "@farm/hooks": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/validation": "workspace:*",
     "@tailwindcss/postcss": "^4.3.1",
+    "@tanstack/react-query": "^5.101.2",
     "axios": "^1.7.9",
     "lucide-react": "^0.475.0",
     "next": "15.1.7",

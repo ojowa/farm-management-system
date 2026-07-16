@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
 import { OrgAdminService } from '../../application/services/org-admin.service';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 
 @Controller('org-admin')
 @UseGuards(JwtAuthGuard, AuthorizationGuard)

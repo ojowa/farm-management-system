@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { HrApplicationService } from '../../application/services/hr.service';
 
 function getOrgId(req: any): string {

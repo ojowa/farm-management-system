@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthorizationGuard } from '@farm/auth';
+import { AuthorizationGuard } from '@farm/auth/nestjs';
 
 /**
  * API Gateway guard that delegates to the AuthorizationGuard from @farm/auth.

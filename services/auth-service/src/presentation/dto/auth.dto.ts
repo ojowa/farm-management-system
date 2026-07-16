@@ -1,4 +1,11 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, Length } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, Length, Matches } from 'class-validator';
+
+/**
+ * Password must contain at least one uppercase letter, one lowercase letter,
+ * one number, and be at least 8 characters long.
+ */
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PASSWORD_MESSAGE = 'Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, and one number';
 
 export class LoginDto {
   @IsEmail()
@@ -16,6 +23,7 @@ export class RegisterDto {
 
   @IsString()
   @MinLength(8)
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
   password!: string;
 
   @IsString()
@@ -52,6 +60,7 @@ export class ChangePasswordDto {
 
   @IsString()
   @MinLength(8)
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
   newPassword!: string;
 }
 

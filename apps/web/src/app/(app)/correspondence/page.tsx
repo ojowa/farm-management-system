@@ -373,7 +373,7 @@ export default function CorrespondencePage() {
               <Input
                 label="Title"
                 value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, title: e.target.value })}
                 required
                 placeholder="Document title"
               />

@@ -5,14 +5,15 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**"],
-      "cache": false
+      "cache": true
     },
     "start": {
       "dependsOn": ["^build"]
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "outputLogs": "errors-only"
     },
     "lint": {},
     "test": {}

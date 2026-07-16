@@ -7,7 +7,7 @@
 Starts PostgreSQL and PgBouncer:
 
 ```bash
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 | Service | Port | Purpose |
@@ -237,7 +237,7 @@ taskkill /F /PID <pid>
 
 ```bash
 # Ensure PostgreSQL is running
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 
 # Check connection
 psql "postgresql://postgres:Aarinola@localhost:5432/FMS"

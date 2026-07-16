@@ -3,26 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { platformBroadcastsAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface Option { value: string; label: string; }
-
-interface Broadcast {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  isActive: boolean;
-  startsAt: string;
-  expiresAt: string | null;
-  createdAt: string;
-}
+import type { PlatformBroadcast, SelectOption } from '@farm/types';
 
 export default function BroadcastsPage() {
-  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [broadcasts, setBroadcasts] = useState<PlatformBroadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', message: '', type: 'INFO' });
-  const [typeOptions, setTypeOptions] = useState<Option[]>([]);
+  const [typeOptions, setTypeOptions] = useState<SelectOption[]>([]);
 
   const loadBroadcasts = async () => {
     setLoading(true);

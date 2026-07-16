@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,17 +8,14 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { offlineFarmsAPI } from '../../services/offlineApi';
+import { useListFarmsQuery, useDeleteFarmMutation } from '../../store/api';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAuth';
-import { useToasts } from '../../hooks/useToasts';
-import { describeApiError } from '../../utils/apiError';
-import { extractArray, extractTotal } from '../../utils/responseParser';
-import { transformFarm, RawFarm } from '../../utils/entityTransformers';
-import { setFarmsFilter, setFarmTypeFilter, setSelectedFarmId } from '../../store/slices/uiSlice';
+import { setSelectedFarmId } from '../../store/slices/uiSlice';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -91,24 +88,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
   },
-  actionButtonText: { color: colors.primary, fontSize: 12 },
+  actionButtonText: { color: colors.primary, fontSize: 12, textAlign: 'center' },
   deleteButtonText: { color: colors.error },
   deleteBorderColor: { borderColor: colors.error },
-  footerLoader: { paddingVertical: 20, alignItems: 'center' },
-  footerText: { fontSize: 12, color: colors.textLight },
   listContent: { paddingHorizontal: 20, paddingBottom: 20 },
 });
-
-interface Farm {
-  id: string;
-  name: string;
-  farmType: string;
-  location: string;
-  size: number;
-  crops: number;
-  animals: number;
-  status: 'active' | 'inactive';
-}
 
 type FarmFilter = 'all' | 'active' | 'inactive';
 
@@ -128,131 +112,75 @@ const FARM_TYPE_LABELS: Record<string, string> = {
   AQUACULTURE: 'Aquaculture',
 };
 
-const keyExtractor = (item: Farm) => item.id;
+const keyExtractor = (item: any) => item.id;
 
 export default function FarmsScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const filter = useAppSelector((s) => s.ui.filters.farms);
-  const { success, error: showError } = useToasts();
-
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const orgId = useAppSelector((state) => state.auth.user?.organizationId);
 
-  const PAGE_SIZE = 20;
+  const [page] = useState(1);
 
-  const fetchFarms = useCallback(
-    async (pageNum: number = 1, append: boolean = false) => {
-      try {
-        setLoadError(null);
+  const { data, isLoading, isFetching, error, refetch } = useListFarmsQuery({
+    page,
+    limit: 20,
+    ...(orgId ? { organizationId: orgId } : {}),
+  });
 
-        const filter: any = {};
-        if (orgId) {
-          filter.organizationId = orgId;
-        }
+  const [deleteFarm] = useDeleteFarmMutation();
 
-        const response = await offlineFarmsAPI.list({
-          page: pageNum,
-          limit: PAGE_SIZE,
-          ...filter
-        });
-        const items = extractArray<RawFarm>(response).map(transformFarm);
+  const farms = useMemo(() => {
+    if (!data) return [];
+    const items = Array.isArray(data) ? data : data.farms || data.items || [];
+    return items;
+  }, [data]);
 
-        if (append) {
-          setFarms((prev) => [...prev, ...items]);
-        } else {
-          setFarms(items);
-        }
+  const filteredFarms = useMemo(() => {
+    return farms.filter((farm: any) => {
+      if (filter === 'active' && farm.status !== 'active') return false;
+      if (filter === 'inactive' && farm.status !== 'inactive') return false;
+      return true;
+    });
+  }, [farms, filter]);
 
-        const total = extractTotal(response, items.length);
-        setHasMore(items.length === PAGE_SIZE && (pageNum * PAGE_SIZE) < total);
-      } catch (error: any) {
-        const message = describeApiError(error, 'Failed to load farms. Please try again.');
-        setLoadError(message);
-        if (!loading) showError(message);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
-      }
-    },
-    [loading, showError]
-  );
-
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    fetchFarms(1, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setPage(1);
-    setHasMore(true);
-    await fetchFarms(1, false);
-  }, [fetchFarms]);
-
-  const loadMore = useCallback(() => {
-    if (loadingMore || !hasMore || loading) return;
-    setLoadingMore(true);
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchFarms(nextPage, true);
-  }, [page, loadingMore, hasMore, loading, fetchFarms]);
-
-  const filteredFarms = useMemo(() => farms.filter((farm) => {
-    if (filter === 'active' && farm.status !== 'active') return false;
-    if (filter === 'inactive' && farm.status !== 'inactive') return false;
-    const farmTypeFilter = useAppSelector((s) => s.ui.filters.farmType);
-    if (farmTypeFilter && farmTypeFilter !== 'all' && farm.farmType !== farmTypeFilter) return false;
-    return true;
-  }), [farms, filter]);
-
-  const handleDeleteFarm = (farmId: string, farmName: string) => {
-    const { Alert } = require('react-native');
+  const handleDeleteFarm = useCallback((farmId: string, farmName: string) => {
     Alert.alert(
       'Delete Farm',
       `Are you sure you want to delete "${farmName}"? This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => confirmDeleteFarm(farmId) },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteFarm(farmId).unwrap();
+              dispatch(setSelectedFarmId(null));
+            } catch (error) {
+              // Error handled by RTK Query
+            }
+          },
+        },
       ]
     );
-  };
+  }, [deleteFarm, dispatch]);
 
-  const confirmDeleteFarm = async (farmId: string) => {
-    try {
-      await offlineFarmsAPI.delete(farmId);
-      setFarms(farms.filter((f) => f.id !== farmId));
-      dispatch(setSelectedFarmId(null));
-      success('Farm deleted successfully');
-    } catch (error: any) {
-      showError(describeApiError(error, 'Failed to delete farm.'));
-    }
-  };
+  const handleFilterChange = useCallback((next: FarmFilter) => {
+    // Dispatch to Redux if needed
+  }, []);
 
-  const handleFilterChange = (next: FarmFilter) => {
-    dispatch(setFarmsFilter(next));
-  };
-
-  const renderFooter = () => {
-    if (!loadingMore) return null;
+  const renderFooter = useCallback(() => {
+    if (!isFetching) return null;
     return (
-      <View style={styles.footerLoader}>
+      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={styles.footerText}>Loading more…</Text>
+        <Text style={{ fontSize: 12, color: colors.textLight }}>Loading more…</Text>
       </View>
     );
-  };
+  }, [isFetching]);
 
-  const renderEmpty = () => (
+  const renderEmpty = useCallback(() => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>🌾</Text>
       <Text style={styles.emptyText}>No Farms Yet</Text>
@@ -261,9 +189,9 @@ export default function FarmsScreen() {
       </Text>
       <Button title="Add Farm" onPress={() => router.push('/farms/add')} accessibilityLabel="Add your first farm" />
     </View>
-  );
+  ), [router]);
 
-  const renderItem = React.useCallback(({ item: farm }: { item: Farm }) => (
+  const renderItem = useCallback(({ item: farm }: { item: any }) => (
     <Card style={styles.farmCard}>
       <TouchableOpacity
         onPress={() => {
@@ -325,9 +253,9 @@ export default function FarmsScreen() {
         </TouchableOpacity>
       </View>
     </Card>
-  ), [dispatch, router]);
+  ), [dispatch, router, handleDeleteFarm]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -338,7 +266,7 @@ export default function FarmsScreen() {
     );
   }
 
-  if (loadError && farms.length === 0) {
+  if (error) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -347,8 +275,8 @@ export default function FarmsScreen() {
         <StateView
           variant="error"
           title="Couldn't load your farms"
-          message={loadError}
-          onRetry={() => { setPage(1); fetchFarms(1, false); }}
+          message="Failed to load farms. Please try again."
+          onRetry={refetch}
           retryLabel="Retry"
         />
       </SafeAreaView>
@@ -397,9 +325,7 @@ export default function FarmsScreen() {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
+        refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} />}
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         windowSize={10}

@@ -1,25 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Public paths that don't require authentication
-const PUBLIC_PATHS = ['/login', '/register', '/api/auth'];
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Allow public paths
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
-
-  // Check for accessToken cookie
-  const accessToken = request.cookies.get('accessToken')?.value;
-  if (!accessToken) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
+export function middleware(_request: NextRequest) {
+  // Pass all requests through — the API gateway validates JWTs on every
+  // proxied request, and the client-side AuthProvider manages auth state.
+  // We cannot check cookies here because the accessToken cookie is set by
+  // the API gateway on port 4000, while this middleware runs on port 3000;
+  // browsers scope cookies to the exact host that set them.
   return NextResponse.next();
 }
 

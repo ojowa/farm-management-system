@@ -118,15 +118,15 @@ function AlertCard({ alert }: { alert: { title: string; description: string; sev
 function DashboardContent() {
   const readOnly = useReadOnly();
 
-  const { data: farmsData, loading: farmsLoading } = useFetch('dashboard-farms', () => farmsAPI.list({ limit: 1 }));
-  const { data: cropsData, loading: cropsLoading } = useFetch('dashboard-crops', () => cropsAPI.list({ limit: 1 }));
-  const { data: livestockData, loading: livestockLoading } = useFetch('dashboard-livestock', () => livestockAPI.list({ limit: 1 }));
-  const { data: poultryData, loading: poultryLoading } = useFetch('dashboard-poultry', () => poultryAPI.list({ limit: 1 }));
-  const { data: expensesData } = useFetch('dashboard-expenses', () => financeAPI.listExpenses({ limit: 50 }));
-  const { data: salesData } = useFetch('dashboard-sales', () => financeAPI.listSales({ limit: 50 }));
-  const { data: tasksData } = useFetch('dashboard-tasks', () => tasksAPI.list({ status: 'PENDING' }));
-  const { data: attendanceData } = useFetch('dashboard-attendance', () => attendanceAPI.getToday());
-  const { data: profitabilityData } = useFetch('dashboard-profitability', () => profitabilityAPI.summary(), { cacheTime: 60_000 });
+  const { data: farmsData, loading: farmsLoading } = useFetch<any>('dashboard-farms', () => farmsAPI.list({ limit: 1 }));
+  const { data: cropsData, loading: cropsLoading } = useFetch<any>('dashboard-crops', () => cropsAPI.list({ limit: 1 }));
+  const { data: livestockData, loading: livestockLoading } = useFetch<any>('dashboard-livestock', () => livestockAPI.list({ limit: 1 }));
+  const { data: poultryData, loading: poultryLoading } = useFetch<any>('dashboard-poultry', () => poultryAPI.list({ limit: 1 }));
+  const { data: expensesData } = useFetch<any>('dashboard-expenses', () => financeAPI.listExpenses({ limit: 50 }));
+  const { data: salesData } = useFetch<any>('dashboard-sales', () => financeAPI.listSales({ limit: 50 }));
+  const { data: tasksData } = useFetch<any>('dashboard-tasks', () => tasksAPI.list({ status: 'PENDING' }));
+  const { data: attendanceData } = useFetch<any>('dashboard-attendance', () => attendanceAPI.getToday());
+  const { data: profitabilityData } = useFetch<any>('dashboard-profitability', () => profitabilityAPI.summary(), { cacheTime: 60_000 });
 
   const stats = [
     { name: 'Total Farms', value: String(farmsData?.total ?? farmsData?.data?.total ?? '—'), change: '', changeType: 'up' as const, icon: Home, color: 'bg-blue-500', href: '/farms' },

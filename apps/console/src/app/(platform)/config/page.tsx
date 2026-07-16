@@ -3,18 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { platformClient } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface ConfigItem {
-  id: string;
-  key: string;
-  value: string;
-  description: string | null;
-  category: string | null;
-  updatedAt: string;
-}
+import type { PlatformConfigItem } from '@farm/types';
 
 export default function ConfigPage() {
-  const [configs, setConfigs] = useState<ConfigItem[]>([]);
+  const [configs, setConfigs] = useState<PlatformConfigItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState(false);

@@ -10,7 +10,7 @@ import {
   UsePipes,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { NotificationService } from './notification.service';
 import { Notification, CreateNotificationRequest } from '@farm/types';
 import { ZodValidationPipe } from '@farm/utils';

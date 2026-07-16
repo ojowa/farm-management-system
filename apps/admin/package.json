@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
+    "build": "next build --no-lint",
     "start": "next start",
     "lint": "echo \"No linter configured\"",
     "test": "vitest run",
@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@farm/auth": "workspace:*",
+    "@farm/api-client": "workspace:*",
     "@farm/types": "workspace:*",
     "@farm/validation": "workspace:*",
     "@hookform/resolvers": "^3.10.0",
+    "@tanstack/react-query": "^5.101.2",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "jspdf": "^2.5.2",

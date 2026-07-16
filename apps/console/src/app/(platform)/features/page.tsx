@@ -3,19 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { platformFeaturesAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface Feature {
-  id: string;
-  key: string;
-  name: string;
-  description: string | null;
-  category: string;
-  isEnabled: boolean;
-  overrideCount: number;
-}
+import type { PlatformFeature } from '@farm/types';
 
 export default function FeaturesPage() {
-  const [features, setFeatures] = useState<Feature[]>([]);
+  const [features, setFeatures] = useState<PlatformFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 

@@ -4,31 +4,18 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { platformOrgsAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface Org {
-  id: string;
-  name: string;
-  slug: string;
-  email: string | null;
-  subscriptionPlan: string;
-  subscriptionStatus: string;
-  userCount: number;
-  farmCount: number;
-  createdAt: string;
-}
-
-interface Option { value: string; label: string; id?: string; }
+import type { PlatformOrganization, SelectOption } from '@farm/types';
 
 export default function OrganizationsPage() {
-  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [orgs, setOrgs] = useState<PlatformOrganization[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
-  const [planOptions, setPlanOptions] = useState<Option[]>([]);
-  const [statusOptions, setStatusOptions] = useState<Option[]>([]);
+  const [planOptions, setPlanOptions] = useState<SelectOption[]>([]);
+  const [statusOptions, setStatusOptions] = useState<SelectOption[]>([]);
 
   const loadOrgs = async () => {
     setLoading(true);

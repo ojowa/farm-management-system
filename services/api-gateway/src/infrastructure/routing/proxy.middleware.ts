@@ -12,7 +12,7 @@ const SERVICE_SECRET = (): string => {
   return secret;
 };
 
-const jwtVerify = (jwt as any).verify as (token: string, secret: string) => any;
+const jwtVerify = (jwt as any).verify as (token: string, secret: string, opts?: { algorithms?: string[] }) => any;
 const jwtSign = (jwt as any).sign as (payload: any, secret: string, opts?: any) => string;
 
 interface VerifiedUser {
@@ -26,7 +26,7 @@ interface VerifiedUser {
 function verifyAccessToken(token: string): VerifiedUser {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET environment variable is required');
-  const decoded = jwtVerify(token, secret) as any;
+  const decoded = jwtVerify(token, secret, { algorithms: ['HS256'] }) as any;
   if (!decoded || !decoded.sub || !decoded.role) throw new Error('Invalid token payload');
   return {
     id: decoded.sub,

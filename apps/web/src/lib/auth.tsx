@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { startInactivityTracker } from '@/lib/inactivity';
+import { isPublicPath } from '@farm/auth/paths';
 
 interface User {
   id: string;
@@ -49,6 +50,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  useEffect(() => {
+    if (state.isLoading) return;
+    if (!state.isAuthenticated) {
+      if (typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
+        window.location.href = '/login';
+      }
+    }
+  }, [state.isLoading, state.isAuthenticated]);
 
   useEffect(() => {
     if (!state.isAuthenticated) return;

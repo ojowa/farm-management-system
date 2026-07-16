@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiKeysService } from '../../application/services/api-keys.service';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('platform-api-keys')

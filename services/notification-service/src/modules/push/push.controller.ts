@@ -6,7 +6,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { PushService } from './push.service';
 import { scopedPrisma as prisma } from '@farm/database';
 

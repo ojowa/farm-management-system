@@ -7,7 +7,7 @@ export interface RefreshTokenRepository {
     deviceInfo?: string;
   }): Promise<void>;
   findValidByHash(tokenHash: string): Promise<{ id: string; userId: string; revoked: boolean } | null>;
-  revoke(id: string): Promise<void>;
+  revoke(id: string, replacedByTokenHash?: string): Promise<void>;
   revokeAllForUser(userId: string): Promise<void>;
   deleteAllForUser(userId: string): Promise<void>;
   findActiveByUser(userId: string): Promise<Array<{

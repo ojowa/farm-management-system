@@ -13,7 +13,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { FinanceApplicationService } from '../../application/services/finance.service';
 import { ZodValidationPipe } from '@farm/utils';
 import {

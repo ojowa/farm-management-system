@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 // We only rely on runtime behavior of `jwt.verify`.
 const verify = (jwt as any).verify as (
   token: string,
-  secret: string
+  secret: string,
+  options?: { algorithms?: string[] }
 ) => unknown;
 const sign = (jwt as any).sign as (
   payload: string | object,
@@ -52,8 +53,7 @@ const resolveServiceSecret = (): string => {
  * verification failure (missing, expired, malformed, wrong signature).
  */
 export const verifyAccessToken = (token: string): VerifiedUser => {
-  // jsonwebtoken typings vary by version; keep runtime typing explicit.
-  const decoded = verify(token, resolveSecret()) as any;
+  const decoded = verify(token, resolveSecret(), { algorithms: ['HS256'] }) as any;
 
   if (!decoded || !decoded.sub || !decoded.role) {
     throw new Error('Invalid token payload');
@@ -95,7 +95,7 @@ export const signServiceToken = (user: VerifiedUser): string => {
  * etc. headers.
  */
 export const verifyServiceToken = (token: string): ServiceTokenPayload => {
-  const decoded = verify(token, resolveServiceSecret()) as any;
+  const decoded = verify(token, resolveServiceSecret(), { algorithms: ['HS256'] }) as any;
 
   if (!decoded || decoded.type !== 'service' || !decoded.userId) {
     throw new Error('Invalid service token payload');

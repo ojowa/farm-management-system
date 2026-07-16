@@ -5,6 +5,7 @@ import {
   SetMetadata,
   UnauthorizedException,
   ForbiddenException,
+  Logger,
   createParamDecorator,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -46,18 +47,37 @@ export const Permission = (permission: string) =>
 /**
  * Passport-free JWT guard. We deliberately do not pull in `@nestjs/passport`
  * here so the same guard works in services that do not depend on Passport.
+ *
+ * Extracts the token from (in order):
+ *   1. `Authorization: Bearer <token>` header
+ *   2. `accessToken` httpOnly cookie (via `req.cookies`)
+ *
+ * This supports both header-based auth (mobile/console) and cookie-based
+ * auth (web app) simultaneously.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly logger = new Logger(JwtAuthGuard.name);
+
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest<Request & { user?: VerifiedUser }>();
-    const token = extractBearerToken(req.headers.authorization);
+    const req = context.switchToHttp().getRequest<Request & { user?: VerifiedUser; cookies?: Record<string, string> }>();
+
+    // 1. Try Authorization header first
+    let token = extractBearerToken(req.headers.authorization);
+
+    // 2. Fall back to accessToken cookie
+    if (!token && req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
     if (!token) {
       throw new UnauthorizedException('Authentication required');
     }
+
     try {
       req.user = verifyAccessToken(token);
     } catch (err) {
+      this.logger.debug(`JWT verification failed: ${(err as Error).message}`);
       throw new UnauthorizedException('Invalid or expired token');
     }
     return true;

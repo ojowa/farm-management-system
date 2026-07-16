@@ -1,120 +1,170 @@
-import axios from 'axios';
+import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@farm/api-client';
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const AUTH_API_URL = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:4001';
 
-export const platformClient = axios.create({
-  baseURL: `${API_GATEWAY_URL}/api`,
-  timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
-});
+const config: APIClientConfig = {
+  baseURL: API_GATEWAY_URL,
+};
 
-export const authClient = axios.create({
-  baseURL: AUTH_API_URL,
-  timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
-});
+const client: FarmManagementClient = createFarmManagementClient(config);
+export const apiClient = client.client;
 
+// ── Shared refresh state ───────────────────────────────────
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e?: unknown) => void }> = [];
+
+function processQueue(error: unknown) {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
+  failedQueue = [];
+}
+
+async function handleRefresh(error: any, originalRequest: any, httpClient: any) {
+  if (error.response?.status !== 401 || originalRequest._retry) {
+    return Promise.reject(error);
+  }
+
+  const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
+  const isLoginPath = typeof window !== 'undefined' && window.location.pathname === '/login';
+  if (isRefreshCall || isLoginPath) {
+    return Promise.reject(error);
+  }
+
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    })
+      .then(() => httpClient(originalRequest))
+      .catch((err: unknown) => Promise.reject(err));
+  }
+
+  originalRequest._retry = true;
+  isRefreshing = true;
+  try {
+    await fetch(`${API_GATEWAY_URL}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    processQueue(null);
+    return httpClient(originalRequest);
+  } catch (refreshError) {
+    processQueue(refreshError);
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+    return Promise.reject(refreshError);
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+// Apply refresh interceptor to the shared client
+apiClient.interceptors.response.use(
+  (res) => res,
+  (error) => handleRefresh(error, error.config, apiClient),
+);
+
+// ── Platform Admin APIs (gateway /api prefix) ──────────────
 export const platformUsersAPI = {
-  list: (params?: any) => platformClient.get('/platform-users', { params }),
-  get: (id: string) => platformClient.get(`/platform-users/${id}`),
-  update: (id: string, data: any) => platformClient.patch(`/platform-users/${id}`, data),
-  deactivate: (id: string) => platformClient.delete(`/platform-users/${id}`),
-  impersonate: (id: string) => platformClient.post(`/platform-users/${id}/impersonate`),
-  forceLogout: (id: string) => platformClient.post(`/platform-users/${id}/force-logout`),
-  sessions: (id: string) => platformClient.get(`/platform-users/${id}/sessions`),
-  toggleActive: (userId: string) =>
-    platformClient.put(`/platform-users/${userId}/toggle-active`),
+  list: (params?: any) => apiClient.get('/api/platform-users', { params }),
+  get: (id: string) => apiClient.get(`/api/platform-users/${id}`),
+  update: (id: string, data: any) => apiClient.patch(`/api/platform-users/${id}`, data),
+  deactivate: (id: string) => apiClient.delete(`/api/platform-users/${id}`),
+  impersonate: (id: string) => apiClient.post(`/api/platform-users/${id}/impersonate`),
+  forceLogout: (id: string) => apiClient.post(`/api/platform-users/${id}/force-logout`),
+  sessions: (id: string) => apiClient.get(`/api/platform-users/${id}/sessions`),
+  toggleActive: (userId: string) => apiClient.put(`/api/platform-users/${userId}/toggle-active`),
 };
 
 export const platformOrgsAPI = {
-  list: (params?: any) => platformClient.get('/platform-organizations', { params }),
-  get: (id: string) => platformClient.get(`/platform-organizations/${id}`),
-  create: (data: any) => platformClient.post('/platform-organizations', data),
-  update: (id: string, data: any) => platformClient.patch(`/platform-organizations/${id}`, data),
-  delete: (id: string) => platformClient.delete(`/platform-organizations/${id}`),
-  suspend: (id: string) => platformClient.post(`/platform-organizations/${id}/suspend`),
-  activate: (id: string) => platformClient.post(`/platform-organizations/${id}/activate`),
-  stats: (id: string) => platformClient.get(`/platform-organizations/${id}/stats`),
-  members: (id: string) => platformClient.get(`/platform-organizations/${id}/members`),
+  list: (params?: any) => apiClient.get('/api/platform-organizations', { params }),
+  get: (id: string) => apiClient.get(`/api/platform-organizations/${id}`),
+  create: (data: any) => apiClient.post('/api/platform-organizations', data),
+  update: (id: string, data: any) => apiClient.patch(`/api/platform-organizations/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/api/platform-organizations/${id}`),
+  suspend: (id: string) => apiClient.post(`/api/platform-organizations/${id}/suspend`),
+  activate: (id: string) => apiClient.post(`/api/platform-organizations/${id}/activate`),
+  stats: (id: string) => apiClient.get(`/api/platform-organizations/${id}/stats`),
+  members: (id: string) => apiClient.get(`/api/platform-organizations/${id}/members`),
   updateSubscription: (id: string, data: { subscriptionPlan?: string; subscriptionStatus?: string }) =>
-    platformClient.patch(`/platform-organizations/${id}/subscription`, data),
-  toggleUserActive: (userId: string) =>
-    platformClient.put(`/platform-users/${userId}/toggle-active`),
+    apiClient.patch(`/api/platform-organizations/${id}/subscription`, data),
+  toggleUserActive: (userId: string) => apiClient.put(`/api/platform-users/${userId}/toggle-active`),
 };
 
 export const platformFeaturesAPI = {
-  list: () => platformClient.get('/platform-features'),
-  get: (id: string) => platformClient.get(`/platform-features/${id}`),
-  toggle: (id: string, data: { isEnabled: boolean }) => platformClient.patch(`/platform-features/${id}`, data),
-  overrides: (id: string) => platformClient.get(`/platform-features/${id}/overrides`),
-  setOverride: (id: string, data: { organizationId: string; isEnabled: boolean }) => platformClient.post(`/platform-features/${id}/overrides`, data),
-  deleteOverride: (id: string, orgId: string) => platformClient.delete(`/platform-features/${id}/overrides/${orgId}`),
+  list: () => apiClient.get('/api/platform-features'),
+  get: (id: string) => apiClient.get(`/api/platform-features/${id}`),
+  toggle: (id: string, data: { isEnabled: boolean }) => apiClient.patch(`/api/platform-features/${id}`, data),
+  overrides: (id: string) => apiClient.get(`/api/platform-features/${id}/overrides`),
+  setOverride: (id: string, data: { organizationId: string; isEnabled: boolean }) => apiClient.post(`/api/platform-features/${id}/overrides`, data),
+  deleteOverride: (id: string, orgId: string) => apiClient.delete(`/api/platform-features/${id}/overrides/${orgId}`),
 };
 
 export const platformSubscriptionsAPI = {
-  listPlans: () => platformClient.get('/platform-subscriptions/plans'),
-  getPlan: (id: string) => platformClient.get(`/platform-subscriptions/plans/${id}`),
-  createPlan: (data: any) => platformClient.post('/platform-subscriptions/plans', data),
-  updatePlan: (id: string, data: any) => platformClient.patch(`/platform-subscriptions/plans/${id}`, data),
-  deletePlan: (id: string) => platformClient.delete(`/platform-subscriptions/plans/${id}`),
-  assignPlan: (orgId: string, data: { planId: string; status?: string }) => platformClient.patch(`/platform-organizations/${orgId}/subscription`, data),
+  listPlans: () => apiClient.get('/api/platform-subscriptions/plans'),
+  getPlan: (id: string) => apiClient.get(`/api/platform-subscriptions/plans/${id}`),
+  createPlan: (data: any) => apiClient.post('/api/platform-subscriptions/plans', data),
+  updatePlan: (id: string, data: any) => apiClient.patch(`/api/platform-subscriptions/plans/${id}`, data),
+  deletePlan: (id: string) => apiClient.delete(`/api/platform-subscriptions/plans/${id}`),
+  assignPlan: (orgId: string, data: { planId: string; status?: string }) => apiClient.patch(`/api/platform-organizations/${orgId}/subscription`, data),
 };
 
 export const platformHealthAPI = {
-  status: () => platformClient.get('/platform-health'),
-  check: () => platformClient.post('/platform-health/check'),
+  status: () => apiClient.get('/api/platform-health'),
+  check: () => apiClient.post('/api/platform-health/check'),
 };
 
 export const platformAuditAPI = {
-  list: (params?: any) => platformClient.get('/platform-audit', { params }),
-  get: (id: string) => platformClient.get(`/platform-audit/${id}`),
+  list: (params?: any) => apiClient.get('/api/platform-audit', { params }),
+  get: (id: string) => apiClient.get(`/api/platform-audit/${id}`),
 };
 
 export const platformBroadcastsAPI = {
-  list: () => platformClient.get('/platform-broadcasts'),
-  get: (id: string) => platformClient.get(`/platform-broadcasts/${id}`),
-  create: (data: any) => platformClient.post('/platform-broadcasts', data),
-  update: (id: string, data: any) => platformClient.patch(`/platform-broadcasts/${id}`, data),
-  delete: (id: string) => platformClient.delete(`/platform-broadcasts/${id}`),
+  list: () => apiClient.get('/api/platform-broadcasts'),
+  get: (id: string) => apiClient.get(`/api/platform-broadcasts/${id}`),
+  create: (data: any) => apiClient.post('/api/platform-broadcasts', data),
+  update: (id: string, data: any) => apiClient.patch(`/api/platform-broadcasts/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/api/platform-broadcasts/${id}`),
 };
 
 export const platformConfigAPI = {
-  list: () => platformClient.get('/platform-config'),
-  get: (key: string) => platformClient.get(`/platform-config/${key}`),
+  list: () => apiClient.get('/api/platform-config'),
+  get: (key: string) => apiClient.get(`/api/platform-config/${key}`),
   update: (configs: Array<{ key: string; value: string; description?: string; category?: string }>) =>
-    platformClient.patch('/platform-config', { configs }),
+    apiClient.patch('/api/platform-config', { configs }),
 };
 
 export const platformOptionsAPI = {
-  all: () => platformClient.get('/platform-options'),
-  plans: () => platformClient.get('/platform-options/plans'),
-  statuses: () => platformClient.get('/platform-options/statuses'),
-  broadcastTypes: () => platformClient.get('/platform-options/broadcast-types'),
-  roles: () => platformClient.get('/platform-options/roles'),
-  platformAdminRoles: () => platformClient.get('/platform-options/platform-admin-roles'),
+  all: () => apiClient.get('/api/platform-options'),
+  plans: () => apiClient.get('/api/platform-options/plans'),
+  statuses: () => apiClient.get('/api/platform-options/statuses'),
+  broadcastTypes: () => apiClient.get('/api/platform-options/broadcast-types'),
+  roles: () => apiClient.get('/api/platform-options/roles'),
+  platformAdminRoles: () => apiClient.get('/api/platform-options/platform-admin-roles'),
 };
 
+// ── Auth-domain APIs (gateway root) ────────────────────────
 export const platformRolesAPI = {
-  list: () => authClient.get('/platform-roles'),
-  get: (id: string) => authClient.get(`/platform-roles/${id}`),
-  create: (data: any) => authClient.post('/platform-roles', data),
-  update: (id: string, data: any) => authClient.put(`/platform-roles/${id}`, data),
-  delete: (id: string) => authClient.delete(`/platform-roles/${id}`),
-  setPermissions: (id: string, permissionIds: string[]) => authClient.post(`/platform-roles/${id}/permissions`, { permissionIds }),
+  list: () => apiClient.get('/platform-roles'),
+  get: (id: string) => apiClient.get(`/platform-roles/${id}`),
+  create: (data: any) => apiClient.post('/platform-roles', data),
+  update: (id: string, data: any) => apiClient.put(`/platform-roles/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/platform-roles/${id}`),
+  setPermissions: (id: string, permissionIds: string[]) => apiClient.post(`/platform-roles/${id}/permissions`, { permissionIds }),
 };
 
 export const platformPermissionsAPI = {
-  list: () => authClient.get('/platform-permissions'),
-  create: (data: any) => authClient.post('/platform-permissions', data),
-  delete: (id: string) => authClient.delete(`/platform-permissions/${id}`),
+  list: () => apiClient.get('/platform-permissions'),
+  create: (data: any) => apiClient.post('/platform-permissions', data),
+  delete: (id: string) => apiClient.delete(`/platform-permissions/${id}`),
 };
 
 export const platformApiKeysAPI = {
-  list: () => authClient.get('/platform-api-keys'),
-  create: (data: any) => authClient.post('/platform-api-keys', data),
-  toggle: (id: string) => authClient.patch(`/platform-api-keys/${id}/toggle`),
-  delete: (id: string) => authClient.delete(`/platform-api-keys/${id}`),
+  list: () => apiClient.get('/platform-api-keys'),
+  create: (data: any) => apiClient.post('/platform-api-keys', data),
+  toggle: (id: string) => apiClient.patch(`/platform-api-keys/${id}/toggle`),
+  delete: (id: string) => apiClient.delete(`/platform-api-keys/${id}`),
 };
+
+// ── Legacy aliases for backward compatibility ───────────────
+export const authClient = apiClient;
+export const platformClient = apiClient;

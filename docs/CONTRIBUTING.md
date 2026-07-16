@@ -16,7 +16,7 @@ git clone <repo-url>
 cd "Farm Management System"
 corepack enable
 pnpm install
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 pnpm db:push
 pnpm db:seed
 pnpm dev

@@ -3,27 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { platformRolesAPI, platformPermissionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface Role {
-  id: string;
-  name: string;
-  description: string | null;
-  isSystem: boolean;
-  permissions: { permission: { id: string; name: string; category: string } }[];
-}
-
-interface Permission {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-}
+import type { PlatformAdminRole, PlatformPermission } from '@farm/types';
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [roles, setRoles] = useState<PlatformAdminRole[]>([]);
+  const [permissions, setPermissions] = useState<PlatformPermission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedRole, setSelectedRole] = useState<PlatformAdminRole | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '' });
   const [saving, setSaving] = useState(false);
@@ -86,7 +72,7 @@ export default function RolesPage() {
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(p);
     return acc;
-  }, {} as Record<string, Permission[]>);
+  }, {} as Record<string, PlatformPermission[]>);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

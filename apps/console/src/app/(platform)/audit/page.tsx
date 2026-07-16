@@ -3,20 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { platformAuditAPI } from '@/lib/api';
 import { toastError, getErrorMessage } from '@/lib/toast';
-
-interface AuditLog {
-  id: string;
-  userId: string;
-  userName: string;
-  userEmail: string | null;
-  action: string;
-  entity: string;
-  entityId: string;
-  createdAt: string;
-}
+import type { PlatformAuditLog } from '@farm/types';
 
 export default function AuditPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [logs, setLogs] = useState<PlatformAuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [action, setAction] = useState('');

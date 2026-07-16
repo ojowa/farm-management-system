@@ -30,7 +30,7 @@ pnpm install
 ### Option A: Docker (Recommended)
 
 ```bash
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 This starts PostgreSQL on port 5432 and PgBouncer on port 6432.
@@ -170,7 +170,7 @@ pnpm install
 ### Database connection refused
 ```bash
 # Ensure PostgreSQL is running
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 
 # Or check local PostgreSQL service
 # Windows: services.msc → PostgreSQL

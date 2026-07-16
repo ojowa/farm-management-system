@@ -304,7 +304,7 @@ See [DATABASE.md](./DATABASE.md) for the full model reference.
 ### Local Development
 
 ```bash
-docker-compose up -d   # PostgreSQL + PgBouncer
+docker compose -f infra/docker-compose.yml up -d   # PostgreSQL + PgBouncer
 pnpm dev                # All services
 ```
 

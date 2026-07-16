@@ -48,7 +48,7 @@ corepack enable
 pnpm install
 
 # Set up database (Docker)
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 pnpm db:push
 pnpm db:seed
 

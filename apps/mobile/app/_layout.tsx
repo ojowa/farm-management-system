@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { ActivityIndicator, StyleSheet, View, GestureResponderEvent } from 'react-native';
 import { Provider } from 'react-redux';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -75,13 +75,36 @@ function RootLayoutNav() {
     }
   }, [isAuthenticated, bootstrapped, segments]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const cleanup = startInactivityTracker(() => {
+  const inactivityTimerRef = useRef<(() => void) | null>(null);
+
+  const resetInactivityTimer = useCallback(() => {
+    // The inactivity tracker resets internally when we call the cleanup + re-arm.
+    // For touch events, we simply restart the timer.
+    if (inactivityTimerRef.current) {
+      inactivityTimerRef.current();
+    }
+    inactivityTimerRef.current = startInactivityTracker(() => {
       dispatch(logout());
     });
-    return cleanup;
-  }, [isAuthenticated, dispatch]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    resetInactivityTimer();
+    return () => {
+      if (inactivityTimerRef.current) {
+        inactivityTimerRef.current();
+        inactivityTimerRef.current = null;
+      }
+    };
+  }, [isAuthenticated, resetInactivityTimer]);
+
+  // Reset inactivity timer on any touch — captures actual user interaction
+  const handleTouchStart = useCallback((_event: GestureResponderEvent) => {
+    if (isAuthenticated && inactivityTimerRef.current) {
+      resetInactivityTimer();
+    }
+  }, [isAuthenticated, resetInactivityTimer]);
 
   if (!bootstrapped) {
     return (
@@ -92,7 +115,7 @@ function RootLayoutNav() {
   }
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} onTouchStart={handleTouchStart}>
       <Stack
         screenOptions={{
           headerShown: false,

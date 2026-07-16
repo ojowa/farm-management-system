@@ -50,7 +50,9 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   handleConnection(client: Socket): void {
     try {
-      let token = client.handshake.auth?.token || client.handshake.query?.token;
+      // Accept token from handshake auth only — query parameters are logged
+      // in access logs and browser history, so we reject them for security.
+      let token = client.handshake.auth?.token;
 
       if (!token && client.handshake.headers?.cookie) {
         const cookies = parseCookies(client.handshake.headers.cookie);

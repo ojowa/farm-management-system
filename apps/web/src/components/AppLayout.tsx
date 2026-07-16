@@ -6,14 +6,14 @@ import Sidebar from '@/components/Sidebar';
 import NotificationCenter from '@/components/NotificationCenter';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useAuth } from '@/lib/auth';
+import { isPublicPath } from '@farm/auth/paths';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { logout } = useAuth();
-  const publicPaths = ['/', '/login', '/register'];
 
-  if (publicPaths.includes(pathname)) {
+  if (isPublicPath(pathname)) {
     return <>{children}</>;
   }
 

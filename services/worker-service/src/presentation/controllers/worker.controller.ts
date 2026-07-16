@@ -11,7 +11,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { WorkerApplicationService } from '../../application/services/worker.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createWorkerSchema, updateWorkerSchema } from '@farm/validation';

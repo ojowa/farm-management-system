@@ -1,75 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import { startInactivityTracker } from '@/lib/inactivity';
-import { platformClient } from '@/lib/api';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-const authClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
-});
-
-{
-  let isRefreshing = false;
-  let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e?: unknown) => void }> = [];
-
-  const processQueue = (error: unknown) => {
-    failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
-    failedQueue = [];
-  };
-
-  authClient.interceptors.response.use(
-    (res) => res,
-    async (error) => {
-      const originalRequest = error.config;
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then(() => authClient(originalRequest))
-            .catch((err) => Promise.reject(err));
-        }
-        originalRequest._retry = true;
-        isRefreshing = true;
-        try {
-          await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
-          processQueue(null);
-          return authClient(originalRequest);
-        } catch {
-          processQueue(error);
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
-          return Promise.reject(error);
-        } finally {
-          isRefreshing = false;
-        }
-      }
-      return Promise.reject(error);
-    }
-  );
-}
-
-interface User {
-  id: string;
-  email: string | null;
-  firstName: string;
-  lastName: string;
-  roleName?: string;
-  role?: { name: string; permissions?: { permission: { name: string }[] }[] };
-  organizationId: string | null;
-  twoFactorEnabled: boolean;
-  [key: string]: any;
-}
+import { authClient, platformClient } from '@/lib/api';
+import type { PlatformAdminUser } from '@farm/types';
 
 interface AuthState {
-  user: User | null;
+  user: PlatformAdminUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
 }

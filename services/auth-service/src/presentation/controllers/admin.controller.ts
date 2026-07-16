@@ -1,6 +1,6 @@
 import { Controller, Get, Put, Param, Body, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AdminService } from '../../application/services/admin.service';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { UpdateSubscriptionDto } from '../dto/admin.dto';
 
 @Controller('admin/organizations')

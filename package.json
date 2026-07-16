@@ -6,7 +6,10 @@
   "scripts": {
     "test": "turbo test",
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "turbo build --filter='!@farm/mobile'",
+    "build:mobile": "pnpm --filter @farm/mobile build",
+    "build:mobile:android": "pnpm --filter @farm/mobile build:android",
+    "build:mobile:ios": "pnpm --filter @farm/mobile build:ios",
     "start": "turbo build && turbo start",
     "lint": "turbo lint",
     "format": "prettier --write ."
@@ -25,7 +28,8 @@
     "onlyBuiltDependencies": [
       "@scarf/scarf",
       "core-js",
-      "esbuild"
+      "esbuild",
+      "@swc/core"
     ],
     "overrides": {
       "@types/react": "18.3.31",

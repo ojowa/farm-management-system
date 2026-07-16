@@ -3,20 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { platformApiKeysAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface ApiKey {
-  id: string;
-  name: string;
-  keyPrefix: string;
-  service: string;
-  isActive: boolean;
-  lastUsedAt: string | null;
-  createdAt: string;
-  user?: { id: string; firstName: string; lastName: string; email: string };
-}
+import type { PlatformApiKey } from '@farm/types';
 
 export default function ApiKeysPage() {
-  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [keys, setKeys] = useState<PlatformApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', service: '' });

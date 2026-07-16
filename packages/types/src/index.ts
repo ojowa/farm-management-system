@@ -10,3 +10,7 @@ export * from './worker';
 export * from './finance';
 export * from './api';
 export * from './notification';
+export * from './dashboard';
+export * from './health';
+export * from './platform';
+export * from './platform-admin';

@@ -3,28 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { platformHealthAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface ServiceHealth {
-  name: string;
-  status: string;
-  uptime?: number;
-  latencyMs?: number;
-  lastCheck?: string;
-  metadata?: Record<string, any>;
-}
-
-interface HealthSummary {
-  total: number;
-  healthy: number;
-  unhealthy: number;
-  totalMs: number;
-}
+import type { PlatformServiceHealth, PlatformHealthSummary } from '@farm/types';
 
 export default function HealthPage() {
-  const [services, setServices] = useState<ServiceHealth[]>([]);
+  const [services, setServices] = useState<PlatformServiceHealth[]>([]);
   const [dbStatus, setDbStatus] = useState('unknown');
   const [dbLatency, setDbLatency] = useState(0);
-  const [summary, setSummary] = useState<HealthSummary | null>(null);
+  const [summary, setSummary] = useState<PlatformHealthSummary | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);

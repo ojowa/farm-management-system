@@ -3,24 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { platformSubscriptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface Plan {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string | null;
-  price: number;
-  currency: string;
-  billingCycle: string;
-  maxUsers: number;
-  maxFarms: number;
-  maxStorage: number;
-  isActive: boolean;
-  organizationCount: number;
-}
+import type { PlatformSubscriptionPlan } from '@farm/types';
 
 export default function SubscriptionsPage() {
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<PlatformSubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100 });

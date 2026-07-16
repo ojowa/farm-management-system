@@ -1,4 +1,5 @@
-import { createFarmManagementClient, setupTokenRefresh, FarmManagementClient } from '@farm/api-client';
+import { createFarmManagementClient, FarmManagementClient } from '@farm/api-client';
+import axios from 'axios';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -10,18 +11,62 @@ const client = createFarmManagementClient({
 });
 
 // ── Token refresh setup for web (cookie-based) ───────────────────
-setupTokenRefresh(
-  client.client,
-  () => null,
-  () => {},
-  () => {},
-  () => {
-    const publicPaths = ['/', '/login', '/register'];
-    if (typeof window !== 'undefined' && !publicPaths.includes(window.location.pathname)) {
-      window.location.href = '/login';
+// For cookie-based auth, the server handles token rotation via Set-Cookie
+// headers. The client just needs to call /auth/refresh on 401 and the
+// server will issue new cookies.
+{
+  let isRefreshing = false;
+  let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e?: unknown) => void }> = [];
+
+  const processQueue = (error: unknown) => {
+    failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
+    failedQueue = [];
+  };
+
+  client.client.interceptors.response.use(
+    (res) => res,
+    async (error) => {
+      const originalRequest = error.config;
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        // Don't try to refresh if we're already on login or if this IS the refresh endpoint
+        const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
+        const isLoginPath = typeof window !== 'undefined' &&
+          ['/login', '/register'].includes(window.location.pathname);
+
+        if (isRefreshCall || isLoginPath) {
+          return Promise.reject(error);
+        }
+
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then(() => client.client(originalRequest))
+            .catch((err) => Promise.reject(err));
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+        try {
+          // Call refresh — the server will set new httpOnly cookies
+          await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+          processQueue(null);
+          return client.client(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError);
+          // Redirect to login on refresh failure
+          if (typeof window !== 'undefined' && !['/login', '/register'].includes(window.location.pathname)) {
+            window.location.href = '/login';
+          }
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+      return Promise.reject(error);
     }
-  },
-);
+  );
+}
 
 export const apiClient = client.client;
 

@@ -12,7 +12,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { LivestockApplicationService } from '../../application/services/livestock.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { createLivestockSchema, updateLivestockSchema } from '@farm/validation';

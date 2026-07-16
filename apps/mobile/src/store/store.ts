@@ -13,6 +13,11 @@ import {
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import syncReducer from './slices/syncSlice';
+import { farmsApi } from './api/farmsApi';
+import { cropsApi } from './api/cropsApi';
+import { livestockApi } from './api/livestockApi';
+import { financeApi } from './api/financeApi';
+import { tasksApi } from './api/tasksApi';
 
 
 const uiPersistConfig = {
@@ -31,7 +36,7 @@ const authPersistConfig = {
   key: 'auth',
   version: 1,
   storage: AsyncStorage,
-  blacklist: ['loading', 'error', 'bootstrapped'],
+  blacklist: ['loading', 'error', 'bootstrapped', 'socketAccessToken'],
 };
 
 const syncPersistConfig = {
@@ -45,6 +50,11 @@ const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   ui: persistReducer(uiPersistConfig, uiReducer),
   sync: persistReducer(syncPersistConfig, syncReducer),
+  [farmsApi.reducerPath]: farmsApi.reducer,
+  [cropsApi.reducerPath]: cropsApi.reducer,
+  [livestockApi.reducerPath]: livestockApi.reducer,
+  [financeApi.reducerPath]: financeApi.reducer,
+  [tasksApi.reducerPath]: tasksApi.reducer,
 });
 
 
@@ -56,7 +66,13 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
+    }).concat(
+      farmsApi.middleware,
+      cropsApi.middleware,
+      livestockApi.middleware,
+      financeApi.middleware,
+      tasksApi.middleware,
+    ),
 });
 
 export const persistor = persistStore(store);

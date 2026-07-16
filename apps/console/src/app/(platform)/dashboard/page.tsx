@@ -3,22 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { platformOrgsAPI, platformUsersAPI, platformHealthAPI } from '@/lib/api';
 import { toastError, getErrorMessage } from '@/lib/toast';
-
-interface Stats {
-  totalOrgs: number;
-  totalUsers: number;
-  activeOrgs: number;
-  suspendedOrgs: number;
-}
-
-interface HealthStatus {
-  name: string;
-  status: string;
-}
+import type { ConsoleDashboardStats, PlatformServiceHealth } from '@farm/types';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<Stats>({ totalOrgs: 0, totalUsers: 0, activeOrgs: 0, suspendedOrgs: 0 });
-  const [health, setHealth] = useState<HealthStatus[]>([]);
+  const [stats, setStats] = useState<ConsoleDashboardStats>({ totalOrgs: 0, totalUsers: 0, activeOrgs: 0, suspendedOrgs: 0 });
+  const [health, setHealth] = useState<PlatformServiceHealth[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

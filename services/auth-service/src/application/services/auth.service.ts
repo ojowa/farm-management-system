@@ -50,7 +50,7 @@ export class AuthService {
   }
 
   async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const payload = jwt.verify(mfaToken, getMfaSecret()) as any;
+    const payload = jwt.verify(mfaToken, getMfaSecret(), { algorithms: ['HS256'] }) as any;
     const user = await this.userRepo.findById(payload.sub);
     if (!user) throw new NotFoundException('User not found');
     // @ts-ignore - otplib types not available
@@ -87,11 +87,13 @@ export class AuthService {
     const tokenHash = hashToken(token);
     const stored = await this.refreshTokenRepo.findValidByHash(tokenHash);
     if (!stored) throw new UnauthorizedException('Invalid refresh token');
-    await this.refreshTokenRepo.revoke(stored.id);
     const user = await this.userRepo.findById(stored.userId);
     if (!user) throw new NotFoundException('User not found');
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    // Revoke old token and record which new token replaced it
+    const newTokenHash = hashToken(refreshToken);
+    await this.refreshTokenRepo.revoke(stored.id, newTokenHash);
     return { accessToken, refreshToken };
   }
 
@@ -198,7 +200,13 @@ export class AuthService {
     await this.userRepo.update(userId, { twoFactorEnabled: true } as any);
   }
 
-  async disable2fa(userId: string) {
+  async disable2fa(userId: string, code: string) {
+    const user = await this.userRepo.findById(userId);
+    if (!user || !user.twoFactorSecret) throw new BadRequestException('2FA is not enabled');
+    // @ts-ignore - otplib types not available
+    const { authenticator } = await import('otplib');
+    const isValid = authenticator.verify({ token: code, secret: user.twoFactorSecret });
+    if (!isValid) throw new UnauthorizedException('Invalid 2FA code — cannot disable without verification');
     await this.userRepo.update(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
   }
 }

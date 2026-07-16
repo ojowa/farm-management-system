@@ -136,6 +136,13 @@ export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
+      // Unregister push notifications before logging out
+      try {
+        const { unregisterFromNotifications } = await import('../../services/notifications');
+        await unregisterFromNotifications();
+      } catch {
+        // Non-critical — continue with logout even if unregister fails
+      }
       await authAPI.logout();
     } catch {
       // Best-effort — clear local state regardless

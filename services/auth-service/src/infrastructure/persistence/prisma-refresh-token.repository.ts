@@ -22,10 +22,13 @@ export class PrismaRefreshTokenRepository implements RefreshTokenRepository {
     return token;
   }
 
-  async revoke(id: string): Promise<void> {
+  async revoke(id: string, replacedByTokenHash?: string): Promise<void> {
     await prisma.refreshToken.update({
       where: { id },
-      data: { revoked: true },
+      data: {
+        revoked: true,
+        ...(replacedByTokenHash ? { replacedByToken: replacedByTokenHash } : {}),
+      },
     });
   }
 

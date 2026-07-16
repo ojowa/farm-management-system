@@ -5,6 +5,7 @@ import { SocketProvider } from '@/lib/socket';
 import { ThemeProvider } from '@/lib/theme';
 import { NotificationProvider } from '@/lib/notifications';
 import { AuthProvider } from '@/lib/auth';
+import { Providers } from '@/lib/providers';
 import { AppLayout } from '@/components/AppLayout';
 import { ReconnectingBanner } from '@/components/ReconnectingBanner';
 import { OfflineBanner } from '@/components/OfflineBanner';
@@ -31,17 +32,19 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <SocketProvider>
-                <NotificationProvider>
-                  <ReconnectingBanner />
-                  <OfflineBanner />
-                  <AppLayout>{children}</AppLayout>
-                </NotificationProvider>
-              </SocketProvider>
-            </ToastProvider>
-          </ThemeProvider>
+          <Providers>
+            <ThemeProvider>
+              <ToastProvider>
+                <SocketProvider>
+                  <NotificationProvider>
+                    <ReconnectingBanner />
+                    <OfflineBanner />
+                    <AppLayout>{children}</AppLayout>
+                  </NotificationProvider>
+                </SocketProvider>
+              </ToastProvider>
+            </ThemeProvider>
+          </Providers>
         </AuthProvider>
       </body>
     </html>

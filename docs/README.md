@@ -50,7 +50,7 @@ corepack enable
 pnpm install
 
 # Start PostgreSQL (Docker)
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 
 # Set up the database
 cp .env.example .env  # edit DATABASE_URL if needed

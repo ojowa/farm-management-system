@@ -40,14 +40,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const axios = (await import('axios')).default;
-      const client = axios.create({
-        baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
-        timeout: 15000,
-        headers: { 'Content-Type': 'application/json' },
-        withCredentials: true,
-      });
-      await client.post('/auth/verify-mfa', { mfaToken, code: mfaCode });
+      const { authClient } = await import('@/lib/api');
+      await authClient.post('/auth/verify-mfa', { mfaToken, code: mfaCode });
       window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Invalid MFA code');

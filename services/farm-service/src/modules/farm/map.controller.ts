@@ -1,5 +1,5 @@
 import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { scopedPrisma } from '@farm/database';
 
 function getOrgIdFromRequest(req: any): string {

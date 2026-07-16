@@ -53,3 +53,14 @@ export const userHasAnyRole = (
   if (!userRole || allowed.length === 0) return false;
   return allowed.includes(userRole);
 };
+
+/**
+ * Extract flat permission names from a user object with a Prisma-shaped role.
+ */
+export const extractPermissions = (user: any): string[] => {
+  return (
+    user?.role?.permissions?.flatMap(
+      (rp: any) => rp.permission?.map((p: any) => p.name) ?? []
+    ) ?? []
+  );
+};

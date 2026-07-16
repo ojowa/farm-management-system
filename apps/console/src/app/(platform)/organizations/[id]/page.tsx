@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { platformOrgsAPI, platformFeaturesAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface Option { value: string; label: string; id?: string; }
+import type { SelectOption } from '@farm/types';
 
 const PLAN_BADGE: Record<string, string> = {
   default: 'bg-gray-100 text-gray-700',
@@ -25,8 +24,8 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
   const [features, setFeatures] = useState<any[]>([]);
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [toggling, setToggling] = useState<string | null>(null);
-  const [planOptions, setPlanOptions] = useState<Option[]>([]);
-  const [statusOptions, setStatusOptions] = useState<Option[]>([]);
+  const [planOptions, setPlanOptions] = useState<SelectOption[]>([]);
+  const [statusOptions, setStatusOptions] = useState<SelectOption[]>([]);
 
   useEffect(() => { loadOrg(); loadOptions(); }, [id]);
   useEffect(() => { if (tab === 'modules') loadModules(); }, [tab, id]);

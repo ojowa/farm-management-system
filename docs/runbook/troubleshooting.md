@@ -124,7 +124,7 @@ pnpm install
 **Solution:**
 ```bash
 # Start PostgreSQL via Docker
-docker-compose up -d
+docker compose -f infra/docker-compose.yml up -d
 
 # Or check local service
 # Windows: services.msc → PostgreSQL

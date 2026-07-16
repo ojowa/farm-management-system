@@ -3,6 +3,9 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
+import { Logger } from '@nestjs/common';
+
+const logger = new Logger('JwtAuthMiddleware');
 
 function jwtAuthMiddleware(req: any, _res: any, next: () => void) {
   let token: string | null = null;
@@ -23,10 +26,10 @@ function jwtAuthMiddleware(req: any, _res: any, next: () => void) {
     try {
       const secret = process.env.JWT_SECRET;
       if (!secret) throw new Error('JWT_SECRET environment variable is required');
-      const decoded = jwt.verify(token, secret);
+      const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
       req.user = decoded;
-    } catch {
-      // JWT verification failed — continue unauthenticated
+    } catch (err) {
+      logger.debug(`JWT verification failed for ${req.method} ${req.url}: ${(err as Error).message}`);
     }
   }
 
@@ -34,7 +37,7 @@ function jwtAuthMiddleware(req: any, _res: any, next: () => void) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { logger: ['warn', 'error'] });
   app.use(cookieParser());
   app.use(jwtAuthMiddleware);
   app.useGlobalFilters(new AllExceptionsFilter());

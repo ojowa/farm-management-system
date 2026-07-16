@@ -12,7 +12,7 @@ import {
   UseGuards,
   Inject,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
 import { NotificationApplicationService } from '../../application/services/notification.service';
 import { Notification } from '../../domain/entities/notification.entity';
 import { CreateNotificationRequest } from '../dto/notification.dto';

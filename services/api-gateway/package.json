@@ -58,6 +58,8 @@
     "@nestjs/cli": "^11.0.4",
     "@nestjs/schematics": "^11.0.1",
     "@nestjs/testing": "^11.0.10",
+    "@swc/cli": "^0.8.1",
+    "@swc/core": "^1.15.43",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.5",
     "@types/passport-jwt": "^4.0.1",
@@ -85,6 +87,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/__tests__/setup.ts"]
+    "setupFiles": [
+      "<rootDir>/__tests__/setup.ts"
+    ]
   }
 }

@@ -3,22 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { platformUsersAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  organizationId: string;
-  organizationName: string;
-  isActive: boolean;
-  lastLoginAt: string | null;
-  createdAt: string;
-}
+import type { PlatformAdminUser } from '@farm/types';
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<PlatformAdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
