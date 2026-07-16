@@ -29,13 +29,13 @@
 | Aspect | web | console | admin | mobile |
 |---|---|---|---|---|
 | **Framework** | Next.js 15 App Router | Next.js App Router | Next.js App Router | Expo Router 6 |
-| **API client** | `@farm/api-client` | Own axios (180 lines) | Own axios (458 lines) | Own axios (655 lines) |
+| **API client** | `@farm/api-client` | `@farm/api-client` | Own axios (458 lines) | Own axios (655 lines) |
 | **State mgmt** | Context only | Context only | Context only | Redux Toolkit + persist |
 | **Data fetching** | `useState` + `useEffect` | `useState` + `useEffect` | Custom `useFetch` (cache) | `useState` + `useEffect` |
 | **Types** | Inline `any` | Inline `any` | Inline `any` | Inline `any` |
-| **Uses `@farm/types`** | Yes | **No** | Yes | Yes |
+| **Uses `@farm/types`** | Yes | Yes | Yes | Yes |
 | **Uses `@farm/validation`** | Yes | **No** | Yes | Yes |
-| **Uses `@farm/api-client`** | Yes | **No** | **No** | **No** |
+| **Uses `@farm/api-client`** | Yes | Yes | **No** | **No** |
 | **Components** | 11 flat | 1 file | 30+ (ui/ + flat) | 3 tiers |
 | **Hooks** | 6 | **0** | 5 | 8 |
 
@@ -44,7 +44,7 @@
 | Package | Frontend Consumers | Backend Consumers | Status |
 |---|---|---|---|
 | `@farm/auth` | web, admin, mobile, console | All 12 services | Active, well-used |
-| `@farm/types` | web, admin, mobile | All services | **Console missing** |
+| `@farm/types` | web, console, admin, mobile | All services | Active |
 | `@farm/validation` | web, admin, mobile | All services | **Console missing** |
 | `@farm/api-client` | **web only** | None | **3 apps don't use it** |
 | `@farm/ui` | None | None | **Skeletal, unused** |
@@ -60,7 +60,6 @@ These directories exist under `packages/` but contain no code or `package.json`:
 - `charts/`
 - `config/`
 - `constants/`
-- `hooks/`
 - `maps/`
 - `notifications/`
 - `permissions/`
@@ -169,16 +168,16 @@ farm-management-system/
 │   ├── api-gateway/                   # NestJS gateway (port 4000)
 │   ├── auth-service/                  # NestJS auth (port 4001)
 │   ├── farm-service/                  # NestJS (port 4002)
-│   ├── crop-service/                  # NestJS (port 4003)
-│   ├── livestock-service/             # NestJS (port 4004)
-│   ├── poultry-service/               # NestJS (port 4005)
+│   ├── livestock-service/             # NestJS (port 4003)
+│   ├── poultry-service/               # NestJS (port 4004)
 │   ├── finance-service/               # NestJS (port 4006)
-│   ├── hr-service/                    # NestJS (port 4007)
-│   ├── notification-service/          # NestJS (port 4009)
-│   ├── organization-service/          # NestJS (port 4010)
-│   ├── platform-service/              # NestJS (port 4011)
-│   ├── reporting-service/             # NestJS (port 4012)
-│   └── worker-service/                # NestJS (port 4013)
+│   ├── notification-service/          # NestJS (port 4005)
+│   ├── reporting-service/             # NestJS (port 4008)
+│   ├── worker-service/                # NestJS (port 4007)
+│   ├── organization-service/          # NestJS (port 4009)
+│   ├── crop-service/                  # NestJS (port 4011)
+│   ├── hr-service/                    # NestJS (port 4012)
+│   └── platform-service/              # NestJS (port 4020)
 │
 ├── packages/                          # SHARED PACKAGES
 │   │

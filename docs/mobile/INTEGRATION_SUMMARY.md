@@ -8,13 +8,13 @@ This document summarizes the changes made to implement Priority 1: Backend API I
 ### 1. `.env.example`
 Template file showing all required environment variables.
 ```
-EXPO_PUBLIC_API_URL=http://localhost:3000/api
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
 ### 2. `.env.local`
 Local development configuration (DO NOT commit to git).
 ```
-EXPO_PUBLIC_API_URL=http://localhost:3000/api
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
 ### 3. `.gitignore`
@@ -161,11 +161,11 @@ try {
 The app uses `process.env.EXPO_PUBLIC_API_URL` which is:
 - Set in `.env.local` for local development
 - Can be overridden for different environments
-- Defaults to `http://localhost:3000/api` if not set
+- Defaults to `http://localhost:4000/api` if not set
 
 Access in code:
 ```typescript
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api';
 ```
 
 ## Token Management

@@ -315,7 +315,7 @@ model Farm {
 | Monorepo         | Turborepo           |
 | Package Manager  | pnpm                |
 | Offline DB       | WatermelonDB        |
-| State Management | Zustand             |
+| State Management | Redux Toolkit + Redux Persist |
 | Data Fetching    | TanStack Query      |
 | Validation       | Zod                 |
 | Authentication   | JWT                 |
@@ -335,29 +335,35 @@ farm-management-system/
 ├── apps/
 │   ├── mobile/
 │   ├── web/
-│   ├── admin/
-│   └── api-gateway/
+│   └── admin/
 │
 ├── services/
-│   ├── auth-service/
-│   ├── poultry-service/
-│   ├── livestock-service/
-│   ├── crop-service/
-│   ├── inventory-service/
-│   ├── finance-service/
-│   ├── worker-service/
-│   ├── analytics-service/
-│   └── notification-service/
+│   ├── api-gateway/          # :4000
+│   ├── auth-service/         # :4001
+│   ├── farm-service/         # :4002
+│   ├── livestock-service/    # :4003
+│   ├── poultry-service/      # :4004
+│   ├── notification-service/ # :4005
+│   ├── finance-service/      # :4006
+│   ├── worker-service/       # :4007
+│   ├── reporting-service/    # :4008
+│   ├── organization-service/ # :4009
+│   ├── crop-service/         # :4011
+│   ├── hr-service/           # :4012
+│   └── platform-service/     # :4020
 │
 ├── packages/
-│   ├── ui/
 │   ├── types/
-│   ├── validation/
-│   ├── database/
 │   ├── auth/
+│   ├── validation/
 │   ├── utils/
+│   ├── api-client/
+│   ├── ui/
+│   ├── ui-native/
 │   ├── hooks/
-│   └── constants/
+│   ├── database/
+│   ├── domain-core/
+│   └── domains/              # 10 bounded context packages
 │
 ├── infra/
 ├── tooling/

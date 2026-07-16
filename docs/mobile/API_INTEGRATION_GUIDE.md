@@ -10,7 +10,7 @@ This document provides detailed instructions for testing and validating the mobi
 cp .env.example .env.local
 
 # Edit .env.local with your API URL
-EXPO_PUBLIC_API_URL=http://localhost:3000/api
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
 ## 2. API Endpoints & Expected Responses
@@ -194,7 +194,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000/api
 ## 3. Testing with Postman/Insomnia
 
 ### Step 1: Get Authentication Token
-1. Create a POST request to `http://localhost:3000/api/auth/login`
+1. Create a POST request to `http://localhost:4000/api/auth/login`
 2. Set header: `Content-Type: application/json`
 3. Send body:
 ```json
@@ -206,7 +206,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000/api
 4. Copy the `accessToken` from the response
 
 ### Step 2: Test Protected Endpoints
-1. Create a GET request to `http://localhost:3000/api/farms`
+1. Create a GET request to `http://localhost:4000/api/farms`
 2. Set header: `Authorization: Bearer <your-access-token>`
 3. Send the request and verify you get farm data
 

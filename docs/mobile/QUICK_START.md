@@ -20,7 +20,7 @@ cd apps/mobile
 cp .env.example .env.local
 
 # Edit .env.local and set your API URL
-# EXPO_PUBLIC_API_URL=http://localhost:3000/api
+# EXPO_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
 ### Step 2: Verify Backend is Working
@@ -192,7 +192,7 @@ Quick validation before considering integration complete:
 
 ```env
 # Development
-EXPO_PUBLIC_API_URL=http://localhost:3000/api
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
 
 # Staging
 EXPO_PUBLIC_API_URL=https://staging-api.example.com/api
@@ -222,7 +222,7 @@ echo $EXPO_PUBLIC_API_URL
 
 # Test API endpoint directly
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:3000/api/farms
+  http://localhost:4000/api/farms
 
 # View app logs
 pnpm start  # Shows console output

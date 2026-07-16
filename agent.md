@@ -13,8 +13,8 @@ You are an AI coding agent operating inside the **Farm Management System** monor
 - **Apps**:
   - `apps/web` (Next.js)
   - `apps/admin` (Next.js)
+  - `apps/console` (Next.js)
   - `apps/mobile` (Expo / React Native)
-  - `apps/api-gateway` (NestJS)
 - **Backend services**:
   - `services/*-service` (NestJS)
 - **Shared packages**:
@@ -22,7 +22,7 @@ You are an AI coding agent operating inside the **Farm Management System** monor
   - `packages/database` (Prisma + DB access)
   - `packages/types` (shared TS types)
   - `packages/validation` (Zod schemas)
-  - `packages/utils`, `packages/ui`, etc.
+  - `packages/utils`, `packages/ui`, `packages/ui-native`, `packages/hooks`, `packages/api-client`, `packages/domain-core`
 
 ## Architecture & Security Rules (must-follow)
 ### Multi-tenancy

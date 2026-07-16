@@ -22,7 +22,7 @@ cp .env.example .env.local
 Before running the app, verify your backend is working:
 ```bash
 # Set environment variables
-export API_URL=http://localhost:3000/api
+export API_URL=http://localhost:4000/api
 export TEST_EMAIL=test@example.com
 export TEST_PASSWORD=password123
 
@@ -131,7 +131,7 @@ Architecture documentation for all screens:
 
 ### Development (`.env.local`)
 ```env
-EXPO_PUBLIC_API_URL=http://localhost:3000/api
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
 ```
 
 ### Staging
@@ -311,21 +311,21 @@ console.log('Token:', token);
 ### Test API Directly
 ```bash
 # Get auth token
-curl -X POST http://localhost:3000/api/auth/login \
+curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}'
 
 # Use token to test protected endpoint
-curl -X GET http://localhost:3000/api/farms \
+curl -X GET http://localhost:4000/api/farms \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ## 📦 Dependencies
 
 ### Core
-- `react-native` 0.76.7
-- `expo` ~52.0.36
-- `expo-router` ~4.0.17
+- `react-native` 0.81.5
+- `expo` ~54.0.35
+- `expo-router` ~6.0.24
 
 ### State Management
 - `@reduxjs/toolkit` ^2.0.1

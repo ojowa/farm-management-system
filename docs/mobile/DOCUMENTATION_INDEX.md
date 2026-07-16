@@ -44,7 +44,7 @@ This file provides a quick reference for all documentation files in the mobile a
 - **Contains**: All required environment variables
 - **Example**: 
   ```env
-  EXPO_PUBLIC_API_URL=http://localhost:3000/api
+  EXPO_PUBLIC_API_URL=http://localhost:4000/api
   ```
 
 ### [`.env.local`](.env.local)

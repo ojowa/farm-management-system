@@ -92,6 +92,8 @@ The Farm Management System is a multi-tenant SaaS platform built with a microser
 │   ├── domain-core/         # DDD base classes
 │   ├── api-client/          # Axios API client
 │   ├── ui/                  # Shared React components
+│   ├── hooks/               # Shared React hooks
+│   ├── ui-native/           # Shared React Native components
 │   └── domains/             # 10 bounded context packages
 │       ├── identity/        # User, Role, Permission, Organization
 │       ├── farm/            # Farm, Field
@@ -234,26 +236,34 @@ The gateway's `ProxyMiddleware` handles:
 | Path | Target | Rewrite | Public |
 |------|--------|---------|--------|
 | `/auth` | auth-service:4001 | No | Yes |
-| `/roles` | auth-service:4001 | No | No |
 | `/farms` | farm-service:4002 | Yes | No |
-| `/livestock` | livestock-service:4003 | Yes | No |
+| `/fields` | farm-service:4002 | Yes | No |
+| `/livestocks` | livestock-service:4003 | Yes | No |
 | `/poultry` | poultry-service:4004 | Yes | No |
+| `/medications` | poultry-service:4004 | Yes | No |
 | `/notifications` | notification-service:4005 | Yes | No |
 | `/finance` | finance-service:4006 | Yes | No |
 | `/workers` | worker-service:4007 | Yes | No |
-| `/reporting` | reporting-service:4008 | Yes | No |
+| `/tasks` | worker-service:4007 | Yes | No |
+| `/attendance` | worker-service:4007 | Yes | No |
+| `/roster` | worker-service:4007 | Yes | No |
+| `/messages` | worker-service:4007 | Yes | No |
+| `/reports` | reporting-service:4008 | Yes | No |
 | `/organizations` | organization-service:4009 | Yes | No |
-| `/crops` | crop-service:4011 | Yes | No |
-| `/tasks` | hr-service:4012 | Yes | No |
-| `/attendance` | hr-service:4012 | Yes | No |
-| `/leave` | hr-service:4012 | Yes | No |
-| `/shifts` | hr-service:4012 | Yes | No |
-| `/messages` | hr-service:4012 | Yes | No |
-| `/platform` | platform-service:4020 | Yes | No |
+| `/correspondence` | hr-service:4012 | Yes | No |
+| `/shift-assignments` | hr-service:4012 | Yes | No |
+| `/permissions` | auth-service:4001 | Yes | No |
+| `/admin` | auth-service:4001 | Yes | No |
+| `/org-admin` | auth-service:4001 | Yes | No |
+| `/api-keys` | auth-service:4001 | Yes | No |
+| `/platform-roles` | auth-service:4001 | Yes | No |
+| `/platform-permissions` | auth-service:4001 | Yes | No |
+| `/platform-api-keys` | auth-service:4001 | Yes | No |
+| `/api` | platform-service:4020 | Yes | No |
 
 ### CORS Configuration
 
-- Allowed origins: localhost ports 3000-3010, 8081
+- Allowed origins: localhost ports 3000-3010, 8081-8082
 - Credentials: `true`
 - Exposed headers: `Set-Cookie`
 
@@ -310,7 +320,7 @@ pnpm dev                # All services
 
 ### Production (Render.com)
 
-- 15 services deployed via `render.yaml` blueprint
+- 16 services deployed via `render.yaml` blueprint
 - Neon PostgreSQL (hosted)
 - Environment variables set in Render dashboard
 

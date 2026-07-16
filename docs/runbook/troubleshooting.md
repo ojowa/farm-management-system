@@ -69,7 +69,7 @@ passwordHash: raw.passwordHash,
 
 ## Expo Go SDK Version Mismatch
 
-**Symptom:** `The installed version of Expo Go is for SDK 54. The project uses SDK 52.`
+**Symptom:** `The installed version of Expo Go is for SDK 54. The project uses SDK 54.`
 
 **Solution:**
 ```bash

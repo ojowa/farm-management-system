@@ -35,7 +35,7 @@ Uses Turborepo to start all 13 backend services and frontend apps concurrently.
 
 ### Architecture
 
-15 services deployed via Render Blueprint (`render.yaml`):
+16 services deployed via Render Blueprint (`render.yaml`):
 
 | Service | Type | Port | Notes |
 |---------|------|------|-------|
@@ -240,7 +240,7 @@ taskkill /F /PID <pid>
 docker compose -f infra/docker-compose.yml up -d
 
 # Check connection
-psql "postgresql://postgres:Aarinola@localhost:5432/FMS"
+psql "postgresql://postgres:<password>@localhost:5432/FMS"
 ```
 
 ### Prisma client outdated

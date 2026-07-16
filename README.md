@@ -100,6 +100,8 @@ See **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** for detailed setup.
 │   ├── domain-core/               # DDD base classes
 │   ├── api-client/                # Axios API client
 │   ├── ui/                        # Shared React components
+│   ├── hooks/                     # Shared React hooks
+│   ├── ui-native/                 # Shared React Native components
 │   └── domains/                   # 10 bounded context packages
 └── docs/                          # Documentation
 ```
@@ -126,10 +128,10 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full architecture detai
 
 | ADR | Decision |
 |-----|----------|
-| [ADR-001](docs/adr/001-nestjs-migration.md) | Why NestJS over Express |
-| [ADR-002](docs/adr/002-httpOnly-cookies.md) | Why httpOnly cookies for web auth |
-| [ADR-003](docs/adr/003-ddd-structure.md) | Why DDD with shared PostgreSQL |
-| [ADR-004](docs/adr/004-api-gateway.md) | Why centralized API gateway |
+| [ADR-001](docs/ADR/001-nestjs-migration.md) | Why NestJS over Express |
+| [ADR-002](docs/ADR/002-httpOnly-cookies.md) | Why httpOnly cookies for web auth |
+| [ADR-003](docs/ADR/003-ddd-structure.md) | Why DDD with shared PostgreSQL |
+| [ADR-004](docs/ADR/004-api-gateway.md) | Why centralized API gateway |
 
 ### Audits
 

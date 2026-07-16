@@ -95,8 +95,8 @@ npm install
 ### Environment Configuration
 Create a `.env` file in the mobile app directory:
 ```env
-EXPO_PUBLIC_API_URL=http://localhost:3000/api
-EXPO_PUBLIC_API_GATEWAY=http://localhost:3000
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
+EXPO_PUBLIC_API_GATEWAY=http://localhost:4000
 ```
 
 ### Run the App

@@ -22,7 +22,7 @@
 
 ```bash
 # Option 1: Check if API server is listening
-curl http://localhost:3000/api/auth/login
+curl http://localhost:4000/api/auth/login
 
 # You should get a response (not a connection error)
 ```
@@ -50,13 +50,13 @@ Check these things:
 1. **Verify API URL in .env.local**
    ```bash
    cat .env.local
-   # Should show: EXPO_PUBLIC_API_URL=http://localhost:3000/api
+   # Should show: EXPO_PUBLIC_API_URL=http://localhost:4000/api
    ```
 
 2. **Check Backend Auth Endpoint**
    ```bash
    # Test with curl
-   curl -X POST http://localhost:3000/api/auth/login \
+   curl -X POST http://localhost:4000/api/auth/login \
      -H "Content-Type: application/json" \
      -d '{"email":"test@example.com","password":"password123"}'
    
@@ -120,7 +120,7 @@ pnpm start
 
 ## Troubleshooting by Error Message
 
-### "Cannot connect to http://localhost:3000/api"
+### "Cannot connect to http://localhost:4000/api"
 - Backend service is not running
 - **Fix**: Start backend service first
 
@@ -154,7 +154,7 @@ pnpm start
 - [ ] Test credentials exist in backend database
 - [ ] `pnpm install` completed without errors
 - [ ] `app.json` is valid JSON (not empty) ✅
-- [ ] Can reach backend: `curl http://localhost:3000/api/auth/login`
+- [ ] Can reach backend: `curl http://localhost:4000/api/auth/login`
 - [ ] `node verify-api.js` shows all tests passing
 
 ---

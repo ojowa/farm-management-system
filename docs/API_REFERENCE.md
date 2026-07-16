@@ -223,21 +223,21 @@ Also sets httpOnly cookies: `accessToken` (15min), `refreshToken` (7 days).
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/platform/features` | List feature flags |
-| POST | `/platform/features` | Create feature flag |
-| PUT | `/platform/features/:id` | Update feature flag |
-| GET | `/platform/features/:id/overrides` | Get org overrides |
-| POST | `/platform/features/:id/overrides` | Set org override |
-| GET | `/platform/subscriptions/plans` | List subscription plans |
-| POST | `/platform/subscriptions/plans` | Create plan |
-| PUT | `/platform/subscriptions/plans/:id` | Update plan |
-| GET | `/platform/audit` | List audit logs |
-| GET | `/platform/health` | Get system health |
-| POST | `/platform/health/check` | Trigger health check |
-| GET | `/platform/broadcasts` | List broadcasts |
-| POST | `/platform/broadcasts` | Create broadcast |
-| GET | `/platform/config` | List platform config |
-| PUT | `/platform/config` | Update platform config |
+| GET | `/api/platform-features` | List feature flags |
+| POST | `/api/platform-features` | Create feature flag |
+| PUT | `/api/platform-features/:id` | Update feature flag |
+| GET | `/api/platform-features/:id/overrides` | Get org overrides |
+| POST | `/api/platform-features/:id/overrides` | Set org override |
+| GET | `/api/platform-subscriptions/plans` | List subscription plans |
+| POST | `/api/platform-subscriptions/plans` | Create plan |
+| PUT | `/api/platform-subscriptions/plans/:id` | Update plan |
+| GET | `/api/platform-audit` | List audit logs |
+| GET | `/api/platform-health` | Get system health |
+| POST | `/api/platform-health/check` | Trigger health check |
+| GET | `/api/platform-broadcasts` | List broadcasts |
+| POST | `/api/platform-broadcasts` | Create broadcast |
+| GET | `/api/platform-config` | List platform config |
+| PUT | `/api/platform-config` | Update platform config |
 
 ---
 

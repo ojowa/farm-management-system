@@ -1,6 +1,3 @@
-> **⚠️ MOVED** — This document has been moved to [runbook/platform-admin-procedures.md](./runbook/platform-admin-procedures.md).  
-> Content below is kept for historical reference.
-
 # Platform Console — Admin Procedures
 
 ## Quick Reference
@@ -210,7 +207,7 @@ Each log entry shows:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PLATFORM_SERVICE_PORT` | 4020 | Platform service port |
-| `CONSOLE_ALLOWED_ORIGINS` | `http://localhost:4100` | CORS allowed origins |
+| `CONSOLE_ALLOWED_ORIGINS` | `http://localhost:3004` | CORS allowed origins |
 | `JWT_SECRET` | (required) | JWT signing secret |
 | `DATABASE_URL` | (required) | PostgreSQL connection string |
 | `NOTIFICATION_SERVICE_URL` | `http://localhost:4005` | Notification service URL |

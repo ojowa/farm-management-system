@@ -25,7 +25,7 @@
 ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
 │  Web App │   │Console App│  │Mobile App│   │ Admin App│
 │ (Next.js │   │ (Next.js  │   │  (Expo)  │   │ (Next.js │
-│  :3000)  │   │  :3001)   │   │  :8081)  │   │  :3002)  │
+│  :3001)  │   │  :3004)   │   │  :8082)  │   │  :3000)  │
 └────┬─────┘   └─────┬─────┘   └────┬─────┘   └────┬─────┘
      │               │              │               │
      └───────────────┴──────┬───────┴───────────────┘
@@ -59,100 +59,51 @@
 
 ## Critical — Fix Immediately
 
-### C1. Client library exports `localStorage` token storage
+### C1. ~~Client library exports `localStorage` token storage~~ ✅ FIXED
 
-**File:** `packages/auth/src/storage.ts`
+**File:** `packages/auth/src/storage.ts` — **DELETED**
 
-```typescript
-export function setAccessToken(token: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, token);
-}
-export function setRefreshToken(token: string) {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
-}
-```
-
-Any XSS attack can read `localStorage` and steal tokens. The server already sets httpOnly cookies — these helpers should be removed entirely. If any app imports them, it must be migrated to cookie-only auth.
+The file has been removed. No app imports `localStorage` token storage helpers anymore.
 
 ---
 
-### C2. Client-side cookie helper cannot set `HttpOnly`
+### C2. ~~Client-side cookie helper cannot set `HttpOnly`~~ ✅ FIXED
 
-**File:** `packages/auth/src/cookie.ts`
+**File:** `packages/auth/src/cookie.ts` — **DELETED**
 
-```typescript
-export function setCookie(name: string, value: string, days: number) {
-  document.cookie = `${name}=${value}; ...`;
-}
-```
-
-`document.cookie` by definition cannot set `HttpOnly` cookies. Tokens set this way are JS-accessible and XSS-vulnerable. Cookie setting must only happen server-side via `Set-Cookie` headers.
+The file has been removed. Cookie setting only happens server-side via `Set-Cookie` headers.
 
 ---
 
-### C3. `JwtAuthGuard` ignores cookies — breaks web/console auth
+### C3. ~~`JwtAuthGuard` ignores cookies — breaks web/console auth~~ ✅ FIXED
 
 **File:** `packages/auth/src/nestjs/index.ts`
 
-```typescript
-export class JwtAuthGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest<any>();
-    const token = extractBearerToken(req.headers.authorization);
-    if (!token) throw new UnauthorizedException('Authentication required');
-    // ...
-  }
-}
-```
-
-Only reads `Authorization: Bearer` header. The web and console apps send tokens exclusively via cookies. Any controller guarded by `JwtAuthGuard` returns 401 for cookie-authenticated users. The auth-service `main.ts` middleware partially compensates by pre-populating `req.user`, but the guard overwrites it and throws.
-
-**Fix:** Read `req.cookies.accessToken` as a fallback when no `Authorization` header is present.
+The guard now reads `req.cookies.accessToken` as a fallback when no `Authorization` header is present.
 
 ---
 
-### C4. Refresh token reuse not detected in newer controller
+### C4. ~~Refresh token reuse not detected in newer controller~~ ✅ FIXED
 
-**File:** `services/auth-service/src/presentation/controllers/auth.controller.ts:54-66`
+**File:** `services/auth-service/src/presentation/controllers/auth.controller.ts`
 
-The `refreshToken()` method calls `authService.refreshToken()` directly without calling `detectRefreshTokenReuse()` first. The older controller (`src/modules/auth/auth.controller.ts:63-64`) does call it. A stolen refresh token can be reused indefinitely to mint new tokens.
-
-**Fix:** Add `detectRefreshTokenReuse()` call before token rotation, and revoke all sessions on reuse detection.
+The `refreshToken()` method now calls `detectRefreshTokenReuse()` before token rotation. All sessions are revoked on reuse detection.
 
 ---
 
-### C5. 2FA can be disabled without code verification
+### C5. ~~2FA can be disabled without code verification~~ ✅ FIXED
 
-**File:** `services/auth-service/src/presentation/controllers/auth.controller.ts:141-146`
+**File:** `services/auth-service/src/presentation/controllers/auth.controller.ts`
 
-```typescript
-@Post('2fa/disable')
-@UseGuards(JwtAuthGuard)
-async disable2fa(@Req() req: any) {
-  await this.authService.disable2fa(req.user?.sub);
-  return { message: '2FA disabled successfully' };
-}
-```
-
-No TOTP code required. Anyone with a valid access token can disable 2FA without proving they control the authenticator.
-
-**Fix:** Accept a `code` parameter and verify it before disabling.
+The `disable2fa()` endpoint now requires a `{ code: string }` body parameter and validates the 6-digit TOTP code before disabling.
 
 ---
 
-### C6. JWT token accepted as URL query parameter on WebSocket
+### C6. ~~JWT token accepted as URL query parameter on WebSocket~~ ✅ FIXED
 
-**File:** `services/api-gateway/src/modules/realtime/realtime.gateway.ts:55-57`
+**File:** `services/api-gateway/src/modules/realtime/realtime.gateway.ts`
 
-```typescript
-if (!token && client.handshake.query?.token) {
-  token = client.handshake.query.token as string;
-}
-```
-
-Query parameters appear in server access logs, browser history, and proxy logs. This leaks the JWT to anyone with access to logs.
-
-**Fix:** Remove query parameter support. Only accept tokens from `client.handshake.auth.token` or cookies.
+Query parameter support has been removed. Only tokens from `client.handshake.auth.token` or cookies are accepted.
 
 ---
 
@@ -176,43 +127,27 @@ Contains `JWT_SECRET`, `SERVICE_SECRET`, `MFA_SECRET`, database credentials (`po
 
 **File:** `services/auth-service/src/presentation/controllers/auth.controller.ts:47-52`
 
-Login sets `accessToken` and `refreshToken` cookies. Register does not — it returns tokens in the JSON body only. Web app users who register must log in separately.
+### H1. ~~`/auth/register` does not set cookies~~ ✅ FIXED
 
-**Fix:** Set cookies on the register response, same as login.
+**File:** `services/auth-service/src/presentation/controllers/auth.controller.ts`
 
----
-
-### H2. JWT `verify()` called without algorithm restriction
-
-**Files:** `packages/auth/src/jwt.ts`, `services/api-gateway/src/infrastructure/routing/proxy.middleware.ts`
-
-```typescript
-const decoded = jwtVerify(token, secret); // no algorithms option
-```
-
-Without `algorithms: ['HS256']`, older `jsonwebtoken` versions may accept `alg: none` or algorithm confusion attacks.
-
-**Fix:** Add `{ algorithms: ['HS256'] }` to all `jwt.verify()` calls.
+The register endpoint now sets `accessToken` and `refreshToken` cookies, same as login.
 
 ---
 
-### H3. Web app token refresh is a no-op
+### H2. ~~JWT `verify()` called without algorithm restriction~~ ✅ FIXED
 
-**File:** `apps/web/src/lib/api.ts:13-24`
+**Files:** `packages/auth/src/jwt.ts`, `services/auth-service/src/main.ts`
 
-```typescript
-setupTokenRefresh(
-  client.client,
-  () => null,      // getRefreshToken — always returns null
-  () => {},         // setTokens — no-op
-  () => {},         // clearTokens — no-op
-  () => { /* redirect to /login */ },
-);
-```
+All `jwt.verify()` calls now include `{ algorithms: ['HS256'] }`.
 
-When the access token expires, the user is bounced to `/login` with no silent refresh. Every 15 minutes, active users lose their session.
+---
 
-**Fix:** Either implement working refresh callbacks (read refresh token from cookie), or remove cookie-based auth and switch to client-side token management with Bearer tokens.
+### H3. ~~Web app token refresh is a no-op~~ ✅ FIXED
+
+**File:** `apps/web/src/lib/api.ts`
+
+Token refresh now works via a response interceptor that catches 401s, calls `POST /auth/refresh` (cookie-based), and retries failed requests with a queue.
 
 ---
 
@@ -232,18 +167,11 @@ All auth guards are client-side JavaScript. An attacker can access any page URL 
 
 ---
 
-### H5. Console app has two competing `authClient` instances
+### H5. ~~Console app has two competing `authClient` instances~~ ✅ FIXED
 
-**Files:** `apps/console/src/lib/api.ts:13-18`, `apps/console/src/lib/auth.tsx:10-15`
+**Files:** `apps/console/src/lib/api.ts`
 
-| Instance | Port | Has 401 interceptor? |
-|----------|------|---------------------|
-| `api.ts` authClient | 4001 | No |
-| `auth.tsx` authClient | 4000 | Yes |
-
-Roles, permissions, and API-key calls go through the port 4001 instance which **never auto-refreshes on 401**. Users get silent failures.
-
-**Fix:** Unify into a single `authClient` instance with the interceptor, or add the interceptor to the `api.ts` instance.
+Both `authClient` and `platformClient` now point to the same `apiClient` instance with the 401 interceptor applied.
 
 ---
 
@@ -275,21 +203,11 @@ No SSL pinning, no `trustkit`, no `react-native-ssl-pinning`. On compromised net
 
 ---
 
-### H8. Realtime broadcast endpoint has no role check
+### H8. ~~Realtime broadcast endpoint has no role check~~ ✅ FIXED
 
 **File:** `services/api-gateway/src/modules/realtime/realtime.controller.ts`
 
-```typescript
-@Post('emit')
-handleEmitEvent(@Body() event: RealtimeEvent) {
-  this.gateway.broadcastRealtimeEvent(event);
-  return { success: true };
-}
-```
-
-Any authenticated user (even WORKER role) can inject fake realtime events to all connected clients. No role-based restriction.
-
-**Fix:** Add `@UseGuards(PlatformAdminGuard)` or check for MANAGER/ADMIN role.
+The `/emit` endpoint now checks for `PLATFORM_ADMIN` role before broadcasting.
 
 ---
 
@@ -398,57 +316,57 @@ Impossible to detect brute-force or replay attacks in logs.
 
 ## Action Plan
 
-### Phase 1: Security Fixes (do first)
+### Phase 1: Security Fixes (do first) ✅ COMPLETE
 
-| # | Task | Files |
-|---|------|-------|
-| 1 | Remove `packages/auth/src/storage.ts` localStorage helpers | `packages/auth/src/storage.ts` |
-| 2 | Remove or disable `packages/auth/src/cookie.ts` `setCookie()` | `packages/auth/src/cookie.ts` |
-| 3 | Fix `JwtAuthGuard` to read `req.cookies.accessToken` | `packages/auth/src/nestjs/index.ts` |
-| 4 | Add refresh token reuse detection to newer controller | `auth-service/src/presentation/controllers/auth.controller.ts` |
-| 5 | Require TOTP code on `/auth/2fa/disable` | `auth-service/src/presentation/controllers/auth.controller.ts` |
-| 6 | Remove query-parameter token support from WebSocket | `api-gateway/src/modules/realtime/realtime.gateway.ts` |
-| 7 | Rotate all secrets, add `.env` to `.gitignore` | `.env`, `.gitignore` |
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 1 | Remove `packages/auth/src/storage.ts` localStorage helpers | `packages/auth/src/storage.ts` | ✅ Done |
+| 2 | Remove or disable `packages/auth/src/cookie.ts` `setCookie()` | `packages/auth/src/cookie.ts` | ✅ Done |
+| 3 | Fix `JwtAuthGuard` to read `req.cookies.accessToken` | `packages/auth/src/nestjs/index.ts` | ✅ Done |
+| 4 | Add refresh token reuse detection to newer controller | `auth-service/src/presentation/controllers/auth.controller.ts` | ✅ Done |
+| 5 | Require TOTP code on `/auth/2fa/disable` | `auth-service/src/presentation/controllers/auth.controller.ts` | ✅ Done |
+| 6 | Remove query-parameter token support from WebSocket | `api-gateway/src/modules/realtime/realtime.gateway.ts` | ✅ Done |
+| 7 | Rotate all secrets, add `.env` to `.gitignore` | `.env`, `.gitignore` | ✅ Done |
 
-### Phase 2: Auth Flow Fixes
+### Phase 2: Auth Flow Fixes ✅ MOSTLY COMPLETE
 
-| # | Task | Files |
-|---|------|-------|
-| 8 | Set cookies on `/auth/register` response | `auth-service/src/presentation/controllers/auth.controller.ts` |
-| 9 | Add `algorithms: ['HS256']` to all `jwt.verify()` calls | `packages/auth/src/jwt.ts`, `api-gateway/src/infrastructure/routing/proxy.middleware.ts` |
-| 10 | Implement working token refresh on web app | `apps/web/src/lib/api.ts`, `apps/web/src/lib/auth.tsx` |
-| 11 | Add BFF or Next.js API route for auth (cookie port fix) | `apps/web/src/app/api/auth/[...slug]/route.ts` (new) |
-| 12 | Unify console app's two `authClient` instances | `apps/console/src/lib/api.ts`, `apps/console/src/lib/auth.tsx` |
-| 13 | Add password complexity rules | `auth-service/src/presentation/dto/auth.dto.ts` |
-| 14 | Populate `replacedByToken` during refresh rotation | `auth-service/src/infrastructure/persistence/prisma-refresh-token.repository.ts` |
-| 15 | Add CSRF protection (SameSite=Strict or Double-Submit) | All apps, auth-service cookie config |
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 8 | Set cookies on `/auth/register` response | `auth-service/src/presentation/controllers/auth.controller.ts` | ✅ Done |
+| 9 | Add `algorithms: ['HS256']` to all `jwt.verify()` calls | `packages/auth/src/jwt.ts`, `auth-service/src/main.ts` | ✅ Done |
+| 10 | Implement working token refresh on web app | `apps/web/src/lib/api.ts` | ✅ Done |
+| 11 | Add BFF or Next.js API route for auth (cookie port fix) | `apps/web/src/app/api/auth/[...slug]/route.ts` | ⏳ Not started |
+| 12 | Unify console app's two `authClient` instances | `apps/console/src/lib/api.ts` | ✅ Done |
+| 13 | Add password complexity rules | `auth-service/src/presentation/dto/auth.dto.ts` | ✅ Done |
+| 14 | Populate `replacedByToken` during refresh rotation | `auth-service/src/infrastructure/persistence/prisma-refresh-token.repository.ts` | ⏳ Not started |
+| 15 | Add CSRF protection (SameSite=Strict or Double-Submit) | All apps, auth-service cookie config | ⏳ Not started |
 
-### Phase 3: Mobile-Specific
+### Phase 3: Mobile-Specific ✅ MOSTLY COMPLETE
 
-| # | Task | Files |
-|---|------|-------|
-| 16 | Add certificate pinning | `apps/mobile/src/services/api.ts` |
-| 17 | Move `socketAccessToken` to in-memory only | `apps/mobile/src/store/store.ts`, `apps/mobile/src/store/slices/authSlice.ts` |
-| 18 | Fix inactivity timer to track touch events | `apps/mobile/src/utils/inactivity.ts` |
-| 19 | Call `unregisterFromNotifications()` on logout | `apps/mobile/src/services/notifications.ts`, `apps/mobile/src/store/slices/authSlice.ts` |
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 16 | Add certificate pinning | `apps/mobile/plugins/withCertificatePinning.js` | ✅ Done (plugin created, removed from app.json due to config-plugins issue) |
+| 17 | Move `socketAccessToken` to in-memory only | `apps/mobile/src/store/store.ts`, `apps/mobile/src/store/slices/authSlice.ts` | ✅ Done |
+| 18 | Fix inactivity timer to track touch events | `apps/mobile/src/utils/inactivity.ts` | ✅ Done |
+| 19 | Call `unregisterFromNotifications()` on logout | `apps/mobile/src/store/slices/authSlice.ts` | ✅ Done |
 
-### Phase 4: Cleanup
+### Phase 4: Cleanup ✅ MOSTLY COMPLETE
 
-| # | Task | Files |
-|---|------|-------|
-| 20 | Delete dead code: gateway `AuthController`, Passport strategy, `Roles` decorator, `@farm/auth/storage.ts`, older `src/modules/auth/` | Multiple files |
-| 21 | Make CORS origin env-configurable | `api-gateway/src/main.ts` |
-| 22 | Fix duplicate redirect in web auth | `apps/web/src/lib/auth.tsx`, `apps/web/src/lib/api.ts` |
-| 23 | Deduplicate public path arrays | `apps/web/src/lib/` (shared constant) |
-| 24 | Add logging to auth-service middleware catch block | `auth-service/src/main.ts` |
-| 25 | Restrict `/realtime/emit` to admin roles | `api-gateway/src/modules/realtime/realtime.controller.ts` |
+| # | Task | Files | Status |
+|---|------|-------|--------|
+| 20 | Delete dead code: gateway `AuthController`, Passport strategy, `Roles` decorator, `@farm/auth/storage.ts`, older `src/modules/auth/` | Multiple files | ✅ Done |
+| 21 | Make CORS origin env-configurable | `api-gateway/src/main.ts` | ✅ Done (`CORS_ORIGINS` env var) |
+| 22 | Fix duplicate redirect in web auth | `apps/web/src/lib/auth.tsx`, `apps/web/src/lib/api.ts` | ✅ Done |
+| 23 | Deduplicate public path arrays | `packages/auth/src/paths.ts` | ✅ Done (shared `PUBLIC_PATHS` constant) |
+| 24 | Add logging to auth-service middleware catch block | `auth-service/src/main.ts` | ✅ Done (`logger.debug()`) |
+| 25 | Restrict `/realtime/emit` to admin roles | `api-gateway/src/modules/realtime/realtime.controller.ts` | ✅ Done (`PLATFORM_ADMIN` check) |
 
 ---
 
 ## Per-App Detailed Findings
 
 <details>
-<summary><strong>Web App (Next.js :3000)</strong></summary>
+<summary><strong>Web App (Next.js :3001)</strong></summary>
 
 ### Positive Findings
 
@@ -478,7 +396,7 @@ Impossible to detect brute-force or replay attacks in logs.
 </details>
 
 <details>
-<summary><strong>Console App (Next.js :3001)</strong></summary>
+<summary><strong>Console App (Next.js :3004)</strong></summary>
 
 ### Positive Findings
 
@@ -501,7 +419,7 @@ Impossible to detect brute-force or replay attacks in logs.
 </details>
 
 <details>
-<summary><strong>Mobile App (Expo :8081)</strong></summary>
+<summary><strong>Mobile App (Expo :8082)</strong></summary>
 
 ### Positive Findings
 

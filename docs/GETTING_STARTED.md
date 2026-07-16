@@ -39,7 +39,7 @@ This starts PostgreSQL on port 5432 and PgBouncer on port 6432.
 
 1. Install PostgreSQL 16
 2. Create a database named `FMS`
-3. Ensure user `postgres` has password `Aarinola` (or update `.env`)
+3. Ensure user `postgres` has password `<password>` (or update `.env`)
 
 ### Configure & Seed
 
@@ -48,7 +48,7 @@ This starts PostgreSQL on port 5432 and PgBouncer on port 6432.
 cp .env.example .env
 
 # Edit .env if your PostgreSQL config differs
-# DATABASE_URL=postgresql://postgres:Aarinola@localhost:5432/FMS
+# DATABASE_URL=postgresql://postgres:<password>@localhost:5432/FMS
 
 # Push schema to database
 pnpm db:push
@@ -63,7 +63,7 @@ Create a `.env` file in the project root:
 
 ```env
 # Database
-DATABASE_URL=postgresql://postgres:Aarinola@localhost:5432/FMS
+DATABASE_URL=postgresql://postgres:<password>@localhost:5432/FMS
 
 # JWT (required — all services need this)
 JWT_SECRET=your-secret-key-min-32-chars

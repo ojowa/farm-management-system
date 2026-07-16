@@ -335,9 +335,9 @@ Referrer-Policy) and SPA rewrites.
 
 ### Render (Backend Services)
 
-Created `render.yml` at repo root defining:
+Created `infra/render.yml` defining:
 - PostgreSQL 16 database
-- 15 backend services (API gateway on standard plan, all others on starter)
+- 13 backend services (API gateway on standard plan, all others on starter)
 - Auto-linked DATABASE_URL from database
 - Health checks on all services
 - Secrets (JWT_SECRET, JWT_REFRESH_SECRET, MFA_SECRET, SERVICE_SECRET)

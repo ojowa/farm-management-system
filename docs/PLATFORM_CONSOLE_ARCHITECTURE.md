@@ -59,14 +59,14 @@ resource across all organizations.
 ┌─────────────────────────────────────────────────────────────┐
 │                    PLATFORM CONSOLE                         │
 │                    (apps/console)                            │
-│  Next.js App — Port 4100                                    │
+│  Next.js App — Port 3004                                    │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                 PLATFORM SERVICE                            │
 │           (services/platform-service)                       │
-│  NestJS — Port 4010                                         │
+│  NestJS — Port 4020                                         │
 │                                                             │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────────┐  │
 │  │ Users    │ │ Orgs     │ │ Subs     │ │ Feature Flags │  │
@@ -570,7 +570,7 @@ const CONSOLE_NAV = [
 ### 5.3 Console Login Flow
 
 ```
-1. User visits console.farmapp.com (or localhost:4100)
+1. User visits console.farmapp.com (or localhost:3004)
 2. Redirected to /login (console-specific login page)
 3. Only SUPER_ADMIN and SUPPORT_ADMIN roles allowed
 4. On success:
@@ -759,9 +759,9 @@ The console pings each service every 30 seconds:
 ```typescript
 const SERVICES = [
   { name: 'auth-service', url: 'http://localhost:4001/health' },
-  { name: 'hr-service', url: 'http://localhost:4002/health' },
-  { name: 'farm-service', url: 'http://localhost:4003/health' },
-  { name: 'worker-service', url: 'http://localhost:4004/health' },
+  { name: 'hr-service', url: 'http://localhost:4012/health' },
+  { name: 'farm-service', url: 'http://localhost:4002/health' },
+  { name: 'worker-service', url: 'http://localhost:4007/health' },
   { name: 'notification-service', url: 'http://localhost:4005/health' },
   { name: 'api-gateway', url: 'http://localhost:4000/health' },
   { name: 'database', url: 'internal' },  // Direct Prisma query
