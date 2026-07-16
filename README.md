@@ -112,47 +112,18 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full architecture detai
 
 ## Documentation
 
-### Core
+**[Full Documentation Index](docs/INDEX.md)** — complete navigation for all docs.
 
 | Document | Description |
 |----------|-------------|
-| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | Prerequisites, setup, first run |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, auth flow, DDD, multi-tenancy |
-| [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | All API endpoints documented |
-| [docs/DATABASE.md](docs/DATABASE.md) | 42 Prisma models reference |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, Render, environment variables |
-| [docs/MOBILE.md](docs/MOBILE.md) | Expo Go setup, emulator, mobile dev |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Code style, PR process, conventions |
-
-### Architecture Decision Records
-
-| ADR | Decision |
-|-----|----------|
-| [ADR-001](docs/ADR/001-nestjs-migration.md) | Why NestJS over Express |
-| [ADR-002](docs/ADR/002-httpOnly-cookies.md) | Why httpOnly cookies for web auth |
-| [ADR-003](docs/ADR/003-ddd-structure.md) | Why DDD with shared PostgreSQL |
-| [ADR-004](docs/ADR/004-api-gateway.md) | Why centralized API gateway |
-
-### Audits
-
-| Audit | Status |
-|-------|--------|
-| [Console Audit](docs/audits/console-audit.md) | OPEN |
-| [Mobile Audit](docs/audits/mobile-audit.md) | OPEN |
-| [Admin/Web Audit](docs/audits/admin-web-audit.md) | OPEN |
-
-### Operations
-
-| Document | Description |
-|----------|-------------|
-| [Platform Admin Procedures](docs/runbook/platform-admin-procedures.md) | Admin operations guide |
-| [Troubleshooting](docs/runbook/troubleshooting.md) | Common issues and fixes |
-
-### Roadmap
-
-| Document | Description |
-|----------|-------------|
-| [Enhancement Roadmap](docs/roadmap/enhancements.md) | 8-phase feature plan |
+| [Getting Started](docs/getting-started.md) | Prerequisites, setup, first run |
+| [Architecture](docs/architecture.md) | System design, auth flow, DDD, multi-tenancy |
+| [API Reference](docs/api-reference.md) | All API endpoints documented |
+| [Database](docs/database.md) | 42 Prisma models reference |
+| [Deployment](docs/deployment.md) | Docker, Render, environment variables |
+| [Mobile](docs/mobile.md) | Expo SDK 54 setup, emulator, mobile dev |
+| [Contributing](docs/contributing.md) | Code style, PR process, conventions |
+| [Security Hardening](docs/security-hardening.md) | RBAC audit, security fixes |
 
 ---
 
