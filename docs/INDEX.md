@@ -16,8 +16,9 @@ Complete navigation for all project documentation.
 
 | Document | Description |
 |----------|-------------|
-| [Architecture Overview](./architecture.md) | System design, service map, patterns, DDD, deployment |
+| [Architecture Overview](./architecture/overview.md) | System design, service map, patterns, DDD, deployment |
 | [Authentication](./architecture/authentication.md) | JWT, roles, refresh tokens, frontend auth flows |
+| [Database](./architecture/database.md) | PostgreSQL/Prisma schema, 42 models, 11 domains |
 
 ## Architecture Decision Records
 
@@ -32,30 +33,30 @@ Complete navigation for all project documentation.
 
 | Document | Description |
 |----------|-------------|
-| [API Reference](./api-reference.md) | All endpoints via gateway (localhost:4000) |
-| [Database](./database.md) | PostgreSQL/Prisma schema, 42 models, 11 domains |
+| [API Reference](./api/reference.md) | All endpoints via gateway (localhost:4000) |
 
 ## Security
 
 | Document | Description |
 |----------|-------------|
-| [Security Hardening](./security-hardening.md) | RBAC audit, security fixes |
+| [Security Hardening](./security/hardening.md) | RBAC audit, security fixes |
 | [Admin & Web Audit](./security/audits/admin-web-audit.md) | Admin + web app security audit |
 | [Console Audit](./security/audits/console-audit.md) | Platform console security audit |
 | [Mobile Audit](./security/audits/mobile-audit.md) | Mobile app security audit |
 
-## Runbooks
+## Deployment
 
 | Document | Description |
 |----------|-------------|
+| [Deployment Guide](./deployment/guide.md) | Docker, Render, environment variables |
+| [Troubleshooting](./deployment/troubleshooting.md) | Common issues and solutions |
 | [Platform Admin Procedures](./runbook/platform-admin-procedures.md) | Admin console operational procedures |
-| [Troubleshooting](./runbook/troubleshooting.md) | Common issues and solutions |
 
 ## Apps
 
 | Document | Description |
 |----------|-------------|
-| [Mobile App](./mobile.md) | Expo SDK 54 + React Native overview |
+| [Mobile App](./mobile/overview.md) | Expo SDK 54 + React Native overview |
 | [Mobile — Backend Integration](./mobile/README.md) | API setup, endpoints, debugging |
 | [Mobile — Screens](./mobile/SCREENS_README.md) | Screen descriptions, architecture |
 | [Mobile — Testing](./mobile/TESTING.md) | Integration testing checklist |
@@ -66,9 +67,9 @@ Complete navigation for all project documentation.
 
 | Document | Description |
 |----------|-------------|
-| [Enhancements](./enhancements.md) | Feature implementation roadmap |
-| [Refactoring Plan](./refactoring-plan.md) | Cross-app refactoring plan |
-| [Roadmap](./roadmap/enhancements.md) | Future features |
+| [Enhancements](./planning/enhancements.md) | Feature implementation roadmap |
+| [Refactoring Plan](./planning/refactoring-plan.md) | Cross-app refactoring plan |
+| [Roadmap](./planning/roadmap/enhancements.md) | Future features |
 
 ## Task Tracking
 

@@ -117,13 +117,13 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full architecture detai
 | Document | Description |
 |----------|-------------|
 | [Getting Started](docs/getting-started.md) | Prerequisites, setup, first run |
-| [Architecture](docs/architecture.md) | System design, auth flow, DDD, multi-tenancy |
-| [API Reference](docs/api-reference.md) | All API endpoints documented |
-| [Database](docs/database.md) | 42 Prisma models reference |
-| [Deployment](docs/deployment.md) | Docker, Render, environment variables |
-| [Mobile](docs/mobile.md) | Expo SDK 54 setup, emulator, mobile dev |
+| [Architecture](docs/architecture/overview.md) | System design, auth flow, DDD, multi-tenancy |
+| [API Reference](docs/api/reference.md) | All API endpoints documented |
+| [Database](docs/architecture/database.md) | 42 Prisma models reference |
+| [Deployment](docs/deployment/guide.md) | Docker, Render, environment variables |
+| [Mobile](docs/mobile/overview.md) | Expo SDK 54 setup, emulator, mobile dev |
 | [Contributing](docs/contributing.md) | Code style, PR process, conventions |
-| [Security Hardening](docs/security-hardening.md) | RBAC audit, security fixes |
+| [Security Hardening](docs/security/hardening.md) | RBAC audit, security fixes |
 
 ---
 
