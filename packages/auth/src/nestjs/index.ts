@@ -9,13 +9,24 @@ import {
   createParamDecorator,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
 import {
   extractBearerToken,
   verifyAccessToken,
   type VerifiedUser,
 } from '../jwt';
 import { userHasPermission, userHasAnyRole } from '../roles';
+
+interface AuthRequest {
+  headers: {
+    authorization?: string;
+    [key: string]: string | string[] | undefined;
+  };
+  cookies?: Record<string, string>;
+  user?: VerifiedUser;
+  url: string;
+  method: string;
+  body?: unknown;
+}
 
 export const AUTH_ROLES_KEY = 'farm:auth:roles';
 export const AUTH_PERMISSION_KEY = 'farm:auth:permission';
@@ -60,7 +71,7 @@ export class JwtAuthGuard implements CanActivate {
   private readonly logger = new Logger(JwtAuthGuard.name);
 
   canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest<Request & { user?: VerifiedUser; cookies?: Record<string, string> }>();
+    const req = context.switchToHttp().getRequest<AuthRequest>();
 
     // 1. Try Authorization header first
     let token = extractBearerToken(req.headers.authorization);
@@ -112,7 +123,7 @@ export class AuthorizationGuard implements CanActivate {
 
     const { user } = context
       .switchToHttp()
-      .getRequest<Request & { user?: VerifiedUser }>();
+      .getRequest<AuthRequest>();
     if (!user) {
       throw new UnauthorizedException('Authentication required');
     }
@@ -145,7 +156,7 @@ export const Auth = (...roles: string[]) => SetMetadata(AUTH_ROLES_KEY, roles);
  */
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): VerifiedUser => {
-    const req = ctx.switchToHttp().getRequest<Request & { user?: VerifiedUser }>();
+    const req = ctx.switchToHttp().getRequest<AuthRequest>();
     if (!req.user) {
       throw new UnauthorizedException('Authentication required');
     }
