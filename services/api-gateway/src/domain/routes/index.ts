@@ -12,56 +12,77 @@ export interface DomainRoutingConfig {
   healthCheckPath: string;
 }
 
-export const DOMAIN_ROUTES: ServiceRoute[] = [
-  // Identity & Access Context
-  { path: '/auth', target: 'http://localhost:4001', service: 'auth-service', rewrite: false, public: true },
-  { path: '/roles', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/permissions', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/admin', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/org-admin', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/api-keys', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/platform-roles', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/platform-permissions', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
-  { path: '/platform-api-keys', target: 'http://localhost:4001', service: 'auth-service', rewrite: false },
+function resolveTarget(serviceName: string, defaultPort: number): string {
+  const envKey = serviceName.replace(/-/g, '_').toUpperCase() + '_URL';
+  return process.env[envKey] || `http://localhost:${defaultPort}`;
+}
 
-  // Farm Management Context
-  { path: '/farms', target: 'http://localhost:4002', service: 'farm-service', rewrite: true },
-  { path: '/fields', target: 'http://localhost:4002', service: 'farm-service', rewrite: true },
+function buildRoutes(): ServiceRoute[] {
+  const auth = resolveTarget('auth-service', 4001);
+  const farm = resolveTarget('farm-service', 4002);
+  const livestock = resolveTarget('livestock-service', 4003);
+  const poultry = resolveTarget('poultry-service', 4004);
+  const notification = resolveTarget('notification-service', 4005);
+  const finance = resolveTarget('finance-service', 4006);
+  const worker = resolveTarget('worker-service', 4007);
+  const reporting = resolveTarget('reporting-service', 4008);
+  const organization = resolveTarget('organization-service', 4009);
+  const hr = resolveTarget('hr-service', 4012);
+  const platform = resolveTarget('platform-service', 4020);
 
-  // Livestock Management Context
-  { path: '/livestock', target: 'http://localhost:4003', service: 'livestock-service', rewrite: true },
+  return [
+    // Identity & Access Context
+    { path: '/auth', target: auth, service: 'auth-service', rewrite: false, public: true },
+    { path: '/roles', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/permissions', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/admin', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/org-admin', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/api-keys', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/platform-roles', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/platform-permissions', target: auth, service: 'auth-service', rewrite: false },
+    { path: '/platform-api-keys', target: auth, service: 'auth-service', rewrite: false },
 
-  // Poultry Management Context
-  { path: '/poultry', target: 'http://localhost:4004', service: 'poultry-service', rewrite: true },
-  { path: '/medications', target: 'http://localhost:4004', service: 'poultry-service', rewrite: true },
+    // Farm Management Context
+    { path: '/farms', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/fields', target: farm, service: 'farm-service', rewrite: true },
 
-  // Notification Context
-  { path: '/notifications', target: 'http://localhost:4005', service: 'notification-service', rewrite: true },
+    // Livestock Management Context
+    { path: '/livestock', target: livestock, service: 'livestock-service', rewrite: true },
 
-  // Finance Context
-  { path: '/finance', target: 'http://localhost:4006', service: 'finance-service', rewrite: true },
+    // Poultry Management Context
+    { path: '/poultry', target: poultry, service: 'poultry-service', rewrite: true },
+    { path: '/medications', target: poultry, service: 'poultry-service', rewrite: true },
 
-  // Worker Management Context
-  { path: '/workers', target: 'http://localhost:4007', service: 'worker-service', rewrite: true },
+    // Notification Context
+    { path: '/notifications', target: notification, service: 'notification-service', rewrite: true },
 
-  // Reporting Context
-  { path: '/reporting', target: 'http://localhost:4008', service: 'reporting-service', rewrite: true },
+    // Finance Context
+    { path: '/finance', target: finance, service: 'finance-service', rewrite: true },
 
-  // Organization Management Context
-  { path: '/organizations', target: 'http://localhost:4009', service: 'organization-service', rewrite: true },
+    // Worker Management Context
+    { path: '/workers', target: worker, service: 'worker-service', rewrite: true },
 
-  // HR & Workforce Context
-  { path: '/tasks', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
-  { path: '/attendance', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
-  { path: '/leave', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
-  { path: '/shifts', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
-  { path: '/shift-assignments', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
-  { path: '/messages', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
-  { path: '/correspondence', target: 'http://localhost:4012', service: 'hr-service', rewrite: true },
+    // Reporting Context
+    { path: '/reporting', target: reporting, service: 'reporting-service', rewrite: true },
 
-  // Platform Administration Context (platform-service uses /api global prefix)
-  { path: '/api', target: 'http://localhost:4020', service: 'platform-service', rewrite: false },
-];
+    // Organization Management Context
+    { path: '/organizations', target: organization, service: 'organization-service', rewrite: true },
+
+    // HR & Workforce Context
+    { path: '/tasks', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/attendance', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/leave', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/shifts', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/shift-assignments', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/messages', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/correspondence', target: hr, service: 'hr-service', rewrite: true },
+
+    // Platform Administration Context (platform-service uses /api global prefix)
+    { path: '/api', target: platform, service: 'platform-service', rewrite: false },
+  ];
+}
+
+export const DOMAIN_ROUTES: ServiceRoute[] = buildRoutes();
 
 export const PUBLIC_PATHS = new Set([
   '/auth/login',

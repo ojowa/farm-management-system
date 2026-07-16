@@ -21,9 +21,9 @@ services:
     startCommand: pnpm --filter @farm/auth-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRES_IN
@@ -47,9 +47,9 @@ services:
     startCommand: pnpm --filter @farm/farm-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: FARM_SERVICE_PORT
         value: "4002"
 
@@ -69,9 +69,9 @@ services:
     startCommand: pnpm --filter @farm/livestock-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: LIVESTOCK_SERVICE_PORT
         value: "4003"
 
@@ -91,9 +91,9 @@ services:
     startCommand: pnpm --filter @farm/poultry-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: POULTRY_SERVICE_PORT
         value: "4004"
 
@@ -113,9 +113,9 @@ services:
     startCommand: pnpm --filter @farm/notification-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: NOTIFICATION_SERVICE_PORT
         value: "4005"
 
@@ -135,9 +135,9 @@ services:
     startCommand: pnpm --filter @farm/finance-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: FINANCE_SERVICE_PORT
         value: "4006"
 
@@ -157,9 +157,9 @@ services:
     startCommand: pnpm --filter @farm/worker-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: WORKER_SERVICE_PORT
         value: "4007"
 
@@ -179,9 +179,9 @@ services:
     startCommand: pnpm --filter @farm/reporting-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: REPORTING_SERVICE_PORT
         value: "4008"
 
@@ -201,9 +201,9 @@ services:
     startCommand: pnpm --filter @farm/organization-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: ORGANIZATION_SERVICE_PORT
         value: "4009"
 
@@ -223,9 +223,9 @@ services:
     startCommand: pnpm --filter @farm/crop-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: CROP_SERVICE_PORT
         value: "4011"
 
@@ -245,9 +245,9 @@ services:
     startCommand: pnpm --filter @farm/hr-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: HR_SERVICE_PORT
         value: "4012"
 
@@ -268,9 +268,9 @@ services:
     startCommand: pnpm --filter platform-service start
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj-pooler.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: DIRECT_DATABASE_URL
-        value: "postgresql://neondb_owner:npg_Q8BXmCJSbt3i@ep-crimson-recipe-a4vfpflj.us-east-1.aws.neon.tech/FMS?sslmode=require"
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: PLATFORM_SERVICE_PORT
@@ -295,6 +295,8 @@ services:
       - key: API_GATEWAY_PORT
         value: "4000"
       - key: JWT_SECRET
+        sync: false
+      - key: SERVICE_SECRET
         sync: false
       - key: AUTH_SERVICE_URL
         value: "http://auth-service:4001"
