@@ -40,6 +40,7 @@ Complete navigation for all project documentation.
 | Document | Description |
 |----------|-------------|
 | [Security Hardening](./security/hardening.md) | RBAC audit, security fixes |
+| [Auth Audit](./security/auth-audit.md) | Full authentication system audit |
 | [Admin & Web Audit](./security/audits/admin-web-audit.md) | Admin + web app security audit |
 | [Console Audit](./security/audits/console-audit.md) | Platform console security audit |
 | [Mobile Audit](./security/audits/mobile-audit.md) | Mobile app security audit |
@@ -69,6 +70,7 @@ Complete navigation for all project documentation.
 |----------|-------------|
 | [Enhancements](./planning/enhancements.md) | Feature implementation roadmap |
 | [Refactoring Plan](./planning/refactoring-plan.md) | Cross-app refactoring plan |
+| [DDD Refactoring Plan](./planning/ddd-refactoring-plan.md) | DDD domain refactoring |
 | [Roadmap](./planning/roadmap/enhancements.md) | Future features |
 
 ## Task Tracking
