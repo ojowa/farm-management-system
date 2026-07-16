@@ -20,7 +20,8 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      window.location.href = '/';
+      const params = new URLSearchParams(window.location.search);
+      window.location.href = params.get('redirect') || '/dashboard';
     } catch (err: any) {
       if (err?.requiresMFA) {
         setMfaToken(err.mfaToken);
@@ -42,7 +43,8 @@ export default function LoginPage() {
     try {
       const { apiClient } = await import('@/lib/api');
       await apiClient.post('/auth/verify-mfa', { mfaToken, code: mfaCode });
-      window.location.href = '/';
+      const params = new URLSearchParams(window.location.search);
+      window.location.href = params.get('redirect') || '/dashboard';
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Invalid MFA code');
     } finally {
