@@ -325,3 +325,238 @@ pnpm dev                # All services
 - Environment variables set in Render dashboard
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for details.
+
+---
+
+## Additional Architecture Details
+
+_Unique content preserved from `docs/architecture/architecture-documentation.md` (1098 lines)._
+
+---
+
+### Security Architecture
+
+**Application Security**
+
+- JWT authentication
+- Role-based access control
+- Rate limiting
+- Input validation
+- SQL injection protection
+- CSRF protection
+
+**Data Security**
+
+- Encrypted passwords
+- HTTPS enforcement
+- Database backups
+- Audit logs
+
+---
+
+### Audit Logging
+
+Logged activities:
+
+- User logins
+- Record updates
+- Inventory changes
+- Financial modifications
+- Permission changes
+
+---
+
+### Monitoring & Observability
+
+| Area           | Tool       |
+| -------------- | ---------- |
+| Metrics        | Prometheus |
+| Dashboards     | Grafana    |
+| Logs           | Loki       |
+| Error Tracking | Sentry     |
+
+---
+
+### CI/CD Pipeline
+
+```
+Git Push → GitHub Actions → Lint → Test → Build → Docker Image → Deploy
+```
+
+---
+
+### Docker Architecture
+
+Containers:
+
+- API Gateway
+- Backend Services
+- PostgreSQL
+- Redis
+- Nginx
+
+---
+
+### Production Infrastructure
+
+```
+Cloudflare
+     |
+Load Balancer
+     |
+Nginx Reverse Proxy
+     |
+API Gateway
+     |
+Backend Services
+     |
+PostgreSQL + Redis
+```
+
+---
+
+### Caching Architecture
+
+Redis is used for:
+
+- Authentication sessions
+- Dashboard analytics
+- Frequently accessed reports
+- Notifications
+
+---
+
+### File Storage Architecture
+
+**Storage Types**
+
+- Poultry images
+- Crop images
+- Documents
+- Reports
+- Export files
+
+**Storage Engine**: S3-compatible object storage.
+
+---
+
+### Analytics Architecture
+
+**Poultry Analytics**
+
+- Mortality rate
+- Egg production rate
+- Feed conversion ratio
+- Growth performance
+
+**Crop Analytics**
+
+- Yield analysis
+- Harvest forecasting
+- Input cost analysis
+
+**Financial Analytics**
+
+- Revenue trends
+- Expense tracking
+- Profitability analysis
+
+---
+
+### Offline Synchronization
+
+**Sync Process**
+
+```
+User Action → Local Database Save → Sync Queue → Background Sync Worker → API Synchronization → Conflict Resolution
+```
+
+**Conflict Resolution Strategies**
+
+- Last write wins
+- Timestamp comparison
+- Manual resolution for critical conflicts
+
+---
+
+### Scalability Strategy
+
+Services can scale independently. Scalable components:
+
+- API services
+- Notification workers
+- Analytics workers
+- Realtime gateways
+
+---
+
+### Future Architecture Expansion
+
+- IoT integration
+- Smart sensors
+- AI disease prediction
+- Weather integration
+- GPS farm mapping
+- Drone integration
+- Machine learning analytics
+
+---
+
+### Development Standards
+
+**Coding Standards**
+
+- TypeScript strict mode
+- ESLint
+- Prettier
+- Conventional commits
+- Modular architecture
+
+**Testing Standards**
+
+| Test Type      | Tool       |
+| -------------- | ---------- |
+| Unit Testing   | Jest       |
+| API Testing    | Supertest  |
+| E2E Testing    | Playwright |
+| Mobile Testing | Detox      |
+
+---
+
+### Recommended Development Phases
+
+**Phase 1 — Foundation**: Monorepo setup, authentication, database schema, core APIs
+
+**Phase 2 — Core Farm Operations**: Poultry, crop, inventory, worker modules
+
+**Phase 3 — Mobile Offline Support**: Offline database, synchronization engine, conflict resolution
+
+**Phase 4 — Analytics & Reporting**: Reporting dashboards, financial reports, poultry analytics, crop analytics
+
+**Phase 5 — Advanced Features**: IoT integration, AI analytics, smart recommendations
+
+---
+
+### MVP Scope
+
+**Poultry**: Flock management, feeding records, mortality tracking, egg production, vaccination records
+
+**Crops**: Field management, crop cycles, harvest tracking
+
+**Finance**: Expenses, sales
+
+**Workers**: Attendance, worker management
+
+---
+
+### Recommended Team Structure
+
+| Role              | Responsibility      |
+| ----------------- | ------------------- |
+| Product Manager   | Product direction   |
+| Backend Engineer  | APIs & database     |
+| Frontend Engineer | Web dashboard       |
+| Mobile Engineer   | Mobile applications |
+| DevOps Engineer   | Infrastructure      |
+| UI/UX Designer    | Design system       |
+| QA Engineer       | Testing             |
