@@ -1,2 +1,2 @@
 // Notification feature components
-export { default as NotificationCenter } from '@/components/NotificationCenter';
+export { NotificationCenter } from '@/components/NotificationCenter';
