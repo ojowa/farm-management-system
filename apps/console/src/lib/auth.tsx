@@ -27,24 +27,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = useCallback(async () => {
     try {
+      console.log('[Console Auth] fetchUser: GET /auth/me');
       const res = await authClient.get('/auth/me');
       const user = res.data;
+      console.log('[Console Auth] fetchUser: got user', { id: user.id, email: user.email, roleName: user.roleName || user.role?.name });
 
       let platformAdminRoles: string[] = [];
       try {
-        const optsRes = await platformClient.get('/platform-options/platform-admin-roles');
+        console.log('[Console Auth] fetchUser: GET /api/platform-options/platform-admin-roles');
+        const optsRes = await platformClient.get('/api/platform-options/platform-admin-roles');
         platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
-      } catch {
+        console.log('[Console Auth] fetchUser: platform admin roles', platformAdminRoles);
+      } catch (e) {
+        console.warn('[Console Auth] fetchUser: failed to fetch platform admin roles, defaulting to []', e);
         platformAdminRoles = [];
       }
 
       const roleName = user.roleName || user.role?.name;
+      console.log('[Console Auth] fetchUser: checking role', { roleName, isPlatformAdmin: platformAdminRoles.includes(roleName) });
       if (!platformAdminRoles.includes(roleName)) {
+        console.log('[Console Auth] fetchUser: role not in platform admin roles, denying access');
         setState({ user: null, isLoading: false, isAuthenticated: false });
         return;
       }
+      console.log('[Console Auth] fetchUser: authenticated');
       setState({ user, isLoading: false, isAuthenticated: true });
-    } catch {
+    } catch (e) {
+      console.warn('[Console Auth] fetchUser: not authenticated', e);
       setState({ user: null, isLoading: false, isAuthenticated: false });
     }
   }, []);
@@ -54,32 +63,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUser]);
 
   const login = async (email: string, password: string) => {
-    const res = await authClient.post('/auth/login', { email, password });
-    const data = res.data;
-
-    if (data.requiresMFA) {
-      throw { requiresMFA: true, mfaToken: data.mfaToken, user: data.user };
-    }
-
-    const profileRes = await authClient.get('/auth/me');
-    const user = profileRes.data;
-
-    let platformAdminRoles: string[] = [];
+    console.log('[Console Auth] login: POST /auth/login', { email });
     try {
-      const optsRes = await platformClient.get('/platform-options/platform-admin-roles');
-      platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
-    } catch {
-      platformAdminRoles = [];
-    }
+      const res = await authClient.post('/auth/login', { email, password });
+      const data = res.data;
+      console.log('[Console Auth] login: response received', { 
+        requiresMFA: data.requiresMFA, 
+        hasUser: !!data.user,
+        hasAccessToken: !!data.accessToken,
+        refreshTokenLength: data.refreshToken ? data.refreshToken.length : 0,
+      });
 
-    const roleName = user.roleName || user.role?.name;
-    if (!platformAdminRoles.includes(roleName)) {
-      await authClient.post('/auth/logout').catch(() => {});
-      setState({ user: null, isLoading: false, isAuthenticated: false });
-      throw new Error('Access denied: Platform admin role required');
-    }
+      if (data.requiresMFA) {
+        console.log('[Console Auth] login: MFA required, throwing');
+        throw { requiresMFA: true, mfaToken: data.mfaToken, user: data.user };
+      }
 
-    setState({ user, isLoading: false, isAuthenticated: true });
+      console.log('[Console Auth] login: attempting to fetch profile');
+      const profileRes = await authClient.get('/auth/me');
+      const user = profileRes.data;
+      console.log('[Console Auth] login: got user', { id: user.id, email: user.email, roleName: user.roleName || user.role?.name });
+
+      let platformAdminRoles: string[] = [];
+      try {
+        console.log('[Console Auth] login: GET /api/platform-options/platform-admin-roles');
+        const optsRes = await platformClient.get('/api/platform-options/platform-admin-roles');
+        platformAdminRoles = optsRes.data.roles.map((r: any) => r.value);
+        console.log('[Console Auth] login: platform admin roles', platformAdminRoles);
+      } catch (e) {
+        console.warn('[Console Auth] login: failed to fetch platform admin roles, defaulting to []', e);
+        platformAdminRoles = [];
+      }
+
+      const roleName = user.roleName || user.role?.name;
+      console.log('[Console Auth] login: checking role', { roleName, isPlatformAdmin: platformAdminRoles.includes(roleName) });
+      if (!platformAdminRoles.includes(roleName)) {
+        console.log('[Console Auth] login: role not in platform admin roles, logging out');
+        await authClient.post('/auth/logout').catch(() => {});
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+        throw new Error('Access denied: Platform admin role required');
+      }
+
+      console.log('[Console Auth] login: authenticated');
+      setState({ user, isLoading: false, isAuthenticated: true });
+    } catch (error) {
+      console.error('[Console Auth] login error:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {

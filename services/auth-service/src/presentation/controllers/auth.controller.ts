@@ -4,7 +4,7 @@ import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
 import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth/nestjs';
-import { LoginDto, RegisterDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
+import { LoginDto, RegisterDto, RegisterConsoleDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = { httpOnly: true, secure: isProduction, sameSite: 'lax' as const, path: '/' };
@@ -58,6 +58,13 @@ export class AuthController {
     return result;
   }
 
+  @Post('register-console')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  async registerConsole(@Body() body: RegisterConsoleDto, @Req() req: any) {
+    const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+    return this.authService.registerConsole(body, ctx);
+  }
+
   @Post('refresh')
   @Throttle({ default: { ttl: 60000, limit: 20 } })
   async refreshToken(@Body() body: RefreshTokenDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
@@ -95,38 +102,38 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req: any) {
-    return this.authService.getProfile(req.user?.sub);
+    return this.authService.getProfile(req.user?.id);
   }
 
   @Put('profile')
   @UseGuards(JwtAuthGuard)
   async updateProfile(@Req() req: any, @Body() body: UpdateProfileDto) {
-    return this.authService.updateProfile(req.user?.sub, body);
+    return this.authService.updateProfile(req.user?.id, body);
   }
 
   @Put('password')
   @UseGuards(JwtAuthGuard)
   async changePassword(@Req() req: any, @Body() body: ChangePasswordDto) {
-    return this.authService.changePassword(req.user?.sub, body.currentPassword, body.newPassword);
+    return this.authService.changePassword(req.user?.id, body.currentPassword, body.newPassword);
   }
 
   @Get('preferences')
   @UseGuards(JwtAuthGuard)
   async getPreferences(@Req() req: any) {
-    return this.authService.getNotificationPreferences(req.user?.sub);
+    return this.authService.getNotificationPreferences(req.user?.id);
   }
 
   @Put('preferences')
   @UseGuards(JwtAuthGuard)
   async updatePreferences(@Req() req: any, @Body() body: any) {
-    return this.authService.updateNotificationPreferences(req.user?.sub, body);
+    return this.authService.updateNotificationPreferences(req.user?.id, body);
   }
 
   @Post('logout')
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
-    await this.authService.logout(req.user?.sub);
+    await this.authService.logout(req.user?.id);
     res.clearCookie('accessToken', { path: '/' });
     res.clearCookie('refreshToken', { path: '/' });
     return { message: 'Logged out successfully' };
@@ -135,7 +142,7 @@ export class AuthController {
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
   async getSessions(@Req() req: any) {
-    return this.authService.getActiveSessions(req.user?.sub);
+    return this.authService.getActiveSessions(req.user?.id);
   }
 
   @Delete('sessions/:tokenId')
@@ -148,20 +155,20 @@ export class AuthController {
   @Delete('sessions')
   @UseGuards(JwtAuthGuard)
   async revokeAllSessions(@Req() req: any) {
-    await this.authService.logoutAllSessions(req.user?.sub);
+    await this.authService.logoutAllSessions(req.user?.id);
     return { message: 'All sessions revoked' };
   }
 
   @Post('2fa/generate')
   @UseGuards(JwtAuthGuard)
   async generate2fa(@Req() req: any) {
-    return this.authService.enable2fa(req.user?.sub);
+    return this.authService.enable2fa(req.user?.id);
   }
 
   @Post('2fa/enable')
   @UseGuards(JwtAuthGuard)
   async enable2fa(@Req() req: any, @Body() body: { code: string }) {
-    await this.authService.confirm2fa(req.user?.sub, body.code);
+    await this.authService.confirm2fa(req.user?.id, body.code);
     return { message: '2FA enabled successfully' };
   }
 
@@ -171,7 +178,7 @@ export class AuthController {
     if (!body.code || body.code.length !== 6) {
       return { error: 'A valid 6-digit TOTP code is required to disable 2FA' };
     }
-    await this.authService.disable2fa(req.user?.sub, body.code);
+    await this.authService.disable2fa(req.user?.id, body.code);
     return { message: '2FA disabled successfully' };
   }
 }

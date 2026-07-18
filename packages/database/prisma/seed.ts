@@ -1,28 +1,37 @@
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
 
 const prisma = new PrismaClient()
-
-function generatePassword(): string {
-  return crypto.randomBytes(16).toString('base64url').slice(0, 16)
-}
 
 async function main() {
   console.log('Seeding database...')
 
-  // 1. Delete all existing users (cascade through related tables)
+  // 0. Clear all data (in dependency order)
+  console.log('  Clearing existing data...')
   await prisma.refreshToken.deleteMany()
   await prisma.userSession.deleteMany()
   await prisma.auditLog.deleteMany()
   await prisma.userOrganization.deleteMany()
+  await prisma.rolePermission.deleteMany()
+  await prisma.task.deleteMany()
+  await prisma.inventory.deleteMany()
+  await prisma.cropCycle.deleteMany()
+  await prisma.crop.deleteMany()
+  await prisma.field.deleteMany()
+  await prisma.livestock.deleteMany()
+  await prisma.worker.deleteMany()
+  await prisma.farm.deleteMany()
   await prisma.user.deleteMany()
-  console.log('  Cleared all users and related records')
+  await prisma.organization.deleteMany()
+  await prisma.featureFlag.deleteMany()
+  await prisma.subscriptionPlan.deleteMany()
+  await prisma.permission.deleteMany()
+  await prisma.role.deleteMany()
+  console.log('  Cleared all data')
 
-  // 2. Create System Roles
+  // 1. Create System Roles
   const roleData = [
-    { name: 'SUPER_ADMIN', description: 'Platform superadmin — full access to all organizations and system settings', isSystem: true },
-    { name: 'SUPPORT_ADMIN', description: 'Platform support — read-only access for troubleshooting', isSystem: true },
+    { name: 'SUPER_ADMIN', description: 'Platform superadmin — full access to all organizations and system settings', isSystem: true, isPlatformAdmin: true },
+    { name: 'SUPPORT_ADMIN', description: 'Platform support — read-only access for troubleshooting', isSystem: true, isPlatformAdmin: true },
     { name: 'ORGANIZATION_OWNER', description: 'Organization owner — full control over own organization, users, farms, and billing', isSystem: true },
     { name: 'FARM_MANAGER', description: 'Manage farms, crops, livestock, poultry, and inventory', isSystem: true },
     { name: 'ACCOUNTANT', description: 'View and manage financial records and reports', isSystem: true },
@@ -39,7 +48,7 @@ async function main() {
     if (existing) {
       await prisma.role.update({
         where: { id: existing.id },
-        data: { description: role.description, isSystem: role.isSystem },
+        data: { description: role.description, isSystem: role.isSystem, isPlatformAdmin: role.isPlatformAdmin ?? false },
       })
       createdRoles.push(existing)
     } else {
@@ -48,7 +57,7 @@ async function main() {
     }
   }
 
-  // 3. Create Permissions
+  // 2. Create Permissions
   const permissionData = [
     { name: 'farm.read', description: 'View farms and farm details', category: 'Farm' },
     { name: 'farm.write', description: 'Create and edit farms', category: 'Farm' },
@@ -105,7 +114,7 @@ async function main() {
 
   const permissionByName = Object.fromEntries(createdPermissions.map((p) => [p.name, p]))
 
-  // 4. Assign permissions to roles
+  // 3. Assign permissions to roles
   const rolePermissions: Record<string, string[]> = {
     SUPER_ADMIN: ['*'],
     SUPPORT_ADMIN: ['*.read'],
@@ -167,80 +176,7 @@ async function main() {
     }
   }
 
-  // 5. Create Demo Organization
-  const demoOrg = await prisma.organization.upsert({
-    where: { id: 'demo-org-id' },
-    update: {},
-    create: {
-      id: 'demo-org-id',
-      name: 'Demo Farm',
-      slug: 'demo-farm',
-      email: 'demo@farm.com',
-      subscriptionPlan: 'ENTERPRISE',
-      subscriptionStatus: 'ACTIVE',
-    },
-  })
-
-  // 6. Create Super Admin (no org — platform developer login)
-  const superAdminRole = createdRoles.find(r => r.name === 'SUPER_ADMIN')!
-  const superAdminPassword = generatePassword()
-  const superAdminPasswordHash = await bcrypt.hash(superAdminPassword, 12)
-
-  await prisma.user.create({
-    data: {
-      firstName: 'Super',
-      lastName: 'Admin',
-      email: 'Admin@fms.com',
-      passwordHash: superAdminPasswordHash,
-      roleId: superAdminRole.id,
-    },
-  })
-  console.log(`  Created Super Admin: Admin@fms.com / ${superAdminPassword} (no organization)`)
-
-  // 7. Create Demo Organization Owner (admin app login)
-  const ownerRole = createdRoles.find(r => r.name === 'ORGANIZATION_OWNER')!
-  const ownerPassword = generatePassword()
-  const ownerPasswordHash = await bcrypt.hash(ownerPassword, 12)
-
-  await prisma.user.create({
-    data: {
-      organizationId: demoOrg.id,
-      firstName: 'Demo',
-      lastName: 'Owner',
-      email: 'demo@farm.com',
-      passwordHash: ownerPasswordHash,
-      roleId: ownerRole.id,
-    },
-  })
-  console.log(`  Created Org Owner: demo@farm.com / ${ownerPassword}`)
-
-  // 8. Create Demo Workers (web/mobile login)
-  const workerUsers = [
-    { role: 'FARM_MANAGER', firstName: 'Farm', lastName: 'Manager', email: 'farmmanager.demo@farm.com' },
-    { role: 'ACCOUNTANT', firstName: 'Account', lastName: 'Manager', email: 'accountant.demo@farm.com' },
-    { role: 'SUPERVISOR', firstName: 'Super', lastName: 'Visor', email: 'supervisor.demo@farm.com' },
-    { role: 'VETERINARIAN', firstName: 'Vet', lastName: 'Doctor', email: 'veterinarian.demo@farm.com' },
-    { role: 'WORKER', firstName: 'Farm', lastName: 'Worker', email: 'worker.demo@farm.com' },
-  ]
-
-  for (const w of workerUsers) {
-    const role = createdRoles.find(r => r.name === w.role)!
-    const userPassword = generatePassword()
-    const userPasswordHash = await bcrypt.hash(userPassword, 12)
-    await prisma.user.create({
-      data: {
-        organizationId: demoOrg.id,
-        firstName: w.firstName,
-        lastName: w.lastName,
-        email: w.email,
-        passwordHash: userPasswordHash,
-        roleId: role.id,
-      },
-    })
-    console.log(`  Created ${w.role}: ${w.email} / ${userPassword}`)
-  }
-
-  // 9. Create Subscription Plans
+  // 4. Create Subscription Plans
   const planData = [
     {
       name: 'FREE', displayName: 'Free Plan', description: 'Basic features for small farms',
@@ -276,7 +212,7 @@ async function main() {
     })
   }
 
-  // 10. Create Feature Flags (10 consolidated modules)
+  // 5. Create Feature Flags
   const featureFlagData = [
     { key: 'farm.enabled', name: 'Farm Management', category: 'module', description: 'Farms, fields, GPS mapping' },
     { key: 'crop.enabled', name: 'Crop Management', category: 'module', description: 'Crops, crop cycles, irrigation, pest & disease, yield' },
@@ -305,130 +241,7 @@ async function main() {
     })
   }
 
-  // 11. Create Demo Farms
-  const farm1 = await prisma.farm.upsert({
-    where: { id: 'demo-farm-1' },
-    update: {},
-    create: {
-      id: 'demo-farm-1',
-      organizationId: demoOrg.id,
-      name: 'Green Valley Farm',
-      location: 'Ogun State, Nigeria',
-      size: 50,
-      farmType: 'CROP',
-      status: 'active',
-    },
-  })
-
-  const farm2 = await prisma.farm.upsert({
-    where: { id: 'demo-farm-2' },
-    update: {},
-    create: {
-      id: 'demo-farm-2',
-      organizationId: demoOrg.id,
-      name: 'Sunrise Livestock Ranch',
-      location: 'Oyo State, Nigeria',
-      size: 30,
-      farmType: 'LIVESTOCK',
-      status: 'active',
-    },
-  })
-  console.log('  Created 2 demo farms')
-
-  // 12. Create Fields for Farm 1
-  const field1 = await prisma.field.create({
-    data: { farmId: farm1.id, name: 'North Field', size: 25 },
-  })
-  const field2 = await prisma.field.create({
-    data: { farmId: farm1.id, name: 'South Field', size: 20 },
-  })
-
-  // 13. Create Crops and CropCycles
-  const maizeCrop = await prisma.crop.upsert({
-    where: { id: 'crop-maize' },
-    update: {},
-    create: { id: 'crop-maize', name: 'Maize' },
-  })
-  const cassavaCrop = await prisma.crop.upsert({
-    where: { id: 'crop-cassava' },
-    update: {},
-    create: { id: 'crop-cassava', name: 'Cassava' },
-  })
-  const tomatoCrop = await prisma.crop.upsert({
-    where: { id: 'crop-tomato' },
-    update: {},
-    create: { id: 'crop-tomato', name: 'Tomato' },
-  })
-
-  await prisma.cropCycle.createMany({
-    data: [
-      { organizationId: demoOrg.id, fieldId: field1.id, cropId: maizeCrop.id, plantingDate: new Date('2026-03-01'), status: 'growing', health: 85 },
-      { organizationId: demoOrg.id, fieldId: field2.id, cropId: cassavaCrop.id, plantingDate: new Date('2026-02-15'), status: 'growing', health: 90 },
-      { organizationId: demoOrg.id, fieldId: field1.id, cropId: tomatoCrop.id, plantingDate: new Date('2025-11-01'), harvestDate: new Date('2026-02-01'), status: 'harvested', health: 100 },
-    ],
-    skipDuplicates: true,
-  })
-  console.log('  Created 3 crops and crop cycles')
-
-  // 14. Create Demo Livestock
-  await prisma.livestock.createMany({
-    data: [
-      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Female', birthDate: new Date('2023-06-15'), status: 'healthy' },
-      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Cattle', breed: 'Ndama', gender: 'Male', birthDate: new Date('2023-03-10'), status: 'healthy' },
-      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-01-20'), status: 'healthy' },
-      { organizationId: demoOrg.id, farmId: farm2.id, species: 'Goat', breed: 'Sahel', gender: 'Female', birthDate: new Date('2024-03-05'), status: 'healthy' },
-    ],
-    skipDuplicates: true,
-  })
-  console.log('  Created 4 demo livestock')
-
-  // 15. Create Demo Workers (detailed Worker model)
-  await prisma.worker.createMany({
-    data: [
-      { organizationId: demoOrg.id, farmId: farm1.id, firstName: 'Farm', lastName: 'Manager', position: 'FARM_MANAGER', status: 'ACTIVE' },
-      { organizationId: demoOrg.id, farmId: farm1.id, firstName: 'John', lastName: 'Worker', position: 'WORKER', status: 'ACTIVE' },
-      { organizationId: demoOrg.id, farmId: farm1.id, firstName: 'Jane', lastName: 'Supervisor', position: 'SUPERVISOR', status: 'ACTIVE' },
-      { organizationId: demoOrg.id, farmId: farm2.id, firstName: 'Vet', lastName: 'Doctor', position: 'VETERINARIAN', status: 'ACTIVE' },
-      { organizationId: demoOrg.id, farmId: farm2.id, firstName: 'Ranch', lastName: 'Hand', position: 'WORKER', status: 'ACTIVE' },
-    ],
-    skipDuplicates: true,
-  })
-  console.log('  Created 5 demo workers')
-
-  // 16. Create Demo Tasks
-  await prisma.task.createMany({
-    data: [
-      { organizationId: demoOrg.id, farmId: farm1.id, title: 'Inspect maize field', description: 'Check for pests and growth progress', status: 'PENDING', priority: 'HIGH', assignedToName: 'Farm Manager' },
-      { organizationId: demoOrg.id, farmId: farm1.id, title: 'Apply fertilizer to cassava', description: 'NPK fertilizer application', status: 'IN_PROGRESS', priority: 'MEDIUM', assignedToName: 'Farm Manager' },
-      { organizationId: demoOrg.id, farmId: farm2.id, title: 'Vaccinate cattle', description: 'Annual vaccination schedule', status: 'PENDING', priority: 'HIGH' },
-    ],
-    skipDuplicates: true,
-  })
-  console.log('  Created 3 demo tasks')
-
-  // 17. Create Demo Inventory
-  await prisma.inventory.createMany({
-    data: [
-      { organizationId: demoOrg.id, farmId: farm1.id, name: 'NPK Fertilizer', category: 'Fertilizer', quantity: 50, unit: 'bags', minimumQuantity: 10 },
-      { organizationId: demoOrg.id, farmId: farm1.id, name: 'Maize Seeds', category: 'Seeds', quantity: 20, unit: 'kg', minimumQuantity: 5 },
-      { organizationId: demoOrg.id, farmId: farm2.id, name: 'Animal Feed', category: 'Feed', quantity: 100, unit: 'kg', minimumQuantity: 20 },
-    ],
-    skipDuplicates: true,
-  })
-  console.log('  Created 3 demo inventory items')
-
-  console.log('')
-  console.log('Seeding complete!')
-  console.log('')
-  console.log('--- Login Credentials ---')
-  console.log('Console (Platform Developer): Admin@fms.com')
-  console.log('Admin (Farm Owner):           demo@farm.com')
-  console.log('Web/Mobile (Farm Manager):    farmmanager.demo@farm.com')
-  console.log('Web/Mobile (Accountant):      accountant.demo@farm.com')
-  console.log('Web/Mobile (Supervisor):      supervisor.demo@farm.com')
-  console.log('Web/Mobile (Veterinarian):    veterinarian.demo@farm.com')
-  console.log('Web/Mobile (Worker):          worker.demo@farm.com')
-  console.log('Passwords are printed above next to each email.')
+  console.log('Seeding complete! (roles, permissions, plans, feature flags)')
 }
 
 main()
