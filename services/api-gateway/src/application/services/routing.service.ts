@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DOMAIN_ROUTES, PUBLIC_PATHS, ServiceRoute } from '../../domain/routes';
+import { getRoutes, PUBLIC_PATHS, ServiceRoute } from '../../domain/routes';
 
 @Injectable()
 export class RoutingService {
@@ -8,7 +8,7 @@ export class RoutingService {
 
   constructor() {
     this.routeMap = new Map();
-    for (const route of DOMAIN_ROUTES) {
+    for (const route of getRoutes()) {
       this.routeMap.set(route.path, route);
     }
     this.logger.log(`Loaded ${this.routeMap.size} domain routes`);
@@ -57,6 +57,6 @@ export class RoutingService {
   }
 
   getAllRoutes(): ServiceRoute[] {
-    return DOMAIN_ROUTES;
+    return getRoutes();
   }
 }

@@ -2,6 +2,8 @@
 // Resets on user interaction (mouse, keyboard, touch, scroll, click).
 // After IDLE_TIMEOUT_MS of no activity, calls onTimeout (which should log the user out).
 
+import { authAudit } from '@/lib/auth-audit';
+
 export const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 const ACTIVITY_EVENTS = [
@@ -19,7 +21,13 @@ export function startInactivityTracker(onTimeout: () => void, timeoutMs: number 
 
   const reset = () => {
     if (timer) clearTimeout(timer);
-    timer = setTimeout(onTimeout, timeoutMs);
+    timer = setTimeout(wrappedOnTimeout, timeoutMs);
+  };
+
+  // Wrap onTimeout so we audit the idle auto-logout event.
+  const wrappedOnTimeout = () => {
+    authAudit('IDLE_TIMEOUT', { timeoutMs });
+    onTimeout();
   };
 
   ACTIVITY_EVENTS.forEach((event) => {
@@ -33,5 +41,6 @@ export function startInactivityTracker(onTimeout: () => void, timeoutMs: number 
     ACTIVITY_EVENTS.forEach((event) => {
       window.removeEventListener(event, reset);
     });
+    authAudit('IDLE_TIMEOUT', { action: 'tracker_stopped' });
   };
 }

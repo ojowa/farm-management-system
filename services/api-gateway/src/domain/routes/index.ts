@@ -1,3 +1,7 @@
+import { loadEnv } from '@farm/env';
+
+loadEnv();
+
 export interface ServiceRoute {
   path: string;
   target: string;
@@ -14,8 +18,17 @@ export interface DomainRoutingConfig {
 
 function resolveTarget(serviceName: string): string {
   const envKey = serviceName.replace(/-/g, '_').toUpperCase() + '_URL';
-  return process.env[envKey]!;
+  const target = process.env[envKey];
+  if (!target) {
+    throw new Error(`Environment variable ${envKey} is required but not set`);
+  }
+  return target;
 }
+
+// Routes are built lazily on first access so that env vars (loaded by
+// @farm/env's loadEnv()) are guaranteed to be present. Building them at
+// module-eval time would run BEFORE loadEnv() due to ES import hoisting.
+let cachedRoutes: ServiceRoute[] | null = null;
 
 function buildRoutes(): ServiceRoute[] {
   const auth = resolveTarget('auth-service');
@@ -79,7 +92,12 @@ function buildRoutes(): ServiceRoute[] {
   ];
 }
 
-export const DOMAIN_ROUTES: ServiceRoute[] = buildRoutes();
+export function getRoutes(): ServiceRoute[] {
+  if (!cachedRoutes) {
+    cachedRoutes = buildRoutes();
+  }
+  return cachedRoutes;
+}
 
 export const PUBLIC_PATHS = new Set([
   '/auth/login',
@@ -94,7 +112,9 @@ export const PUBLIC_PATHS = new Set([
 ]);
 
 export const DOMAIN_ROUTING_CONFIG: DomainRoutingConfig = {
-  services: DOMAIN_ROUTES,
+  get services() {
+    return getRoutes();
+  },
   publicPaths: Array.from(PUBLIC_PATHS),
   healthCheckPath: '/health',
 };

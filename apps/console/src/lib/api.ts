@@ -1,4 +1,5 @@
 import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@farm/api-client';
+import { authAudit } from '@/lib/auth-audit';
 
 const config: APIClientConfig = {
   baseURL: '',
@@ -17,28 +18,27 @@ function processQueue(error: unknown) {
 }
 
 async function handleRefresh(error: any, originalRequest: any, httpClient: any) {
-  console.log('[Console API] Interceptor caught error', {
-    status: error.response?.status,
+  authAudit('TOKEN_REFRESH_START', {
     url: originalRequest?.url,
     method: originalRequest?.method,
-    _retry: originalRequest?._retry,
+    status: error.response?.status,
+    alreadyRetried: !!originalRequest._retry,
   });
 
   if (error.response?.status !== 401 || originalRequest._retry) {
-    console.log('[Console API] Not a 401 or already retried, rejecting');
+    authAudit('TOKEN_REFRESH_FAIL', { reason: 'not_401_or_retried', status: error.response?.status });
     return Promise.reject(error);
   }
 
   const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
   const isLoginPath = typeof window !== 'undefined' && window.location.pathname === '/login';
-  console.log('[Console API] 401 check', { isRefreshCall, isLoginPath });
   if (isRefreshCall || isLoginPath) {
-    console.log('[Console API] On login page or refresh call, rejecting');
+    authAudit('TOKEN_REFRESH_FAIL', { reason: 'refresh_or_login_path' });
     return Promise.reject(error);
   }
 
   if (isRefreshing) {
-    console.log('[Console API] Already refreshing, queuing request');
+    authAudit('TOKEN_REFRESH_START', { queued: true });
     return new Promise((resolve, reject) => {
       failedQueue.push({ resolve, reject });
     })
@@ -48,7 +48,6 @@ async function handleRefresh(error: any, originalRequest: any, httpClient: any) 
 
   originalRequest._retry = true;
   isRefreshing = true;
-  console.log('[Console API] Attempting token refresh');
   try {
     const refreshResponse = await fetch('/auth/refresh', {
       method: 'POST',
@@ -57,14 +56,17 @@ async function handleRefresh(error: any, originalRequest: any, httpClient: any) 
     if (!refreshResponse.ok) {
       throw new Error(`Refresh failed with status ${refreshResponse.status}`);
     }
-    console.log('[Console API] Refresh succeeded, retrying original request');
+    authAudit('TOKEN_REFRESH_OK', { retryingUrl: originalRequest?.url });
     processQueue(null);
     return httpClient(originalRequest);
-  } catch (refreshError) {
-    console.error('[Console API] Refresh failed:', refreshError);
+  } catch (refreshError: any) {
+    authAudit('TOKEN_REFRESH_FAIL', {
+      reason: 'refresh_http_failed',
+      message: refreshError?.message,
+    });
     processQueue(refreshError);
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-      console.log('[Console API] Redirecting to /login');
+      authAudit('STATE_CHANGE', { action: 'redirect_to_login', cause: 'refresh_failed' });
       window.location.href = '/login';
     }
     return Promise.reject(refreshError);
@@ -77,6 +79,40 @@ async function handleRefresh(error: any, originalRequest: any, httpClient: any) 
 apiClient.interceptors.response.use(
   (res) => res,
   (error) => handleRefresh(error, error.config, apiClient),
+);
+
+// Audit every outgoing request and its outcome (focus on auth endpoints).
+apiClient.interceptors.request.use((config: any) => {
+  const url: string = config?.url || '';
+  if (url.includes('/auth/') || url.includes('/api/platform')) {
+    authAudit('REQ_START', { method: config?.method, url });
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (res: any) => {
+    const url: string = res?.config?.url || '';
+    if (url.includes('/auth/') || url.includes('/api/platform')) {
+      authAudit('REQ_SUCCESS', {
+        method: res?.config?.method,
+        url,
+        status: res?.status,
+      });
+    }
+    return res;
+  },
+  (error: any) => {
+    const url: string = error?.config?.url || '';
+    if (url.includes('/auth/') || url.includes('/api/platform')) {
+      authAudit('REQ_FAIL', {
+        method: error?.config?.method,
+        url,
+        status: error?.response?.status,
+      });
+    }
+    return Promise.reject(error);
+  },
 );
 
 // ── Platform Admin APIs (gateway /api prefix) ──────────────

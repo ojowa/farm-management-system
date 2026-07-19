@@ -80,6 +80,13 @@ export class ProxyMiddleware implements NestMiddleware {
     }
   }
 
+  private auditAuth(
+    path: string,
+    data: Record<string, unknown>,
+  ): void {
+    this.logger.log(`[AuthAudit] ${path} ${JSON.stringify({ t: new Date().toISOString(), ...data })}`);
+  }
+
   use(req: any, res: any, next: () => void) {
     if (req.method === 'OPTIONS') return next();
 
@@ -90,6 +97,11 @@ export class ProxyMiddleware implements NestMiddleware {
 
     // If public, don't attempt token extraction/verification.
     if (this.routingService.isPublicPath(path)) {
+      this.auditAuth(path, {
+        decision: 'public',
+        service: route.service,
+        method: req.method,
+      });
       return this.forwardRequest(req, res, route, null, null).catch((error) => {
         this.logger.error(`Proxy error: ${error.message}`);
         if (!res.headersSent) {
@@ -101,27 +113,23 @@ export class ProxyMiddleware implements NestMiddleware {
       });
     }
 
+    const cookieNames = Object.keys(req.cookies || {});
     let token: unknown = null;
+    let tokenSource: 'cookie' | 'bearer' | 'none' = 'none';
 
     // Prefer accessToken cookie, else Authorization header.
     if (req.cookies?.accessToken !== undefined) {
       token = req.cookies.accessToken;
-      this.logger.log(`[Auth] Token found in accessToken cookie for ${path} (length: ${String(token).length})`);
+      tokenSource = 'cookie';
     } else {
       const authHeader = req.headers.authorization;
       if (authHeader) {
         const parts = String(authHeader).split(' ');
         if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
           token = parts[1];
-          this.logger.log(`[Auth] Token found in Bearer header for ${path} (length: ${String(token).length})`);
+          tokenSource = 'bearer';
         }
       }
-    }
-
-    if (!token) {
-      this.logger.warn(
-        `[Auth] No token found for ${path} (cookies: ${JSON.stringify(Object.keys(req.cookies || {}))}, hasAuthHeader: ${!!req.headers.authorization})`,
-      );
     }
 
     let verifiedUser: VerifiedUser | null = null;
@@ -129,23 +137,38 @@ export class ProxyMiddleware implements NestMiddleware {
     if (typeof token === 'string' && token.length > 0) {
       try {
         verifiedUser = verifyAccessToken(token);
-        this.logger.log(
-          `[Auth] Token verified for user ${verifiedUser.id} (${verifiedUser.email}) role=${verifiedUser.role}`,
-        );
         req.headers['x-user-id'] = verifiedUser.id;
         req.headers['x-user-role'] = verifiedUser.role || '';
         req.headers['x-organization-id'] = verifiedUser.organizationId || '';
         req.headers['x-user-email'] = verifiedUser.email || '';
+        this.auditAuth(path, {
+          decision: 'allowed',
+          tokenSource,
+          userId: verifiedUser.id,
+          role: verifiedUser.role,
+          service: route.service,
+          method: req.method,
+        });
       } catch (err: any) {
-        this.logger.warn(`[Auth] Token verification failed for ${path}: ${err.message}`);
+        this.auditAuth(path, {
+          decision: 'denied',
+          reason: 'token_invalid',
+          tokenSource,
+          error: err.message,
+          cookies: cookieNames,
+        });
         if (req.cookies?.accessToken) {
           res.clearCookie('accessToken', { path: '/' });
         }
       }
     } else {
-      this.logger.warn(
-        `[Auth] No valid token found for ${path} (cookies: ${JSON.stringify(Object.keys(req.cookies || {}))})`,
-      );
+      this.auditAuth(path, {
+        decision: 'denied',
+        reason: 'no_token',
+        tokenSource,
+        cookies: cookieNames,
+        hasAuthHeader: !!req.headers.authorization,
+      });
     }
 
     if (!req.headers['x-user-id']) {

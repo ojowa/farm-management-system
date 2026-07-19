@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { authAudit } from '@/lib/auth-audit';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -17,21 +18,21 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    console.log('[Console Login] Form submitted', { email });
+    authAudit('LOGIN_START', { trigger: 'login_form', email });
 
     try {
       await login(email, password);
-      console.log('[Console Login] Login successful, redirecting');
+      authAudit('LOGIN_OK', { action: 'redirect_after_login' });
       const params = new URLSearchParams(window.location.search);
       window.location.href = params.get('from') || '/dashboard';
     } catch (err: any) {
-      console.error('[Console Login] Login failed:', err);
       if (err?.requiresMFA) {
-        console.log('[Console Login] MFA required, showing MFA form');
+        authAudit('LOGIN_MFA_REQUIRED', { action: 'show_mfa_form' });
         setMfaToken(err.mfaToken);
         setMfaMode(true);
         setError('');
       } else {
+        authAudit('LOGIN_FAIL', { trigger: 'login_form', message: err?.message });
         setError(err?.response?.data?.message || err?.message || 'Invalid credentials');
       }
     } finally {
@@ -43,17 +44,16 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    console.log('[Console Login] MFA submit', { mfaToken: mfaToken ? '***' : null, mfaCodeLength: mfaCode.length });
+    authAudit('MFA_START', { mfaCodeLength: mfaCode.length });
 
     try {
       const { authClient } = await import('@/lib/api');
-      console.log('[Console Login] Posting /auth/verify-mfa');
       await authClient.post('/auth/verify-mfa', { mfaToken, code: mfaCode });
-      console.log('[Console Login] MFA verified, redirecting');
+      authAudit('MFA_OK', { action: 'redirect_after_mfa' });
       const params = new URLSearchParams(window.location.search);
       window.location.href = params.get('from') || '/dashboard';
     } catch (err: any) {
-      console.error('[Console Login] MFA verification failed:', err);
+      authAudit('MFA_FAIL', { message: err?.response?.data?.message || err?.message });
       setError(err?.response?.data?.message || 'Invalid MFA code');
     } finally {
       setLoading(false);

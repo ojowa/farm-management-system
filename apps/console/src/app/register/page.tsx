@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import axios from 'axios';
+import { authAudit } from '@/lib/auth-audit';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -30,6 +31,7 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    authAudit('LOGIN_START', { trigger: 'register_console', email });
     try {
       await axios.post('/auth/register-console', {
         email,
@@ -38,8 +40,10 @@ export default function RegisterPage() {
         lastName,
         password,
       });
+      authAudit('LOGIN_OK', { action: 'register_console_success', email });
       setSuccess({ email, name: [firstName, middleName, lastName].filter(Boolean).join(' ') });
     } catch (err: any) {
+      authAudit('LOGIN_FAIL', { trigger: 'register_console', message: err?.response?.data?.message || err?.message });
       setError(err?.response?.data?.message || err?.message || 'Registration failed');
     } finally {
       setLoading(false);
