@@ -11,6 +11,12 @@
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "paths": {
+      "@farm/auth": ["packages/auth/dist/index.d.ts"],
+      "@farm/auth/nestjs": ["packages/auth/dist/nestjs/index.d.ts"],
+      "@farm/auth/rn": ["packages/auth/dist/rn.d.ts"],
+      "@farm/auth/paths": ["packages/auth/dist/paths.d.ts"]
+    },
     "types": ["node"]
   }
 }

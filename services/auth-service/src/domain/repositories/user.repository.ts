@@ -6,6 +6,7 @@ export interface UserRepository {
     email: string;
     passwordHash: string;
     firstName: string;
+    middleName?: string;
     lastName: string;
     roleId: string;
     organizationId?: string;
