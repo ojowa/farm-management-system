@@ -39,7 +39,7 @@ export class PlatformAdminGuard implements CanActivate {
       decoded = jwt.verify(token, jwtSecret);
       console.log('[PlatformAdminGuard] Token decoded:', { sub: decoded.sub, role: decoded.role, exp: decoded.exp });
     } catch (err) {
-      console.error('[PlatformAdminGuard] JWT verify failed:', err.message);
+      console.error('[PlatformAdminGuard] JWT verify failed:', err instanceof Error ? err.message : err);
       throw new UnauthorizedException('Invalid or expired token');
     }
 
@@ -120,7 +120,7 @@ export class SuperAdminGuard implements CanActivate {
       decoded = jwt.verify(token, jwtSecret);
       console.log('[SuperAdminGuard] Token decoded:', { sub: decoded.sub, role: decoded.role, exp: decoded.exp });
     } catch (err) {
-      console.error('[SuperAdminGuard] JWT verify failed:', err.message);
+      console.error('[SuperAdminGuard] JWT verify failed:', err instanceof Error ? err.message : err);
       throw new UnauthorizedException('Invalid or expired token');
     }
 

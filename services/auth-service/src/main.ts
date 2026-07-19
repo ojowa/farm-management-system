@@ -1,3 +1,4 @@
+import './load-env';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
@@ -41,7 +42,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(jwtAuthMiddleware);
   app.useGlobalFilters(new AllExceptionsFilter());
-  const port = process.env.AUTH_SERVICE_PORT || 4001;
+  const port = Number(process.env.AUTH_SERVICE_PORT) || 4001;
   await app.listen(port);
   console.log(`Auth service is running on: http://localhost:${port}`);
 }

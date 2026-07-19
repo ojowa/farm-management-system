@@ -1,3 +1,4 @@
+import './load-env';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -10,7 +11,7 @@ async function bootstrap() {
   app.use(rlsMiddleware);
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(new ValidationPipe());
-  const port = process.env.REPORTING_SERVICE_PORT || 4008;
+  const port = Number(process.env.REPORTING_SERVICE_PORT) || 4008;
   await app.listen(port);
   console.log(`Reporting service is running on: http://localhost:${port}`);
 }

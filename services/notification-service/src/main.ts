@@ -1,3 +1,4 @@
+import './load-env';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -13,7 +14,7 @@ async function bootstrap() {
     app.useGlobalPipes(new ValidationPipe());
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  const port = process.env.NOTIFICATION_SERVICE_PORT || 4005;
+  const port = Number(process.env.NOTIFICATION_SERVICE_PORT) || 4005;
   await app.listen(port);
   console.log(`Notification Service is running on: http://localhost:${port}`);
 }

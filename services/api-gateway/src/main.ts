@@ -41,6 +41,7 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(process.env.API_GATEWAY_PORT!);
+  const port = Number(process.env.API_GATEWAY_PORT) || 4000;
+  await app.listen(port);
 }
 bootstrap();
