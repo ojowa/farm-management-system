@@ -9,7 +9,7 @@ import { HealthController } from './presentation/controllers/health.controller';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '..', '.env') }),
     HttpModule,
     RealtimeModule,
   ],

@@ -26,20 +26,32 @@ interface VerifiedUser {
 function verifyAccessToken(token: string): VerifiedUser {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET environment variable is required');
-  const decoded = jwtVerify(token, secret, { algorithms: ['HS256'] }) as any;
-  if (!decoded || !decoded.sub || !decoded.role) throw new Error('Invalid token payload');
-  return {
-    id: decoded.sub,
-    email: decoded.email ?? null,
-    role: decoded.role,
-    permissions: decoded.permissions ?? [],
-    organizationId: decoded.organizationId ?? null,
-  };
+  try {
+    const decoded = jwtVerify(token, secret, { algorithms: ['HS256'] }) as any;
+    if (!decoded || !decoded.sub || !decoded.role) throw new Error('Invalid token payload: missing sub or role');
+    return {
+      id: decoded.sub,
+      email: decoded.email ?? null,
+      role: decoded.role,
+      permissions: decoded.permissions ?? [],
+      organizationId: decoded.organizationId ?? null,
+    };
+  } catch (err: any) {
+    const tokenPreview = token.substring(0, 20) + '...' + token.substring(token.length - 10);
+    throw new Error(`Token verification failed: ${err.message} | Token preview: ${tokenPreview}`);
+  }
 }
 
 function signServiceToken(user: VerifiedUser): string {
   return jwtSign(
-    { userId: user.id, email: user.email, role: user.role, permissions: user.permissions, organizationId: user.organizationId, type: 'service' },
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      permissions: user.permissions,
+      organizationId: user.organizationId,
+      type: 'service',
+    },
     SERVICE_SECRET(),
     { expiresIn: '30s' },
   );
@@ -54,58 +66,95 @@ export class ProxyMiddleware implements NestMiddleware {
     private readonly httpService: HttpService,
   ) {
     this.logger.log('ProxyMiddleware initialized');
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      this.logger.error('[Auth] JWT_SECRET environment variable is NOT set!');
+    } else {
+      this.logger.log(`[Auth] JWT_SECRET loaded (length: ${jwtSecret.length})`);
+    }
+    const serviceSecret = process.env.SERVICE_SECRET;
+    if (!serviceSecret) {
+      this.logger.error('[Auth] SERVICE_SECRET environment variable is NOT set!');
+    } else {
+      this.logger.log(`[Auth] SERVICE_SECRET loaded (length: ${serviceSecret.length})`);
+    }
   }
 
   use(req: any, res: any, next: () => void) {
-    if (req.method === 'OPTIONS') {
-      return next();
-    }
+    if (req.method === 'OPTIONS') return next();
 
     const path = req.url.split('?')[0];
 
-    let token: string | null = null;
+    const route = this.routingService.findRoute(path);
+    if (!route) return next();
 
-    if (req.cookies?.accessToken) {
+    // If public, don't attempt token extraction/verification.
+    if (this.routingService.isPublicPath(path)) {
+      return this.forwardRequest(req, res, route, null, null).catch((error) => {
+        this.logger.error(`Proxy error: ${error.message}`);
+        if (!res.headersSent) {
+          res.status(502).json({
+            statusCode: 502,
+            message: 'Service unavailable',
+          });
+        }
+      });
+    }
+
+    let token: unknown = null;
+
+    // Prefer accessToken cookie, else Authorization header.
+    if (req.cookies?.accessToken !== undefined) {
       token = req.cookies.accessToken;
+      this.logger.log(`[Auth] Token found in accessToken cookie for ${path} (length: ${String(token).length})`);
     } else {
       const authHeader = req.headers.authorization;
       if (authHeader) {
-        const parts = authHeader.split(' ');
+        const parts = String(authHeader).split(' ');
         if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
           token = parts[1];
+          this.logger.log(`[Auth] Token found in Bearer header for ${path} (length: ${String(token).length})`);
         }
       }
+    }
+
+    if (!token) {
+      this.logger.warn(
+        `[Auth] No token found for ${path} (cookies: ${JSON.stringify(Object.keys(req.cookies || {}))}, hasAuthHeader: ${!!req.headers.authorization})`,
+      );
     }
 
     let verifiedUser: VerifiedUser | null = null;
 
-    if (token) {
+    if (typeof token === 'string' && token.length > 0) {
       try {
         verifiedUser = verifyAccessToken(token);
+        this.logger.log(
+          `[Auth] Token verified for user ${verifiedUser.id} (${verifiedUser.email}) role=${verifiedUser.role}`,
+        );
         req.headers['x-user-id'] = verifiedUser.id;
         req.headers['x-user-role'] = verifiedUser.role || '';
         req.headers['x-organization-id'] = verifiedUser.organizationId || '';
         req.headers['x-user-email'] = verifiedUser.email || '';
-      } catch {
+      } catch (err: any) {
+        this.logger.warn(`[Auth] Token verification failed for ${path}: ${err.message}`);
         if (req.cookies?.accessToken) {
           res.clearCookie('accessToken', { path: '/' });
         }
       }
+    } else {
+      this.logger.warn(
+        `[Auth] No valid token found for ${path} (cookies: ${JSON.stringify(Object.keys(req.cookies || {}))})`,
+      );
     }
 
-    if (!this.routingService.isPublicPath(path)) {
-      if (!req.headers['x-user-id']) {
-        res.status(401).json({
-          statusCode: 401,
-          message: 'Authentication required',
-        });
-        return;
-      }
-    }
-
-    const route = this.routingService.findRoute(path);
-    if (!route) {
-      return next();
+    if (!req.headers['x-user-id']) {
+      this.logger.warn(`[Auth] 401 for ${path} - no x-user-id header`);
+      res.status(401).json({
+        statusCode: 401,
+        message: 'Authentication required',
+      });
+      return;
     }
 
     let serviceToken: string | null = null;
@@ -117,7 +166,7 @@ export class ProxyMiddleware implements NestMiddleware {
       }
     }
 
-    this.forwardRequest(req, res, route, token, serviceToken).catch((error) => {
+    this.forwardRequest(req, res, route, typeof token === 'string' ? token : null, serviceToken).catch((error) => {
       this.logger.error(`Proxy error: ${error.message}`);
       if (!res.headersSent) {
         res.status(502).json({
@@ -146,6 +195,7 @@ export class ProxyMiddleware implements NestMiddleware {
     if (req.headers['x-user-role']) headers['x-user-role'] = req.headers['x-user-role'] as string;
     if (req.headers['x-organization-id']) headers['x-organization-id'] = req.headers['x-organization-id'] as string;
     if (req.headers['x-user-email']) headers['x-user-email'] = req.headers['x-user-email'] as string;
+
     if (token) headers['authorization'] = `Bearer ${token}`;
     if (serviceToken) headers['x-service-token'] = serviceToken;
 
@@ -160,6 +210,10 @@ export class ProxyMiddleware implements NestMiddleware {
         validateStatus: () => true,
       }),
     );
+
+    if (response.status >= 400) {
+      this.logger.warn(`[Proxy] ${req.method} ${req.url} -> ${serviceName}: ${response.status}`, response.data);
+    }
 
     const skipHeaders = ['transfer-encoding', 'content-encoding', 'content-length'];
     for (const [key, value] of Object.entries(response.headers)) {
@@ -184,3 +238,4 @@ export class ProxyMiddleware implements NestMiddleware {
     return `${target.origin}${path}${queryString}`;
   }
 }
+

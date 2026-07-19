@@ -11,26 +11,8 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  // CORS origins — configurable via CORS_ORIGINS env var (comma-separated),
-  // with sensible defaults for local development.
-  const defaultOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://localhost:3003',
-    'http://localhost:3004',
-    'http://localhost:3005',
-    'http://localhost:3006',
-    'http://localhost:3007',
-    'http://localhost:3008',
-    'http://localhost:3009',
-    'http://localhost:3010',
-    'http://localhost:8081',
-    'http://localhost:8082',
-  ];
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-    : defaultOrigins;
+  // CORS origins — configurable via CORS_ORIGINS env var (comma-separated).
+  const corsOrigins = process.env.CORS_ORIGINS!.split(',').map((s) => s.trim());
 
   app.enableCors({
     origin: corsOrigins,
@@ -59,6 +41,6 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(process.env.API_GATEWAY_PORT || 4000);
+  await app.listen(process.env.API_GATEWAY_PORT!);
 }
 bootstrap();

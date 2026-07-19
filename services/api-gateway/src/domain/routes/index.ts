@@ -12,23 +12,20 @@ export interface DomainRoutingConfig {
   healthCheckPath: string;
 }
 
-function resolveTarget(serviceName: string, defaultPort: number): string {
+function resolveTarget(serviceName: string): string {
   const envKey = serviceName.replace(/-/g, '_').toUpperCase() + '_URL';
-  return process.env[envKey] || `http://localhost:${defaultPort}`;
+  return process.env[envKey]!;
 }
 
 function buildRoutes(): ServiceRoute[] {
-  const auth = resolveTarget('auth-service', 4001);
-  const farm = resolveTarget('farm-service', 4002);
-  const livestock = resolveTarget('livestock-service', 4003);
-  const poultry = resolveTarget('poultry-service', 4004);
-  const notification = resolveTarget('notification-service', 4005);
-  const finance = resolveTarget('finance-service', 4006);
-  const worker = resolveTarget('worker-service', 4007);
-  const reporting = resolveTarget('reporting-service', 4008);
-  const organization = resolveTarget('organization-service', 4009);
-  const hr = resolveTarget('hr-service', 4012);
-  const platform = resolveTarget('platform-service', 4020);
+  const auth = resolveTarget('auth-service');
+  const farm = resolveTarget('farm-service');
+  const notification = resolveTarget('notification-service');
+  const finance = resolveTarget('finance-service');
+  const reporting = resolveTarget('reporting-service');
+  const organization = resolveTarget('organization-service');
+  const hr = resolveTarget('hr-service');
+  const platform = resolveTarget('platform-service');
 
   return [
     // Identity & Access Context
@@ -42,16 +39,18 @@ function buildRoutes(): ServiceRoute[] {
     { path: '/platform-permissions', target: auth, service: 'auth-service', rewrite: false },
     { path: '/platform-api-keys', target: auth, service: 'auth-service', rewrite: false },
 
-    // Farm Management Context
+    // Farm Management Context (unified: farm + crop + livestock + poultry)
     { path: '/farms', target: farm, service: 'farm-service', rewrite: true },
     { path: '/fields', target: farm, service: 'farm-service', rewrite: true },
-
-    // Livestock Management Context
-    { path: '/livestock', target: livestock, service: 'livestock-service', rewrite: true },
-
-    // Poultry Management Context
-    { path: '/poultry', target: poultry, service: 'poultry-service', rewrite: true },
-    { path: '/medications', target: poultry, service: 'poultry-service', rewrite: true },
+    { path: '/crops', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/crop-cycles', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/lifecycle', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/irrigation', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/pest-disease', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/yield', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/livestock', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/poultry', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/medications', target: farm, service: 'farm-service', rewrite: true },
 
     // Notification Context
     { path: '/notifications', target: notification, service: 'notification-service', rewrite: true },
@@ -59,16 +58,14 @@ function buildRoutes(): ServiceRoute[] {
     // Finance Context
     { path: '/finance', target: finance, service: 'finance-service', rewrite: true },
 
-    // Worker Management Context
-    { path: '/workers', target: worker, service: 'worker-service', rewrite: true },
-
     // Reporting Context
     { path: '/reporting', target: reporting, service: 'reporting-service', rewrite: true },
 
     // Organization Management Context
     { path: '/organizations', target: organization, service: 'organization-service', rewrite: true },
 
-    // HR & Workforce Context
+    // HR & Workforce Context (includes workers)
+    { path: '/workers', target: hr, service: 'hr-service', rewrite: true },
     { path: '/tasks', target: hr, service: 'hr-service', rewrite: true },
     { path: '/attendance', target: hr, service: 'hr-service', rewrite: true },
     { path: '/leave', target: hr, service: 'hr-service', rewrite: true },
@@ -87,6 +84,7 @@ export const DOMAIN_ROUTES: ServiceRoute[] = buildRoutes();
 export const PUBLIC_PATHS = new Set([
   '/auth/login',
   '/auth/register',
+  '/auth/register-console',
   '/auth/refresh',
   '/auth/verify-mfa',
   '/health',

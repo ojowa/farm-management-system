@@ -1,7 +1,7 @@
 import { join } from 'path';
 import { readFileSync } from 'fs';
 
-const envPath = join(__dirname, '..', '..', '..', '.env');
+const envPath = join(__dirname, '..', '..', '..', '..', '.env');
 try {
   const content = readFileSync(envPath, 'utf-8');
   for (const line of content.split('\n')) {
