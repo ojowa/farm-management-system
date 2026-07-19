@@ -52,7 +52,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "@farm/env": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.4",

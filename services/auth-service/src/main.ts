@@ -1,4 +1,5 @@
-import './load-env';
+import { loadEnv } from '@farm/env';
+loadEnv();
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';

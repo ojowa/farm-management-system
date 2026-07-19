@@ -1,4 +1,5 @@
-import './load-env';
+import { loadEnv } from '@farm/env';
+loadEnv();
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';

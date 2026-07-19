@@ -29,7 +29,8 @@
     "@farm/farm-domain": "workspace:*",
     "@farm/crop-domain": "workspace:*",
     "@farm/livestock-domain": "workspace:*",
-    "@farm/poultry-domain": "workspace:*"
+    "@farm/poultry-domain": "workspace:*",
+    "@farm/env": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.4",

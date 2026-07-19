@@ -574,6 +574,12 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
+  packages/env:
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   packages/hooks:
     dependencies:
       '@farm/api-client':
@@ -678,6 +684,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/farm-domain':
         specifier: workspace:*
         version: link:../../packages/domains/farm
@@ -832,6 +841,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/identity-domain':
         specifier: workspace:*
         version: link:../../packages/domains/identity
@@ -932,6 +944,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/farm-domain':
         specifier: workspace:*
         version: link:../../packages/domains/farm
@@ -996,6 +1011,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/finance-domain':
         specifier: workspace:*
         version: link:../../packages/domains/finance
@@ -1051,6 +1069,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/hr-domain':
         specifier: workspace:*
         version: link:../../packages/domains/hr
@@ -1109,6 +1130,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/notification-domain':
         specifier: workspace:*
         version: link:../../packages/domains/notification
@@ -1206,6 +1230,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/identity-domain':
         specifier: workspace:*
         version: link:../../packages/domains/identity
@@ -1282,6 +1309,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/platform-domain':
         specifier: workspace:*
         version: link:../../packages/domains/platform
@@ -1367,6 +1397,9 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../../packages/env
       '@farm/reporting-domain':
         specifier: workspace:*
         version: link:../../packages/domains/reporting

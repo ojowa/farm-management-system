@@ -1,4 +1,5 @@
-import './load-env';
+import { loadEnv } from '@farm/env';
+loadEnv();
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';

@@ -25,7 +25,8 @@
     "@farm/utils": "workspace:*",
     "@farm/auth": "workspace:*",
     "@farm/domain-core": "workspace:*",
-    "@farm/reporting-domain": "workspace:*"
+    "@farm/reporting-domain": "workspace:*",
+    "@farm/env": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.4",
