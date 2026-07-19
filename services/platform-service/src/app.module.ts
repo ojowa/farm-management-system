@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { join } from 'path';
 import { PlatformFeaturesController } from './presentation/controllers/platform-features.controller';
 import { PlatformSubscriptionsController } from './presentation/controllers/platform-subscriptions.controller';
 import { PlatformAuditController } from './presentation/controllers/platform-audit.controller';
@@ -35,7 +36,7 @@ import { PlatformAdminGuard } from './guards/platform-admin.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '..', '.env') }),
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100,

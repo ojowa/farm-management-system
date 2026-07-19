@@ -190,20 +190,15 @@ export class PlatformHealthService {
 
   async checkAll() {
     const SERVICES = [
-      { name: 'auth-service', url: 'http://localhost:4001/health' },
-      { name: 'farm-service', url: 'http://localhost:4002/health' },
-      { name: 'livestock-service', url: 'http://localhost:4003/health' },
-      { name: 'poultry-service', url: 'http://localhost:4004/health' },
-      { name: 'notification-service', url: 'http://localhost:4005/health' },
-      { name: 'finance-service', url: 'http://localhost:4006/health' },
-      { name: 'worker-service', url: 'http://localhost:4007/health' },
-      { name: 'reporting-service', url: 'http://localhost:4008/health' },
-      { name: 'organization-service', url: 'http://localhost:4009/health' },
-      { name: 'inventory-service', url: 'http://localhost:4010/health' },
-      { name: 'crop-service', url: 'http://localhost:4011/health' },
-      { name: 'hr-service', url: 'http://localhost:4012/health' },
-      { name: 'platform-service', url: 'http://localhost:4020/health-check' },
-      { name: 'api-gateway', url: 'http://localhost:4000/health' },
+      { name: 'auth-service', url: `${process.env.AUTH_SERVICE_URL}/health` },
+      { name: 'farm-service', url: `${process.env.FARM_SERVICE_URL}/health` },
+      { name: 'notification-service', url: `${process.env.NOTIFICATION_SERVICE_URL}/health` },
+      { name: 'finance-service', url: `${process.env.FINANCE_SERVICE_URL}/health` },
+      { name: 'reporting-service', url: `${process.env.REPORTING_SERVICE_URL}/health` },
+      { name: 'organization-service', url: `${process.env.ORGANIZATION_SERVICE_URL}/health` },
+      { name: 'hr-service', url: `${process.env.HR_SERVICE_URL}/health` },
+      { name: 'platform-service', url: `${process.env.PLATFORM_SERVICE_URL}/health-check` },
+      { name: 'api-gateway', url: `${process.env.API_GATEWAY_URL}/health` },
     ];
 
     const results = [];
@@ -255,8 +250,8 @@ export class PlatformUserService {
 
   async findAllUsers(query: { page?: number; limit?: number; search?: string }) {
     const { prisma } = await import('@farm/database');
-    const page = query.page || 1;
-    const limit = query.limit || 20;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -387,8 +382,8 @@ export class PlatformOrganizationService {
 
   async findAllOrganizations(query: { page?: number; limit?: number; search?: string; subscriptionPlan?: string; subscriptionStatus?: string }) {
     const { prisma } = await import('@farm/database');
-    const page = query.page || 1;
-    const limit = query.limit || 20;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const skip = (page - 1) * limit;
 
     const where: any = {};

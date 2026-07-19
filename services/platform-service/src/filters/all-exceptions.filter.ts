@@ -23,6 +23,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = (exceptionResponse as any).message || exception.message;
       code = (exceptionResponse as any).code;
     } else {
+      console.error('[PlatformService][UnhandledException]', exception);
       const errorResult = handleError(exception);
       status = errorResult.statusCode;
       message = errorResult.message;
