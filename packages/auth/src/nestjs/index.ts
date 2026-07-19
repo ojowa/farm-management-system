@@ -82,11 +82,14 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     if (!token) {
+      this.logger.debug(`[JwtAuthGuard] No token found in headers or cookies for ${req.method} ${req.url}`);
       throw new UnauthorizedException('Authentication required');
     }
 
     try {
+      this.logger.debug(`[JwtAuthGuard] Verifying token (length: ${token.length})`);
       req.user = verifyAccessToken(token);
+      this.logger.debug(`[JwtAuthGuard] Token verified for user ${req.user?.id} (${req.user?.email})`);
     } catch (err) {
       this.logger.debug(`JWT verification failed: ${(err as Error).message}`);
       throw new UnauthorizedException('Invalid or expired token');

@@ -1,13 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 import { withRLS, getOrganizationId } from './rls';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+
+// Load root .env (works from both src/ and dist/).
+dotenv.config({ path: join(__dirname, '..', '..', '..', '.env') });
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const databaseUrl = process.env.DATABASE_URL;
+
 const basePrisma =
   globalForPrisma.prisma ??
-  new PrismaClient();
+  new PrismaClient(
+    databaseUrl
+      ? { datasources: { db: { url: databaseUrl } } }
+      : undefined,
+  );
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = basePrisma;

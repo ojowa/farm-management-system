@@ -38,7 +38,10 @@ export interface ServiceTokenPayload {
 
 const resolveSecret = (): string => {
   const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  if (!secret) {
+    console.error('[JWT] JWT_SECRET environment variable is NOT set!');
+    throw new Error('JWT_SECRET environment variable is required');
+  }
   return secret;
 };
 
@@ -53,19 +56,28 @@ const resolveServiceSecret = (): string => {
  * verification failure (missing, expired, malformed, wrong signature).
  */
 export const verifyAccessToken = (token: string): VerifiedUser => {
-  const decoded = verify(token, resolveSecret(), { algorithms: ['HS256'] }) as any;
+  try {
+    const secret = resolveSecret();
+    console.log(`[JWT] Verifying access token with JWT_SECRET length: ${secret.length}`);
+    const decoded = verify(token, secret, { algorithms: ['HS256'] }) as any;
 
-  if (!decoded || !decoded.sub || !decoded.role) {
-    throw new Error('Invalid token payload');
+    if (!decoded || !decoded.sub || !decoded.role) {
+      console.error(`[JWT] Invalid token payload: ${JSON.stringify(decoded)}`);
+      throw new Error('Invalid token payload');
+    }
+
+    console.log(`[JWT] Token verified successfully for user ${decoded.sub} (role: ${decoded.role})`);
+    return {
+      id: decoded.sub,
+      email: decoded.email ?? null,
+      role: decoded.role,
+      permissions: decoded.permissions ?? [],
+      organizationId: decoded.organizationId ?? null,
+    };
+  } catch (err) {
+    console.error(`[JWT] Token verification failed:`, err);
+    throw err;
   }
-
-  return {
-    id: decoded.sub,
-    email: decoded.email ?? null,
-    role: decoded.role,
-    permissions: decoded.permissions ?? [],
-    organizationId: decoded.organizationId ?? null,
-  };
 };
 
 /**

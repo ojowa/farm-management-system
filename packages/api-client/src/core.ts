@@ -8,7 +8,7 @@ export interface APIClientConfig {
 }
 
 export function createAPIClient(config: APIClientConfig = {}): AxiosInstance {
-  const baseURL = config.baseURL || 'http://localhost:4000';
+  const baseURL = config.baseURL!;
   const client = axios.create({
     baseURL,
     timeout: config.timeout || 15000,
