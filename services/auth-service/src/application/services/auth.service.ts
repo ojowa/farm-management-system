@@ -13,7 +13,10 @@ function hashToken(token: string): string {
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  if (!secret) {
+    console.error('[Auth Service] JWT_SECRET environment variable is required');
+    throw new Error('JWT_SECRET environment variable is required');
+  }
   return secret;
 }
 
@@ -39,13 +42,16 @@ export class AuthService {
     if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Invalid credentials');
+    console.log(`[Auth Service] Login successful for ${data.email}`);
     if (user.twoFactorEnabled) {
       const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: '5m' });
+      console.log(`[Auth Service] MFA required for ${data.email}`);
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
+    console.log(`[Auth Service] Returning tokens for ${data.email}`);
     return { requiresMFA: false, user: userWithoutPassword, accessToken, refreshToken };
   }
 
@@ -80,6 +86,28 @@ export class AuthService {
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash: _, twoFactorSecret: __, ...userWithoutPassword } = user as any;
     return { user: userWithoutPassword, accessToken, refreshToken };
+  }
+
+  async registerConsole(data: { email: string; password: string; firstName: string; middleName?: string; lastName: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
+    const existing = await this.userRepo.findByEmail(data.email);
+    if (existing) throw new ConflictException('Email already registered');
+
+    const passwordHash = await bcrypt.hash(data.password, 12);
+
+    const superAdminRole = await this.roleRepo.findByName('SUPER_ADMIN', null);
+    if (!superAdminRole) throw new BadRequestException('SUPER_ADMIN role not found — run seed first');
+
+    const user = await this.userRepo.create({
+      email: data.email,
+      passwordHash,
+      firstName: data.firstName,
+      middleName: data.middleName,
+      lastName: data.lastName,
+      roleId: superAdminRole.id,
+    });
+
+    const { passwordHash: _, twoFactorSecret: __, ...userWithoutPassword } = user as any;
+    return { user: userWithoutPassword };
   }
 
   async refreshToken(token: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
@@ -125,11 +153,14 @@ export class AuthService {
       });
       permissions = rolePermissions.map((rp) => rp.permission.name);
     }
-    return jwt.sign(
+    const secret = getJwtSecret();
+    const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role?.name || user.roleName, permissions, organizationId: user.organizationId },
-      getJwtSecret(),
+      secret,
       { expiresIn: '15m' }
     );
+    console.log(`[Auth Service] Generated access token for user ${user.id} (role: ${user.role?.name || user.roleName})`);
+    return token;
   }
 
   async logout(userId: string) {
@@ -149,10 +180,22 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    const user = await this.userRepo.findById(userId);
-    if (!user) throw new NotFoundException('User not found');
-    const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
-    return userWithoutPassword;
+    console.log(`[Auth Service] getProfile called with userId: ${userId}`);
+    if (!userId) {
+      console.error(`[Auth Service] getProfile: userId is falsy!`);
+      throw new UnauthorizedException('User ID is missing from token');
+    }
+    try {
+      const user = await this.userRepo.findById(userId);
+      console.log(`[Auth Service] getProfile: user found - ${user?.id} (${user?.email})`);
+      if (!user) throw new NotFoundException('User not found');
+      const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
+      console.log(`[Auth Service] getProfile: returning user without password`);
+      return userWithoutPassword;
+    } catch (err) {
+      console.error(`[Auth Service] getProfile error:`, err);
+      throw err;
+    }
   }
 
   async updateProfile(userId: string, data: { firstName?: string; lastName?: string; email?: string; phone?: string; avatar?: string }) {

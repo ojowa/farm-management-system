@@ -39,6 +39,28 @@ export class RegisterDto {
   organizationId?: string;
 }
 
+export class RegisterConsoleDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(8)
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
+  password!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  firstName!: string;
+
+  @IsOptional()
+  @IsString()
+  middleName?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName!: string;
+}
+
 export class RefreshTokenDto {
   @IsString()
   @IsNotEmpty()

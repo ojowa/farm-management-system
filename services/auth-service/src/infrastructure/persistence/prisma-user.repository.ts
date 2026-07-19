@@ -36,6 +36,7 @@ export class PrismaUserRepository implements UserRepository {
     email: string;
     passwordHash: string;
     firstName: string;
+    middleName?: string;
     lastName: string;
     roleId: string;
     organizationId?: string;
@@ -45,6 +46,7 @@ export class PrismaUserRepository implements UserRepository {
         email: data.email,
         passwordHash: data.passwordHash,
         firstName: data.firstName,
+        middleName: data.middleName || null,
         lastName: data.lastName,
         roleId: data.roleId,
         organizationId: data.organizationId || null,

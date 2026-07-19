@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete, UsePipes, ValidationPipe } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
@@ -101,6 +101,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
   async getProfile(@Req() req: any) {
     return this.authService.getProfile(req.user?.id);
   }

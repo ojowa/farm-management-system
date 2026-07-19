@@ -25,7 +25,7 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '..', '.env') }),
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60000, limit: 30 },
       { name: 'auth', ttl: 60000, limit: 30 },
