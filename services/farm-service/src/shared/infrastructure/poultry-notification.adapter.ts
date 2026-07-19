@@ -25,16 +25,16 @@ export class NotificationAdapter {
     }
   }
 
-  async sendFinancialAlert(userId: string, title: string, message: string): Promise<void> {
+  async sendFlockAlert(farmId: string, title: string, message: string): Promise<void> {
     try {
       await axios.post(`${this.baseUrl}/notifications`, {
-        userId,
+        farmId,
         title,
         message,
-        type: 'INFO',
+        type: 'WARNING',
       });
     } catch (error) {
-      console.error('[NotificationAdapter] Failed to send financial alert:', error);
+      console.error('[NotificationAdapter] Failed to send flock alert:', error);
     }
   }
 }

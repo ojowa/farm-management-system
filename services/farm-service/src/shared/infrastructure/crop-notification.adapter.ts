@@ -24,17 +24,24 @@ export class NotificationAdapter {
       console.error('[NotificationAdapter] Failed to send notification:', error);
     }
   }
+}
 
-  async sendFinancialAlert(userId: string, title: string, message: string): Promise<void> {
+const FARM_SERVICE_URL = process.env.FARM_SERVICE_URL!;
+
+export class LivestockAdapter {
+  private readonly baseUrl: string;
+
+  constructor() {
+    this.baseUrl = FARM_SERVICE_URL;
+  }
+
+  async getLivestockHealth(livestockId: string): Promise<any> {
     try {
-      await axios.post(`${this.baseUrl}/notifications`, {
-        userId,
-        title,
-        message,
-        type: 'INFO',
-      });
+      const response = await axios.get(`${this.baseUrl}/livestock/health/livestock/${livestockId}`);
+      return response.data;
     } catch (error) {
-      console.error('[NotificationAdapter] Failed to send financial alert:', error);
+      console.error('[LivestockAdapter] Failed to get livestock health:', error);
+      return null;
     }
   }
 }

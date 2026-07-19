@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:4005';
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL!;
 
 interface CreateNotificationPayload {
   userId: string;

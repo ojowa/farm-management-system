@@ -7,7 +7,7 @@ import { PrismaReportRepository, PrismaScheduledReportRepository } from './infra
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '..', '.env') }),
   ],
   controllers: [ReportController, ScheduledReportController],
   providers: [

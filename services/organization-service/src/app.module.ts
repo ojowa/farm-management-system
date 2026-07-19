@@ -7,7 +7,7 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '..', '.env') }),
   ],
   controllers: [OrganizationController],
   providers: [

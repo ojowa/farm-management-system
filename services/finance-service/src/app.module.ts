@@ -21,7 +21,7 @@ import { FinanceEventService } from './infrastructure/messaging/finance.event.se
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '..', '.env') }),
   ],
   controllers: [
     ExpenseController,
