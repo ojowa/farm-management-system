@@ -50,10 +50,13 @@ async function handleRefresh(error: any, originalRequest: any, httpClient: any) 
   isRefreshing = true;
   console.log('[Console API] Attempting token refresh');
   try {
-    await fetch('/auth/refresh', {
+    const refreshResponse = await fetch('/auth/refresh', {
       method: 'POST',
       credentials: 'include',
     });
+    if (!refreshResponse.ok) {
+      throw new Error(`Refresh failed with status ${refreshResponse.status}`);
+    }
     console.log('[Console API] Refresh succeeded, retrying original request');
     processQueue(null);
     return httpClient(originalRequest);

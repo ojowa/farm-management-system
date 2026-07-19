@@ -10,6 +10,7 @@ import { handleError } from '@farm/utils';
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
+    console.error('[AuthService][UnhandledException]', exception);
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<any>();
 
