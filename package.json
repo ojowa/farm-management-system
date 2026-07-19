@@ -6,7 +6,7 @@
   "scripts": {
     "test": "turbo test",
     "dev": "turbo dev",
-    "build": "turbo build --filter='!@farm/mobile'",
+    "build": "turbo build --filter=!@farm/mobile",
     "build:mobile": "pnpm --filter @farm/mobile build",
     "build:mobile:android": "pnpm --filter @farm/mobile build:android",
     "build:mobile:ios": "pnpm --filter @farm/mobile build:ios",

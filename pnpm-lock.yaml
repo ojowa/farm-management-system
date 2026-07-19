@@ -450,6 +450,9 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
     devDependencies:
       prisma:
         specifier: ^6.4.1
@@ -915,7 +918,7 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
-  services/crop-service:
+  services/farm-service:
     dependencies:
       '@farm/auth':
         specifier: workspace:*
@@ -929,61 +932,15 @@ importers:
       '@farm/domain-core':
         specifier: workspace:*
         version: link:../../packages/domain-core
-      '@farm/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@farm/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      '@farm/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
-      '@nestjs/common':
-        specifier: ^11.0.10
-        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^4.0.0
-        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.27)(@nestjs/websockets@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/cli':
-        specifier: ^11.0.4
-        version: 11.0.23(@swc/cli@0.8.1(@swc/core@1.15.43)(chokidar@4.0.3))(@swc/core@1.15.43)(@types/node@22.19.21)
-      '@nestjs/schematics':
-        specifier: ^11.0.1
-        version: 11.1.0(chokidar@4.0.3)(typescript@5.8.3)
-      '@types/node':
-        specifier: ^22.13.5
-        version: 22.19.21
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-
-  services/farm-service:
-    dependencies:
-      '@farm/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@farm/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@farm/domain-core':
-        specifier: workspace:*
-        version: link:../../packages/domain-core
       '@farm/farm-domain':
         specifier: workspace:*
         version: link:../../packages/domains/farm
+      '@farm/livestock-domain':
+        specifier: workspace:*
+        version: link:../../packages/domains/livestock
+      '@farm/poultry-domain':
+        specifier: workspace:*
+        version: link:../../packages/domains/poultry
       '@farm/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -1005,6 +962,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.10
         version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
+      axios:
+        specifier: ^1.7.0
+        version: 1.18.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -1118,61 +1078,6 @@ importers:
       axios:
         specifier: ^1.18.0
         version: 1.18.0
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/cli':
-        specifier: ^11.0.4
-        version: 11.0.23(@swc/cli@0.8.1(@swc/core@1.15.43)(chokidar@4.0.3))(@swc/core@1.15.43)(@types/node@22.19.21)
-      '@nestjs/schematics':
-        specifier: ^11.0.1
-        version: 11.1.0(chokidar@4.0.3)(typescript@5.8.3)
-      '@types/node':
-        specifier: ^22.13.5
-        version: 22.19.21
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-
-  services/livestock-service:
-    dependencies:
-      '@farm/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@farm/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@farm/domain-core':
-        specifier: workspace:*
-        version: link:../../packages/domain-core
-      '@farm/livestock-domain':
-        specifier: workspace:*
-        version: link:../../packages/domains/livestock
-      '@farm/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@farm/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      '@farm/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
-      '@nestjs/common':
-        specifier: ^11.0.10
-        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^4.0.0
-        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.27)(@nestjs/websockets@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -1451,61 +1356,6 @@ importers:
         specifier: 5.8.3
         version: 5.8.3
 
-  services/poultry-service:
-    dependencies:
-      '@farm/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@farm/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@farm/domain-core':
-        specifier: workspace:*
-        version: link:../../packages/domain-core
-      '@farm/poultry-domain':
-        specifier: workspace:*
-        version: link:../../packages/domains/poultry
-      '@farm/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@farm/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      '@farm/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
-      '@nestjs/common':
-        specifier: ^11.0.10
-        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^4.0.0
-        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.27)(@nestjs/websockets@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/cli':
-        specifier: ^11.0.4
-        version: 11.0.23(@swc/cli@0.8.1(@swc/core@1.15.43)(chokidar@4.0.3))(@swc/core@1.15.43)(@types/node@22.19.21)
-      '@nestjs/schematics':
-        specifier: ^11.0.1
-        version: 11.1.0(chokidar@4.0.3)(typescript@5.8.3)
-      '@types/node':
-        specifier: ^22.13.5
-        version: 22.19.21
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-
   services/reporting-service:
     dependencies:
       '@farm/auth':
@@ -1520,61 +1370,6 @@ importers:
       '@farm/reporting-domain':
         specifier: workspace:*
         version: link:../../packages/domains/reporting
-      '@farm/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@farm/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      '@farm/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
-      '@nestjs/common':
-        specifier: ^11.0.10
-        version: 11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^4.0.0
-        version: 4.0.4(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
-      '@nestjs/core':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.27)(@nestjs/websockets@11.1.27)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/platform-express':
-        specifier: ^11.0.10
-        version: 11.1.27(@nestjs/common@11.1.27(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-    devDependencies:
-      '@nestjs/cli':
-        specifier: ^11.0.4
-        version: 11.0.23(@swc/cli@0.8.1(@swc/core@1.15.43)(chokidar@4.0.3))(@swc/core@1.15.43)(@types/node@22.19.21)
-      '@nestjs/schematics':
-        specifier: ^11.0.1
-        version: 11.1.0(chokidar@4.0.3)(typescript@5.8.3)
-      '@types/node':
-        specifier: ^22.13.5
-        version: 22.19.21
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-
-  services/worker-service:
-    dependencies:
-      '@farm/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@farm/database':
-        specifier: workspace:*
-        version: link:../../packages/database
-      '@farm/domain-core':
-        specifier: workspace:*
-        version: link:../../packages/domain-core
-      '@farm/hr-domain':
-        specifier: workspace:*
-        version: link:../../packages/domains/hr
       '@farm/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -5986,6 +5781,10 @@ packages:
 
   dotenv@17.4.1:
     resolution: {integrity: sha512-k8DaKGP6r1G30Lx8V4+pCsLzKr8vLmV2paqEj1Y55GdAgJuIqpRp5FfajGF8KtwMxCz9qJc6wUIJnm053d/WCw==}
+    engines: {node: '>=12'}
+
+  dotenv@17.4.2:
+    resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -15337,6 +15136,8 @@ snapshots:
   dotenv@16.6.1: {}
 
   dotenv@17.4.1: {}
+
+  dotenv@17.4.2: {}
 
   dunder-proto@1.0.1:
     dependencies:
