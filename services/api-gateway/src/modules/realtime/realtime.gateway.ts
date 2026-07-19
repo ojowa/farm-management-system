@@ -12,6 +12,15 @@ import { Logger, UnauthorizedException } from '@nestjs/common';
 import { verifyAccessToken } from '@farm/auth';
 import cookieParser from 'cookie-parser';
 
+function parseCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS;
+  if (!raw) return ['http://localhost:3000'];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
   if (!cookieHeader) return cookies;
@@ -31,7 +40,7 @@ export interface RealtimeEvent {
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS!.split(',').map((s) => s.trim()),
+    origin: parseCorsOrigins(),
     credentials: true,
   },
   namespace: '/',

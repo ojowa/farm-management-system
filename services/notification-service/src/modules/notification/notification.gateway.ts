@@ -13,7 +13,10 @@ import { verifyAccessToken } from '@farm/auth';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS!.split(',').map((s) => s.trim()),
+    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
     credentials: true,
   },
   namespace: '/notifications',
