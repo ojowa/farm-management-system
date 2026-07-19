@@ -6,8 +6,7 @@ import axios, { AxiosInstance } from 'axios';
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 
 const API_BASE_URL =
-  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:4000';
+  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
 
 if (__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('localhost') && !API_BASE_URL.includes('192.168.')) {
   console.warn(

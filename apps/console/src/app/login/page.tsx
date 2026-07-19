@@ -17,13 +17,17 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    console.log('[Console Login] Form submitted', { email });
 
     try {
       await login(email, password);
+      console.log('[Console Login] Login successful, redirecting');
       const params = new URLSearchParams(window.location.search);
       window.location.href = params.get('from') || '/dashboard';
     } catch (err: any) {
+      console.error('[Console Login] Login failed:', err);
       if (err?.requiresMFA) {
+        console.log('[Console Login] MFA required, showing MFA form');
         setMfaToken(err.mfaToken);
         setMfaMode(true);
         setError('');
@@ -39,13 +43,17 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    console.log('[Console Login] MFA submit', { mfaToken: mfaToken ? '***' : null, mfaCodeLength: mfaCode.length });
 
     try {
       const { authClient } = await import('@/lib/api');
+      console.log('[Console Login] Posting /auth/verify-mfa');
       await authClient.post('/auth/verify-mfa', { mfaToken, code: mfaCode });
+      console.log('[Console Login] MFA verified, redirecting');
       const params = new URLSearchParams(window.location.search);
       window.location.href = params.get('from') || '/dashboard';
     } catch (err: any) {
+      console.error('[Console Login] MFA verification failed:', err);
       setError(err?.response?.data?.message || 'Invalid MFA code');
     } finally {
       setLoading(false);

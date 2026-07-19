@@ -1,9 +1,7 @@
 import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@farm/api-client';
 
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
 const config: APIClientConfig = {
-  baseURL: API_GATEWAY_URL,
+  baseURL: '',
 };
 
 const client: FarmManagementClient = createFarmManagementClient(config);
@@ -19,17 +17,28 @@ function processQueue(error: unknown) {
 }
 
 async function handleRefresh(error: any, originalRequest: any, httpClient: any) {
+  console.log('[Console API] Interceptor caught error', {
+    status: error.response?.status,
+    url: originalRequest?.url,
+    method: originalRequest?.method,
+    _retry: originalRequest?._retry,
+  });
+
   if (error.response?.status !== 401 || originalRequest._retry) {
+    console.log('[Console API] Not a 401 or already retried, rejecting');
     return Promise.reject(error);
   }
 
   const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
   const isLoginPath = typeof window !== 'undefined' && window.location.pathname === '/login';
+  console.log('[Console API] 401 check', { isRefreshCall, isLoginPath });
   if (isRefreshCall || isLoginPath) {
+    console.log('[Console API] On login page or refresh call, rejecting');
     return Promise.reject(error);
   }
 
   if (isRefreshing) {
+    console.log('[Console API] Already refreshing, queuing request');
     return new Promise((resolve, reject) => {
       failedQueue.push({ resolve, reject });
     })
@@ -39,16 +48,20 @@ async function handleRefresh(error: any, originalRequest: any, httpClient: any) 
 
   originalRequest._retry = true;
   isRefreshing = true;
+  console.log('[Console API] Attempting token refresh');
   try {
-    await fetch(`${API_GATEWAY_URL}/auth/refresh`, {
+    await fetch('/auth/refresh', {
       method: 'POST',
       credentials: 'include',
     });
+    console.log('[Console API] Refresh succeeded, retrying original request');
     processQueue(null);
     return httpClient(originalRequest);
   } catch (refreshError) {
+    console.error('[Console API] Refresh failed:', refreshError);
     processQueue(refreshError);
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      console.log('[Console API] Redirecting to /login');
       window.location.href = '/login';
     }
     return Promise.reject(refreshError);

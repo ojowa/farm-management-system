@@ -27,7 +27,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const joinedRef = useRef(false);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+    const url = process.env.NEXT_PUBLIC_SOCKET_URL!;
 
     const socket = io(url, {
       autoConnect: true,

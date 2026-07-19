@@ -1,8 +1,7 @@
 import { createFarmManagementClient, FarmManagementClient } from '@farm/api-client';
 import axios from 'axios';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 const client = createFarmManagementClient({
   baseURL: API_BASE_URL,
@@ -49,7 +48,7 @@ const client = createFarmManagementClient({
         isRefreshing = true;
         try {
           // Call refresh — the server will set new httpOnly cookies
-          await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+          await axios.post('/auth/refresh', {}, { withCredentials: true });
           processQueue(null);
           return client.client(originalRequest);
         } catch (refreshError) {

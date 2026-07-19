@@ -52,9 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       console.log('[Console Auth] fetchUser: authenticated');
       setState({ user, isLoading: false, isAuthenticated: true });
-    } catch (e) {
-      console.warn('[Console Auth] fetchUser: not authenticated', e);
-      setState({ user: null, isLoading: false, isAuthenticated: false });
+    } catch (e: any) {
+      const status = e?.response?.status;
+      // 429 (rate limited) or network/transient errors should NOT log the user out.
+      // Only a genuine auth failure (401/403) means the session is invalid.
+      if (status === 401 || status === 403) {
+        console.warn('[Console Auth] fetchUser: not authenticated', e);
+        setState({ user: null, isLoading: false, isAuthenticated: false });
+        return;
+      }
+      console.warn('[Console Auth] fetchUser: transient error (status ' + status + '), keeping session pending', e);
+      // Leave isLoading true but isAuthenticated false so the page stays put.
+      // Do NOT loop on 429 — just stop trying to avoid a rate-limit storm.
+      setState((prev) => ({ ...prev, isLoading: false }));
     }
   }, []);
 

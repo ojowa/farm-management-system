@@ -12,7 +12,7 @@ export async function getServerApiClient() {
     .join('; ');
 
   const client = createFarmManagementClient({
-    baseURL: process.env.API_URL || 'http://localhost:4000',
+    baseURL: process.env.API_URL!,
     timeout: 15000,
     headers: {
       Cookie: cookieHeader,

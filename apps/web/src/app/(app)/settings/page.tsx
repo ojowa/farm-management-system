@@ -127,7 +127,7 @@ export default function SettingsPage() {
 
   async function loadPermissions() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/permissions`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/permissions`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
       });
       if (res.ok) {

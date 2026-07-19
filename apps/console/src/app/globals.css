@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
@@ -29,6 +31,34 @@
   --radius: 0.5rem;
 }
 
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --primary: #22c55e;
+  --primary-foreground: #0f172a;
+  --primary-dark: #16a34a;
+  --secondary: #1e293b;
+  --secondary-foreground: #f1f5f9;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #f1f5f9;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #22c55e;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --sidebar-bg: #020617;
+  --sidebar-text: #94a3b8;
+  --sidebar-active: #22c55e;
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --danger: #ef4444;
+  --info: #3b82f6;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
@@ -40,6 +70,10 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
+}
+
+.dark * {
+  scrollbar-color: #475569 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -55,4 +89,11 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }

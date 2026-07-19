@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth';
 import { Providers } from '@/lib/providers';
+import { ThemeProvider } from '@/lib/theme';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -11,10 +12,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-gray-50" suppressHydrationWarning>
-        <AuthProvider>
-          <Providers>{children}</Providers>
-        </AuthProvider>
+      <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)]" suppressHydrationWarning>
+        <ThemeProvider>
+          <AuthProvider>
+            <Providers>{children}</Providers>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

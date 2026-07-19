@@ -4,8 +4,7 @@ import { apiClient } from '../services/api';
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 
 const API_BASE_URL =
-  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) ||
-  'http://localhost:4000';
+  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
 
 const SOCKET_URL = API_BASE_URL;
 
