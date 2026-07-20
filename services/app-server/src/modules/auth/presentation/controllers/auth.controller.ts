@@ -3,7 +3,7 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
-import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth-server/nestjs';
 import { LoginDto, RegisterDto, RegisterConsoleDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';

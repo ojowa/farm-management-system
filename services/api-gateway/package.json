@@ -18,7 +18,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@farm/auth": "workspace:*",
+    "@farm/auth-server": "workspace:*",
     "@farm/crop-domain": "workspace:*",
     "@farm/domain-core": "workspace:*",
     "@farm/farm-domain": "workspace:*",
@@ -30,9 +30,9 @@
     "@farm/platform-domain": "workspace:*",
     "@farm/poultry-domain": "workspace:*",
     "@farm/reporting-domain": "workspace:*",
-    "@farm/types": "workspace:*",
+    "@farm/types-server": "workspace:*",
     "@farm/utils": "workspace:*",
-    "@farm/validation": "workspace:*",
+    "@farm/validation-server": "workspace:*",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.10",
     "@nestjs/config": "^4.0.0",

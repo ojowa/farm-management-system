@@ -13,7 +13,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { FinanceApplicationService } from '../../application/services/finance.service';
 import { ZodValidationPipe } from '@farm/utils';
 import {
@@ -21,7 +21,7 @@ import {
   updateExpenseSchema,
   createSaleSchema,
   updateSaleSchema,
-} from '@farm/validation';
+} from '@farm/validation-server';
 
 function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');

@@ -9,11 +9,11 @@ import {
   UsePipes,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { OrganizationApplicationService } from '../../application/services/organization.service';
 import { Organization } from '../../domain/entities/organization.entity';
 import { ZodValidationPipe } from '@farm/utils';
-import { createOrganizationSchema, updateOrganizationSchema } from '@farm/validation';
+import { createOrganizationSchema, updateOrganizationSchema } from '@farm/validation-server';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('organizations')

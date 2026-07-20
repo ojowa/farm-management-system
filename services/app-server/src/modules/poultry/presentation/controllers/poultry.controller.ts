@@ -12,7 +12,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { PoultryApplicationService } from '../../application/services/poultry.service';
 import { ZodValidationPipe } from '@farm/utils';
 import {
@@ -32,7 +32,7 @@ import {
   updateMortalityRecordSchema,
   createMedicationSchema,
   updateMedicationSchema,
-} from '@farm/validation';
+} from '@farm/validation-server';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('api/poultry-houses')

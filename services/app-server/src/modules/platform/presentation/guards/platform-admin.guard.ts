@@ -1,13 +1,13 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { verifyAccessToken, type VerifiedUser } from '@farm/auth';
+import { verifyAccessToken, type VerifiedUser } from '@farm/auth-server';
 import { prisma } from '@farm/database';
 
 const PLATFORM_ADMIN_KEY = 'farm:platform:admin';
 const SUPER_ADMIN_KEY = 'farm:platform:super';
 
 /**
- * Lightweight guard that verifies the JWT (via @farm/auth) and then
+ * Lightweight guard that verifies the JWT (via @farm/auth-server) and then
  * checks the DB for `role.isPlatformAdmin`. Replaces the old guard
  * that duplicated JWT verification logic.
  *

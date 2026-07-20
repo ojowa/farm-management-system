@@ -1,6 +1,6 @@
 import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { OrganizationRepository } from '../../domain/repositories/organization.repository';
-import { CreateOrganizationRequest } from '@farm/types';
+import { CreateOrganizationRequest } from '@farm/types-server';
 
 @Injectable()
 export class OrganizationApplicationService {

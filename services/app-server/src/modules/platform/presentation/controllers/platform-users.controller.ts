@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Delete, Post, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { PlatformUserService } from '../../application/services/platform.service';
 import { PlatformAdminGuard } from '../guards/platform-admin.guard';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 
 @Controller('platform-users')
 @UseGuards(JwtAuthGuard, AuthorizationGuard)

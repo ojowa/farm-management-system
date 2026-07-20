@@ -1,9 +1,9 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthorizationGuard } from '@farm/auth/nestjs';
+import { AuthorizationGuard } from '@farm/auth-server/nestjs';
 
 /**
- * API Gateway guard that delegates to the AuthorizationGuard from @farm/auth.
+ * API Gateway guard that delegates to the AuthorizationGuard from @farm/auth-server.
  * This replaces the previous no-op guard with real DB-driven RBAC.
  */
 @Injectable()

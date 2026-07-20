@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, UnauthorizedException } from '@nestjs/common';
-import { verifyAccessToken } from '@farm/auth';
+import { verifyAccessToken } from '@farm/auth-server';
 import cookieParser from 'cookie-parser';
 
 function parseCorsOrigins(): string[] {

@@ -12,10 +12,10 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { CropApplicationService } from '../../application/services/crop.service';
 import { ZodValidationPipe } from '@farm/utils';
-import { createCropSchema, updateCropSchema, createCropCycleSchema, updateCropCycleSchema } from '@farm/validation';
+import { createCropSchema, updateCropSchema, createCropCycleSchema, updateCropCycleSchema } from '@farm/validation-server';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('crops')

@@ -12,12 +12,12 @@ import {
   UseGuards,
   Inject,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { NotificationApplicationService } from '../../application/services/notification.service';
 import { Notification } from '../../domain/entities/notification.entity';
 import { CreateNotificationRequest } from '../dto/notification.dto';
 import { ZodValidationPipe } from '@farm/utils';
-import { createNotificationSchema, updateNotificationSchema } from '@farm/validation';
+import { createNotificationSchema, updateNotificationSchema } from '@farm/validation-server';
 import { DeviceTokenRepository } from '../../domain/repositories/notification.repository';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
