@@ -215,11 +215,44 @@ CREATE POLICY farm_isolation ON farms
   USING (organization_id = current_setting('app.current_organization_id')::uuid);
 ```
 
-### 3.3 Tenant Bypass
+### 3.3 Role-Based Access Control (RBAC)
 
-- `SUPER_ADMIN` — Bypasses all tenant isolation (platform-wide queries)
-- `SUPPORT_ADMIN` — Bypasses tenant isolation for support operations
-- Service tokens (`SERVICE_SECRET`) — Short-lived (30s) for gateway-to-service trust
+The system uses a fine-grained RBAC model with 8 canonical roles, DB-driven permissions, and NestJS guards (`JwtAuthGuard` + `AuthorizationGuard`).
+
+#### Canonical Roles
+
+| Role | Description | Tenant Scope |
+|------|-------------|--------------|
+| `SUPER_ADMIN` | Full platform access, bypasses all tenant isolation | All organizations |
+| `SUPPORT_ADMIN` | Support operations across tenants | All organizations |
+| `ORGANIZATION_OWNER` | Full org-level access | Own organization |
+| `FARM_MANAGER` | Manages farms, crops, livestock, poultry | Own organization |
+| `ACCOUNTANT` | Manages finance, budgets, contracts, sales | Own organization |
+| `SUPERVISOR` | Oversees workers, tasks, attendance | Own organization |
+| `VETERINARIAN` | Manages livestock health, vaccinations | Own organization |
+| `WORKER` | Limited operational access | Own organization |
+
+#### Permission Model
+
+Permissions follow the `resource.action` pattern (e.g. `farm:read`, `finance:write`). They are:
+- Stored in the `Permission` model (DB-driven)
+- Assigned to roles via `RolePermission` join table
+- Loaded at login and embedded in the JWT
+- Enforced by `AuthorizationGuard` using `@Permission()` and `@Roles()` decorators
+
+```typescript
+// Example: controller-level RBAC
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@Permission('finance:write')
+@Post('sales')
+create(@CurrentUser() user: VerifiedUser, @Body() dto: CreateSaleDto) { ... }
+```
+
+#### Tenant Isolation & RBAC Interaction
+
+- **Regular users**: RLS scopes queries to their `organizationId`; RBAC controls which resources they can access within their org.
+- **Platform admins** (`isPlatformAdmin: true`): Bypass RLS via `setSuperAdmin(true)`, allowing cross-org queries.
+- **Service tokens**: Signed JWTs for gateway-to-service communication, carrying verified user context (org + role + permissions).
 
 ---
 
