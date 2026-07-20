@@ -441,6 +441,9 @@ importers:
       '@farm/auth':
         specifier: workspace:*
         version: link:../auth
+      '@farm/env':
+        specifier: workspace:*
+        version: link:../env
       '@farm/types':
         specifier: workspace:*
         version: link:../types

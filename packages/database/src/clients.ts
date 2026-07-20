@@ -2,8 +2,12 @@ import { PrismaClient } from '@prisma/client';
 import { withRLS, getOrganizationId } from './rls';
 import * as dotenv from 'dotenv';
 import { join } from 'path';
+import { loadEnv } from '@farm/env';
 
-// Load root .env (works from both src/ and dist/).
+// Guarantee env is loaded before anything reads process.env (e.g. DATABASE_URL).
+// This protects against ES import hoisting where consumers' loadEnv() calls
+// would otherwise run AFTER this module is already evaluated.
+loadEnv();
 dotenv.config({ path: join(__dirname, '..', '..', '..', '.env') });
 
 const globalForPrisma = globalThis as unknown as {

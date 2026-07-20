@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@farm/auth": "workspace:*",
+    "@farm/env": "workspace:*",
     "@farm/types": "workspace:*",
     "@prisma/client": "^6.4.1",
     "bcryptjs": "^2.4.3",
