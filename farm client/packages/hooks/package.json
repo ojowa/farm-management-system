@@ -1,0 +1,15 @@
+{
+  "name": "@farm/hooks",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "@farm/api-client": "*",
+    "@farm/types": "*",
+    "@tanstack/react-query": "^5.0.0"
+  },
+  "private": true
+}

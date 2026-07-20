@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "private": true,
+  "workspaces": [
+    "farm client/*",
+    "farm client/packages/*",
+    "farm server/*",
+    "farm server/packages/server/*"
+  ],
   "scripts": {
     "test": "turbo test",
     "dev": "turbo dev",
     "build": "turbo build --filter=!@farm/mobile",
-    "build:mobile": "pnpm --filter @farm/mobile build",
-    "build:mobile:android": "pnpm --filter @farm/mobile build:android",
-    "build:mobile:ios": "pnpm --filter @farm/mobile build:ios",
+    "build:mobile": "npm run build --workspace=@farm/mobile",
     "start": "turbo build && turbo start",
     "lint": "turbo lint",
     "format": "prettier --write ."
@@ -17,23 +21,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.27.0",
+  "overrides": {
+    "@types/react": "18.3.31"
+  },
   "devDependencies": {
     "@types/node": "^22.19.21",
     "tsx": "^4.22.4",
     "turbo": "^2.10.4",
     "typescript": "~5.8.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@scarf/scarf",
-      "core-js",
-      "esbuild",
-      "@swc/core"
-    ],
-    "overrides": {
-      "@types/react": "18.3.31",
-      "typescript": "5.8.3"
-    }
   }
 }

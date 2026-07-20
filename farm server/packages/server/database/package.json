@@ -1,0 +1,22 @@
+{
+  "name": "@farm/database",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "@farm/auth-server": "*",
+    "@farm/env": "*",
+    "@farm/types-server": "*",
+    "@prisma/client": "^6.4.1",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "prisma": "^6.4.1",
+    "typescript": "^5.8.3"
+  }
+}
