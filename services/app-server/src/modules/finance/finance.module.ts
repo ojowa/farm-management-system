@@ -16,8 +16,10 @@ import {
   PrismaFarmLookupRepository,
 } from './infrastructure/persistence/prisma-finance.repository';
 import { FinanceEventService } from './infrastructure/messaging/finance.event.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
+  imports: [RealtimeModule],
   controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, ProfitabilityController],
   providers: [
     FinanceApplicationService,

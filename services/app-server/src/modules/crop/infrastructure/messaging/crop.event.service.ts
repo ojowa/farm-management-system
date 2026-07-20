@@ -1,30 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import { emitCropEvent } from '@farm/utils';
+import { EventBus } from '../../../realtime/event-bus';
 import { Crop, CropCycle } from '../../domain/entities/crop.entity';
 
 @Injectable()
 export class CropEventService {
-  async emitCropCreatedEvent(crop: Crop) {
-    await emitCropEvent('created', crop);
+  constructor(private readonly events: EventBus) {}
+
+  emitCropCreatedEvent(crop: Crop) {
+    this.events.emitDomainEvent('crop', 'created', crop);
   }
 
-  async emitCropUpdatedEvent(crop: Crop) {
-    await emitCropEvent('updated', crop);
+  emitCropUpdatedEvent(crop: Crop) {
+    this.events.emitDomainEvent('crop', 'updated', crop);
   }
 
-  async emitCropDeletedEvent(cropId: string) {
-    await emitCropEvent('deleted', { id: cropId });
+  emitCropDeletedEvent(cropId: string) {
+    this.events.emitDomainEvent('crop', 'deleted', { id: cropId });
   }
 
-  async emitCropCycleCreatedEvent(cycle: CropCycle) {
-    await emitCropEvent('created', cycle);
+  emitCropCycleCreatedEvent(cycle: CropCycle) {
+    this.events.emitDomainEvent('crop', 'created', cycle);
   }
 
-  async emitCropCycleUpdatedEvent(cycle: CropCycle) {
-    await emitCropEvent('updated', cycle);
+  emitCropCycleUpdatedEvent(cycle: CropCycle) {
+    this.events.emitDomainEvent('crop', 'updated', cycle);
   }
 
-  async emitCropCycleDeletedEvent(cycleId: string) {
-    await emitCropEvent('deleted', { id: cycleId });
+  emitCropCycleDeletedEvent(cycleId: string) {
+    this.events.emitDomainEvent('crop', 'deleted', { id: cycleId });
   }
 }

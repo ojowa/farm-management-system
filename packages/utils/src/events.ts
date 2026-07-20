@@ -5,59 +5,46 @@ export interface RealtimeEvent {
   timestamp?: string;
 }
 
-const API_GATEWAY_URL = process.env.API_GATEWAY_URL!;
-
-export async function emitRealtimeEvent(event: Omit<RealtimeEvent, 'timestamp'>): Promise<void> {
-  const payload: RealtimeEvent = {
-    ...event,
-    timestamp: new Date().toISOString(),
-  };
-
-  try {
-    const response = await fetch(`${API_GATEWAY_URL}/realtime/emit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`Failed to emit realtime event: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error('Failed to emit realtime event:', error);
-  }
+/**
+ * Stub — in the modular monolith, domain events are emitted via
+ * the in-process EventBus (services/realtime/event-bus.ts).
+ *
+ * These functions are kept for backward compatibility with shared
+ * packages that import from @farm/utils, but they are no-ops
+ * inside the app-server. The EventBus handles WebSocket + EventEmitter2.
+ */
+export async function emitRealtimeEvent(_event: Omit<RealtimeEvent, 'timestamp'>): Promise<void> {
+  // No-op in modular monolith — use EventBus instead
 }
 
-export function emitFarmEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'farm', action, data });
+export function emitFarmEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'farm', action: _action, data: _data });
 }
 
-export function emitCropEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'crop', action, data });
+export function emitCropEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'crop', action: _action, data: _data });
 }
 
-export function emitLivestockEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'livestock', action, data });
+export function emitLivestockEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'livestock', action: _action, data: _data });
 }
 
-export function emitPoultryEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'poultry', action, data });
+export function emitPoultryEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'poultry', action: _action, data: _data });
 }
 
-export function emitInventoryEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'inventory', action, data });
+export function emitInventoryEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'inventory', action: _action, data: _data });
 }
 
-export function emitFinanceEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'finance', action, data });
+export function emitFinanceEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'finance', action: _action, data: _data });
 }
 
-export function emitMedicationEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'medication', action, data });
+export function emitMedicationEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'medication', action: _action, data: _data });
 }
 
-export function emitHrEvent(action: 'created' | 'updated' | 'deleted', data: any) {
-  return emitRealtimeEvent({ entity: 'hr', action, data });
+export function emitHrEvent(_action: 'created' | 'updated' | 'deleted', _data: any) {
+  return emitRealtimeEvent({ entity: 'hr', action: _action, data: _data });
 }

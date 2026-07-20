@@ -3,8 +3,10 @@ import { FarmController, FieldController } from './presentation/controllers/farm
 import { FarmApplicationService } from './application/services/farm.service';
 import { PrismaFarmRepository, PrismaFieldRepository } from './infrastructure/persistence/prisma-farm.repository';
 import { FarmEventService } from './infrastructure/messaging/farm.event.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
+  imports: [RealtimeModule],
   controllers: [FarmController, FieldController],
   providers: [
     FarmApplicationService,

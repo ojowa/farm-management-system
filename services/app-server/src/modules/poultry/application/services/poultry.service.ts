@@ -12,7 +12,7 @@ import {
   PaginatedResult,
   PaginationParams,
 } from '../../domain/repositories/poultry.repository';
-import { emitPoultryEvent } from '@farm/utils';
+import { EventBus } from '../../../realtime/event-bus';
 import {
   PoultryHouse,
   Pen,
@@ -26,12 +26,15 @@ import {
 
 @Injectable()
 export class PoultryApplicationService {
-  constructor(@Inject('PoultryRepository') private readonly repo: PoultryAggregateRepository) {}
+  constructor(
+    @Inject('PoultryRepository') private readonly repo: PoultryAggregateRepository,
+    private readonly events: EventBus,
+  ) {}
 
   // ── PoultryHouse ──
   async createPoultryHouse(data: Omit<PoultryHouse, 'id'>): Promise<PoultryHouse> {
     const house = await this.repo.createPoultryHouse(data);
-    await emitPoultryEvent('created', house);
+    this.events.emitDomainEvent('poultry', 'created', house);
     return house;
   }
 
@@ -49,14 +52,14 @@ export class PoultryApplicationService {
   async updatePoultryHouse(id: string, data: Partial<PoultryHouse>): Promise<PoultryHouse> {
     await this.getPoultryHouseById(id);
     const house = await this.repo.updatePoultryHouse(id, data);
-    await emitPoultryEvent('updated', house);
+    this.events.emitDomainEvent('poultry', 'updated', house);
     return house;
   }
 
   async deletePoultryHouse(id: string): Promise<{ deleted: boolean }> {
     await this.getPoultryHouseById(id);
     await this.repo.deletePoultryHouse(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
@@ -64,7 +67,7 @@ export class PoultryApplicationService {
   async createPen(data: Omit<Pen, 'id'>): Promise<Pen> {
     await this.getPoultryHouseById(data.poultryHouseId);
     const pen = await this.repo.createPen(data);
-    await emitPoultryEvent('created', pen);
+    this.events.emitDomainEvent('poultry', 'created', pen);
     return pen;
   }
 
@@ -83,21 +86,21 @@ export class PoultryApplicationService {
     await this.getPenById(id);
     if (data.poultryHouseId) await this.getPoultryHouseById(data.poultryHouseId);
     const pen = await this.repo.updatePen(id, data);
-    await emitPoultryEvent('updated', pen);
+    this.events.emitDomainEvent('poultry', 'updated', pen);
     return pen;
   }
 
   async deletePen(id: string): Promise<{ deleted: boolean }> {
     await this.getPenById(id);
     await this.repo.deletePen(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
   // ── Breed ──
   async createBreed(data: Omit<Breed, 'id'>): Promise<Breed> {
     const breed = await this.repo.createBreed(data);
-    await emitPoultryEvent('created', breed);
+    this.events.emitDomainEvent('poultry', 'created', breed);
     return breed;
   }
 
@@ -115,14 +118,14 @@ export class PoultryApplicationService {
   async updateBreed(id: string, data: Partial<Breed>): Promise<Breed> {
     await this.getBreedById(id);
     const breed = await this.repo.updateBreed(id, data);
-    await emitPoultryEvent('updated', breed);
+    this.events.emitDomainEvent('poultry', 'updated', breed);
     return breed;
   }
 
   async deleteBreed(id: string): Promise<{ deleted: boolean }> {
     await this.getBreedById(id);
     await this.repo.deleteBreed(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
@@ -132,7 +135,7 @@ export class PoultryApplicationService {
     await this.getBreedById(data.breedId);
     const arrivalDate = typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate;
     const flock = await this.repo.createFlock({ ...data, arrivalDate });
-    await emitPoultryEvent('created', flock);
+    this.events.emitDomainEvent('poultry', 'created', flock);
     return flock;
   }
 
@@ -153,14 +156,14 @@ export class PoultryApplicationService {
     if (data.breedId) await this.getBreedById(data.breedId);
     const arrivalDate = data.arrivalDate ? (typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate) : undefined;
     const flock = await this.repo.updateFlock(id, { ...data, arrivalDate });
-    await emitPoultryEvent('updated', flock);
+    this.events.emitDomainEvent('poultry', 'updated', flock);
     return flock;
   }
 
   async deleteFlock(id: string): Promise<{ deleted: boolean }> {
     await this.getFlockById(id);
     await this.repo.deleteFlock(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
@@ -169,7 +172,7 @@ export class PoultryApplicationService {
     await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
     const record = await this.repo.createFeedingRecord({ ...data, date });
-    await emitPoultryEvent('created', record);
+    this.events.emitDomainEvent('poultry', 'created', record);
     return record;
   }
 
@@ -189,14 +192,14 @@ export class PoultryApplicationService {
     if (data.flockId) await this.getFlockById(data.flockId);
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
     const record = await this.repo.updateFeedingRecord(id, { ...data, date });
-    await emitPoultryEvent('updated', record);
+    this.events.emitDomainEvent('poultry', 'updated', record);
     return record;
   }
 
   async deleteFeedingRecord(id: string): Promise<{ deleted: boolean }> {
     await this.getFeedingRecordById(id);
     await this.repo.deleteFeedingRecord(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
@@ -205,7 +208,7 @@ export class PoultryApplicationService {
     await this.getFlockById(data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
     const record = await this.repo.createVaccinationRecord({ ...data, date });
-    await emitPoultryEvent('created', record);
+    this.events.emitDomainEvent('poultry', 'created', record);
     return record;
   }
 
@@ -225,14 +228,14 @@ export class PoultryApplicationService {
     if (data.flockId) await this.getFlockById(data.flockId);
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
     const record = await this.repo.updateVaccinationRecord(id, { ...data, date });
-    await emitPoultryEvent('updated', record);
+    this.events.emitDomainEvent('poultry', 'updated', record);
     return record;
   }
 
   async deleteVaccinationRecord(id: string): Promise<{ deleted: boolean }> {
     await this.getVaccinationRecordById(id);
     await this.repo.deleteVaccinationRecord(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
@@ -245,7 +248,7 @@ export class PoultryApplicationService {
     }
     const record = await this.repo.createMortalityRecord({ ...data, date });
     await this.repo.updateFlock(flock.id, { currentCount: flock.currentCount - data.count });
-    await emitPoultryEvent('created', record);
+    this.events.emitDomainEvent('poultry', 'created', record);
     return record;
   }
 
@@ -275,7 +278,7 @@ export class PoultryApplicationService {
     if (countDiff !== 0) {
       await this.repo.updateFlock(flock.id, { currentCount: flock.currentCount - countDiff });
     }
-    await emitPoultryEvent('updated', record);
+    this.events.emitDomainEvent('poultry', 'updated', record);
     return record;
   }
 
@@ -284,7 +287,7 @@ export class PoultryApplicationService {
     const flock = await this.getFlockById(record.flockId);
     await this.repo.updateFlock(flock.id, { currentCount: flock.currentCount + record.count });
     await this.repo.deleteMortalityRecord(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 
@@ -294,7 +297,7 @@ export class PoultryApplicationService {
     const startDate = typeof data.startDate === 'string' ? new Date(data.startDate) : data.startDate;
     const endDate = data.endDate ? (typeof data.endDate === 'string' ? new Date(data.endDate) : data.endDate) : null;
     const record = await this.repo.createMedication({ ...data, startDate, endDate });
-    await emitPoultryEvent('created', record);
+    this.events.emitDomainEvent('poultry', 'created', record);
     return record;
   }
 
@@ -315,14 +318,14 @@ export class PoultryApplicationService {
     const startDate = data.startDate ? (typeof data.startDate === 'string' ? new Date(data.startDate) : data.startDate) : undefined;
     const endDate = data.endDate !== undefined ? (data.endDate ? (typeof data.endDate === 'string' ? new Date(data.endDate) : data.endDate) : null) : undefined;
     const record = await this.repo.updateMedication(id, { ...data, startDate, endDate });
-    await emitPoultryEvent('updated', record);
+    this.events.emitDomainEvent('poultry', 'updated', record);
     return record;
   }
 
   async deleteMedication(id: string): Promise<{ deleted: boolean }> {
     await this.getMedicationById(id);
     await this.repo.deleteMedication(id);
-    await emitPoultryEvent('deleted', { id });
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }
 }

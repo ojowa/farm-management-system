@@ -1,17 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { emitPoultryEvent } from '@farm/utils';
+import { EventBus } from '../../../realtime/event-bus';
 
 @Injectable()
 export class PoultryEventService {
-  async emitCreated(entityType: string, data: Record<string, unknown>) {
-    await emitPoultryEvent('created', { entityType, ...data });
+  constructor(private readonly events: EventBus) {}
+
+  emitCreated(entityType: string, data: Record<string, unknown>) {
+    this.events.emitDomainEvent('poultry', 'created', { entityType, ...data });
   }
 
-  async emitUpdated(entityType: string, data: Record<string, unknown>) {
-    await emitPoultryEvent('updated', { entityType, ...data });
+  emitUpdated(entityType: string, data: Record<string, unknown>) {
+    this.events.emitDomainEvent('poultry', 'updated', { entityType, ...data });
   }
 
-  async emitDeleted(entityType: string, id: string) {
-    await emitPoultryEvent('deleted', { entityType, id });
+  emitDeleted(entityType: string, id: string) {
+    this.events.emitDomainEvent('poultry', 'deleted', { entityType, id });
   }
 }

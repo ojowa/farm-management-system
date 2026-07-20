@@ -28,7 +28,7 @@ import {
   PrismaBroadcastRepository,
   PrismaPlatformConfigRepository,
 } from './infrastructure/persistence/prisma-platform.repository';
-import { PlatformAdminGuard } from './presentation/guards/platform-admin.guard';
+import { PlatformAdminGuard, SuperAdminGuard } from './presentation/guards/platform-admin.guard';
 
 @Module({
   controllers: [
@@ -53,6 +53,7 @@ import { PlatformAdminGuard } from './presentation/guards/platform-admin.guard';
     PlatformConfigService,
     PlatformOptionsService,
     PlatformAdminGuard,
+    SuperAdminGuard,
     { provide: 'FeatureFlagRepository', useClass: PrismaFeatureFlagRepository },
     { provide: 'FeatureFlagOverrideRepository', useClass: PrismaFeatureFlagOverrideRepository },
     { provide: 'SubscriptionPlanRepository', useClass: PrismaSubscriptionPlanRepository },
@@ -61,6 +62,6 @@ import { PlatformAdminGuard } from './presentation/guards/platform-admin.guard';
     { provide: 'BroadcastRepository', useClass: PrismaBroadcastRepository },
     { provide: 'PlatformConfigRepository', useClass: PrismaPlatformConfigRepository },
   ],
-  exports: [PlatformUserService, PlatformOrganizationService, PlatformAdminGuard],
+  exports: [PlatformUserService, PlatformOrganizationService, PlatformAdminGuard, SuperAdminGuard],
 })
 export class PlatformModule {}

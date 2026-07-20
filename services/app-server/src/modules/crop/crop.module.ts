@@ -3,8 +3,10 @@ import { CropController, CropCycleController } from './presentation/controllers/
 import { CropApplicationService } from './application/services/crop.service';
 import { PrismaCropRepository, PrismaCropCycleRepository } from './infrastructure/persistence/prisma-crop.repository';
 import { CropEventService } from './infrastructure/messaging/crop.event.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
+  imports: [RealtimeModule],
   controllers: [CropController, CropCycleController],
   providers: [
     CropApplicationService,

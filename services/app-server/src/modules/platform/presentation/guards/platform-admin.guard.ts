@@ -1,166 +1,122 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as jwt from 'jsonwebtoken';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { verifyAccessToken, type VerifiedUser } from '@farm/auth';
 import { prisma } from '@farm/database';
 
+const PLATFORM_ADMIN_KEY = 'farm:platform:admin';
+const SUPER_ADMIN_KEY = 'farm:platform:super';
+
+/**
+ * Lightweight guard that verifies the JWT (via @farm/auth) and then
+ * checks the DB for `role.isPlatformAdmin`. Replaces the old guard
+ * that duplicated JWT verification logic.
+ *
+ * Use at class level on platform controllers:
+ *   @UseGuards(PlatformAdminGuard)
+ */
 @Injectable()
 export class PlatformAdminGuard implements CanActivate {
-  constructor(private configService: ConfigService) {}
+  constructor(private readonly reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    console.log('[PlatformAdminGuard] Request received:', { 
-      method: request.method, 
-      url: request.url,
-      hasAuthHeader: !!request.headers.authorization,
-      authHeaderPrefix: request.headers.authorization?.substring(0, 20)
-    });
+    const req = context.switchToHttp().getRequest();
 
-    const authHeader = request.headers.authorization;
+    // Extract and verify JWT (stateless — no DB call)
+    const token = this.extractToken(req);
+    if (!token) throw new UnauthorizedException('Authentication required');
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('[PlatformAdminGuard] No valid Authorization header');
-      throw new UnauthorizedException('Authentication required');
-    }
-
-    const token = authHeader.split(' ')[1];
-    console.log('[PlatformAdminGuard] Token extracted, length:', token.length);
-
-    const jwtSecret = this.configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
-    console.log('[PlatformAdminGuard] JWT_SECRET from config:', !!this.configService.get<string>('JWT_SECRET'), 'from env:', !!process.env.JWT_SECRET);
-    if (!jwtSecret) {
-      console.error('[PlatformAdminGuard] JWT_SECRET is missing!');
-      throw new InternalServerErrorException('JWT_SECRET configuration missing');
-    }
-    console.log('[PlatformAdminGuard] JWT_SECRET length:', jwtSecret.length);
-
-    let decoded: any;
+    let user: VerifiedUser;
     try {
-      decoded = jwt.verify(token, jwtSecret);
-      console.log('[PlatformAdminGuard] Token decoded:', { sub: decoded.sub, role: decoded.role, exp: decoded.exp });
-    } catch (err) {
-      console.error('[PlatformAdminGuard] JWT verify failed:', err instanceof Error ? err.message : err);
+      user = verifyAccessToken(token);
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    if (!decoded?.sub) {
-      console.log('[PlatformAdminGuard] No sub in decoded token');
-      throw new UnauthorizedException('Invalid token payload');
-    }
+    // Check isPlatformAdmin from DB (one query per request — unavoidable
+    // because the JWT doesn't embed isPlatformAdmin)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: { select: { isPlatformAdmin: true, name: true } } },
+    });
 
-    let user;
-    try {
-      console.log('[PlatformAdminGuard] Querying user:', decoded.sub);
-      user = await prisma.user.findUnique({
-        where: { id: decoded.sub },
-        include: { role: true },
-      });
-      console.log('[PlatformAdminGuard] User found:', user ? { id: user.id, email: user.email, role: user.role?.name, isPlatformAdmin: user.role?.isPlatformAdmin } : null);
-    } catch (err) {
-      console.error('[PlatformAdminGuard] Database error:', err);
-      throw new InternalServerErrorException('Database error');
-    }
-
-    if (!user || !user.isActive) {
-      console.log('[PlatformAdminGuard] User not found or inactive');
+    if (!dbUser || !dbUser.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    if (!user.role?.isPlatformAdmin) {
-      console.log('[PlatformAdminGuard] User role is not platform admin:', user.role?.name, 'isPlatformAdmin:', user.role?.isPlatformAdmin);
+    if (!dbUser.role?.isPlatformAdmin) {
       throw new ForbiddenException('Platform admin access required');
     }
 
-    request.user = {
-      id: user.id,
+    // Attach verified user to request for downstream use
+    req.user = {
+      ...user,
       email: user.email,
-      role: user.role.name,
+      role: user.role,
+      permissions: user.permissions,
       organizationId: user.organizationId,
-      isPlatformAdmin: true,
     };
 
-    console.log('[PlatformAdminGuard] Access granted for:', user.email);
     return true;
+  }
+
+  private extractToken(req: any): string | null {
+    const auth = req.headers?.authorization;
+    if (auth?.startsWith('Bearer ')) return auth.slice(7);
+    if (req.cookies?.accessToken) return req.cookies.accessToken;
+    return null;
   }
 }
 
+/**
+ * Restricts to SUPER_ADMIN only (not just any platform admin).
+ * Used on dangerous operations like creating/deleting subscription plans.
+ */
 @Injectable()
 export class SuperAdminGuard implements CanActivate {
-  constructor(private configService: ConfigService) {}
+  constructor(private readonly reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    console.log('[SuperAdminGuard] Request received:', { 
-      method: request.method, 
-      url: request.url,
-      hasAuthHeader: !!request.headers.authorization,
-      authHeaderPrefix: request.headers.authorization?.substring(0, 20)
-    });
+    const req = context.switchToHttp().getRequest();
 
-    const authHeader = request.headers.authorization;
+    const token = this.extractToken(req);
+    if (!token) throw new UnauthorizedException('Authentication required');
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('[SuperAdminGuard] No valid Authorization header');
-      throw new UnauthorizedException('Authentication required');
-    }
-
-    const token = authHeader.split(' ')[1];
-    console.log('[SuperAdminGuard] Token extracted, length:', token.length);
-
-    const jwtSecret = this.configService.get<string>('JWT_SECRET') || process.env.JWT_SECRET;
-    console.log('[SuperAdminGuard] JWT_SECRET from config:', !!this.configService.get<string>('JWT_SECRET'), 'from env:', !!process.env.JWT_SECRET);
-    if (!jwtSecret) {
-      console.error('[SuperAdminGuard] JWT_SECRET is missing!');
-      throw new InternalServerErrorException('JWT_SECRET configuration missing');
-    }
-    console.log('[SuperAdminGuard] JWT_SECRET length:', jwtSecret.length);
-
-    let decoded: any;
+    let user: VerifiedUser;
     try {
-      decoded = jwt.verify(token, jwtSecret);
-      console.log('[SuperAdminGuard] Token decoded:', { sub: decoded.sub, role: decoded.role, exp: decoded.exp });
-    } catch (err) {
-      console.error('[SuperAdminGuard] JWT verify failed:', err instanceof Error ? err.message : err);
+      user = verifyAccessToken(token);
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    if (!decoded?.sub) {
-      console.log('[SuperAdminGuard] No sub in decoded token');
-      throw new UnauthorizedException('Invalid token payload');
-    }
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: { select: { isPlatformAdmin: true, name: true } } },
+    });
 
-    let user;
-    try {
-      console.log('[SuperAdminGuard] Querying user:', decoded.sub);
-      user = await prisma.user.findUnique({
-        where: { id: decoded.sub },
-        include: { role: true },
-      });
-      console.log('[SuperAdminGuard] User found:', user ? { id: user.id, email: user.email, role: user.role?.name, isPlatformAdmin: user.role?.isPlatformAdmin } : null);
-    } catch (err) {
-      console.error('[SuperAdminGuard] Database error:', err);
-      throw new InternalServerErrorException('Database error');
-    }
-
-    if (!user || !user.isActive) {
-      console.log('[SuperAdminGuard] User not found or inactive');
+    if (!dbUser || !dbUser.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    if (!user.role?.isPlatformAdmin) {
-      console.log('[SuperAdminGuard] User role is not platform admin:', user.role?.name, 'isPlatformAdmin:', user.role?.isPlatformAdmin);
+    // Only SUPER_ADMIN (not SUPPORT_ADMIN) can perform these actions
+    if (user.role !== 'SUPER_ADMIN') {
       throw new ForbiddenException('Super admin access required');
     }
 
-    request.user = {
-      id: user.id,
+    req.user = {
+      ...user,
       email: user.email,
-      role: user.role.name,
+      role: user.role,
+      permissions: user.permissions,
       organizationId: user.organizationId,
-      isPlatformAdmin: true,
     };
 
-    console.log('[SuperAdminGuard] Access granted for:', user.email);
     return true;
+  }
+
+  private extractToken(req: any): string | null {
+    const auth = req.headers?.authorization;
+    if (auth?.startsWith('Bearer ')) return auth.slice(7);
+    if (req.cookies?.accessToken) return req.cookies.accessToken;
+    return null;
   }
 }

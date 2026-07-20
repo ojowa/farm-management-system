@@ -1,66 +1,68 @@
 import { Injectable } from '@nestjs/common';
-import { emitFinanceEvent } from '@farm/utils';
+import { EventBus } from '../../../realtime/event-bus';
 import { Expense, Sale, Contract, Buyer, MarketListing } from '../../domain/entities/finance.entity';
 
 @Injectable()
 export class FinanceEventService {
-  async emitExpenseCreatedEvent(expense: Expense) {
-    await emitFinanceEvent('created', expense);
+  constructor(private readonly events: EventBus) {}
+
+  emitExpenseCreatedEvent(expense: Expense) {
+    this.events.emitDomainEvent('finance', 'created', expense);
   }
 
-  async emitExpenseUpdatedEvent(expense: Expense) {
-    await emitFinanceEvent('updated', expense);
+  emitExpenseUpdatedEvent(expense: Expense) {
+    this.events.emitDomainEvent('finance', 'updated', expense);
   }
 
-  async emitExpenseDeletedEvent(expenseId: string) {
-    await emitFinanceEvent('deleted', { id: expenseId });
+  emitExpenseDeletedEvent(expenseId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: expenseId });
   }
 
-  async emitSaleCreatedEvent(sale: Sale) {
-    await emitFinanceEvent('created', sale);
+  emitSaleCreatedEvent(sale: Sale) {
+    this.events.emitDomainEvent('finance', 'created', sale);
   }
 
-  async emitSaleUpdatedEvent(sale: Sale) {
-    await emitFinanceEvent('updated', sale);
+  emitSaleUpdatedEvent(sale: Sale) {
+    this.events.emitDomainEvent('finance', 'updated', sale);
   }
 
-  async emitSaleDeletedEvent(saleId: string) {
-    await emitFinanceEvent('deleted', { id: saleId });
+  emitSaleDeletedEvent(saleId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: saleId });
   }
 
-  async emitContractCreatedEvent(contract: Contract) {
-    await emitFinanceEvent('created', contract);
+  emitContractCreatedEvent(contract: Contract) {
+    this.events.emitDomainEvent('finance', 'created', contract);
   }
 
-  async emitContractUpdatedEvent(contract: Contract) {
-    await emitFinanceEvent('updated', contract);
+  emitContractUpdatedEvent(contract: Contract) {
+    this.events.emitDomainEvent('finance', 'updated', contract);
   }
 
-  async emitContractDeletedEvent(contractId: string) {
-    await emitFinanceEvent('deleted', { id: contractId });
+  emitContractDeletedEvent(contractId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: contractId });
   }
 
-  async emitBuyerCreatedEvent(buyer: Buyer) {
-    await emitFinanceEvent('created', buyer);
+  emitBuyerCreatedEvent(buyer: Buyer) {
+    this.events.emitDomainEvent('finance', 'created', buyer);
   }
 
-  async emitBuyerUpdatedEvent(buyer: Buyer) {
-    await emitFinanceEvent('updated', buyer);
+  emitBuyerUpdatedEvent(buyer: Buyer) {
+    this.events.emitDomainEvent('finance', 'updated', buyer);
   }
 
-  async emitBuyerDeletedEvent(buyerId: string) {
-    await emitFinanceEvent('deleted', { id: buyerId });
+  emitBuyerDeletedEvent(buyerId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: buyerId });
   }
 
-  async emitMarketListingCreatedEvent(listing: MarketListing) {
-    await emitFinanceEvent('created', listing);
+  emitMarketListingCreatedEvent(listing: MarketListing) {
+    this.events.emitDomainEvent('finance', 'created', listing);
   }
 
-  async emitMarketListingUpdatedEvent(listing: MarketListing) {
-    await emitFinanceEvent('updated', listing);
+  emitMarketListingUpdatedEvent(listing: MarketListing) {
+    this.events.emitDomainEvent('finance', 'updated', listing);
   }
 
-  async emitMarketListingDeletedEvent(listingId: string) {
-    await emitFinanceEvent('deleted', { id: listingId });
+  emitMarketListingDeletedEvent(listingId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: listingId });
   }
 }

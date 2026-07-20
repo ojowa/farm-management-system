@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { join } from 'path';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -18,20 +19,21 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
+    EventEmitterModule.forRoot(),
 
     // Domain modules
     AuthModule,
+    RealtimeModule,
+    NotificationModule,
     FarmModule,
     CropModule,
     LivestockModule,
     PoultryModule,
     FinanceModule,
     HrModule,
-    NotificationModule,
     OrganizationModule,
     PlatformModule,
     ReportingModule,
-    RealtimeModule,
   ],
 })
 export class AppModule {}

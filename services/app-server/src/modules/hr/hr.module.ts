@@ -27,8 +27,10 @@ import {
   PrismaCorrespondenceRepository,
   PrismaCorrespondenceAttachmentRepository,
 } from './infrastructure/persistence/prisma-hr.repository';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
+  imports: [RealtimeModule],
   controllers: [
     WorkerController,
     AttendanceController,

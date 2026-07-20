@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { emitHrEvent } from '@farm/utils';
+import { EventBus } from '../../../realtime/event-bus';
 
 @Injectable()
 export class HrEventService {
-  async emitHrEvent(action: 'created' | 'updated' | 'deleted', data: { entity: string; data?: any; id?: string }) {
-    await emitHrEvent(action, data);
+  constructor(private readonly events: EventBus) {}
+
+  emitHrEvent(action: 'created' | 'updated' | 'deleted', data: { entity: string; data?: any; id?: string }) {
+    this.events.emitDomainEvent('hr', action, data);
   }
 }

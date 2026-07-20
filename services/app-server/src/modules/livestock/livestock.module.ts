@@ -14,8 +14,10 @@ import {
   PrismaVaccinationScheduleRepository,
 } from './infrastructure/persistence/prisma-livestock.repository';
 import { LivestockEventService } from './infrastructure/messaging/livestock.event.service';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
+  imports: [RealtimeModule],
   controllers: [LivestockController, HealthController, BreedingController, WeightController],
   providers: [
     LivestockApplicationService,

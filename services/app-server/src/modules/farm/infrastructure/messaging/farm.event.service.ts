@@ -1,18 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { emitFarmEvent } from '@farm/utils';
+import { EventBus } from '../../../realtime/event-bus';
 import { Farm } from '../../domain/entities/farm.entity';
 
 @Injectable()
 export class FarmEventService {
-  async emitFarmCreatedEvent(farm: Farm) {
-    await emitFarmEvent('created', farm);
+  constructor(private readonly events: EventBus) {}
+
+  emitFarmCreatedEvent(farm: Farm) {
+    this.events.emitDomainEvent('farm', 'created', farm);
   }
 
-  async emitFarmUpdatedEvent(farm: Farm) {
-    await emitFarmEvent('updated', farm);
+  emitFarmUpdatedEvent(farm: Farm) {
+    this.events.emitDomainEvent('farm', 'updated', farm);
   }
 
-  async emitFarmDeletedEvent(farmId: string) {
-    await emitFarmEvent('deleted', { id: farmId });
+  emitFarmDeletedEvent(farmId: string) {
+    this.events.emitDomainEvent('farm', 'deleted', { id: farmId });
   }
 }
