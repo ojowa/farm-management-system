@@ -10,6 +10,10 @@ function findClient() {
   const localPath = path.join(root, 'node_modules', '.prisma', 'client', 'index.d.ts');
   if (fs.existsSync(localPath)) return localPath;
 
+  // npm workspaces may hoist .prisma/client to the repo root
+  const repoRootPath = path.join(root, '..', '..', '..', '..', 'node_modules', '.prisma', 'client', 'index.d.ts');
+  if (fs.existsSync(repoRootPath)) return repoRootPath;
+
   const pnpmDir = path.join(root, '..', '..', 'node_modules', '.pnpm');
   if (fs.existsSync(pnpmDir)) {
     for (const dir of fs.readdirSync(pnpmDir)) {
@@ -28,7 +32,7 @@ const needsGenerate = !clientPath || fs.statSync(schemaPath).mtimeMs > fs.statSy
 if (needsGenerate) {
   console.log('Generating Prisma client...');
   try {
-    execSync('prisma generate', { cwd: root, stdio: 'inherit' });
+    execSync('npx prisma generate', { cwd: root, stdio: 'inherit' });
   } catch (e) {
     if (clientPath) {
       console.warn('prisma generate failed but client exists, continuing with tsc...');
