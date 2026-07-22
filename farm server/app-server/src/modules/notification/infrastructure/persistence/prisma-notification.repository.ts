@@ -110,54 +110,47 @@ export class PrismaNotificationRepository implements NotificationRepository {
 @Injectable()
 export class PrismaDeviceTokenRepository implements DeviceTokenRepository {
   async findByUserId(userId: string): Promise<DeviceToken[]> {
-    return prisma.$queryRawUnsafe<DeviceToken[]>(
-      `SELECT id, "userId", token, platform, active, "createdAt", "updatedAt"
-       FROM "DeviceToken" WHERE "userId" = $1 AND active = true`,
-      userId
-    );
+    const rows = await prisma.deviceToken.findMany({
+      where: { userId, active: true },
+    });
+    return rows as DeviceToken[];
   }
 
   async findByToken(userId: string, token: string): Promise<DeviceToken | null> {
-    const rows = await prisma.$queryRawUnsafe<DeviceToken[]>(
-      `SELECT id, "userId", token, platform, active, "createdAt", "updatedAt"
-       FROM "DeviceToken" WHERE "userId" = $1 AND token = $2`,
-      userId, token
-    );
-    return rows && rows.length > 0 ? rows[0] : null;
+    const row = await prisma.deviceToken.findFirst({
+      where: { userId, token },
+    });
+    return row as DeviceToken | null;
   }
 
   async register(userId: string, token: string, platform: 'web' | 'ios' | 'android'): Promise<DeviceToken> {
     const existing = await this.findByToken(userId, token);
 
     if (existing) {
-      await prisma.$executeRawUnsafe(
-        `UPDATE "DeviceToken" SET active = true, "updatedAt" = NOW() WHERE id = $1`,
-        existing.id
-      );
-      return { ...existing, active: true, updatedAt: new Date() };
+      const updated = await prisma.deviceToken.update({
+        where: { id: existing.id },
+        data: { active: true },
+      });
+      return updated as DeviceToken;
     }
 
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "DeviceToken" (id, "userId", token, platform, active, "createdAt", "updatedAt")
-       VALUES (gen_random_uuid()::text, $1, $2, $3, true, NOW(), NOW())`,
-      userId, token, platform
-    );
-
-    const created = await this.findByToken(userId, token);
-    return created!;
+    const created = await prisma.deviceToken.create({
+      data: { userId, token, platform },
+    });
+    return created as DeviceToken;
   }
 
   async deactivate(id: string): Promise<void> {
-    await prisma.$executeRawUnsafe(
-      `UPDATE "DeviceToken" SET active = false, "updatedAt" = NOW() WHERE id = $1`,
-      id
-    );
+    await prisma.deviceToken.update({
+      where: { id },
+      data: { active: false },
+    });
   }
 
   async deactivateByToken(userId: string, token: string): Promise<void> {
-    await prisma.$executeRawUnsafe(
-      `UPDATE "DeviceToken" SET active = false, "updatedAt" = NOW() WHERE "userId" = $1 AND token = $2`,
-      userId, token
-    );
+    await prisma.deviceToken.updateMany({
+      where: { userId, token },
+      data: { active: false },
+    });
   }
 }

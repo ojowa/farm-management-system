@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { RefreshTokenRepository } from '../../domain/repositories/refresh-token.repository';
 import { RoleRepository } from '../../domain/repositories/role.repository';
-import { prisma } from '@farm/database';
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -147,11 +146,7 @@ export class AuthService {
   async generateAccessToken(user: any) {
     let permissions: string[] = [];
     if (user.roleId) {
-      const rolePermissions = await prisma.rolePermission.findMany({
-        where: { roleId: user.roleId },
-        select: { permission: { select: { name: true } } },
-      });
-      permissions = rolePermissions.map((rp) => rp.permission.name);
+      permissions = await this.roleRepo.getPermissionsForRole(user.roleId);
     }
     const secret = getJwtSecret();
     const token = jwt.sign(

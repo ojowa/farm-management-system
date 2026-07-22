@@ -37,10 +37,10 @@ export class PushService {
   }
 
   async sendToUser(userId: string, payload: PushPayload): Promise<number> {
-    const tokens = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT id, token FROM "DeviceToken" WHERE "userId" = $1 AND active = true`,
-      userId
-    );
+    const tokens = await prisma.deviceToken.findMany({
+      where: { userId, active: true },
+      select: { id: true, token: true },
+    });
 
     if (!tokens || tokens.length === 0) {
       this.logger.debug(`No device tokens found for user ${userId}`);
@@ -155,10 +155,10 @@ export class PushService {
 
   private async deactivateToken(tokenId: string): Promise<void> {
     try {
-      await prisma.$executeRawUnsafe(
-        `UPDATE "DeviceToken" SET active = false, "updatedAt" = NOW() WHERE id = $1`,
-        tokenId
-      );
+      await prisma.deviceToken.update({
+        where: { id: tokenId },
+        data: { active: false },
+      });
       this.logger.log(`Deactivated invalid token: ${tokenId}`);
     } catch (error) {
       this.logger.error(`Failed to deactivate token ${tokenId}:`, error);

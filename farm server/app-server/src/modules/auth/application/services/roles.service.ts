@@ -49,9 +49,6 @@ export class RolesService {
   }
 
   async setPermissions(roleId: string, permissionIds: string[]) {
-    await prisma.rolePermission.deleteMany({ where: { roleId } });
-    await prisma.rolePermission.createMany({
-      data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
-    });
+    await this.roleRepo.setPermissions(roleId, permissionIds);
   }
 }

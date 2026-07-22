@@ -34,4 +34,21 @@ export class PrismaRoleRepository implements RoleRepository {
       select: { id: true, name: true, isSystem: true },
     });
   }
+
+  async getPermissionsForRole(roleId: string): Promise<string[]> {
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: { roleId },
+      select: { permission: { select: { name: true } } },
+    });
+    return rolePermissions.map((rp) => rp.permission.name);
+  }
+
+  async setPermissions(roleId: string, permissionIds: string[]): Promise<void> {
+    await prisma.rolePermission.deleteMany({ where: { roleId } });
+    if (permissionIds.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+      });
+    }
+  }
 }

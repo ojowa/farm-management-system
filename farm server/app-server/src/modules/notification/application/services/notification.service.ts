@@ -29,11 +29,10 @@ export class NotificationApplicationService {
   }
 
   private async triggerExternalNotifications(dto: CreateNotificationRequest): Promise<void> {
-    const users = await scopedPrisma.$queryRawUnsafe<any[]>(
-      `SELECT email, "firstName", "lastName" FROM "User" WHERE id = $1`,
-      dto.userId
-    );
-    const user = users && users.length > 0 ? users[0] : null;
+    const user = await scopedPrisma.user.findUnique({
+      where: { id: dto.userId },
+      select: { email: true, firstName: true, lastName: true },
+    });
 
     if (!user) {
       this.logger.warn(`User ${dto.userId} not found for external notifications`);

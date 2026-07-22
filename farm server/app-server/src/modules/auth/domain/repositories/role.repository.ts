@@ -3,4 +3,6 @@ export interface RoleRepository {
   findByName(name: string, organizationId: string | null): Promise<{ id: string; name: string } | null>;
   findDefaultRole(): Promise<{ id: string; name: string } | null>;
   findManyByIds(ids: string[]): Promise<Array<{ id: string; name: string; isSystem: boolean }>>;
+  getPermissionsForRole(roleId: string): Promise<string[]>;
+  setPermissions(roleId: string, permissionIds: string[]): Promise<void>;
 }

@@ -34,22 +34,19 @@ export class PushController {
     }
 
     try {
-      const existing = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT id FROM "DeviceToken" WHERE "userId" = $1 AND token = $2`,
-        userId, token
-      );
+      const existing = await prisma.deviceToken.findFirst({
+        where: { userId, token },
+      });
 
-      if (existing && existing.length > 0) {
-        await prisma.$executeRawUnsafe(
-          `UPDATE "DeviceToken" SET active = true, "updatedAt" = NOW() WHERE id = $1`,
-          existing[0].id
-        );
+      if (existing) {
+        await prisma.deviceToken.update({
+          where: { id: existing.id },
+          data: { active: true },
+        });
       } else {
-        await prisma.$executeRawUnsafe(
-          `INSERT INTO "DeviceToken" (id, "userId", token, platform, active, "createdAt", "updatedAt")
-           VALUES (gen_random_uuid()::text, $1, $2, $3, true, NOW(), NOW())`,
-          userId, token, platform
-        );
+        await prisma.deviceToken.create({
+          data: { userId, token, platform },
+        });
       }
 
       return { success: true, message: 'Device token registered successfully' };
@@ -72,10 +69,10 @@ export class PushController {
     }
 
     try {
-      await prisma.$executeRawUnsafe(
-        `UPDATE "DeviceToken" SET active = false, "updatedAt" = NOW() WHERE "userId" = $1 AND token = $2`,
-        userId, token
-      );
+      await prisma.deviceToken.updateMany({
+        where: { userId, token },
+        data: { active: false },
+      });
 
       return { success: true, message: 'Device token unregistered successfully' };
     } catch (error) {
