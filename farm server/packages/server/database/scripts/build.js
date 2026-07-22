@@ -44,12 +44,4 @@ if (needsGenerate) {
   console.log('Prisma client up to date, skipping generate.');
 }
 
-// Apply any pending migrations
-console.log('Applying pending migrations...');
-try {
-  execSync('npx prisma migrate deploy', { cwd: root, stdio: 'inherit' });
-} catch (e) {
-  console.warn('prisma migrate deploy failed — migrations may need manual intervention');
-}
-
 execSync('npx tsc', { cwd: root, stdio: 'inherit' });
