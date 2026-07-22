@@ -12,7 +12,11 @@ function run(label, cmd, args, opts = {}) {
 }
 
 async function main() {
-  // 1. Run prisma migrate deploy
+  // 1. Set default env vars for monolith deployment (single container)
+  if (!process.env.APP_SERVER_URL) process.env.APP_SERVER_URL = 'http://localhost:4001';
+  if (!process.env.CORS_ORIGINS) process.env.CORS_ORIGINS = 'http://localhost:4000,http://localhost:4001,http://localhost:4002,http://localhost:4003,http://localhost:4004';
+
+  // 2. Run prisma migrate deploy
   console.log('\n=== Running Prisma migrations ===');
   try {
     const { execSync } = require('child_process');
@@ -22,7 +26,7 @@ async function main() {
     console.warn('prisma migrate deploy failed — continuing anyway...');
   }
 
-  // 2. Start all services
+  // 3. Start all services
   console.log('\n=== Starting services ===');
 
   run('api-gateway', 'node', ['dist/main'], { cwd: path.join(root, 'farm server', 'api-gateway') });
