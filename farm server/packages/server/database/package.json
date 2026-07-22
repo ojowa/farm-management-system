@@ -8,12 +8,12 @@
     "build": "node scripts/build.js"
   },
   "dependencies": {
-    "@farm/auth-server": "*",
-    "@farm/env": "*",
-    "@farm/types-server": "*",
+    "@farm/auth-server": "^1.0.0",
+    "@farm/env": "^1.0.0",
+    "@farm/types-server": "^1.0.0",
     "@prisma/client": "^6.4.1",
     "bcryptjs": "^2.4.3",
-    "dotenv": "^17.4.2"
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "prisma": "^6.4.1",

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "private": true,
+  "packageManager": "npm@11.10.0",
   "workspaces": [
     "farm client/*",
     "farm client/packages/*",
@@ -10,12 +11,12 @@
     "farm server/packages/server/*"
   ],
   "scripts": {
-    "test": "turbo test",
-    "dev": "turbo dev",
-    "build": "turbo build --filter=!@farm/mobile",
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "cross-env NEXT_IGNORE_INCORRECT_LOCKFILE=true npm run build --workspaces --if-present",
     "build:mobile": "npm run build --workspace=@farm/mobile",
-    "start": "turbo build && turbo start",
-    "lint": "turbo lint",
+    "start": "npm run start --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write ."
   },
   "keywords": [],
@@ -26,8 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.21",
-    "tsx": "^4.22.4",
-    "turbo": "^2.10.4",
+    "cross-env": "^10.1.0",
     "typescript": "~5.8.3"
   }
 }

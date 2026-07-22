@@ -5,13 +5,12 @@
   "types": "./dist/index.d.ts",
   "private": true,
   "scripts": {
-    "build": "tsc"
+    "build": "npx tsc"
   },
   "dependencies": {
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@types/uuid": "^10.0.0",
     "typescript": "^5.8.3"
   }
 }

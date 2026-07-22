@@ -20,7 +20,7 @@
   },
   "private": true,
   "scripts": {
-    "build": "tsc"
+    "build": "npx tsc"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",

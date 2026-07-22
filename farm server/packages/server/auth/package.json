@@ -20,7 +20,7 @@
   },
   "private": true,
   "scripts": {
-    "build": "tsc"
+    "build": "npx tsc"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.2"

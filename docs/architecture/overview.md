@@ -4,14 +4,14 @@ Single source of truth for the Farm Management System architecture.
 
 ## Overview
 
-The Farm Management System is a multi-tenant SaaS platform built with a microservices architecture following Domain-Driven Design (DDD) principles. An API Gateway serves as the single entry point, routing requests to 13 backend services that share a PostgreSQL database.
+The Farm Management System is a multi-tenant SaaS platform built with a **modular monolith** architecture. An API Gateway serves as the single entry point, routing requests to a unified App Server (modular monolith) that contains all domain modules sharing a PostgreSQL database.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    Frontend Apps                         │
 │  ┌──────┐  ┌──────┐  ┌─────────┐  ┌──────────────────┐ │
 │  │ Web  │  │Admin │  │Console  │  │Mobile (Expo Go)  │ │
-│  │:3001 │  │:3000 │  │:3004    │  │:8082              │ │
+│  │:4004 │  │:4001 │  │:3004    │  │:8082              │ │
 │  └──┬───┘  └──┬───┘  └──┬──────┘  └───────┬──────────┘ │
 │     │ cookies │ cookies │ cookies         │ Bearer     │
 └─────┼─────────┼─────────┼─────────────────┼────────────┘
@@ -19,36 +19,32 @@ The Farm Management System is a multi-tenant SaaS platform built with a microser
 ┌─────▼─────────▼─────────▼─────────────────▼────────────┐
 │                  API Gateway :4000                       │
 │         JWT Auth · CORS · WebSocket · Routing           │
-└──────┬──────┬──────┬──────┬──────┬──────┬──────────────┘
-       │      │      │      │      │      │
-┌──────▼──┐┌──▼───┐┌─▼────┐│┌─────▼──┐┌──▼────────────┐
-│  Auth   ││ Farm ││Crop  │││Finance ││Notification    │
-│  :4001  ││:4002 ││:4011 │││:4006   ││:4005           │
-└─────────┘└──────┘└──────┘│└────────┘└────────────────┘
-                            │
-┌──────────────┐┌───────────▼┐┌──────────┐┌────────────┐
-│  Livestock   ││  Poultry   ││  Worker  ││  HR        │
-│  :4003       ││  :4004     ││  :4007   ││  :4012     │
-└──────────────┘└────────────┘└──────────┘└────────────┘
-
-┌──────────────┐┌────────────┐┌─────────────────────────┐
-│  Reporting   ││  Org       ││  Platform               │
-│  :4008       ││  :4009     ││  :4020                  │
-└──────────────┘└────────────┘└─────────────────────────┘
-
-                    ┌──────────────┐
-                    │  PostgreSQL  │
-                    │  :5432       │
-                    │  (42 models) │
-                    └──────────────┘
+└──────────────────┬──────────────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────────────┐
+│              App Server (Modular Monolith) :4001         │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │  Auth  │  Farm  │  Crop  │  Livestock  │  Poultry  │  │
+│  │  Finance  │  HR  │  Org  │  Notification │  Reporting│  │
+│  │  Platform  │  Realtime  │  Worker  │  Inventory │  │
+│  └────────────────────────────────────────────────────┘  │
+│           All modules share Prisma + PostgreSQL          │
+└─────────────────────────────┬────────────────────────────┘
+                              │
+                     ┌────────▼────────┐
+                     │  PostgreSQL     │
+                     │  :5432          │
+                     │  (42 models)    │
+                     └─────────────────┘
 ```
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Monorepo** | Turborepo + pnpm 10.27.0 workspaces |
-| **Backend** | NestJS 11.x (platform-service on 10.x) |
+| **Monorepo** | npm 11.10.0 workspaces |
+| **Backend** | NestJS 11.x (API Gateway + App Server) |
 | **Frontend** | Next.js 15.1.7 + React 19 (web/admin/console) |
 | **Mobile** | Expo SDK 54 + React Native 0.81.5 |
 | **Database** | PostgreSQL 16 + Prisma 6.4.1 |
@@ -64,48 +60,33 @@ The Farm Management System is a multi-tenant SaaS platform built with a microser
 ## Monorepo Structure
 
 ```
-├── apps/                    # Frontend applications
-│   ├── web/                 # Worker-facing (Next.js, port 3001)
-│   ├── admin/               # Farm owner/manager dashboard (Next.js, port 3000)
-│   ├── console/             # Platform admin console (Next.js, port 3004)
-│   └── mobile/              # Mobile app (Expo SDK 54, port 8082)
-├── services/                # Backend microservices (NestJS)
-│   ├── api-gateway/         # Central gateway (port 4000)
-│   ├── auth-service/        # Authentication (port 4001)
-│   ├── farm-service/        # Farm management (port 4002)
-│   ├── livestock-service/   # Livestock management (port 4003)
-│   ├── poultry-service/     # Poultry management (port 4004)
-│   ├── notification-service/# Notifications (port 4005)
-│   ├── finance-service/     # Finance tracking (port 4006)
-│   ├── worker-service/      # Worker management (port 4007)
-│   ├── reporting-service/   # Report generation (port 4008)
-│   ├── organization-service/# Multi-tenant orgs (port 4009)
-│   ├── crop-service/        # Crop lifecycle (port 4011)
-│   ├── hr-service/          # HR operations (port 4012)
-│   └── platform-service/    # Platform admin (port 4020)
-├── packages/                # Shared libraries
-│   ├── database/            # Prisma schema + client
-│   ├── auth/                # JWT, cookie helpers
-│   ├── types/               # TypeScript types
-│   ├── validation/          # Zod schemas
-│   ├── utils/               # Utility functions
-│   ├── domain-core/         # DDD base classes
-│   ├── api-client/          # Axios API client
-│   ├── ui/                  # Shared React components
-│   ├── hooks/               # Shared React hooks
-│   ├── ui-native/           # Shared React Native components
-│   └── domains/             # 10 bounded context packages
-│       ├── identity/        # User, Role, Permission, Organization
-│       ├── farm/            # Farm, Field
-│       ├── crop/            # Crop, CropCycle, CropStage
-│       ├── livestock/       # Livestock, HealthRecord, BreedingRecord
-│       ├── poultry/         # Flock, PoultryHouse, Pen
-│       ├── finance/         # Expense, Sale, Contract
-│       ├── hr/              # Worker, Task, Attendance, Leave
-│       ├── notification/    # Notification, DeviceToken
-│       ├── reporting/       # Report, ScheduledReport
-│       └── platform/        # FeatureFlag, SubscriptionPlan, AuditLog
-└── docs/                    # Documentation
+├── farm client/               # Frontend applications & client packages
+│   ├── apps/                  # Frontend apps
+│   │   ├── web/               # Worker-facing (Next.js, port 4004)
+│   │   ├── admin/             # Farm owner/manager dashboard (Next.js, port 4001)
+│   │   ├── console/           # Platform admin console (Next.js, port 3004)
+│   │   └── mobile/            # Mobile app (Expo SDK 54, port 8082)
+│   └── packages/              # Client shared libraries
+│       ├── api-client/        # Axios API client
+│       ├── auth/              # Auth types & helpers
+│       ├── hooks/             # Shared React hooks
+│       ├── types/             # TypeScript types
+│       ├── ui/                # Shared React components
+│       ├── ui-native/         # Shared React Native components
+│       └── validation/        # Zod schemas
+├── farm server/               # Backend services & server packages
+│   ├── api-gateway/           # Central gateway (port 4000)
+│   ├── app-server/            # Modular monolith (port 4001)
+│   └── packages/              # Server shared libraries
+│       ├── server/auth/       # JWT, guards, decorators
+│       ├── server/database/   # Prisma schema + client + RLS
+│       ├── server/env/        # Environment config loader
+│       ├── server/types/      # Server TypeScript types
+│       ├── server/utils/      # Utility functions
+│       ├── server/validation/ # Server Zod schemas
+│       └── server/domain-core/# DDD base classes (Entity, VO, Event)
+├── infra/                     # Infrastructure (Docker, etc.)
+└── docs/                      # Documentation
 ```
 
 ## Service Map
@@ -315,7 +296,7 @@ See [DATABASE.md](./DATABASE.md) for the full model reference.
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d   # PostgreSQL + PgBouncer
-pnpm dev                # All services
+npm run dev             # All services
 ```
 
 ### Production (Render.com)

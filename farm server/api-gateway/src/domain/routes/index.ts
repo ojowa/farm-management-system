@@ -31,64 +31,65 @@ function resolveTarget(serviceName: string): string {
 let cachedRoutes: ServiceRoute[] | null = null;
 
 function buildRoutes(): ServiceRoute[] {
-  const auth = resolveTarget('auth-service');
-  const farm = resolveTarget('farm-service');
-  const notification = resolveTarget('notification-service');
-  const finance = resolveTarget('finance-service');
-  const reporting = resolveTarget('reporting-service');
-  const organization = resolveTarget('organization-service');
-  const hr = resolveTarget('hr-service');
-  const platform = resolveTarget('platform-service');
+  const appServer = resolveTarget('app-server');
 
   return [
-    // Identity & Access Context
-    { path: '/auth', target: auth, service: 'auth-service', rewrite: false, public: true },
-    { path: '/roles', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/permissions', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/admin', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/org-admin', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/api-keys', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/platform-roles', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/platform-permissions', target: auth, service: 'auth-service', rewrite: false },
-    { path: '/platform-api-keys', target: auth, service: 'auth-service', rewrite: false },
+    // All routes go to the App Server (modular monolith)
+    { path: '/auth', target: appServer, service: 'app-server', rewrite: false, public: true },
+    { path: '/roles', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/permissions', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/admin', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/org-admin', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/api-keys', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-roles', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-permissions', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-api-keys', target: appServer, service: 'app-server', rewrite: false },
 
     // Farm Management Context (unified: farm + crop + livestock + poultry)
-    { path: '/farms', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/fields', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/crops', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/crop-cycles', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/lifecycle', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/irrigation', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/pest-disease', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/yield', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/livestock', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/poultry', target: farm, service: 'farm-service', rewrite: true },
-    { path: '/medications', target: farm, service: 'farm-service', rewrite: true },
+    { path: '/farms', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/fields', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/crops', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/crop-cycles', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/lifecycle', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/irrigation', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/pest-disease', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/yield', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/livestock', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/poultry', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/medications', target: appServer, service: 'app-server', rewrite: false },
 
     // Notification Context
-    { path: '/notifications', target: notification, service: 'notification-service', rewrite: true },
+    { path: '/notifications', target: appServer, service: 'app-server', rewrite: false },
 
     // Finance Context
-    { path: '/finance', target: finance, service: 'finance-service', rewrite: true },
+    { path: '/finance', target: appServer, service: 'app-server', rewrite: false },
 
     // Reporting Context
-    { path: '/reporting', target: reporting, service: 'reporting-service', rewrite: true },
+    { path: '/reporting', target: appServer, service: 'app-server', rewrite: false },
 
     // Organization Management Context
-    { path: '/organizations', target: organization, service: 'organization-service', rewrite: true },
+    { path: '/organizations', target: appServer, service: 'app-server', rewrite: false },
 
     // HR & Workforce Context (includes workers)
-    { path: '/workers', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/tasks', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/attendance', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/leave', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/shifts', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/shift-assignments', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/messages', target: hr, service: 'hr-service', rewrite: true },
-    { path: '/correspondence', target: hr, service: 'hr-service', rewrite: true },
+    { path: '/workers', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/tasks', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/attendance', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/leave', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/shifts', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/shift-assignments', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/messages', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/correspondence', target: appServer, service: 'app-server', rewrite: false },
 
-    // Platform Administration Context (platform-service uses /api global prefix)
-    { path: '/api', target: platform, service: 'platform-service', rewrite: false },
+    // Platform Administration Context (platform module uses individual @Controller('platform-*'))
+    { path: '/platform-features', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-subscriptions', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-organizations', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-options', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-health', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-broadcasts', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-audit', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-config', target: appServer, service: 'app-server', rewrite: false },
+    { path: '/platform-users', target: appServer, service: 'app-server', rewrite: false },
   ];
 }
 

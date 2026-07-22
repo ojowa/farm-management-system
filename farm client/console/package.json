@@ -9,9 +9,10 @@
     "lint": "echo \"No linter configured\""
   },
   "dependencies": {
-    "@farm/api-client": "*",
-    "@farm/auth": "*",
-    "@farm/types": "*",
+    "@farm/api-client": "^1.0.0",
+    "@farm/auth": "^1.0.0",
+    "@farm/types": "^1.0.0",
+    "@farm/ui": "^1.0.0",
     "@tanstack/react-query": "^5.101.2",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
@@ -26,7 +27,6 @@
     "@types/node": "^22.13.5",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
-    "autoprefixer": "^10.5.2",
     "eslint": "^9.21.0",
     "eslint-config-next": "15.1.7",
     "postcss": "^8.5.15",
