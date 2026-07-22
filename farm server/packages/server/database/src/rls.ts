@@ -61,7 +61,7 @@ export function withRLS(prisma: PrismaClient) {
   return prisma.$extends({
     query: {
       $allModels: {
-        async $allOperations({ operation, args, query }) {
+        async $allOperations({ operation, args, query }: { operation: string; args: any; query: (args: any) => Promise<any> }) {
           const store = asyncLocalStorage.getStore();
           const orgId = store?.organizationId ?? null;
           const superAdmin = store?.isSuperAdmin ?? false;

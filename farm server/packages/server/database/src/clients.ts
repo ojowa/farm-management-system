@@ -42,7 +42,7 @@ export const prisma = basePrisma;
 export const scopedPrisma = withRLS(basePrisma).$extends({
   query: {
     $allModels: {
-      async create({ args, query }) {
+      async create({ args, query }: { args: any; query: (args: any) => Promise<any> }) {
         const orgId = getOrganizationId();
         const data = args.data as any;
         if (orgId && data && !data.organizationId) {
@@ -50,7 +50,7 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
         }
         return query(args);
       },
-      async createMany({ args, query }) {
+      async createMany({ args, query }: { args: any; query: (args: any) => Promise<any> }) {
         const orgId = getOrganizationId();
         if (orgId && args.data) {
           const items = Array.isArray(args.data) ? args.data : [args.data];
@@ -60,7 +60,7 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
         }
         return query(args);
       },
-      async upsert({ args, query }) {
+      async upsert({ args, query }: { args: any; query: (args: any) => Promise<any> }) {
         const orgId = getOrganizationId();
         const create = args.create as any;
         if (orgId) {
