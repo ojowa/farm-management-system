@@ -275,7 +275,7 @@ export class PlatformUserService {
     ]);
 
     return {
-      users: users.map((u) => ({
+      users: users.map((u: any) => ({
         id: u.id,
         email: u.email,
         firstName: u.firstName,
@@ -409,7 +409,7 @@ export class PlatformOrganizationService {
     ]);
 
     return {
-      organizations: orgs.map((o) => ({
+      organizations: orgs.map((o: any) => ({
         id: o.id,
         name: o.name,
         slug: o.slug,
@@ -438,7 +438,7 @@ export class PlatformOrganizationService {
       ...org,
       userCount: org._count.users,
       farmCount: org._count.farms,
-      users: org.users.map((u) => ({
+      users: org.users.map((u: any) => ({
         id: u.id,
         email: u.email,
         firstName: u.firstName,
@@ -544,7 +544,7 @@ export class PlatformOrganizationService {
     });
 
     return {
-      members: members.map((m) => ({
+      members: members.map((m: any) => ({
         id: m.id,
         userId: m.userId,
         roleInOrg: m.roleInOrg,
@@ -678,10 +678,10 @@ export class PlatformOptionsService {
     ]);
 
     return {
-      plans: plans.map((p) => ({ value: p.name, label: p.displayName, id: p.id })),
-      statuses: distinctStatuses.map((s) => ({ value: s.subscriptionStatus, label: s.subscriptionStatus })),
-      broadcastTypes: distinctBroadcastTypes.map((t) => ({ value: t.type, label: t.type })),
-      roles: roles.map((r) => ({ value: r.name, label: r.description || r.name, id: r.id })),
+      plans: plans.map((p: any) => ({ value: p.name, label: p.displayName, id: p.id })),
+      statuses: distinctStatuses.map((s: any) => ({ value: s.subscriptionStatus, label: s.subscriptionStatus })),
+      broadcastTypes: distinctBroadcastTypes.map((t: any) => ({ value: t.type, label: t.type })),
+      roles: roles.map((r: any) => ({ value: r.name, label: r.description || r.name, id: r.id })),
     };
   }
 
@@ -692,7 +692,7 @@ export class PlatformOptionsService {
       select: { id: true, name: true, displayName: true },
       orderBy: { sortOrder: 'asc' },
     });
-    return { plans: plans.map((p) => ({ value: p.name, label: p.displayName, id: p.id })) };
+    return { plans: plans.map((p: any) => ({ value: p.name, label: p.displayName, id: p.id })) };
   }
 
   async getSubscriptionStatuses() {
@@ -701,7 +701,7 @@ export class PlatformOptionsService {
       select: { subscriptionStatus: true },
       distinct: ['subscriptionStatus'],
     });
-    return { statuses: statuses.map((s) => ({ value: s.subscriptionStatus, label: s.subscriptionStatus })) };
+    return { statuses: statuses.map((s: any) => ({ value: s.subscriptionStatus, label: s.subscriptionStatus })) };
   }
 
   async getBroadcastTypes() {
@@ -710,7 +710,7 @@ export class PlatformOptionsService {
       select: { type: true },
       distinct: ['type'],
     });
-    return { types: types.map((t) => ({ value: t.type, label: t.type })) };
+    return { types: types.map((t: any) => ({ value: t.type, label: t.type })) };
   }
 
   async getRoles() {
@@ -719,7 +719,7 @@ export class PlatformOptionsService {
       select: { id: true, name: true, description: true },
       orderBy: { name: 'asc' },
     });
-    return { roles: roles.map((r) => ({ value: r.name, label: r.description || r.name, id: r.id })) };
+    return { roles: roles.map((r: any) => ({ value: r.name, label: r.description || r.name, id: r.id })) };
   }
 
   async getPlatformAdminRoles() {
@@ -728,6 +728,6 @@ export class PlatformOptionsService {
       where: { isPlatformAdmin: true },
       select: { id: true, name: true, description: true },
     });
-    return { roles: roles.map((r) => ({ value: r.name, label: r.description || r.name })) };
+    return { roles: roles.map((r: any) => ({ value: r.name, label: r.description || r.name })) };
   }
 }

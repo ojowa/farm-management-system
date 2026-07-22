@@ -35,7 +35,7 @@ export class PrismaReportRepository implements ReportRepository {
     const total = await prisma.syncQueue.count({ where });
 
     const reports: Report[] = records
-      .map((r) => {
+      .map((r: any) => {
         const payload = (() => { try { return r.payload ? JSON.parse(r.payload) : {}; } catch { return {}; } })();
         return {
           id: r.id,
@@ -47,7 +47,7 @@ export class PrismaReportRepository implements ReportRepository {
           updatedAt: r.createdAt,
         };
       })
-      .filter((r) => !farmId || r.farmId === farmId);
+      .filter((r: any) => !farmId || r.farmId === farmId);
 
     return { reports, total, page, totalPages: Math.ceil(total / limit) } as any;
   }

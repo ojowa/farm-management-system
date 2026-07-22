@@ -89,7 +89,7 @@ export class PrismaSubscriptionPlanRepository implements SubscriptionPlanReposit
 
   async findMany(): Promise<SubscriptionPlan[]> {
     const plans = await prisma.subscriptionPlan.findMany({ orderBy: { sortOrder: 'asc' } });
-    return plans.map(p => p as unknown as SubscriptionPlan);
+    return plans.map((p: any) => p as unknown as SubscriptionPlan);
   }
 
   async create(data: Omit<SubscriptionPlan, 'id' | 'createdAt' | 'updatedAt'>): Promise<SubscriptionPlan> {

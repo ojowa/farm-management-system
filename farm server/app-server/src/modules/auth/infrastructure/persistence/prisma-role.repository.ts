@@ -40,7 +40,7 @@ export class PrismaRoleRepository implements RoleRepository {
       where: { roleId },
       select: { permission: { select: { name: true } } },
     });
-    return rolePermissions.map((rp) => rp.permission.name);
+    return rolePermissions.map((rp: any) => rp.permission.name);
   }
 
   async setPermissions(roleId: string, permissionIds: string[]): Promise<void> {
