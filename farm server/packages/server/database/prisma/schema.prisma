@@ -1133,6 +1133,22 @@ model YieldRecord {
 
 // ── Priority 3: Automated/Scheduled Reports ─────────────
 
+model Report {
+  id              String   @id @default(uuid())
+  organizationId  String
+  farmId          String?
+  title           String
+  status          String   @default("pending")
+  parameters      Json     @default("{}")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([status])
+}
+
 model ScheduledReport {
   id              String   @id @default(uuid())
   organizationId  String

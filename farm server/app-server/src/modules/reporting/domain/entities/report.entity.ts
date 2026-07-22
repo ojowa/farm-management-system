@@ -1,5 +1,6 @@
 export interface Report {
   id: string;
+  organizationId: string;
   farmId: string;
   title: string;
   status: string;

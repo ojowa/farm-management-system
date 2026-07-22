@@ -6,17 +6,17 @@ import { Report, ScheduledReport } from '../../domain/entities/report.entity';
 @Injectable()
 export class PrismaReportRepository implements ReportRepository {
   async findById(id: string): Promise<Report | null> {
-    const record = await prisma.syncQueue.findUnique({ where: { id } });
-    if (!record || record.entity !== 'report') return null;
-    const payload = (() => { try { return record.payload ? JSON.parse(record.payload) : {}; } catch { return {}; } })();
+    const row = await prisma.report.findUnique({ where: { id } });
+    if (!row) return null;
     return {
-      id: record.id,
-      farmId: payload.farmId || '',
-      title: payload.title || '',
-      status: payload.status || 'pending',
-      parameters: payload.parameters || {},
-      createdAt: record.createdAt,
-      updatedAt: record.createdAt,
+      id: row.id,
+      organizationId: row.organizationId,
+      farmId: row.farmId || '',
+      title: row.title,
+      status: row.status,
+      parameters: (row.parameters as Record<string, any>) || {},
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     };
   }
 
@@ -29,46 +29,47 @@ export class PrismaReportRepository implements ReportRepository {
   }): Promise<{ reports: Report[]; total: number }> {
     const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 20, farmId } = options || {};
     const skip = (page - 1) * limit;
-    const where: any = { entity: 'report' };
+    const where: any = { organizationId };
+    if (farmId) where.farmId = farmId;
 
-    const records = await prisma.syncQueue.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit });
-    const total = await prisma.syncQueue.count({ where });
+    const [rows, total] = await Promise.all([
+      prisma.report.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.report.count({ where }),
+    ]);
 
-    const reports: Report[] = records
-      .map((r: any) => {
-        const payload = (() => { try { return r.payload ? JSON.parse(r.payload) : {}; } catch { return {}; } })();
-        return {
-          id: r.id,
-          farmId: payload.farmId || '',
-          title: payload.title || '',
-          status: payload.status || 'pending',
-          parameters: payload.parameters || {},
-          createdAt: r.createdAt,
-          updatedAt: r.createdAt,
-        };
-      })
-      .filter((r: any) => !farmId || r.farmId === farmId);
+    const reports: Report[] = rows.map((row: any) => ({
+      id: row.id,
+      organizationId: row.organizationId,
+      farmId: row.farmId || '',
+      title: row.title,
+      status: row.status,
+      parameters: (row.parameters as Record<string, any>) || {},
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
 
     return { reports, total, page, totalPages: Math.ceil(total / limit) } as any;
   }
 
   async create(data: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>): Promise<Report> {
-    const record = await prisma.syncQueue.create({
+    const row = await prisma.report.create({
       data: {
-        entity: 'report',
-        entityId: undefined as any,
-        operation: 'create',
-        payload: JSON.stringify({ farmId: data.farmId, title: data.title, status: data.status, parameters: data.parameters }),
+        organizationId: data.organizationId,
+        farmId: data.farmId || null,
+        title: data.title,
+        status: data.status || 'pending',
+        parameters: data.parameters || {},
       },
     });
     return {
-      id: record.id,
-      farmId: data.farmId,
-      title: data.title,
-      status: data.status,
-      parameters: data.parameters,
-      createdAt: record.createdAt,
-      updatedAt: record.createdAt,
+      id: row.id,
+      organizationId: row.organizationId,
+      farmId: row.farmId || '',
+      title: row.title,
+      status: row.status,
+      parameters: (row.parameters as Record<string, any>) || {},
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     };
   }
 
@@ -76,15 +77,29 @@ export class PrismaReportRepository implements ReportRepository {
     const existing = await this.findById(id);
     if (!existing) throw new Error('Report not found');
     const merged = { ...existing, ...data };
-    await prisma.syncQueue.update({
+    const row = await prisma.report.update({
       where: { id },
-      data: { operation: 'update', payload: JSON.stringify({ farmId: merged.farmId, title: merged.title, status: merged.status, parameters: merged.parameters }) },
+      data: {
+        farmId: merged.farmId || null,
+        title: merged.title,
+        status: merged.status,
+        parameters: merged.parameters || {},
+      },
     });
-    return merged as Report;
+    return {
+      id: row.id,
+      organizationId: row.organizationId,
+      farmId: row.farmId || '',
+      title: row.title,
+      status: row.status,
+      parameters: (row.parameters as Record<string, any>) || {},
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   }
 
   async delete(id: string): Promise<void> {
-    await prisma.syncQueue.delete({ where: { id } });
+    await prisma.report.delete({ where: { id } });
   }
 }
 

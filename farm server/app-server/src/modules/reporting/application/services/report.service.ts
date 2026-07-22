@@ -25,6 +25,7 @@ export class ReportApplicationService {
   async createReport(data: { farmId: string; title: string; status?: string; parameters?: Record<string, any> },  organizationId: string) {
     if (!data?.farmId || !data?.title) throw new BadRequestException('farmId and title are required');
     return this.reportRepo.create({
+      organizationId,
       farmId: data.farmId,
       title: data.title,
       status: data.status ?? 'pending',
