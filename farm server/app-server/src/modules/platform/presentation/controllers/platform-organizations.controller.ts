@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { PlatformOrganizationService } from '../../application/services/platform.service';
 import { PlatformAdminGuard } from '../guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
@@ -22,31 +22,31 @@ export class PlatformOrganizationsController {
 
   @Post()
   @Permission('platform.manage')
-  create(@Body() body: any, @Request() req: any) {
+  create(@Body() body: any, @Req() req: any) {
     return this.orgService.createOrganization(body, req.user.id);
   }
 
   @Patch(':id')
   @Permission('platform.manage')
-  update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
     return this.orgService.updateOrganization(id, body, req.user.id);
   }
 
   @Delete(':id')
   @Permission('platform.manage')
-  delete(@Param('id') id: string, @Request() req: any) {
+  delete(@Param('id') id: string, @Req() req: any) {
     return this.orgService.deleteOrganization(id, req.user.id);
   }
 
   @Post(':id/suspend')
   @Permission('platform.manage')
-  suspend(@Param('id') id: string, @Request() req: any) {
+  suspend(@Param('id') id: string, @Req() req: any) {
     return this.orgService.suspendOrganization(id, req.user.id);
   }
 
   @Post(':id/activate')
   @Permission('platform.manage')
-  activate(@Param('id') id: string, @Request() req: any) {
+  activate(@Param('id') id: string, @Req() req: any) {
     return this.orgService.activateOrganization(id, req.user.id);
   }
 
@@ -64,7 +64,7 @@ export class PlatformOrganizationsController {
 
   @Patch(':id/subscription')
   @Permission('platform.manage')
-  updateSubscription(@Param('id') id: string, @Body() body: { subscriptionPlan?: string; subscriptionStatus?: string }, @Request() req: any) {
+  updateSubscription(@Param('id') id: string, @Body() body: { subscriptionPlan?: string; subscriptionStatus?: string }, @Req() req: any) {
     return this.orgService.updateOrganizationSubscription(id, body, req.user.id);
   }
 }

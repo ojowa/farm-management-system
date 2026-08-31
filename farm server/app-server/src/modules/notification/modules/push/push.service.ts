@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { scopedPrisma as prisma } from '@farm/database';
+import { DeviceTokenRepository } from '../../domain/repositories/notification.repository';
 
 export interface PushPayload {
   title: string;
@@ -15,7 +15,10 @@ export class PushService {
   private readonly logger = new Logger(PushService.name);
   private fcmInitialized = false;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject('DeviceTokenRepository') private readonly deviceTokenRepo: DeviceTokenRepository,
+  ) {
     this.initializeFCM();
   }
 
@@ -37,10 +40,7 @@ export class PushService {
   }
 
   async sendToUser(userId: string, payload: PushPayload): Promise<number> {
-    const tokens = await prisma.deviceToken.findMany({
-      where: { userId, active: true },
-      select: { id: true, token: true },
-    });
+    const tokens = await this.deviceTokenRepo.findByUserId(userId);
 
     if (!tokens || tokens.length === 0) {
       this.logger.debug(`No device tokens found for user ${userId}`);
@@ -155,10 +155,7 @@ export class PushService {
 
   private async deactivateToken(tokenId: string): Promise<void> {
     try {
-      await prisma.deviceToken.update({
-        where: { id: tokenId },
-        data: { active: false },
-      });
+      await this.deviceTokenRepo.deactivate(tokenId);
       this.logger.log(`Deactivated invalid token: ${tokenId}`);
     } catch (error) {
       this.logger.error(`Failed to deactivate token ${tokenId}:`, error);

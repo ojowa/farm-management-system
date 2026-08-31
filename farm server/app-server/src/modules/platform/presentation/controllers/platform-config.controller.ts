@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards, Req } from '@nestjs/common';
 import { PlatformConfigService } from '../../application/services/platform.service';
 import { PlatformAdminGuard } from '../guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
@@ -22,7 +22,7 @@ export class PlatformConfigController {
 
   @Patch()
   @Permission('platform.manage')
-  update(@Body() body: { configs: Array<{ key: string; value: string; description?: string; category?: string }> }, @Request() req: any) {
+  update(@Body() body: { configs: Array<{ key: string; value: string; description?: string; category?: string }> }, @Req() req: any) {
     return this.configService.upsertConfigs(body.configs, req.user.id);
   }
 }

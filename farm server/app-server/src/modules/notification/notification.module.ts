@@ -4,9 +4,10 @@ import { NotificationApplicationService } from './application/services/notificat
 import { PrismaNotificationRepository, PrismaDeviceTokenRepository } from './infrastructure/persistence/prisma-notification.repository';
 import { NotificationGateway } from './infrastructure/messaging/notification-gateway';
 import { EmailModule } from './modules/email/email.module';
+import { PushModule } from './modules/push/push.module';
 
 @Module({
-  imports: [EmailModule],
+  imports: [EmailModule, PushModule],
   controllers: [NotificationController, DeviceController],
   providers: [
     NotificationApplicationService,

@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { PlatformBroadcastService } from '../../application/services/platform.service';
 import { PlatformAdminGuard } from '../guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
@@ -22,19 +22,19 @@ export class PlatformBroadcastsController {
 
   @Post()
   @Permission('platform.manage')
-  create(@Body() body: { title: string; message: string; type?: string }, @Request() req: any) {
+  create(@Body() body: { title: string; message: string; type?: string }, @Req() req: any) {
     return this.broadcastService.createBroadcast(body, req.user.id);
   }
 
   @Patch(':id')
   @Permission('platform.manage')
-  update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
     return this.broadcastService.updateBroadcast(id, body, req.user.id);
   }
 
   @Delete(':id')
   @Permission('platform.manage')
-  delete(@Param('id') id: string, @Request() req: any) {
+  delete(@Param('id') id: string, @Req() req: any) {
     return this.broadcastService.deleteBroadcast(id, req.user.id);
   }
 }

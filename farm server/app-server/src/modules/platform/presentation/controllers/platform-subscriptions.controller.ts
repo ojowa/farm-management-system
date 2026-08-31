@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { PlatformSubscriptionService } from '../../application/services/platform.service';
 import { PlatformAdminGuard, SuperAdminGuard } from '../guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
@@ -36,7 +36,7 @@ export class PlatformSubscriptionsController {
       features?: any;
       sortOrder?: number;
     },
-    @Request() req: any,
+    @Req() req: any,
   ) {
     return this.subscriptionService.createPlan(body, req.user.id);
   }
@@ -58,14 +58,14 @@ export class PlatformSubscriptionsController {
       isActive?: boolean;
       sortOrder?: number;
     },
-    @Request() req: any,
+    @Req() req: any,
   ) {
     return this.subscriptionService.updatePlan(id, body, req.user.id);
   }
 
   @Delete('plans/:id')
   @Permission('platform.manage')
-  deletePlan(@Param('id') id: string, @Request() req: any) {
+  deletePlan(@Param('id') id: string, @Req() req: any) {
     return this.subscriptionService.deletePlan(id, req.user.id);
   }
 }
