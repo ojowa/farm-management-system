@@ -1,7 +1,9 @@
-import { Controller, Post, Body, Logger, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Body, Logger, Req, UseGuards, ForbiddenException } from '@nestjs/common';
+import { JwtAuthGuard } from '@farm/auth-server/nestjs';
 import { EventBus } from './event-bus';
 import { RealtimeEvent } from './realtime.gateway';
 
+@UseGuards(JwtAuthGuard)
 @Controller('realtime')
 export class RealtimeController {
   private logger = new Logger(RealtimeController.name);
@@ -9,8 +11,8 @@ export class RealtimeController {
   constructor(private readonly eventBus: EventBus) {}
 
   @Post('emit')
-  handleEmitEvent(@Body() event: RealtimeEvent, @Req() req?: any) {
-    const role = req?.headers?.['x-user-role'];
+  handleEmitEvent(@Body() event: RealtimeEvent, @Req() req: any) {
+    const role = req.user?.role;
     if (role !== 'PLATFORM_ADMIN') {
       throw new ForbiddenException('Only platform admins can broadcast realtime events');
     }

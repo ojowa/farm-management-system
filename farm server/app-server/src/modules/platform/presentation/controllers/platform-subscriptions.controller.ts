@@ -4,7 +4,7 @@ import { PlatformAdminGuard, SuperAdminGuard } from '../guards/platform-admin.gu
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 
 @Controller('platform-subscriptions')
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PlatformAdminGuard)
 export class PlatformSubscriptionsController {
   constructor(private readonly subscriptionService: PlatformSubscriptionService) {}
 

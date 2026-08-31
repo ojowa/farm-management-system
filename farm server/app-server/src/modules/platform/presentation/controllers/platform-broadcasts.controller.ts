@@ -4,7 +4,7 @@ import { PlatformAdminGuard } from '../guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 
 @Controller('platform-broadcasts')
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PlatformAdminGuard)
 export class PlatformBroadcastsController {
   constructor(private readonly broadcastService: PlatformBroadcastService) {}
 

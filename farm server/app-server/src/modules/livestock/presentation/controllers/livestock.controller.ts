@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UsePipes,
   HttpCode,
   HttpStatus,
@@ -91,7 +92,7 @@ export class HealthController {
   @Get('livestock/:livestockId')
   async getHealthHistory(
     @Param('livestockId') livestockId: string,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.getHealthHistory(livestockId, getOrgIdFromRequest(req));
   }
@@ -102,7 +103,7 @@ export class HealthController {
   async addHealthRecord(
     @Param('livestockId') livestockId: string,
     @Body() body: any,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.addHealthRecord({
       ...body,
@@ -117,7 +118,7 @@ export class HealthController {
   @Get('vaccinations/:livestockId')
   async getVaccinationSchedule(
     @Param('livestockId') livestockId: string,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.getVaccinationSchedule(livestockId, getOrgIdFromRequest(req));
   }
@@ -128,7 +129,7 @@ export class HealthController {
   async scheduleVaccination(
     @Param('livestockId') livestockId: string,
     @Body() body: any,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.scheduleVaccination({
       ...body,
@@ -147,7 +148,7 @@ export class HealthController {
 
   @Permission('livestock.read')
   @Get('overdue')
-  async getOverdueVaccinations(req?: any) {
+  async getOverdueVaccinations(@Req() req: any) {
     return this.livestockService.getOverdueVaccinations(getOrgIdFromRequest(req));
   }
 }
@@ -159,14 +160,14 @@ export class BreedingController {
 
   @Permission('livestock.read')
   @Get()
-  async findAll(@Query('status') status?: string, req?: any) {
+  async findAll(@Query('status') status?: string, @Req() req?: any) {
     return this.livestockService.getBreedingRecords(getOrgIdFromRequest(req), status);
   }
 
   @Permission('livestock.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() body: any, req?: any) {
+  async create(@Body() body: any, @Req() req?: any) {
     return this.livestockService.createBreedingRecord({
       ...body,
       organizationId: getOrgIdFromRequest(req),
@@ -183,7 +184,7 @@ export class BreedingController {
 
   @Permission('livestock.read')
   @Get('upcoming')
-  async findUpcoming(req?: any) {
+  async findUpcoming(@Req() req?: any) {
     return this.livestockService.getUpcomingBreedingRecords(getOrgIdFromRequest(req));
   }
 }
@@ -197,7 +198,7 @@ export class WeightController {
   @Get('livestock/:livestockId')
   async getLivestockWeightHistory(
     @Param('livestockId') livestockId: string,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.getLivestockWeightHistory(livestockId, getOrgIdFromRequest(req));
   }
@@ -208,7 +209,7 @@ export class WeightController {
   async recordLivestockWeight(
     @Param('livestockId') livestockId: string,
     @Body() body: any,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.recordLivestockWeight({
       ...body,
@@ -222,7 +223,7 @@ export class WeightController {
   @Get('flock/:flockId')
   async getFlockWeightHistory(
     @Param('flockId') flockId: string,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.getFlockWeightHistory(flockId, getOrgIdFromRequest(req));
   }
@@ -233,7 +234,7 @@ export class WeightController {
   async recordFlockWeight(
     @Param('flockId') flockId: string,
     @Body() body: any,
-    req?: any,
+    @Req() req: any,
   ) {
     return this.livestockService.recordFlockWeight({
       ...body,

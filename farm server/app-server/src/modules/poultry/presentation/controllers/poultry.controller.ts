@@ -35,7 +35,7 @@ import {
 } from '@farm/validation-server';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/poultry-houses')
+@Controller('poultry-houses')
 export class PoultryHousesController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -90,7 +90,7 @@ export class PoultryHousesController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/pens')
+@Controller('pens')
 export class PensController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -145,7 +145,7 @@ export class PensController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/breeds')
+@Controller('breeds')
 export class BreedsController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -200,7 +200,7 @@ export class BreedsController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/flocks')
+@Controller('flocks')
 export class FlocksController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -261,7 +261,7 @@ export class FlocksController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/feeding-records')
+@Controller('feeding-records')
 export class FeedingRecordsController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -316,7 +316,7 @@ export class FeedingRecordsController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/vaccination-records')
+@Controller('vaccination-records')
 export class VaccinationRecordsController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -371,7 +371,7 @@ export class VaccinationRecordsController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/mortality-records')
+@Controller('mortality-records')
 export class MortalityRecordsController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
@@ -424,7 +424,7 @@ export class MortalityRecordsController {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
-@Controller('api/medications')
+@Controller('medications')
 export class MedicationsController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
 
