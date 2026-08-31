@@ -17,8 +17,9 @@
     "build:mobile": "npm run build --workspace=@farm/mobile",
     "build:services": "npm run build --workspace=@farm/app-server",
     "start": "node scripts/start.js",
-    "start:microservices": "node scripts/start.js",
+    "start:dev": "node scripts/start.js --dev",
     "start:services": "node scripts/start.js",
+    "start:services:dev": "node scripts/start.js --dev",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write ."
   },
