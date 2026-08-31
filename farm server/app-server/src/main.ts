@@ -10,10 +10,6 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GatewayExceptionFilter } from './shared/filters/gateway-exception.filter';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
-import { RequestLoggingInterceptor } from './shared/interceptors/request-logging.interceptor';
-import { TimeoutInterceptor } from './shared/interceptors/timeout.interceptor';
-import { ResponseTransformInterceptor } from './shared/interceptors/response-transform.interceptor';
-import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -32,12 +28,6 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new GatewayExceptionFilter(), new AllExceptionsFilter());
-  app.useGlobalInterceptors(
-    app.get(RequestLoggingInterceptor),
-    app.get(TimeoutInterceptor),
-    app.get(ResponseTransformInterceptor),
-    app.get(AuditLogInterceptor),
-  );
 
   app.use(cookieParser());
   app.use(helmet({
@@ -89,6 +79,7 @@ async function bootstrap() {
     .addTag('reports', 'Reporting -> reporting-service:4019')
     .addTag('crops', 'Crop lifecycle -> crop-service:4020')
     .addTag('realtime', 'WebSocket realtime -> realtime-service:4021')
+    .addTag('api', 'API router -> api-service:4022')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -100,7 +91,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   new Logger('AppServer').log(`App Server running on port ${port} (0.0.0.0)`);
   new Logger('AppServer').log(
-    `Microservices: auth:4010, farm:4011, livestock:4012, poultry:4013, finance:4014, hr:4015, notification:4016, organization:4017, platform:4018, reporting:4019, crop:4020, realtime:4021`,
+    `Microservices: auth:4010, farm:4011, livestock:4012, poultry:4013, finance:4014, hr:4015, notification:4016, organization:4017, platform:4018, reporting:4019, crop:4020, realtime:4021, api:4022`,
   );
 }
 bootstrap();

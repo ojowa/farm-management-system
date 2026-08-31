@@ -5,7 +5,7 @@
   "description": "Microservices - each domain module runs as an independent NestJS HTTP server",
   "scripts": {
     "build": "nest build",
-    "build:all": "nest build app-server auth-service farm-service livestock-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service",
+    "build:all": "nest build app-server auth-service farm-service livestock-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service api-service",
     "start": "node dist/main",
     "start:auth": "node dist/microservices/auth.main",
     "start:farm": "node dist/microservices/farm.main",
@@ -19,7 +19,8 @@
     "start:reporting": "node dist/microservices/reporting.main",
     "start:crop": "node dist/microservices/crop.main",
     "start:realtime": "node dist/microservices/realtime.main",
-    "start:all-services": "concurrently --names auth,farm,livestock,poultry,finance,hr,notif,org,platform,reporting,crop,realtime --kill-others \"npm run start:auth\" \"npm run start:farm\" \"npm run start:livestock\" \"npm run start:poultry\" \"npm run start:finance\" \"npm run start:hr\" \"npm run start:notification\" \"npm run start:organization\" \"npm run start:platform\" \"npm run start:reporting\" \"npm run start:crop\" \"npm run start:realtime\"",
+    "start:api": "node dist/microservices/api.main",
+    "start:all-services": "concurrently --names auth,farm,livestock,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"npm run start:auth\" \"npm run start:farm\" \"npm run start:livestock\" \"npm run start:poultry\" \"npm run start:finance\" \"npm run start:hr\" \"npm run start:notification\" \"npm run start:organization\" \"npm run start:platform\" \"npm run start:reporting\" \"npm run start:crop\" \"npm run start:realtime\" \"npm run start:api\"",
     "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main"

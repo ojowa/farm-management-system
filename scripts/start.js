@@ -54,6 +54,7 @@ async function main() {
     { name: 'reporting-service',   script: 'dist/microservices/reporting.main.js',   port: 4019 },
     { name: 'crop-service',        script: 'dist/microservices/crop.main.js',        port: 4020 },
     { name: 'realtime-service',    script: 'dist/microservices/realtime.main.js',    port: 4021 },
+    { name: 'api-service',         script: 'dist/microservices/api.main.js',         port: 4022 },
   ];
 
   for (const svc of services) {
@@ -93,7 +94,8 @@ async function main() {
   console.log('  - Reporting Service:    http://localhost:4019');
   console.log('  - Crop Service:         http://localhost:4020');
   console.log('  - Realtime Service:     http://localhost:4021');
-  console.log('\nApp Server (entry point): http://localhost:4000');
+  console.log('  - API Router:           http://localhost:4022');
+  console.log('\nApp Server (monolith):   http://localhost:4000');
   console.log('\nFrontend Apps:');
   console.log('  - Console:              http://localhost:3001');
   console.log('  - Admin (merged):       http://localhost:3002');

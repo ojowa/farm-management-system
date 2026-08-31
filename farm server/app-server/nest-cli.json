@@ -125,6 +125,15 @@
       "compilerOptions": {
         "tsConfigPath": "tsconfig.json"
       }
+    },
+    "api-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "api.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
     }
   }
 }
