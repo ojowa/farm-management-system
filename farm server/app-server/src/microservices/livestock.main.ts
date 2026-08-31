@@ -8,6 +8,7 @@ import { Module } from '@nestjs/common';
 import { LivestockModule } from '../modules/livestock/livestock.module';
 import { rlsMiddleware } from '@farm/database';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 
 @Module({
   imports: [
@@ -21,13 +22,14 @@ async function bootstrap() {
   const port = Number(process.env.LIVESTOCK_SERVICE_PORT) || 4012;
   const app = await NestFactory.create(LivestockHttpModule, { logger: ['warn', 'error'] });
   app.use(cookieParser());
+  app.use(helmet());
   app.use(rlsMiddleware);
   app.enableCors({
     origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3000').split(',').map(s => s.trim()).filter(Boolean),
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  await app.listen(port);
-  console.log(`Livestock Service (HTTP) running on port ${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Livestock Service running on http://0.0.0.0:${port}`);
 }
 bootstrap();

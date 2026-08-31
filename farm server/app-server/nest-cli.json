@@ -9,15 +9,6 @@
     "watchAssets": false
   },
   "projects": {
-    "app-server": {
-      "type": "application",
-      "root": "src",
-      "entryFile": "main",
-      "sourceRoot": "src",
-      "compilerOptions": {
-        "tsConfigPath": "tsconfig.json"
-      }
-    },
     "auth-service": {
       "type": "application",
       "root": "src/microservices",
