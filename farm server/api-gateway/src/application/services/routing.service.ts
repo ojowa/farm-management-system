@@ -31,29 +31,14 @@ export class RoutingService {
     return false;
   }
 
-  getTargetUrl(path: string): string | null {
-    const route = this.findRoute(path);
-    return route?.target || null;
-  }
-
-  shouldRewrite(path: string): boolean {
-    const route = this.findRoute(path);
-    if (!route) return false;
-    if (route.rewrite === false) return false;
-
-    const routePath = route.path;
-    return path.startsWith(routePath) && path !== routePath;
-  }
-
-  rewritePath(originalPath: string): string {
-    const route = this.findRoute(originalPath);
-    if (!route || route.rewrite === false) return originalPath;
-    return originalPath.replace(new RegExp(`^${route.path}`), '') || '/';
-  }
-
   getServiceName(path: string): string {
     const route = this.findRoute(path);
     return route?.service || 'unknown';
+  }
+
+  getServiceBaseUrl(path: string): string | null {
+    const route = this.findRoute(path);
+    return route?.baseUrl || null;
   }
 
   getAllRoutes(): ServiceRoute[] {

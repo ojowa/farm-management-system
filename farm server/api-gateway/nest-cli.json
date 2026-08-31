@@ -5,6 +5,19 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "builder": "tsc",
-    "tsConfigPath": "tsconfig.json"
+    "tsConfigPath": "tsconfig.json",
+    "assets": [],
+    "watchAssets": false
+  },
+  "projects": {
+    "api-gateway": {
+      "type": "application",
+      "root": "src",
+      "entryFile": "main",
+      "sourceRoot": "src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    }
   }
 }

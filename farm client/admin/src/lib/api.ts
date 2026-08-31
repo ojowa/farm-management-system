@@ -1,10 +1,69 @@
 import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@farm/api-client';
+import axios from 'axios';
 
 const config: APIClientConfig = {
   baseURL: process.env.NEXT_PUBLIC_API_URL!,
+  timeout: 15000,
+  withCredentials: true,
 };
 
 const client: FarmManagementClient = createFarmManagementClient(config);
+
+// ── Token refresh setup (cookie-based auth) ────────────────────
+// For cookie-based auth, the server handles token rotation via Set-Cookie
+// headers. The client just needs to call /auth/refresh on 401 and the
+// server will issue new cookies.
+{
+  let isRefreshing = false;
+  let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e?: unknown) => void }> = [];
+
+  const processQueue = (error: unknown) => {
+    failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
+    failedQueue = [];
+  };
+
+  client.client.interceptors.response.use(
+    (res) => res,
+    async (error) => {
+      const originalRequest = error.config;
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        const isRefreshCall = originalRequest.url?.includes('/auth/refresh');
+        const isLoginPath = typeof window !== 'undefined' &&
+          ['/login', '/register'].includes(window.location.pathname);
+
+        if (isRefreshCall || isLoginPath) {
+          return Promise.reject(error);
+        }
+
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then(() => client.client(originalRequest))
+            .catch((err) => Promise.reject(err));
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+        try {
+          await axios.post('/auth/refresh', {}, { withCredentials: true });
+          processQueue(null);
+          return client.client(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError);
+          if (typeof window !== 'undefined' && !['/login', '/register'].includes(window.location.pathname)) {
+            window.location.href = '/login';
+          }
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+}
+
 export const apiClient = client.client;
 
 // ── Re-export standard modules from @farm/api-client ───────
@@ -47,6 +106,9 @@ export const lowStockAPI = client.lowStock;
 export const orgAdminAPI = client.orgAdmin;
 export const rolesAPI = client.roles;
 export const adminAPI = client.admin;
+
+// ── Auth API (from web) ──────────────────────────────────
+export const authAPI = client.auth;
 
 // ── Admin-specific extras (not in @farm/api-client) ────────
 export const reportingAPI = reportsAPI;
@@ -132,4 +194,9 @@ export const settingsAPI = {
   createApiKey: (data: any) => apiClient.post('/api-keys', data),
   toggleApiKey: (id: string) => apiClient.patch(`/api-keys/${id}/toggle`),
   deleteApiKey: (id: string) => apiClient.delete(`/api-keys/${id}`),
+  // Device token management (from web)
+  registerDeviceToken: (token: string, platform: 'web' | 'ios' | 'android' = 'web') =>
+    apiClient.post('/devices/tokens', { token, platform }),
+  unregisterDeviceToken: (token: string) =>
+    apiClient.delete('/devices/tokens', { data: { token } }),
 };

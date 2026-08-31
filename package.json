@@ -13,9 +13,12 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "dev": "npm run dev --workspaces --if-present",
-    "build": "cross-env NEXT_IGNORE_INCORRECT_LOCKFILE=true npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build -w @farm/api-gateway && npm run build -w @farm/app-server && npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth && npm run build -w @farm/web && npm run build -w @farm/console && npm run build -w @farm/admin",
+    "build": "cross-env NEXT_IGNORE_INCORRECT_LOCKFILE=true npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build -w @farm/api-gateway && npm run build -w @farm/app-server && npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth && npm run build -w @farm/console && npm run build -w @farm/admin",
     "build:mobile": "npm run build --workspace=@farm/mobile",
+    "build:services": "npm run build -w @farm/app-server && npm run build -w @farm/api-gateway",
     "start": "node scripts/start.js",
+    "start:microservices": "node scripts/start.js",
+    "start:services": "node scripts/start.js",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write ."
   },

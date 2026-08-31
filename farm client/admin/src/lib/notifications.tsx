@@ -15,6 +15,7 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   data?: Record<string, any>;
+  link?: string;
 }
 
 interface NotificationContextValue {
@@ -32,7 +33,7 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { socket, isConnected, on } = useSocket();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -108,8 +109,27 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const cleanup = on('notification:new', handleNewNotification);
-    return cleanup;
+    const handleNotificationRead = (data: { id: string }) => {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === data.id ? { ...n, read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    };
+
+    const handleAllRead = () => {
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    };
+
+    const cleanup1 = on('notification:new', handleNewNotification);
+    const cleanup2 = on('notification:read', handleNotificationRead);
+    const cleanup3 = on('notification:all-read', handleAllRead);
+
+    return () => {
+      cleanup1();
+      cleanup2();
+      cleanup3();
+    };
   }, [isConnected, socket, on, toast]);
 
   return (

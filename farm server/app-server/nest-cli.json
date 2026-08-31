@@ -4,6 +4,127 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "tsConfigPath": "tsconfig.json"
+    "tsConfigPath": "tsconfig.json",
+    "assets": [],
+    "watchAssets": false
+  },
+  "projects": {
+    "app-server": {
+      "type": "application",
+      "root": "src",
+      "entryFile": "main",
+      "sourceRoot": "src",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "auth-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "auth.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "farm-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "farm.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "livestock-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "livestock.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "poultry-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "poultry.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "finance-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "finance.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "hr-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "hr.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "notification-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "notification.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "organization-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "organization.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "platform-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "platform.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "reporting-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "reporting.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "crop-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "crop.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
+    "realtime-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "realtime.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    }
   }
 }
