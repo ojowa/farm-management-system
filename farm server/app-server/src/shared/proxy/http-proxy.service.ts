@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Request, Response } from 'express';
 import { signServiceToken, type VerifiedUser } from '@farm/auth-server';
-import { ServiceRoute } from '../../domain/routes';
+import { ServiceRoute } from './routes';
 
 export interface ServiceConfig {
   name: string;

@@ -18,11 +18,9 @@ export class ResponseTransformInterceptor<T> implements NestInterceptor<T, Trans
 
     return next.handle().pipe(
       map((data) => {
-        // If the response is already wrapped (from proxy), return as-is
         if (data && typeof data === 'object' && 'success' in data && 'timestamp' in data) {
           return data;
         }
-        // If the response has data+meta shape, preserve it
         if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
           return {
             success: true,

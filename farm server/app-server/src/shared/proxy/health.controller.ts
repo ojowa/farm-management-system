@@ -1,5 +1,5 @@
-import { Controller, Get, Req } from '@nestjs/common';
-import { RoutingService } from '../../application/services/routing.service';
+import { Controller, Get } from '@nestjs/common';
+import { RoutingService } from './routing.service';
 
 @Controller('health')
 export class HealthController {
@@ -10,7 +10,7 @@ export class HealthController {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'api-gateway',
+      service: 'app-server',
     };
   }
 

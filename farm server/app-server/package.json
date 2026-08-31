@@ -31,6 +31,7 @@
     "@farm/types-server": "^1.0.0",
     "@farm/utils": "^1.0.0",
     "@farm/validation-server": "^1.0.0",
+    "@nestjs/axios": "^3.1.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",

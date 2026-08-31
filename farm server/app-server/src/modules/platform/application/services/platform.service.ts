@@ -198,7 +198,7 @@ export class PlatformHealthService {
       { name: 'organization-service', url: `${process.env.ORGANIZATION_SERVICE_URL}/health` },
       { name: 'hr-service', url: `${process.env.HR_SERVICE_URL}/health` },
       { name: 'platform-service', url: `${process.env.PLATFORM_SERVICE_URL}/health-check` },
-      { name: 'api-gateway', url: `${process.env.API_GATEWAY_URL}/health` },
+      { name: 'app-server', url: `${process.env.APP_SERVER_URL || 'http://localhost:4000'}/health` },
     ];
 
     const results = [];

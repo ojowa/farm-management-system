@@ -1,6 +1,6 @@
 import { Controller, All, Req, Res, Next } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { GatewayProxyService } from '../infrastructure/routing/http-proxy.service';
+import { GatewayProxyService } from './http-proxy.service';
 
 @Controller()
 export class GatewayProxyController {

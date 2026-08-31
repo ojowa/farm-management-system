@@ -4,7 +4,6 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const dbDir = path.join(root, 'farm server', 'packages', 'server', 'database');
 const appServerDir = path.join(root, 'farm server', 'app-server');
-const apiGatewayDir = path.join(root, 'farm server', 'api-gateway');
 
 function run(label, cmd, args, opts = {}) {
   const child = spawn(cmd, args, { cwd: opts.cwd || root, stdio: 'inherit', shell: true, ...opts });
@@ -28,30 +27,18 @@ async function main() {
     console.warn('prisma migrate deploy failed — continuing anyway...');
   }
 
-  // 3. Build all packages and app-server (compiles all microservice entry points)
+  // 3. Build all packages and app-server
   console.log('\n=== Building Packages & App Server ===');
   try {
     const { execSync } = require('child_process');
-    // Build shared packages first
     execSync('npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database', { cwd: root, stdio: 'inherit' });
-    // Build app-server
     execSync('npm run build', { cwd: appServerDir, stdio: 'inherit' });
     console.log('App Server built successfully.');
   } catch (e) {
     console.warn('build failed — continuing anyway...');
   }
 
-  // 4. Build API Gateway
-  console.log('\n=== Building API Gateway ===');
-  try {
-    const { execSync } = require('child_process');
-    execSync('npm run build', { cwd: apiGatewayDir, stdio: 'inherit' });
-    console.log('API Gateway built successfully.');
-  } catch (e) {
-    console.warn('API Gateway build failed — continuing anyway...');
-  }
-
-  // 5. Start all microservices (HTTP mode)
+  // 4. Start all microservices (HTTP mode)
   console.log('\n=== Starting Microservices (HTTP) ===');
 
   const services = [
@@ -80,14 +67,14 @@ async function main() {
     });
   }
 
-  // 6. Start API Gateway (port 4000)
-  console.log('\n=== Starting API Gateway (HTTP Reverse Proxy) ===');
-  run('api-gateway', 'node', ['dist/main'], {
-    cwd: apiGatewayDir,
-    env: { ...process.env, API_GATEWAY_PORT: '4000' },
+  // 5. Start App Server (port 4000 — replaces API Gateway)
+  console.log('\n=== Starting App Server (port 4000) ===');
+  run('app-server', 'node', ['dist/main'], {
+    cwd: appServerDir,
+    env: { ...process.env, APP_SERVER_PORT: '4000' },
   });
 
-  // 7. Start Frontend Applications
+  // 6. Start Frontend Applications
   console.log('\n=== Starting Frontend Applications ===');
   run('console', 'npx', ['next', 'start', '-p', '3001'], { cwd: path.join(root, 'farm client', 'console') });
   run('admin', 'npx', ['next', 'start', '-p', '3002'], { cwd: path.join(root, 'farm client', 'admin') });
@@ -106,7 +93,7 @@ async function main() {
   console.log('  - Reporting Service:    http://localhost:4019');
   console.log('  - Crop Service:         http://localhost:4020');
   console.log('  - Realtime Service:     http://localhost:4021');
-  console.log('\nAPI Gateway (HTTP Reverse Proxy): http://localhost:4000');
+  console.log('\nApp Server (entry point): http://localhost:4000');
   console.log('\nFrontend Apps:');
   console.log('  - Console:              http://localhost:3001');
   console.log('  - Admin (merged):       http://localhost:3002');

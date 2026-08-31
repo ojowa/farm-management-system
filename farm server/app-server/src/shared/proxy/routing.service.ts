@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { getRoutes, PUBLIC_PATHS, ServiceRoute } from '../../domain/routes';
+import { getRoutes, PUBLIC_PATHS, ServiceRoute } from './routes';
 
 @Injectable()
 export class RoutingService {
