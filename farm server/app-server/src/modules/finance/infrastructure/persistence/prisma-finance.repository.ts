@@ -35,6 +35,10 @@ export class PrismaExpenseRepository implements ExpenseRepository {
     return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
+  async findMany(options: { where: Record<string, any> }): Promise<Expense[]> {
+    return scopedPrisma.expense.findMany(options);
+  }
+
   async create(data: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
     return scopedPrisma.expense.create({ data });
   }
@@ -71,6 +75,10 @@ export class PrismaSaleRepository implements SaleRepository {
       scopedPrisma.sale.count({ where }),
     ]);
     return { data, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async findMany(options: { where: Record<string, any> }): Promise<Sale[]> {
+    return scopedPrisma.sale.findMany(options);
   }
 
   async create(data: Omit<Sale, 'id' | 'createdAt'>): Promise<Sale> {
@@ -193,5 +201,9 @@ export class PrismaMarketListingRepository implements MarketListingRepository {
 export class PrismaFarmLookupRepository implements FarmLookupRepository {
   async findById(id: string): Promise<{ id: string } | null> {
     return scopedPrisma.farm.findUnique({ where: { id }, select: { id: true } });
+  }
+
+  async findMany(options: { where: Record<string, any>; select?: Record<string, true> }): Promise<any[]> {
+    return scopedPrisma.farm.findMany({ where: options.where, select: options.select });
   }
 }

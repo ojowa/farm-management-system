@@ -1,6 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import axios from 'axios';
 import { Request, Response } from 'express';
 import { signServiceToken, type VerifiedUser } from '@farm/auth-server';
 import { ServiceRoute } from './routes';
@@ -73,8 +72,6 @@ export class GatewayProxyService {
     },
   ];
 
-  constructor(private readonly httpService: HttpService) {}
-
   findService(path: string): ServiceConfig | undefined {
     const segment = path.split('/').filter(Boolean)[0];
     return this.services.find((s) => s.routes.includes(segment));
@@ -98,7 +95,7 @@ export class GatewayProxyService {
 
     const targetUrl = `${service.baseUrl}/${path}`;
     const headers: Record<string, string> = {
-      'Content-Type': req.headers['content-type'] || 'application/json',
+      'Content-Type': (req.headers['content-type'] as string) || 'application/json',
       'x-user-id': verifiedUser?.id || '',
       'x-user-role': verifiedUser?.role || '',
       'x-organization-id': verifiedUser?.organizationId || '',
@@ -117,16 +114,14 @@ export class GatewayProxyService {
     }
 
     try {
-      const response = await firstValueFrom(
-        this.httpService.request({
-          method: req.method as any,
-          url: targetUrl,
-          data: req.body,
-          params: req.query,
-          headers,
-          timeout: 30000,
-        }),
-      );
+      const response = await axios({
+        method: req.method as any,
+        url: targetUrl,
+        data: req.body,
+        params: req.query,
+        headers,
+        timeout: 30000,
+      });
       return {
         success: true,
         data: response.data,

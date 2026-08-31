@@ -7,6 +7,7 @@ import {
 } from './presentation/controllers/finance.controller';
 import { ProfitabilityController } from './presentation/controllers/profitability.controller';
 import { FinanceApplicationService } from './application/services/finance.service';
+import { ProfitabilityService } from './application/services/profitability.service';
 import {
   PrismaExpenseRepository,
   PrismaSaleRepository,
@@ -23,6 +24,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
   controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, ProfitabilityController],
   providers: [
     FinanceApplicationService,
+    ProfitabilityService,
     FinanceEventService,
     { provide: 'ExpenseRepository', useClass: PrismaExpenseRepository },
     { provide: 'SaleRepository', useClass: PrismaSaleRepository },

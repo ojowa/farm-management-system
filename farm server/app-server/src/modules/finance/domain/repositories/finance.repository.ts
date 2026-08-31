@@ -9,6 +9,7 @@ export interface ExpenseRepository {
     page?: number;
     limit?: number;
   }): Promise<{ data: Expense[]; total: number; page: number; totalPages: number }>;
+  findMany(options: { where: Record<string, any> }): Promise<Expense[]>;
   create(data: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense>;
   update(id: string, data: Partial<Expense>): Promise<Expense>;
   delete(id: string): Promise<void>;
@@ -23,6 +24,7 @@ export interface SaleRepository {
     page?: number;
     limit?: number;
   }): Promise<{ data: Sale[]; total: number; page: number; totalPages: number }>;
+  findMany(options: { where: Record<string, any> }): Promise<Sale[]>;
   create(data: Omit<Sale, 'id' | 'createdAt'>): Promise<Sale>;
   update(id: string, data: Partial<Sale>): Promise<Sale>;
   delete(id: string): Promise<void>;
@@ -73,4 +75,5 @@ export interface MarketListingRepository {
 
 export interface FarmLookupRepository {
   findById(id: string): Promise<{ id: string } | null>;
+  findMany(options: { where: Record<string, any>; select?: Record<string, true> }): Promise<any[]>;
 }

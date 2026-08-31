@@ -1,5 +1,4 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
-import { HttpModule } from '@nestjs/axios';
 import { GatewayProxyService } from './proxy/http-proxy.service';
 import { GatewayProxyController } from './proxy/proxy.controller';
 import { HealthController } from './proxy/health.controller';
@@ -13,7 +12,6 @@ import { ResponseTransformInterceptor } from './interceptors/response-transform.
 import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 
 @Module({
-  imports: [HttpModule.register({ timeout: 30000, maxRedirects: 3 })],
   controllers: [GatewayProxyController, HealthController],
   providers: [
     GatewayProxyService,
