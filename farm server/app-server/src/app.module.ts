@@ -15,15 +15,11 @@ import { OrganizationModule } from './modules/organization/organization.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
-import { ApiModule } from './modules/api/api.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
     EventEmitterModule.forRoot(),
-
-    // API gateway (proxy, middleware, interceptors, health)
-    ApiModule,
 
     // Domain modules
     AuthModule,

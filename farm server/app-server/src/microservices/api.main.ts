@@ -7,7 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ApiModule } from '../modules/api/api.module';
-import { GatewayExceptionFilter } from '../shared/filters/gateway-exception.filter';
+import { GatewayExceptionFilter } from '../modules/api/filters/gateway-exception.filter';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 
