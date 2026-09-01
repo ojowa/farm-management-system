@@ -5,7 +5,7 @@ Guidelines for contributing to the Farm Management System.
 ## Prerequisites
 
 - Node.js 20.18+
-- pnpm 10.27+ (via corepack)
+- npm
 - PostgreSQL 16+
 - Git
 
@@ -14,12 +14,11 @@ Guidelines for contributing to the Farm Management System.
 ```bash
 git clone <repo-url>
 cd "Farm Management System"
-corepack enable
-pnpm install
+npm install
 docker compose -f infra/docker-compose.yml up -d
-pnpm db:push
-pnpm db:seed
-pnpm dev
+npm run db:push
+npm run db:seed
+npm run dev
 ```
 
 See [GETTING_STARTED.md](./GETTING_STARTED.md) for details.
@@ -121,15 +120,15 @@ const farms = await this.prisma.farm.findMany();
 
 ```bash
 # All tests
-pnpm test
+npm test
 
 # Specific service
-pnpm --filter @farm/auth-service test
+npm test --workspace=@farm/auth-service
 
 # Specific app
-pnpm --filter @farm/admin test
-pnpm --filter @farm/web test
-pnpm --filter @farm/mobile test
+npm test --workspace=@farm/admin
+npm test --workspace=@farm/web
+npm test --workspace=@farm/mobile
 ```
 
 ### Test Frameworks
@@ -175,7 +174,7 @@ Add crop cycle stage tracking
 
 1. Create a feature branch from `main`
 2. Make your changes
-3. Run `pnpm build` and `pnpm test`
+3. Run `npm run build` and `npm test`
 4. Commit with descriptive messages
 5. Open a PR with a clear description
 6. Wait for CI checks to pass

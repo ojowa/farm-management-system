@@ -7,7 +7,7 @@ Get the Farm Management System running locally in under 10 minutes.
 | Requirement | Version | Check |
 |-------------|---------|-------|
 | Node.js | 20.18+ | `node --version` |
-| pnpm | 10.27+ | `pnpm --version` |
+| npm | 10.27+ | `npm --version` |
 | PostgreSQL | 16+ | `psql --version` |
 | Git | 2.x+ | `git --version` |
 | Docker | Optional | `docker --version` |
@@ -18,11 +18,8 @@ Get the Farm Management System running locally in under 10 minutes.
 git clone <repo-url>
 cd "Farm Management System"
 
-# Enable pnpm (required — packageManager is set in package.json)
-corepack enable
-
 # Install all dependencies
-pnpm install
+npm install
 ```
 
 ## 2. Database Setup
@@ -51,10 +48,10 @@ cp .env.example .env
 # DATABASE_URL=postgresql://postgres:<password>@localhost:5432/FMS
 
 # Push schema to database
-pnpm db:push
+npm run db:push
 
 # Seed with demo data (7 users + farm data)
-pnpm db:seed
+npm run db:seed
 ```
 
 ## 3. Environment Variables
@@ -89,7 +86,7 @@ AUTH_SERVICE_PORT=4001
 ## 4. Start Development
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 This starts all 13 backend services and the web frontends via Turborepo.
@@ -119,7 +116,7 @@ start http://localhost:3001
 
 ```bash
 cd apps/mobile
-pnpm start
+npm start
 ```
 
 See [MOBILE.md](./MOBILE.md) for Expo Go setup and emulator instructions.
@@ -146,7 +143,7 @@ All users share the password: `password123`
 taskkill /F /IM node.exe
 
 # Regenerate Prisma client
-pnpm db:generate
+npm run db:generate
 ```
 
 ### Port already in use
@@ -159,12 +156,12 @@ taskkill /F /PID <pid>
 ### Auth 500 error on login
 Ensure the `User` entity includes `passwordHash` in the domain mapping. See `services/auth-service/src/domain/entities/user.entity.ts`.
 
-### pnpm install fails
+### npm install fails
 ```bash
 # Clear cache and retry
-pnpm store prune
+npm cache clean --force
 rm -rf node_modules
-pnpm install
+npm install
 ```
 
 ### Database connection refused

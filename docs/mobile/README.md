@@ -17,8 +17,8 @@ node verify-api.js
 
 ### 3. Start the App
 ```bash
-pnpm install
-pnpm start
+npm install
+npm start
 # Scan QR code with phone camera, or press 'i' for iOS / 'a' for Android
 ```
 

@@ -6,7 +6,7 @@
 - [ ] Backend APIs are running on configured URL
 - [ ] CORS headers are properly configured on backend
 - [ ] `.env.local` file is created with correct `EXPO_PUBLIC_API_URL`
-- [ ] Mobile app dependencies are installed: `pnpm install`
+- [ ] Mobile app dependencies are installed: `npm install`
 
 ### Authentication Tests
 - [ ] User can login with valid credentials

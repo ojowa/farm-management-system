@@ -81,14 +81,12 @@ apps/mobile/
 ## 🚀 Installation & Setup
 
 ### Prerequisites
-- Node.js 16+ and npm/pnpm
+- Node.js 16+ and npm
 - Expo CLI: `npm install -g expo-cli`
 
 ### Install Dependencies
 ```bash
 cd apps/mobile
-pnpm install
-# or
 npm install
 ```
 
@@ -103,8 +101,6 @@ EXPO_PUBLIC_API_GATEWAY=http://localhost:4000
 
 #### Development
 ```bash
-pnpm start
-# or
 npm start
 ```
 
@@ -123,7 +119,7 @@ eas build --platform ios
 eas build --platform android
 
 # Web
-pnpm web
+npm run web
 ```
 
 ## 📱 Screens Details

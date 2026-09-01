@@ -24,10 +24,10 @@ Configuration:
 ### Start All Services
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
-Uses Turborepo to start all 13 backend services and frontend apps concurrently.
+Uses npm workspaces to start all 13 backend services and frontend apps concurrently.
 
 ---
 
@@ -106,23 +106,22 @@ Each service builds workspace dependencies before its own build:
 
 ```yaml
 buildCommand: |
-  cd ../.. && pnpm install
-  pnpm --filter @farm/database build
-  pnpm --filter @farm/types build
-  pnpm --filter @farm/utils build
-  pnpm --filter @farm/validation build
-  pnpm --filter @farm/auth build
-  pnpm --filter @farm/<service-domain> build
-  pnpm --filter @farm/<service> build
+  cd ../.. && npm install
+  npm run build --workspace=@farm/database
+  npm run build --workspace=@farm/types
+  npm run build --workspace=@farm/utils
+  npm run build --workspace=@farm/validation
+  npm run build --workspace=@farm/auth
+  npm run build --workspace=@farm/<service-domain>
+  npm run build --workspace=@farm/<service>
 ```
 
-### Corepack Setup
+### npm Setup
 
-Render uses corepack for pnpm:
+Render uses npm:
 
 ```yaml
 buildCommand: |
-  corepack prepare pnpm@10.27.0 --activate
   # ... rest of build
 ```
 
@@ -140,20 +139,20 @@ buildCommand: |
 
 ```bash
 # Development: push schema changes
-pnpm db:push
+npm run db:push
 
 # Production: use migrations
 npx prisma migrate deploy
 
 # Generate client after migration
-pnpm db:generate
+npm run db:generate
 ```
 
 ### Seeding Production
 
 ```bash
 # Only run once on initial setup
-pnpm db:seed
+npm run db:seed
 ```
 
 ---
@@ -212,7 +211,7 @@ POST /platform/health/check   # Trigger health check
 Builds and tests the admin app:
 
 1. Checkout code
-2. Install pnpm 10.27.0 + Node 22
+2. Install npm + Node 22
 3. Install dependencies
 4. Build workspace dependencies
 5. Typecheck
@@ -247,11 +246,11 @@ psql "postgresql://postgres:<password>@localhost:5432/FMS"
 
 ```bash
 # Regenerate after schema changes
-pnpm db:generate
+npm run db:generate
 ```
 
 ### Build fails on Render
 
-- Ensure corepack is configured: `corepack prepare pnpm@10.27.0 --activate`
+- Ensure npm is installed and available
 - Check build logs for missing workspace dependencies
 - Verify `DATABASE_URL` is set correctly

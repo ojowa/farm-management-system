@@ -17,19 +17,19 @@ PostgreSQL 16 with Prisma 6.4.1 ORM. 42 models across 11 domains. All services s
 
 ```bash
 # Push schema to database (dev)
-pnpm db:push
+npm run db:push
 
 # Generate Prisma client
-pnpm db:generate
+npm run db:generate
 
 # Seed demo data
-pnpm db:seed
+npm run db:seed
 
 # Open Prisma Studio (visual editor)
-pnpm db:studio
+npm run db:studio
 
 # Reset database (WARNING: deletes all data)
-pnpm db:push --force-reset
+npm run db:push -- --force-reset
 ```
 
 ---

@@ -50,7 +50,7 @@ ifconfig | grep "inet "
 
 ```bash
 cd apps/mobile
-pnpm start
+npm start
 ```
 
 This starts the Expo dev server on port 8082.
@@ -84,7 +84,7 @@ New-NetFirewallRule -DisplayName "Farm Expo" -Direction Inbound -LocalPort 8082 
 
 ```bash
 cd apps/mobile
-pnpm android
+npm run android
 ```
 
 ### iOS Simulator (macOS only)
@@ -94,7 +94,7 @@ pnpm android
 
 ```bash
 cd apps/mobile
-pnpm ios
+npm run ios
 ```
 
 ## Project Structure

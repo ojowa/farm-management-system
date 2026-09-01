@@ -14,7 +14,7 @@ Common issues and their solutions.
 taskkill /F /IM node.exe
 
 # Regenerate Prisma client
-pnpm db:generate
+npm run db:generate
 ```
 
 ---
@@ -104,15 +104,15 @@ mkdir -p apps/web/.next/server/app
 
 ---
 
-## pnpm Install Fails
+## npm Install Fails
 
 **Symptom:** `ERR_PNPM_META_FETCH_FAIL`
 
 **Solution:**
 ```bash
-pnpm store prune
+npm cache clean --force
 rm -rf node_modules
-pnpm install
+npm install
 ```
 
 ---
@@ -156,9 +156,9 @@ docker compose -f infra/docker-compose.yml up -d
 
 ## Build Fails on Render
 
-**Symptom:** Build fails during `pnpm install` or `nest build`.
+**Symptom:** Build fails during `npm install` or `nest build`.
 
 **Solution:**
-1. Ensure `corepack prepare pnpm@10.27.0 --activate` is in build command
+1. Ensure npm is installed and available in build command
 2. Check workspace dependencies are built in correct order
 3. Verify `DATABASE_URL` and `JWT_SECRET` env vars are set
