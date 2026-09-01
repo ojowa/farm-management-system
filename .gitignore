@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-.pnpm-store/
 jspm_packages/
 web_modules/
 
@@ -35,7 +34,6 @@ packages/*/src/**/*.d.ts.map
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 *.log
 *.err
 *.sqlite

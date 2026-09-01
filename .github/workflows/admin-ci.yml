@@ -14,33 +14,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.27.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm install
 
       - name: Build workspace dependencies
-        run: pnpm turbo build --filter=@farm/admin...
+        run: npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth
 
       - name: Type check
-        run: pnpm tsc --noEmit
-        working-directory: apps/admin
+        run: npx tsc --noEmit
+        working-directory: farm-client/admin
 
       - name: Run tests
-        run: pnpm test
-        working-directory: apps/admin
+        run: npm test
+        working-directory: farm-client/admin
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: admin-build
-          path: apps/admin/.next
+          path: farm-client/admin/.next
           retention-days: 7
