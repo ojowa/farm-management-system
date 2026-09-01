@@ -13,7 +13,6 @@ function hashToken(token: string): string {
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.error('[Auth Service] JWT_SECRET environment variable is required');
     throw new Error('JWT_SECRET environment variable is required');
   }
   return secret;
@@ -41,16 +40,13 @@ export class AuthService {
     if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Invalid credentials');
-    console.log(`[Auth Service] Login successful for ${data.email}`);
     if (user.twoFactorEnabled) {
       const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: '5m' });
-      console.log(`[Auth Service] MFA required for ${data.email}`);
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
-    console.log(`[Auth Service] Returning tokens for ${data.email}`);
     return { requiresMFA: false, user: userWithoutPassword, accessToken, refreshToken };
   }
 
@@ -154,7 +150,6 @@ export class AuthService {
       secret,
       { expiresIn: '15m' }
     );
-    console.log(`[Auth Service] Generated access token for user ${user.id} (role: ${user.role?.name || user.roleName})`);
     return token;
   }
 
@@ -175,20 +170,15 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    console.log(`[Auth Service] getProfile called with userId: ${userId}`);
     if (!userId) {
-      console.error(`[Auth Service] getProfile: userId is falsy!`);
       throw new UnauthorizedException('User ID is missing from token');
     }
     try {
       const user = await this.userRepo.findById(userId);
-      console.log(`[Auth Service] getProfile: user found - ${user?.id} (${user?.email})`);
       if (!user) throw new NotFoundException('User not found');
       const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
-      console.log(`[Auth Service] getProfile: returning user without password`);
       return userWithoutPassword;
     } catch (err) {
-      console.error(`[Auth Service] getProfile error:`, err);
       throw err;
     }
   }

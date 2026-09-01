@@ -132,12 +132,12 @@ describe('API Contract Tests', () => {
 
   describe('Auth API Contracts', () => {
     it('login accepts valid credentials', () => {
-      const validInput = { email: 'test@example.com', password: 'password123' };
+      const validInput = { email: 'test@example.com', password: 'Test!Pass123' };
       expect(() => LoginSchema.parse(validInput)).not.toThrow();
     });
 
     it('login rejects invalid email', () => {
-      const invalidInput = { email: 'not-an-email', password: 'password123' };
+      const invalidInput = { email: 'not-an-email', password: 'Test!Pass123' };
       expect(() => LoginSchema.parse(invalidInput)).toThrow();
     });
 
@@ -149,8 +149,8 @@ describe('API Contract Tests', () => {
     it('register accepts valid data', () => {
       const validInput = {
         email: 'test@example.com',
-        password: 'password123',
-        confirmPassword: 'password123',
+        password: 'Test!Pass123',
+        confirmPassword: 'Test!Pass123',
         fullName: 'John Doe',
         organizationName: 'Test Farm',
       };
@@ -184,7 +184,7 @@ describe('API Contract Tests', () => {
     });
 
     it('password reset accepts valid token and password', () => {
-      const validInput = { token: 'reset-token-123', newPassword: 'newpassword123' };
+      const validInput = { token: 'reset-token-123', newPassword: 'NewPass!123' };
       expect(() => PasswordResetSchema.parse(validInput)).not.toThrow();
     });
 

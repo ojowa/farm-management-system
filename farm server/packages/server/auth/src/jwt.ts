@@ -58,15 +58,12 @@ const resolveServiceSecret = (): string => {
 export const verifyAccessToken = (token: string): VerifiedUser => {
   try {
     const secret = resolveSecret();
-    console.log(`[JWT] Verifying access token with JWT_SECRET length: ${secret.length}`);
     const decoded = verify(token, secret, { algorithms: ['HS256'] }) as any;
 
     if (!decoded || !decoded.sub || !decoded.role) {
-      console.error(`[JWT] Invalid token payload: ${JSON.stringify(decoded)}`);
       throw new Error('Invalid token payload');
     }
 
-    console.log(`[JWT] Token verified successfully for user ${decoded.sub} (role: ${decoded.role})`);
     return {
       id: decoded.sub,
       email: decoded.email ?? null,
@@ -75,7 +72,6 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
       organizationId: decoded.organizationId ?? null,
     };
   } catch (err) {
-    console.error(`[JWT] Token verification failed:`, err);
     throw err;
   }
 };
