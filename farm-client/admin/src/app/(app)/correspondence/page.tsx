@@ -315,7 +315,10 @@ export default function CorrespondencePage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">{editingItem ? 'Edit Correspondence' : 'New Correspondence'}</h2>
             <form onSubmit={handleSave} className="space-y-4">
-              <Input label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="Document title" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="Document title" />
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>

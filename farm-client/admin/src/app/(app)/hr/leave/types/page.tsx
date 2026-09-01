@@ -106,8 +106,14 @@ export default function LeaveTypesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
             <h2 className="text-lg font-semibold mb-4">{editingType ? 'Edit Leave Type' : 'New Leave Type'}</h2>
             <form onSubmit={handleSave} className="space-y-4">
-              <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Annual Leave" />
-              <Input label="Days Per Year" type="number" value={form.daysPerYear} onChange={(e) => setForm({ ...form, daysPerYear: e.target.value })} />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Annual Leave" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Days Per Year</label>
+                <Input type="number" value={form.daysPerYear} onChange={(e) => setForm({ ...form, daysPerYear: e.target.value })} />
+              </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={form.isPaid} onChange={(e) => setForm({ ...form, isPaid: e.target.checked })} className="rounded border-gray-300 text-green-600" />
                 Paid leave

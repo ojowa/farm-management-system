@@ -157,7 +157,8 @@ export default function MessagesPage() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2">
-                <Input label="Subject" value={composeForm.subject} onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })} required placeholder="Message subject" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                <Input value={composeForm.subject} onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })} required placeholder="Message subject" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>

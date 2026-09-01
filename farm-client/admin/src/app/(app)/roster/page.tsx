@@ -213,10 +213,19 @@ export default function RosterPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
             <h2 className="text-lg font-semibold mb-4">{editingShift ? 'Edit Shift' : 'New Shift'}</h2>
             <form onSubmit={handleSaveShift} className="space-y-4">
-              <Input label="Shift Name" value={shiftForm.name} onChange={(e) => setShiftForm({ ...shiftForm, name: e.target.value })} required placeholder="e.g. Morning Shift" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Shift Name</label>
+                <Input value={shiftForm.name} onChange={(e) => setShiftForm({ ...shiftForm, name: e.target.value })} required placeholder="e.g. Morning Shift" />
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Start Time" type="time" value={shiftForm.startTime} onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })} required />
-                <Input label="End Time" type="time" value={shiftForm.endTime} onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })} required />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <Input type="time" value={shiftForm.startTime} onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <Input type="time" value={shiftForm.endTime} onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })} required />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
