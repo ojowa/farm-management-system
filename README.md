@@ -24,7 +24,7 @@ A multi-tenant SaaS platform for managing farm operations — crops, livestock, 
 
 | Layer | Technology |
 |-------|-----------|
-| Monorepo | Turborepo + pnpm 10.27.0 |
+| Monorepo | npm workspaces |
 | Backend | NestJS 11 (13 microservices) |
 | Frontend | Next.js 15.1.7 + React 19 + TailwindCSS 4 |
 | Mobile | Expo SDK 54 + React Native 0.81.5 + Redux Toolkit |
@@ -44,16 +44,15 @@ A multi-tenant SaaS platform for managing farm operations — crops, livestock, 
 # Clone and install
 git clone <repo-url>
 cd "Farm Management System"
-corepack enable
-pnpm install
+npm install
 
 # Set up database (Docker)
 docker compose -f infra/docker-compose.yml up -d
-pnpm db:push
-pnpm db:seed
+npm run db:push
+npm run db:seed
 
 # Start all services
-pnpm dev
+npm run dev
 ```
 
 | Service | URL |
