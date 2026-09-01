@@ -7,8 +7,8 @@
   "workspaces": [
     "farm-client/*",
     "farm-client/packages/*",
-    "farm server/*",
-    "farm server/packages/server/*"
+    "farm-server/*",
+    "farm-server/packages/server/*"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
@@ -21,7 +21,7 @@
     "start:dev": "node scripts/start.js --dev",
     "start:services": "node scripts/start.js",
     "start:services:dev": "node scripts/start.js --dev",
-    "start:services:prod": "cd \"farm server/app-server\" && npm run start:all",
+    "start:services:prod": "cd \"farm-server/app-server\" && npm run start:all",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write ."
   },
