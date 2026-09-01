@@ -1,0 +1,22 @@
+{
+  "name": "farm-server",
+  "version": "1.0.0",
+  "description": "Farm Management System - Backend",
+  "private": true,
+  "packageManager": "npm@11.10.0",
+  "workspaces": [
+    "app-server",
+    "packages/server/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build --workspace=@farm/app-server",
+    "build:app": "npm run build --workspace=@farm/app-server",
+    "start": "npm run start:all --workspace=@farm/app-server",
+    "start:dev": "npm run dev:all --workspace=@farm/app-server",
+    "migrate": "npx prisma migrate deploy",
+    "migrate:dev": "npx prisma migrate dev",
+    "seed": "npx tsx prisma/seed.ts",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}

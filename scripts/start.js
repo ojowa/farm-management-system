@@ -2,8 +2,10 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const dbDir = path.join(root, 'farm-server', 'packages', 'server', 'database');
-const appServerDir = path.join(root, 'farm-server', 'app-server');
+const clientDir = path.join(root, 'farm-client');
+const serverDir = path.join(root, 'farm-server');
+const dbDir = path.join(serverDir, 'packages', 'server', 'database');
+const appServerDir = path.join(serverDir, 'app-server');
 
 const isDev = process.argv.includes('--dev');
 const isWindows = process.platform === 'win32';
@@ -37,13 +39,20 @@ async function main() {
   }
 
   if (!isDev) {
-    console.log('\n=== Building Microservices ===');
+    console.log('\n=== Building Server ===');
     try {
-      execSync('npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database', { cwd: root, stdio: 'inherit' });
-      execSync('npm run build', { cwd: appServerDir, stdio: 'inherit', env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' } });
-      console.log('All microservices built successfully.');
+      execSync('npm run build', { cwd: serverDir, stdio: 'inherit', env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' } });
+      console.log('Server built successfully.');
     } catch (e) {
-      console.warn('build failed — continuing anyway...');
+      console.warn('server build failed — continuing anyway...');
+    }
+
+    console.log('\n=== Building Client ===');
+    try {
+      execSync('npm run build', { cwd: clientDir, stdio: 'inherit' });
+      console.log('Client built successfully.');
+    } catch (e) {
+      console.warn('client build failed — continuing anyway...');
     }
   } else {
     console.log('\n=== Skipping build (dev mode) ===');
@@ -52,18 +61,18 @@ async function main() {
   console.log('\n=== Starting Microservices ===');
 
   if (isDev) {
-    run('app-server', 'npm', ['run', 'dev:all'], { cwd: appServerDir });
+    run('app-server', 'npm', ['run', 'start:dev'], { cwd: serverDir });
   } else {
-    run('app-server', 'npm', ['run', 'start:all'], { cwd: appServerDir });
+    run('app-server', 'npm', ['run', 'start'], { cwd: serverDir });
   }
 
   console.log('\n=== Starting Frontend Apps ===');
   if (isDev) {
-    run('console', 'npx', ['next', 'dev', '-p', '3001'], { cwd: path.join(root, 'farm-client', 'console') });
-    run('admin', 'npx', ['next', 'dev', '-p', '3002'], { cwd: path.join(root, 'farm-client', 'admin') });
+    run('console', 'npm', ['run', 'dev:console'], { cwd: clientDir });
+    run('admin', 'npm', ['run', 'dev:admin'], { cwd: clientDir });
   } else {
-    run('console', 'npx', ['next', 'start', '-p', '3001'], { cwd: path.join(root, 'farm-client', 'console') });
-    run('admin', 'npx', ['next', 'start', '-p', '3002'], { cwd: path.join(root, 'farm-client', 'admin') });
+    run('console', 'npx', ['next', 'start', '-p', '3001'], { cwd: path.join(clientDir, 'console') });
+    run('admin', 'npx', ['next', 'start', '-p', '3002'], { cwd: path.join(clientDir, 'admin') });
   }
 
   console.log('\nAll services started.');

@@ -21,9 +21,10 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: farm-client
 
       - name: Build workspace dependencies
-        run: npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth
+        run: npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth
 
       - name: Type check
         run: npx tsc --noEmit

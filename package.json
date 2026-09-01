@@ -1,35 +1,17 @@
 {
-  "name": "Farm Management System",
+  "name": "fms",
   "version": "1.0.0",
-  "description": "",
+  "description": "Farm Management System",
   "private": true,
   "packageManager": "npm@11.10.0",
-  "workspaces": [
-    "farm-client/*",
-    "farm-client/packages/*",
-    "farm-server/*",
-    "farm-server/packages/server/*"
-  ],
   "scripts": {
-    "test": "npm run test --workspaces --if-present",
-    "dev": "npm run dev --workspaces --if-present",
-    "build": "cross-env NEXT_IGNORE_INCORRECT_LOCKFILE=true npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth && npm run build -w @farm/console && npm run build -w @farm/admin",
-    "build:mobile": "npm run build --workspace=@farm/mobile",
-    "build:services": "npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database && npm run build --workspace=@farm/app-server",
-    "build:services:only": "npm run build --workspace=@farm/app-server",
+    "dev": "node scripts/start.js --dev",
     "start": "node scripts/start.js",
-    "start:dev": "node scripts/start.js --dev",
     "start:services": "node scripts/start.js",
     "start:services:dev": "node scripts/start.js --dev",
-    "start:services:prod": "cd \"farm-server/app-server\" && npm run start:all",
-    "lint": "npm run lint --workspaces --if-present",
-    "format": "prettier --write ."
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "overrides": {
-    "@types/react": "18.3.31"
+    "build:client": "npm run build --workspace=farm-client",
+    "build:server": "npm run build --workspace=farm-server",
+    "lint": "echo \"Run lint in farm-client or farm-server individually\""
   },
   "devDependencies": {
     "@types/node": "^22.19.21",
