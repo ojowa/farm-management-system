@@ -40,7 +40,7 @@ async function main() {
     console.log('\n=== Building Microservices ===');
     try {
       execSync('npm run build -w @farm/domain-core && npm run build -w @farm/types-server && npm run build -w @farm/env && npm run build -w @farm/utils && npm run build -w @farm/validation-server && npm run build -w @farm/auth-server && npm run build -w @farm/database', { cwd: root, stdio: 'inherit' });
-      execSync('npm run build', { cwd: appServerDir, stdio: 'inherit' });
+      execSync('npm run build', { cwd: appServerDir, stdio: 'inherit', env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' } });
       console.log('All microservices built successfully.');
     } catch (e) {
       console.warn('build failed — continuing anyway...');
