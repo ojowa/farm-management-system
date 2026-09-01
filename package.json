@@ -5,8 +5,8 @@
   "private": true,
   "packageManager": "npm@11.10.0",
   "workspaces": [
-    "farm client/*",
-    "farm client/packages/*",
+    "farm-client/*",
+    "farm-client/packages/*",
     "farm server/*",
     "farm server/packages/server/*"
   ],
