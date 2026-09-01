@@ -8,21 +8,10 @@ import { usePermission } from '@/hooks/usePermission';
 
 const TAB_CONFIG = [
   { name: 'index', title: 'Home', icon: '🏠', permission: null, module: null },
-  { name: 'farms', title: 'Farms', icon: '🌾', permission: 'farm.read', module: 'farm' },
-  { name: 'crops', title: 'Crops', icon: '🌱', permission: 'crop.read', module: 'crop' },
-  { name: 'livestock', title: 'Livestock', icon: '🐄', permission: 'livestock.read', module: 'livestock' },
-  { name: 'irrigation', title: 'Irrigation', icon: '💧', permission: 'crop.read', module: 'crop' },
+  { name: 'farms', title: 'Farm', icon: '🌾', permission: 'farm.read', module: 'farm' },
   { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'worker.read', module: 'worker' },
-  { name: 'roster', title: 'Roster', icon: '📅', permission: 'worker.read', module: 'worker' },
-  { name: 'attendance', title: 'Attendance', icon: '📋', permission: 'worker.read', module: 'worker' },
   { name: 'messages', title: 'Messages', icon: '✉️', permission: 'communication.read', module: 'communication' },
-  { name: 'correspondence', title: 'Docs', icon: '📄', permission: 'communication.read', module: 'communication' },
-  { name: 'leave', title: 'Leave', icon: '🏖️', permission: 'worker.read', module: 'worker' },
-  { name: 'notifications', title: 'Alerts', icon: '🔔', permission: null, module: null },
   { name: 'finance', title: 'Finance', icon: '💰', permission: 'finance.read', module: 'finance' },
-  { name: 'equipment', title: 'Equipment', icon: '🔧', permission: 'inventory.read', module: 'inventory' },
-  { name: 'contracts', title: 'Contracts', icon: '📝', permission: 'finance.read', module: 'finance' },
-  { name: 'marketplace', title: 'Marketplace', icon: '🏪', permission: 'finance.read', module: 'finance' },
   { name: 'settings', title: 'Settings', icon: '⚙️', permission: null, module: null },
 ];
 
@@ -75,6 +64,18 @@ export default function AppLayout() {
           }}
         />
       ))}
+      {/* Hide sub-screens from tab bar */}
+      <Tabs.Screen name="crops" options={{ href: null }} />
+      <Tabs.Screen name="livestock" options={{ href: null }} />
+      <Tabs.Screen name="irrigation" options={{ href: null }} />
+      <Tabs.Screen name="roster" options={{ href: null }} />
+      <Tabs.Screen name="attendance" options={{ href: null }} />
+      <Tabs.Screen name="correspondence" options={{ href: null }} />
+      <Tabs.Screen name="leave" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="equipment" options={{ href: null }} />
+      <Tabs.Screen name="contracts" options={{ href: null }} />
+      <Tabs.Screen name="marketplace" options={{ href: null }} />
     </Tabs>
   );
 }

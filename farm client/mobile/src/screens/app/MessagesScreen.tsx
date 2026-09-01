@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { messagesAPI } from '../../services/api';
 import { usePermission } from '../../hooks/usePermission';
@@ -39,6 +40,7 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   // Compose
   const [subject, setSubject] = useState('');
@@ -48,6 +50,7 @@ export default function MessagesScreen() {
 
   const loadData = useCallback(async () => {
     try {
+      setError(null);
       const [inboxRes, sentRes, unreadRes] = await Promise.all([
         messagesAPI.inbox(),
         messagesAPI.sent(),
@@ -56,7 +59,9 @@ export default function MessagesScreen() {
       setInbox(inboxRes.data);
       setSent(sentRes.data);
       setUnreadCount(unreadRes.data.count);
-    } catch { /* ignore */ }
+    } catch {
+      setError('Failed to load messages. Pull to retry.');
+    }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
@@ -121,8 +126,9 @@ export default function MessagesScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.container} edges={['top']}>
     <ScrollView
-      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.header}>
@@ -130,11 +136,13 @@ export default function MessagesScreen() {
           Messages {unreadCount > 0 && <Text style={styles.unreadBadge}>({unreadCount})</Text>}
         </Text>
         {canSend && view !== 'compose' && (
-          <TouchableOpacity onPress={() => { setView('compose'); setSelected(null); }}>
+          <TouchableOpacity onPress={() => { setView('compose'); setSelected(null); }} accessibilityLabel="Compose new message">
             <Text style={styles.composeBtn}>+ Compose</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
 
       {/* Tabs */}
       {view !== 'compose' && view !== 'message' && (
@@ -256,15 +264,18 @@ export default function MessagesScreen() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB', padding: 16 },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  scrollContent: { padding: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
   unreadBadge: { fontSize: 14, color: '#6B7280' },
   composeBtn: { fontSize: 14, color: '#10B981', fontWeight: '600' },
+  errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center', marginBottom: 12 },
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: '#F3F4F6' },
   activeTab: { backgroundColor: '#D1FAE5' },

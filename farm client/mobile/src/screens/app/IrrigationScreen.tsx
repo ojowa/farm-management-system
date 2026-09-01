@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Card, colors } from '../../components/common/UIComponents';
+import { irrigationAPI } from '../../services/api';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -25,6 +26,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '600', color: '#FFFFFF' },
   metaText: { fontSize: 12, color: colors.textLight, marginTop: 4 },
   emptyText: { fontSize: 14, color: colors.textLight, textAlign: 'center' },
+  errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center', marginTop: 8 },
 });
 
 export default function IrrigationScreen() {
@@ -32,16 +34,20 @@ export default function IrrigationScreen() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
     try {
+      setError(null);
       const [sRes, lRes] = await Promise.all([
-        fetch('/api/irrigation-schedules').then((r) => r.json()).catch(() => []),
-        fetch('/api/irrigation-logs?limit=10').then((r) => r.json()).catch(() => []),
+        irrigationAPI.listSchedules().catch(() => ({ data: [] })),
+        irrigationAPI.listLogs({ limit: 10 }).catch(() => ({ data: [] })),
       ]);
-      setSchedules(Array.isArray(sRes) ? sRes : sRes?.data || []);
-      setLogs(Array.isArray(lRes) ? lRes : lRes?.data || []);
-    } catch { /* ignore */ }
+      setSchedules(Array.isArray(sRes.data) ? sRes.data : sRes.data?.data || []);
+      setLogs(Array.isArray(lRes.data) ? lRes.data : lRes.data?.data || []);
+    } catch {
+      setError('Failed to load irrigation data. Pull to retry.');
+    }
     finally { setLoading(false); setRefreshing(false); }
   };
 
@@ -71,6 +77,7 @@ export default function IrrigationScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {error && <Text style={styles.errorText}>{error}</Text>}
         <Text style={styles.sectionTitle}>Active Schedules</Text>
         {schedules.length === 0 ? (
           <Card>

@@ -37,7 +37,8 @@
         {
           "origin": "https://localhost:8081"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

@@ -44,8 +44,9 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId;
     const token = await Notifications.getExpoPushTokenAsync({
-      projectId: undefined,
+      projectId: projectId || undefined,
     });
 
     if (Platform.OS === 'android') {
@@ -104,8 +105,33 @@ function handleNotificationResponse(response: any) {
   }
 }
 
+const ALLOWED_SCREENS = new Set([
+  '/(app)/farms',
+  '/(app)/crops',
+  '/(app)/livestock',
+  '/(app)/finance',
+  '/(app)/tasks',
+  '/(app)/messages',
+  '/(app)/notifications',
+  '/(app)/settings',
+  '/(app)/attendance',
+  '/(app)/equipment',
+  '/(app)/contracts',
+  '/(app)/roster',
+  '/(app)/leave',
+  '/(app)/marketplace',
+  '/(app)/correspondence',
+  '/(app)/irrigation',
+]);
+
+function isAllowedRoute(route: string): boolean {
+  if (ALLOWED_SCREENS.has(route)) return true;
+  if (/^\/(app|poultry)\/\w+\/[a-f0-9-]+$/i.test(route)) return true;
+  return false;
+}
+
 function resolveRoute(data: NotificationData): string | null {
-  if (data.screen) return data.screen;
+  if (data.screen && isAllowedRoute(data.screen)) return data.screen;
 
   if (data.module && data.moduleId) {
     switch (data.module) {

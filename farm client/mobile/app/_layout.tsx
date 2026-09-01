@@ -11,7 +11,7 @@ import { ErrorBoundary } from '../src/components/feedback/ErrorBoundary';
 import { ConnectionBanner } from '../src/components/layout/ConnectionBanner';
 import { useNetworkSync } from '../src/hooks/useNetworkSync';
 import { colors } from '../src/components/common/UIComponents';
-import { ThemeProvider } from '../src/theme/ThemeContext';
+import { ThemeProvider, useAppTheme } from '../src/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
 import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
 import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/store/slices/authSlice';
@@ -49,14 +49,13 @@ function RootLayoutNav() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
+  const { colors: themeColors } = useAppTheme();
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (__DEV__) console.log('[NAV] Authenticated - refreshing session');
       dispatch(refreshSocketToken());
       dispatch(fetchProfile()).unwrap().catch(() => {});
     } else {
-      if (__DEV__) console.log('[NAV] Not authenticated - bootstrapping');
       dispatch(setBootstrapped());
     }
   }, []);
@@ -67,10 +66,8 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      if (__DEV__) console.log('[NAV] Redirecting to login (not authenticated)');
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
-      if (__DEV__) console.log('[NAV] Redirecting to app (authenticated)');
       router.replace('/(app)');
     }
   }, [isAuthenticated, bootstrapped, segments]);
@@ -158,23 +155,25 @@ function RootLayoutWithSplash() {
 }
 
 function NotificationSetup() {
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   useEffect(() => {
+    if (!isAuthenticated) return;
     const cleanup = setupNotificationListeners();
     registerForPushNotifications().then((token) => {
       if (token) sendTokenToServer(token);
     });
     return cleanup;
-  }, []);
+  }, [isAuthenticated]);
   return null;
 }
 
-export default function App() {
+function App() {
   return (
     <ErrorBoundary>
       <Provider store={store}>
         <ThemeProvider>
           <SafeAreaProvider>
-            <StatusBar style="dark" />
+            <ThemedStatusBar />
             <RootLayoutWithSplash />
             <NotificationSetup />
           </SafeAreaProvider>
@@ -183,6 +182,13 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
+function ThemedStatusBar() {
+  const { isDark } = useAppTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
+export default App;
 
 const styles = StyleSheet.create({
   root: {

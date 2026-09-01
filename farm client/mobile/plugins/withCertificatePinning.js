@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const CERT_PIN_SHA256 = process.env.EXPO_PUBLIC_CERT_PIN_SHA256 || '';
+const PRODUCTION_DOMAIN = process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN || '';
 
 function withCertificatePinning(config) {
   // Android: Reference network security config in manifest
@@ -68,7 +69,7 @@ function withCertificatePinning(config) {
   </domain-config>
   <!-- Production: HTTPS required, certificate pinning if configured -->
   <domain-config cleartextTrafficPermitted="false">
-    <domain includeSubdomains="true">your-production-domain.com</domain>
+${PRODUCTION_DOMAIN ? `    <domain includeSubdomains="true">${PRODUCTION_DOMAIN}</domain>` : '    <!-- Set EXPO_PUBLIC_PRODUCTION_DOMAIN in .env -->'}
 ${pinSection}
     <trust-anchors>
       <certificates src="system" />

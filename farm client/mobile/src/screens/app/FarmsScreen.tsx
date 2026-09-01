@@ -15,7 +15,7 @@ import { useListFarmsQuery, useDeleteFarmMutation } from '../../store/api';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAuth';
-import { setSelectedFarmId } from '../../store/slices/uiSlice';
+import { setSelectedFarmId, setFarmsFilter } from '../../store/slices/uiSlice';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -167,8 +167,8 @@ export default function FarmsScreen() {
   }, [deleteFarm, dispatch]);
 
   const handleFilterChange = useCallback((next: FarmFilter) => {
-    // Dispatch to Redux if needed
-  }, []);
+    dispatch(setFarmsFilter(next));
+  }, [dispatch]);
 
   const renderFooter = useCallback(() => {
     if (!isFetching) return null;

@@ -36,7 +36,14 @@ const authPersistConfig = {
   key: 'auth',
   version: 1,
   storage: AsyncStorage,
-  blacklist: ['loading', 'error', 'bootstrapped', 'socketAccessToken'],
+  blacklist: [
+    'loading',
+    'error',
+    'bootstrapped',
+    'socketAccessToken',
+    'mfaSessionToken',
+    'mfaRequired',
+  ],
 };
 
 const syncPersistConfig = {

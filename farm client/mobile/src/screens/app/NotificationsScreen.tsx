@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
-import { Card } from '../../components/common/UIComponents';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Card, colors } from '../../components/common/UIComponents';
 import { notificationsAPI } from '../../services/api';
 import { useAppSelector } from '../../hooks/useAuth';
 
@@ -36,17 +37,21 @@ export default function NotificationsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!user?.id) return;
     try {
+      setError(null);
       const [listRes, countRes] = await Promise.all([
         notificationsAPI.list(user.id, { limit: 50 }),
         notificationsAPI.unreadCount(user.id),
       ]);
       setNotifications(listRes.data || []);
       setUnreadCount(countRes.data.count || 0);
-    } catch { /* ignore */ }
+    } catch {
+      setError('Failed to load notifications. Pull to retry.');
+    }
     finally { setLoading(false); setRefreshing(false); }
   }, [user?.id]);
 
@@ -84,8 +89,10 @@ export default function NotificationsScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.header}>
@@ -93,14 +100,16 @@ export default function NotificationsScreen() {
           Notifications {unreadCount > 0 && <Text style={styles.count}>({unreadCount})</Text>}
         </Text>
         {unreadCount > 0 && (
-          <TouchableOpacity onPress={handleMarkAllRead}>
+          <TouchableOpacity onPress={handleMarkAllRead} accessibilityLabel="Mark all notifications as read">
             <Text style={styles.markAll}>Mark all read</Text>
           </TouchableOpacity>
         )}
       </View>
 
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
       {loading ? (
-        <Text style={styles.loadingText}>Loading...</Text>
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : notifications.length === 0 ? (
         <Card>
           <View style={styles.emptyContainer}>
@@ -128,15 +137,19 @@ export default function NotificationsScreen() {
         ))
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB', padding: 16 },
+  safeArea: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  scrollContent: { padding: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
   count: { fontSize: 14, color: '#6B7280', fontWeight: 'normal' },
   markAll: { fontSize: 13, color: '#10B981', fontWeight: '600' },
+  errorText: { fontSize: 14, color: '#EF4444', textAlign: 'center', marginBottom: 12 },
   loadingText: { textAlign: 'center', color: '#9CA3AF', marginTop: 40 },
   emptyContainer: { alignItems: 'center', paddingVertical: 40 },
   emptyIcon: { fontSize: 40, marginBottom: 8 },

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -242,83 +243,87 @@ export default function TasksScreen() {
         )}
       </View>
 
-      <ScrollView
+      <FlatList
+        data={filteredTasks}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <View style={styles.filterRow}>
-          {['all', 'pending', 'in_progress', 'completed'].map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setFilter(f)}
-              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-            >
-              <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
-                {f === 'all' ? 'All' : f.replace('_', ' ')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
-        ) : filteredTasks.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>✅</Text>
-            <Text style={styles.emptyText}>No tasks</Text>
-            <Text style={styles.emptySubtext}>
-              {canManageTasks ? 'Tap + to create a task' : 'No tasks assigned to you yet'}
-            </Text>
+        ListHeaderComponent={
+          <View style={styles.filterRow}>
+            {['all', 'pending', 'in_progress', 'completed'].map((f) => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setFilter(f)}
+                style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+                accessibilityLabel={`Filter by ${f === 'all' ? 'all tasks' : f.replace('_', ' ')}`}
+              >
+                <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
+                  {f === 'all' ? 'All' : f.replace('_', ' ')}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        ) : (
-          filteredTasks.map((task) => (
-            <Card key={task.id} style={styles.taskCard}>
-              <View style={styles.taskHeader}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <View style={[styles.badge, { backgroundColor: PRIORITY_COLORS[task.priority] || '#9CA3AF' }]}>
-                  <Text style={styles.badgeText}>{task.priority}</Text>
-                </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>✅</Text>
+              <Text style={styles.emptyText}>No tasks</Text>
+              <Text style={styles.emptySubtext}>
+                {canManageTasks ? 'Tap + to create a task' : 'No tasks assigned to you yet'}
+              </Text>
+            </View>
+          )
+        }
+        renderItem={({ item: task }) => (
+          <Card style={styles.taskCard}>
+            <View style={styles.taskHeader}>
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              <View style={[styles.badge, { backgroundColor: PRIORITY_COLORS[task.priority] || '#9CA3AF' }]}>
+                <Text style={styles.badgeText}>{task.priority}</Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: STATUS_COLORS[task.status] || '#9CA3AF', alignSelf: 'flex-start', marginBottom: 8 }]}>
-                <Text style={styles.badgeText}>{task.status.replace('_', ' ')}</Text>
-              </View>
-              {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
-              <View style={styles.taskMeta}>
-                {task.assignedToName && <Text style={styles.taskMetaText}>To: {task.assignedToName}</Text>}
-                {task.dueDate && <Text style={styles.taskMetaText}>Due: {new Date(task.dueDate).toLocaleDateString()}</Text>}
-                {task.completedAt && <Text style={styles.taskMetaText}>Done: {new Date(task.completedAt).toLocaleDateString()}</Text>}
-              </View>
+            </View>
+            <View style={[styles.badge, { backgroundColor: STATUS_COLORS[task.status] || '#9CA3AF', alignSelf: 'flex-start', marginBottom: 8 }]}>
+              <Text style={styles.badgeText}>{task.status.replace('_', ' ')}</Text>
+            </View>
+            {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
+            <View style={styles.taskMeta}>
+              {task.assignedToName && <Text style={styles.taskMetaText}>To: {task.assignedToName}</Text>}
+              {task.dueDate && <Text style={styles.taskMetaText}>Due: {new Date(task.dueDate).toLocaleDateString()}</Text>}
+              {task.completedAt && <Text style={styles.taskMetaText}>Done: {new Date(task.completedAt).toLocaleDateString()}</Text>}
+            </View>
 
-              <View style={styles.taskActions}>
-                {!canManageTasks && task.assignedToId === user?.id && task.status !== 'COMPLETED' && (
-                  <>
-                    {task.status === 'PENDING' && (
-                      <TouchableOpacity onPress={() => handleStatusChange(task, 'IN_PROGRESS')} style={[styles.actionBtn, { backgroundColor: '#DBEAFE' }]}>
-                        <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Start</Text>
-                      </TouchableOpacity>
-                    )}
-                    {task.status === 'IN_PROGRESS' && (
-                      <TouchableOpacity onPress={() => handleStatusChange(task, 'COMPLETED')} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]}>
-                        <Text style={[styles.actionBtnText, { color: '#059669' }]}>Complete</Text>
-                      </TouchableOpacity>
-                    )}
-                  </>
-                )}
-                {canManageTasks && (
-                  <>
-                    <TouchableOpacity onPress={() => openModal(task)} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]}>
-                      <Text style={[styles.actionBtnText, { color: '#059669' }]}>Edit</Text>
+            <View style={styles.taskActions}>
+              {!canManageTasks && task.assignedToId === user?.id && task.status !== 'COMPLETED' && (
+                <>
+                  {task.status === 'PENDING' && (
+                    <TouchableOpacity onPress={() => handleStatusChange(task, 'IN_PROGRESS')} style={[styles.actionBtn, { backgroundColor: '#DBEAFE' }]} accessibilityLabel="Start task">
+                      <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Start</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDelete(task)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]}>
-                      <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Delete</Text>
+                  )}
+                  {task.status === 'IN_PROGRESS' && (
+                    <TouchableOpacity onPress={() => handleStatusChange(task, 'COMPLETED')} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]} accessibilityLabel="Complete task">
+                      <Text style={[styles.actionBtnText, { color: '#059669' }]}>Complete</Text>
                     </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </Card>
-          ))
+                  )}
+                </>
+              )}
+              {canManageTasks && (
+                <>
+                  <TouchableOpacity onPress={() => openModal(task)} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]} accessibilityLabel="Edit task">
+                    <Text style={[styles.actionBtnText, { color: '#059669' }]}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(task)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]} accessibilityLabel="Delete task">
+                    <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </Card>
         )}
-      </ScrollView>
+      />
 
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>

@@ -16,6 +16,18 @@ var AsyncStorageMock = {
 // Replace the module mock
 jest.mock('@react-native-async-storage/async-storage', function () { return AsyncStorageMock; });
 
+// Minimal SecureStore mock
+var secureStore = new Map();
+
+var SecureStoreMock = {
+  getItem: jest.fn(async function (key) { return secureStore.get(key) || null; }),
+  setItem: jest.fn(async function (key, value) { secureStore.set(key, value); }),
+  deleteItem: jest.fn(async function (key) { secureStore.delete(key); }),
+};
+
+jest.mock('expo-secure-store', function () { return SecureStoreMock; });
+
 // Expose the mock store so tests can inspect / seed it
 globalThis.__DEV__ = true;
 globalThis.__ASYNC_STORAGE_MOCK__ = storage;
+globalThis.__SECURE_STORE_MOCK__ = secureStore;

@@ -6,12 +6,12 @@ import {
   Text,
   SafeAreaView,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppSelector } from '../../hooks/useAuth';
-import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI } from '../../services/api';
+import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI, notificationsAPI } from '../../services/api';
 import { Card, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { useToasts } from '../../hooks/useToasts';
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   gridItem: {
-    width: (Dimensions.get('window').width - 52) / 2,
+    width: '48%',
     aspectRatio: 1,
   },
   cardContent: {
@@ -147,6 +147,7 @@ export default function DashboardScreen() {
   });
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
   const [attendanceSummary, setAttendanceSummary] = useState<{ total: number; present: number; absent: number; late: number } | null>(null);
+  const [recentActivity, setRecentActivity] = useState<{ id: string; title: string; message: string; type: string; createdAt: string }[]>([]);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -159,14 +160,17 @@ export default function DashboardScreen() {
         financeAPI.list(),
       ]);
 
-      const [tasksRes, attendanceRes] = await Promise.allSettled([
+      const [tasksRes, attendanceRes, notifsRes] = await Promise.allSettled([
         tasksAPI.list({ status: 'PENDING', limit: 5 }),
         attendanceAPI.getToday(),
+        user?.id ? notificationsAPI.list(user.id, { limit: 5 }) : Promise.resolve({ data: [] }),
       ]);
       const tasks = tasksRes.status === 'fulfilled' ? extractArray<any>(tasksRes.value) : [];
       const attendance = attendanceRes.status === 'fulfilled' ? attendanceRes.value?.data || attendanceRes.value : null;
+      const notifs = notifsRes.status === 'fulfilled' ? (notifsRes.value?.data || []) : [];
       setPendingTasks(tasks.slice(0, 5));
       setAttendanceSummary(attendance?.summary || null);
+      setRecentActivity(Array.isArray(notifs) ? notifs.slice(0, 5) : []);
 
       const farms = extractArray<RawFarm>(farmsRes).map(transformFarm);
       const crops = extractArray<any>(cropsRes);
@@ -219,6 +223,18 @@ export default function DashboardScreen() {
   }, []);
 
   const firstName = user?.fullName?.split(' ')[0] || 'User';
+
+  const formatActivityTime = (d: string) => {
+    const date = new Date(d);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   if (loading) {
     return (
@@ -424,23 +440,31 @@ export default function DashboardScreen() {
 
           {/* Recent Activity */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <Card style={styles.quickActionCard}>
-              <Text style={styles.quickActionTitle}>
-                New crop planted - Farm A
-              </Text>
-              <Text style={styles.quickActionDescription}>
-                Maize planted 2 hours ago
-              </Text>
-            </Card>
-            <Card style={styles.quickActionCard}>
-              <Text style={styles.quickActionTitle}>
-                Livestock health check completed
-              </Text>
-              <Text style={styles.quickActionDescription}>
-                All animals healthy - 1 day ago
-              </Text>
-            </Card>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <TouchableOpacity onPress={() => router.push('/notifications')}>
+                <Text style={{ color: colors.primary, fontSize: 14 }}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            {recentActivity.length === 0 ? (
+              <Card style={styles.quickActionCard}>
+                <Text style={styles.quickActionDescription}>No recent activity</Text>
+              </Card>
+            ) : (
+              recentActivity.map((item) => (
+                <Card key={item.id} style={styles.quickActionCard}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.quickActionTitle}>{item.title}</Text>
+                      <Text style={styles.quickActionDescription} numberOfLines={2}>{item.message}</Text>
+                    </View>
+                    <Text style={{ fontSize: 11, color: colors.textLight, marginLeft: 8 }}>
+                      {formatActivityTime(item.createdAt)}
+                    </Text>
+                  </View>
+                </Card>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>

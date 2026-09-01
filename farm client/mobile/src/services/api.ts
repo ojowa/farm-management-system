@@ -15,6 +15,10 @@ if (__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('loc
   );
 }
 
+if (!__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('localhost')) {
+  throw new Error('[API] FATAL: Production builds must use HTTPS. Set EXPO_PUBLIC_API_URL to an HTTPS URL.');
+}
+
 class APIClient {
   public client: AxiosInstance;
 
@@ -39,7 +43,8 @@ class APIClient {
     this.client.interceptors.request.use(
       (config) => {
         if (__DEV__) {
-          console.log(`[API] --> ${config.method?.toUpperCase()} ${config.url}`, config.data ? JSON.stringify(config.data).substring(0, 200) : '');
+          const safeData = config.data ? '[redacted]' : '';
+          console.log(`[API] --> ${config.method?.toUpperCase()} ${config.url}`, safeData);
         }
         return config;
       },
@@ -615,35 +620,26 @@ export const marketplaceAPI = {
 
 export const authAPI = {
   login: async (email: string, password: string) => {
-    if (__DEV__) console.log('[AUTH] Attempting login for:', email);
     try {
       const res = await apiClient.axiosInstance.post('/auth/login', { email, password });
-      if (__DEV__) console.log('[AUTH] Login response:', JSON.stringify(res.data).substring(0, 300));
       return res.data;
     } catch (err: any) {
-      if (__DEV__) console.warn('[AUTH] Login failed:', err.response?.status, err.response?.data?.message || err.message);
+      if (__DEV__) console.warn('[AUTH] Login failed:', err.response?.status);
       throw err;
     }
   },
   verifyMFA: async (mfaToken: string, code: string) => {
-    if (__DEV__) console.log('[AUTH] Verifying MFA code');
     const res = await apiClient.axiosInstance.post('/auth/verify-mfa', { mfaToken, code });
-    if (__DEV__) console.log('[AUTH] MFA verified');
     return res.data;
   },
   logout: async () => {
-    if (__DEV__) console.log('[AUTH] Logging out');
     try {
       await apiClient.axiosInstance.post('/auth/logout');
-      if (__DEV__) console.log('[AUTH] Logout successful');
     } catch {
-      if (__DEV__) console.log('[AUTH] Logout request failed (best-effort)');
+      // Best-effort
     }
   },
-  getProfile: () => {
-    if (__DEV__) console.log('[AUTH] Fetching profile');
-    return apiClient.axiosInstance.get('/auth/me');
-  },
+  getProfile: () => apiClient.axiosInstance.get('/auth/me'),
   updateProfile: (data: any) => apiClient.axiosInstance.put('/auth/profile', data),
   changePassword: (data: any) => apiClient.axiosInstance.put('/auth/password', data),
   getPreferences: () => apiClient.axiosInstance.get('/auth/preferences'),

@@ -14,14 +14,19 @@ export interface ApiErrorShape {
   isClient: boolean;
 }
 
+const SERVER_MESSAGE_PATTERNS = /stack|trace|query|sql|internal|error in|at .+:\d+|\.js:\d+/i;
+
 export function toApiError(error: unknown, fallback = 'Request failed'): ApiErrorShape {
   const err = error as AxiosError<any> | undefined;
   const status = err?.response?.status ?? null;
   const code = (err?.code as string | undefined) ?? null;
-  const serverMessage =
+  const rawServerMessage =
     (err?.response?.data as any)?.message ||
     (err?.response?.data as any)?.error ||
     (err?.response?.data as any)?.detail;
+  const serverMessage = rawServerMessage && !SERVER_MESSAGE_PATTERNS.test(rawServerMessage)
+    ? rawServerMessage
+    : undefined;
 
   const message = serverMessage || err?.message || fallback;
   const isNetwork = !status && !!err;
