@@ -33,6 +33,7 @@
     "start:api": "node dist/microservices/api.main",
     "start:all": "concurrently --names auth,farm,livestock,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"npm run start:auth\" \"npm run start:farm\" \"npm run start:livestock\" \"npm run start:poultry\" \"npm run start:finance\" \"npm run start:hr\" \"npm run start:notification\" \"npm run start:organization\" \"npm run start:platform\" \"npm run start:reporting\" \"npm run start:crop\" \"npm run start:realtime\" \"npm run start:api\"",
     "dev": "nest start --watch",
+    "dev:all": "concurrently --names auth,farm,livestock,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"nest start --watch auth-service\" \"nest start --watch farm-service\" \"nest start --watch livestock-service\" \"nest start --watch poultry-service\" \"nest start --watch finance-service\" \"nest start --watch hr-service\" \"nest start --watch notification-service\" \"nest start --watch organization-service\" \"nest start --watch platform-service\" \"nest start --watch reporting-service\" \"nest start --watch crop-service\" \"nest start --watch realtime-service\" \"nest start --watch api-service\"",
     "start:debug": "nest start --debug --watch"
   },
   "dependencies": {
