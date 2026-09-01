@@ -5,23 +5,44 @@ Guidelines for contributing to the Farm Management System.
 ## Prerequisites
 
 - Node.js 20.18+
-- npm
+- npm 10.27+
 - PostgreSQL 16+
 - Git
 
 ## Getting Started
 
 ```bash
-git clone <repo-url>
-cd "Farm Management System"
-npm install
+git clone https://github.com/ojowa/farm-management-system.git
+cd farm-management-system
+npm install --workspaces
 docker compose -f infra/docker-compose.yml up -d
-npm run db:push
-npm run db:seed
+
+# Setup database
+cd farm-server
+npx prisma db push
+npx tsx prisma/seed.ts
+
+# Start development
+cd ..
 npm run dev
 ```
 
-See [GETTING_STARTED.md](./GETTING_STARTED.md) for details.
+See [GETTING_STARTED.md](./getting-started.md) for details.
+
+## Project Structure
+
+```
+FMS/
+├── farm-client/          # Frontend workspace
+│   ├── admin/            # Admin dashboard (Next.js)
+│   ├── console/          # Platform console (Next.js)
+│   ├── mobile/           # Mobile app (Expo)
+│   └── packages/         # Shared client libraries
+├── farm-server/          # Backend workspace
+│   ├── app-server/       # NestJS microservices
+│   └── packages/server/  # Shared server libraries
+└── scripts/              # Build/start scripts
+```
 
 ## Code Style
 
@@ -120,15 +141,15 @@ const farms = await this.prisma.farm.findMany();
 
 ```bash
 # All tests
-npm test
+npm test --workspaces
 
-# Specific service
-npm test --workspace=@farm/auth-service
-
-# Specific app
+# Frontend tests
+cd farm-client
 npm test --workspace=@farm/admin
-npm test --workspace=@farm/web
-npm test --workspace=@farm/mobile
+
+# Backend tests
+cd farm-server
+npm test --workspaces
 ```
 
 ### Test Frameworks
@@ -137,7 +158,6 @@ npm test --workspace=@farm/mobile
 |---------|-----------|--------|
 | Backend services | Jest | `jest.config.ts` per service |
 | Admin app | Vitest | `vitest.config.ts` |
-| Web app | Vitest | `vitest.config.ts` |
 | Mobile app | Jest | `jest.config.js` |
 
 ### Writing Tests
@@ -182,44 +202,30 @@ Add crop cycle stage tracking
 
 ## Adding a New Service
 
-1. Create the service directory:
-   ```bash
-   mkdir services/my-service
-   ```
+1. Create the service directory in `farm-server/app-server/src/modules/`:
 
-2. Create `package.json`:
-   ```json
-   {
-     "name": "@farm/my-service",
-     "version": "1.0.0",
-     "scripts": {
-       "build": "nest build",
-       "start": "nest start",
-       "dev": "nest start --watch"
-     }
-   }
-   ```
+```bash
+mkdir -p farm-server/app-server/src/modules/my-service
+```
 
-3. Register in `pnpm-workspace.yaml` (already covered by `services/*`)
+2. Follow the DDD layer structure (domain, application, infrastructure, presentation)
 
-4. If new bounded context, create domain package in `packages/domains/`
+3. Add the service to `farm-server/app-server/package.json` build script
 
-5. Add route in gateway: `services/api-gateway/src/domain/routes/index.ts`
+4. Add route in gateway route table
 
-6. Add to `render.yaml` for deployment
-
-7. Add health check endpoint
+5. Add to `scripts/start.js` for startup
 
 ## Adding a New Frontend Page
 
-1. Create page in appropriate `apps/*/app/` directory (Next.js) or `apps/mobile/app/` (Expo)
+1. Create page in appropriate `farm-client/*/app/` directory (Next.js) or `farm-client/mobile/app/` (Expo)
 
 2. Use existing API client:
-   ```typescript
-   import { apiClient } from '@/lib/api';
-   
-   const data = await apiClient.get('/farms');
-   ```
+```typescript
+import { apiClient } from '@/lib/api';
+
+const data = await apiClient.get('/farms');
+```
 
 3. Follow existing component patterns
 

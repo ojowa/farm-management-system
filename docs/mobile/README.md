@@ -4,7 +4,7 @@
 
 ### 1. Configure Your API URL
 ```bash
-cd apps/mobile
+cd farm-client/mobile
 cp .env.example .env.local
 # Edit .env.local and set your API URL
 ```
@@ -231,7 +231,7 @@ MFA Verification → Dashboard
 | `react-redux` ^9.0.4 | React bindings |
 | `axios` ^1.7.9 | HTTP client |
 | `@react-native-async-storage/async-storage` ^2.0.0 | Token storage |
-| `socket.io-client` ^4.8.1 | Real-time (optional) |
+| `socket.io-client` ^4.8.3 | Real-time (optional) |
 
 ## Debugging & Common Issues
 
@@ -260,12 +260,12 @@ console.log('Token:', token);
 ### Test API Directly
 ```bash
 # Get auth token
-curl -X POST http://localhost:4000/api/auth/login \
+curl -X POST http://localhost:4000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
+  -d '{"email":"demo@farm.com","password":"password123"}'
 
 # Use token to test protected endpoint
-curl -X GET http://localhost:4000/api/farms \
+curl -X GET http://localhost:4000/farms \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -281,6 +281,36 @@ curl -X GET http://localhost:4000/api/farms \
 | Slow Loading | Check network connection, consider pagination for large datasets |
 | Token Not Refreshing | Verify `/auth/refresh` endpoint is working |
 
+## Development
+
+### Project Structure
+
+```
+farm-client/mobile/
+├── app/                    # Expo Router screens
+│   ├── (auth)/             # Auth screens
+│   └── (tabs)/             # Main app tabs
+├── src/
+│   ├── components/         # Reusable components
+│   ├── services/           # API services
+│   ├── store/              # Redux store
+│   └── types/              # TypeScript types
+└── package.json
+```
+
+### Building
+
+```bash
+# Development build
+npm start
+
+# Android (EAS)
+npm run build:android
+
+# iOS (EAS)
+npm run build:ios
+```
+
 ## Next Steps
 
 1. **Test CRUD Operations** — Implement add/edit/delete screens
@@ -291,4 +321,4 @@ curl -X GET http://localhost:4000/api/farms \
 
 ---
 
-**Last Updated**: June 2026 | **Version**: 1.0.0
+**Last Updated**: September 2026 | **Version**: 1.0.0

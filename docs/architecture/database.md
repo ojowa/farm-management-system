@@ -1,35 +1,37 @@
 # Database
 
-PostgreSQL 16 with Prisma 6.4.1 ORM. 42 models across 11 domains. All services share a single database.
+PostgreSQL 16 with Prisma 6.19.3 ORM. 42 models across 11 domains. All services share a single database.
 
 ## Overview
 
 | Property | Value |
 |----------|-------|
 | Engine | PostgreSQL 16 |
-| ORM | Prisma 6.4.1 |
+| ORM | Prisma 6.19.3 |
 | Connection | `DATABASE_URL` env var |
-| Pooling | PgBouncer 1.23.1 (transaction mode) |
+| Pooling | PgBouncer 1.23.1 (local) / Neon pooler (production) |
 | Models | 42 |
-| Schema | `packages/database/prisma/schema.prisma` |
+| Schema | `farm-server/packages/server/database/prisma/schema.prisma` |
 
 ## Prisma Commands
 
 ```bash
+cd farm-server/packages/server/database
+
 # Push schema to database (dev)
-npm run db:push
+npx prisma db push
 
 # Generate Prisma client
-npm run db:generate
+npx prisma generate
 
 # Seed demo data
-npm run db:seed
+npx tsx prisma/seed.ts
 
 # Open Prisma Studio (visual editor)
-npm run db:studio
+npx prisma studio
 
 # Reset database (WARNING: deletes all data)
-npm run db:push -- --force-reset
+npx prisma db push --force-reset
 ```
 
 ---

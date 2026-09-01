@@ -27,7 +27,7 @@ Configuration:
 npm run dev
 ```
 
-Uses npm workspaces to start all 13 backend services and frontend apps concurrently.
+Uses npm scripts to start all backend services and frontend apps.
 
 ---
 
@@ -35,47 +35,33 @@ Uses npm workspaces to start all 13 backend services and frontend apps concurren
 
 ### Architecture
 
-16 services deployed via Render Blueprint (`render.yaml`):
+Deployed as a single Render web service:
 
-| Service | Type | Port | Notes |
-|---------|------|------|-------|
-| api-gateway | web | 4000 | Routes to all services |
-| auth-service | web | 4001 | Builds auth, types, utils, validation, database first |
-| farm-service | web | 4002 | |
-| livestock-service | web | 4003 | |
-| poultry-service | web | 4004 | |
-| notification-service | web | 4005 | Firebase + Nodemailer |
-| finance-service | web | 4006 | |
-| worker-service | web | 4007 | |
-| reporting-service | web | 4008 | |
-| organization-service | web | 4009 | |
-| crop-service | web | 4011 | |
-| hr-service | web | 4012 | |
-| platform-service | web | 4020 | Also builds @farm/auth |
-| admin | web | — | Frontend admin dashboard |
-| web | web | — | Frontend worker web app |
-| console | web | — | Platform console frontend |
-
-**Database:** Neon (hosted PostgreSQL) with connection pooler endpoint.
+| Component | Details |
+|-----------|---------|
+| Backend | NestJS microservices running via `concurrently` |
+| Frontend | Next.js apps (admin, console) |
+| Database | Neon PostgreSQL (hosted) |
+| Build | `npm run build` with increased memory |
 
 ### Deploy Steps
 
 1. Push to GitHub
 2. Connect Render to the repository
-3. Apply the Render Blueprint (`render.yaml`)
-4. Set environment variables in Render dashboard
-5. Deploy
+3. Set environment variables in Render dashboard
+4. Deploy
 
 ### Environment Variables
 
-Required for all services:
+Required:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host:5432/FMS` |
+| `DATABASE_URL` | Neon PostgreSQL connection string | `postgresql://neondb_owner:xxx@ep-xxx.neon.tech/FMS?sslmode=require` |
 | `JWT_SECRET` | JWT signing secret (min 32 chars) | `your-secret-key` |
-| `API_GATEWAY_PORT` | Gateway port | `4000` |
-| `AUTH_SERVICE_PORT` | Auth service port | `4001` |
+| `JWT_REFRESH_SECRET` | Refresh token secret | `your-refresh-secret` |
+| `MFA_SECRET` | MFA secret | `your-mfa-secret` |
+| `SERVICE_SECRET` | Service-to-service secret | `your-service-secret` |
 
 Optional for notification-service:
 
@@ -94,35 +80,23 @@ Optional for email:
 | `SMTP_USER` | SMTP username |
 | `SMTP_PASS` | SMTP password |
 
-Optional for platform-service:
-
-| Variable | Description |
-|----------|-------------|
-| `PLATFORM_JWT_SECRET` | Separate JWT secret for platform admin |
-
 ### Build Configuration
 
-Each service builds workspace dependencies before its own build:
+The build process:
+
+1. Run Prisma migrations
+2. Build server workspace packages (domain-core, types-server, env, utils, validation-server, auth-server, database)
+3. Build app-server (NestJS) with increased memory (`--max-old-space-size=4096`)
+4. Build client workspace packages
+5. Build admin and console apps
 
 ```yaml
 buildCommand: |
-  cd ../.. && npm install
-  npm run build --workspace=@farm/database
-  npm run build --workspace=@farm/types
-  npm run build --workspace=@farm/utils
-  npm run build --workspace=@farm/validation
-  npm run build --workspace=@farm/auth
-  npm run build --workspace=@farm/<service-domain>
-  npm run build --workspace=@farm/<service>
-```
-
-### npm Setup
-
-Render uses npm:
-
-```yaml
-buildCommand: |
-  # ... rest of build
+  npm install --workspaces
+  npm run build --workspace=farm-server
+  npm run build --workspace=farm-client
+startCommand: |
+  npm run start
 ```
 
 ---
@@ -133,26 +107,28 @@ buildCommand: |
 
 - Use Neon's connection pooler endpoint (port 5432)
 - Connection pooling is built into Neon — no separate PgBouncer needed
-- Set `DATABASE_URL` to Neon's pooler endpoint
+- Set `DATABASE_URL` to Neon's pooler endpoint with `sslmode=require`
 
 ### Migrations
 
 ```bash
 # Development: push schema changes
-npm run db:push
+cd farm-server
+npx prisma db push
 
 # Production: use migrations
 npx prisma migrate deploy
 
 # Generate client after migration
-npm run db:generate
+npx prisma generate
 ```
 
 ### Seeding Production
 
 ```bash
 # Only run once on initial setup
-npm run db:seed
+cd farm-server
+npx tsx prisma/seed.ts
 ```
 
 ---
@@ -161,13 +137,10 @@ npm run db:seed
 
 ### Health Checks
 
-Each service exposes a health endpoint:
+The API gateway exposes a health endpoint:
 
 ```bash
-curl http://localhost:4000/health  # Gateway
-curl http://localhost:4001/health  # Auth
-curl http://localhost:4002/health  # Farm
-# ... etc
+curl http://localhost:4000/health
 ```
 
 ### SystemHealth Model
@@ -182,15 +155,6 @@ The platform-service tracks health status for all services:
 | memoryUsage | JSON with heap/ RSS stats |
 | lastCheck | Timestamp of last health check |
 
-### Platform Health Dashboard
-
-Access via console app or API:
-
-```bash
-GET /platform/health          # List all service health
-POST /platform/health/check   # Trigger health check
-```
-
 ---
 
 ## CI/CD
@@ -200,11 +164,6 @@ POST /platform/health/check   # Trigger health check
 | Workflow | Status | Trigger |
 |----------|--------|---------|
 | admin-ci.yml | Active | Push to main/develop, PRs to main |
-| api.yml | Placeholder | — |
-| deploy.yml | Placeholder | — |
-| mobile.yml | Placeholder | — |
-| test.yml | Placeholder | — |
-| web.yml | Placeholder | — |
 
 ### admin-ci.yml
 
@@ -212,9 +171,9 @@ Builds and tests the admin app:
 
 1. Checkout code
 2. Install npm + Node 22
-3. Install dependencies
-4. Build workspace dependencies
-5. Typecheck
+3. Install dependencies in `farm-client/`
+4. Build workspace dependencies (types, validation, auth)
+5. Typecheck admin
 6. Run tests
 7. Upload `.next` build artifact (7-day retention)
 
@@ -239,14 +198,15 @@ taskkill /F /PID <pid>
 docker compose -f infra/docker-compose.yml up -d
 
 # Check connection
-psql "postgresql://postgres:<password>@localhost:5432/FMS"
+psql "postgresql://postgres:Aarinola@localhost:5432/FMS"
 ```
 
 ### Prisma client outdated
 
 ```bash
 # Regenerate after schema changes
-npm run db:generate
+cd farm-server/packages/server/database
+npx prisma generate
 ```
 
 ### Build fails on Render
@@ -254,3 +214,14 @@ npm run db:generate
 - Ensure npm is installed and available
 - Check build logs for missing workspace dependencies
 - Verify `DATABASE_URL` is set correctly
+- Check that Node memory limit is sufficient (4GB recommended)
+
+### Migration baseline error (P3005)
+
+If the database already has tables but Prisma doesn't recognize them:
+
+```bash
+cd farm-server/packages/server/database
+npx prisma migrate resolve --applied 0_init
+npx prisma migrate resolve --applied 20260722070000_add_report_model
+```

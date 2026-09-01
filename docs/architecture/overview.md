@@ -43,51 +43,63 @@ The Farm Management System is a multi-tenant SaaS platform built with a **modula
 
 | Layer | Technology |
 |-------|-----------|
-| **Monorepo** | npm 11.10.0 workspaces |
+| **Monorepo** | npm 11.10.0 workspaces (two independent workspace roots) |
 | **Backend** | NestJS 11.x (API Gateway + App Server) |
 | **Frontend** | Next.js 15.1.7 + React 19 (web/admin/console) |
 | **Mobile** | Expo SDK 54 + React Native 0.81.5 |
-| **Database** | PostgreSQL 16 + Prisma 6.4.1 |
-| **Connection Pooling** | PgBouncer 1.23.1 (transaction mode) |
+| **Database** | PostgreSQL 16 + Prisma 6.19.3 |
+| **Connection Pooling** | PgBouncer 1.23.1 (transaction mode) / Neon pooler |
 | **Auth** | JWT (jsonwebtoken) + bcryptjs + TOTP (otplib) |
 | **Validation** | Zod |
 | **Real-time** | Socket.IO (NestJS WebSockets) |
 | **Push Notifications** | Firebase Admin SDK |
 | **Email** | Nodemailer |
-| **Testing** | Vitest (admin, web), Jest (services, mobile) |
+| **Testing** | Vitest (admin), Jest (services, mobile) |
 | **Deployment** | Render.com (production), Docker Compose (local) |
 
 ## Monorepo Structure
 
+The project uses **two independent workspace roots** within a single repository:
+
 ```
-├── farm client/               # Frontend applications & client packages
-│   ├── apps/                  # Frontend apps
-│   │   ├── web/               # Worker-facing (Next.js, port 4004)
-│   │   ├── admin/             # Farm owner/manager dashboard (Next.js, port 4001)
-│   │   ├── console/           # Platform admin console (Next.js, port 3004)
-│   │   └── mobile/            # Mobile app (Expo SDK 54, port 8082)
-│   └── packages/              # Client shared libraries
-│       ├── api-client/        # Axios API client
-│       ├── auth/              # Auth types & helpers
-│       ├── hooks/             # Shared React hooks
-│       ├── types/             # TypeScript types
-│       ├── ui/                # Shared React components
-│       ├── ui-native/         # Shared React Native components
-│       └── validation/        # Zod schemas
-├── farm server/               # Backend services & server packages
-│   ├── api-gateway/           # Central gateway (port 4000)
-│   ├── app-server/            # Modular monolith (port 4001)
-│   └── packages/              # Server shared libraries
-│       ├── server/auth/       # JWT, guards, decorators
-│       ├── server/database/   # Prisma schema + client + RLS
-│       ├── server/env/        # Environment config loader
-│       ├── server/types/      # Server TypeScript types
-│       ├── server/utils/      # Utility functions
-│       ├── server/validation/ # Server Zod schemas
-│       └── server/domain-core/# DDD base classes (Entity, VO, Event)
-├── infra/                     # Infrastructure (Docker, etc.)
-└── docs/                      # Documentation
+FMS/
+├── package.json              # Root: orchestration scripts only (no workspaces)
+├── farm-client/              # Frontend workspace root
+│   ├── package.json          # Workspaces: admin, console, mobile, packages/*
+│   ├── admin/                # Farm owner/manager dashboard (Next.js, port 4003)
+│   ├── console/              # Platform admin console (Next.js, port 4002)
+│   ├── mobile/               # Mobile app (Expo SDK 54, port 8082)
+│   └── packages/             # Client shared libraries
+│       ├── api-client/       # Axios API client
+│       ├── auth/             # Auth types & helpers
+│       ├── hooks/            # Shared React hooks
+│       ├── types/            # TypeScript types
+│       ├── ui/               # Shared React components (Tailwind)
+│       ├── ui-native/        # Shared React Native components
+│       └── validation/       # Zod schemas
+├── farm-server/              # Backend workspace root
+│   ├── package.json          # Workspaces: app-server, packages/server/*
+│   ├── app-server/           # Modular monolith (NestJS, port 4000)
+│   └── packages/server/      # Server shared libraries
+│       ├── auth/             # JWT, guards, decorators
+│       ├── database/         # Prisma schema + client + RLS
+│       ├── domain-core/      # DDD base classes (Entity, VO, Event)
+│       ├── env/              # Environment config loader
+│       ├── types/            # Server TypeScript types
+│       ├── utils/            # Utility functions
+│       └── validation/       # Server Zod schemas
+├── infra/                    # Infrastructure (Docker, etc.)
+├── scripts/                  # Build/start orchestration
+└── docs/                     # Documentation
 ```
+
+### Key Design Decision: Two Workspace Roots
+
+The frontend and backend are **completely independent** — zero cross-dependencies:
+- `farm-client/` has its own `package.json` with workspaces for admin, console, mobile, and client packages
+- `farm-server/` has its own `package.json` with workspaces for app-server and server packages
+- Each can be installed, built, and deployed independently
+- Shared concepts (types, auth, validation) have separate implementations on each side
 
 ## Service Map
 
@@ -252,10 +264,10 @@ The gateway's `ProxyMiddleware` handles:
 
 ### Overview
 
-- **PostgreSQL 16** with **Prisma 6.4.1** ORM
+- **PostgreSQL 16** with **Prisma 6.19.3** ORM
 - **42 models** across 11 domains
 - **Shared schema** — all services use the same database
-- **Connection pooling** via PgBouncer (transaction mode, 200 max clients)
+- **Connection pooling** via PgBouncer (transaction mode, 200 max clients) or Neon pooler
 
 ### Key Aggregates
 
@@ -271,7 +283,7 @@ The gateway's `ProxyMiddleware` handles:
 | Notifications | 3 | Notification, DeviceToken, Document |
 | Platform | 6 | FeatureFlag, SubscriptionPlan, SystemHealth, AuditLog |
 
-See [DATABASE.md](./DATABASE.md) for the full model reference.
+See [DATABASE.md](./database.md) for the full model reference.
 
 ## Real-time Communication
 
@@ -296,26 +308,20 @@ See [DATABASE.md](./DATABASE.md) for the full model reference.
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d   # PostgreSQL + PgBouncer
-npm run dev             # All services
+npm run dev                                         # All services
 ```
 
 ### Production (Render.com)
 
-- 16 services deployed via `render.yaml` blueprint
-- Neon PostgreSQL (hosted)
+- Deployed as a single service running all microservices via `concurrently`
+- Neon PostgreSQL (hosted) with connection pooler
 - Environment variables set in Render dashboard
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for details.
+See [DEPLOYMENT.md](./deployment/guide.md) for details.
 
 ---
 
-## Additional Architecture Details
-
-_Unique content preserved from `docs/architecture/architecture-documentation.md` (1098 lines)._
-
----
-
-### Security Architecture
+## Security Architecture
 
 **Application Security**
 
@@ -335,132 +341,15 @@ _Unique content preserved from `docs/architecture/architecture-documentation.md`
 
 ---
 
-### Audit Logging
-
-Logged activities:
-
-- User logins
-- Record updates
-- Inventory changes
-- Financial modifications
-- Permission changes
-
----
-
-### Monitoring & Observability
-
-| Area           | Tool       |
-| -------------- | ---------- |
-| Metrics        | Prometheus |
-| Dashboards     | Grafana    |
-| Logs           | Loki       |
-| Error Tracking | Sentry     |
-
----
-
-### CI/CD Pipeline
+## CI/CD Pipeline
 
 ```
-Git Push → GitHub Actions → Lint → Test → Build → Docker Image → Deploy
+Git Push → GitHub Actions → Lint → Test → Build → Deploy
 ```
 
 ---
 
-### Docker Architecture
-
-Containers:
-
-- API Gateway
-- Backend Services
-- PostgreSQL
-- Redis
-- Nginx
-
----
-
-### Production Infrastructure
-
-```
-Cloudflare
-     |
-Load Balancer
-     |
-Nginx Reverse Proxy
-     |
-API Gateway
-     |
-Backend Services
-     |
-PostgreSQL + Redis
-```
-
----
-
-### Caching Architecture
-
-Redis is used for:
-
-- Authentication sessions
-- Dashboard analytics
-- Frequently accessed reports
-- Notifications
-
----
-
-### File Storage Architecture
-
-**Storage Types**
-
-- Poultry images
-- Crop images
-- Documents
-- Reports
-- Export files
-
-**Storage Engine**: S3-compatible object storage.
-
----
-
-### Analytics Architecture
-
-**Poultry Analytics**
-
-- Mortality rate
-- Egg production rate
-- Feed conversion ratio
-- Growth performance
-
-**Crop Analytics**
-
-- Yield analysis
-- Harvest forecasting
-- Input cost analysis
-
-**Financial Analytics**
-
-- Revenue trends
-- Expense tracking
-- Profitability analysis
-
----
-
-### Offline Synchronization
-
-**Sync Process**
-
-```
-User Action → Local Database Save → Sync Queue → Background Sync Worker → API Synchronization → Conflict Resolution
-```
-
-**Conflict Resolution Strategies**
-
-- Last write wins
-- Timestamp comparison
-- Manual resolution for critical conflicts
-
----
-
-### Scalability Strategy
+## Scalability Strategy
 
 Services can scale independently. Scalable components:
 
@@ -471,19 +360,7 @@ Services can scale independently. Scalable components:
 
 ---
 
-### Future Architecture Expansion
-
-- IoT integration
-- Smart sensors
-- AI disease prediction
-- Weather integration
-- GPS farm mapping
-- Drone integration
-- Machine learning analytics
-
----
-
-### Development Standards
+## Development Standards
 
 **Coding Standards**
 
@@ -500,44 +377,4 @@ Services can scale independently. Scalable components:
 | Unit Testing   | Jest       |
 | API Testing    | Supertest  |
 | E2E Testing    | Playwright |
-| Mobile Testing | Detox      |
-
----
-
-### Recommended Development Phases
-
-**Phase 1 — Foundation**: Monorepo setup, authentication, database schema, core APIs
-
-**Phase 2 — Core Farm Operations**: Poultry, crop, inventory, worker modules
-
-**Phase 3 — Mobile Offline Support**: Offline database, synchronization engine, conflict resolution
-
-**Phase 4 — Analytics & Reporting**: Reporting dashboards, financial reports, poultry analytics, crop analytics
-
-**Phase 5 — Advanced Features**: IoT integration, AI analytics, smart recommendations
-
----
-
-### MVP Scope
-
-**Poultry**: Flock management, feeding records, mortality tracking, egg production, vaccination records
-
-**Crops**: Field management, crop cycles, harvest tracking
-
-**Finance**: Expenses, sales
-
-**Workers**: Attendance, worker management
-
----
-
-### Recommended Team Structure
-
-| Role              | Responsibility      |
-| ----------------- | ------------------- |
-| Product Manager   | Product direction   |
-| Backend Engineer  | APIs & database     |
-| Frontend Engineer | Web dashboard       |
-| Mobile Engineer   | Mobile applications |
-| DevOps Engineer   | Infrastructure      |
-| UI/UX Designer    | Design system       |
-| QA Engineer       | Testing             |
+| Mobile Testing | Jest       |
