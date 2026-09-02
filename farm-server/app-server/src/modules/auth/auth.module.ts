@@ -24,9 +24,9 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
 @Module({
   imports: [
     ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 30 },
-      { name: 'auth', ttl: 60000, limit: 30 },
-      { name: '2fa', ttl: 300000, limit: 5 },
+      { name: 'default', ttl: Number(process.env.RATE_LIMIT_DEFAULT_TTL_MS) || 60000, limit: Number(process.env.RATE_LIMIT_DEFAULT_LIMIT) || 30 },
+      { name: 'auth', ttl: Number(process.env.RATE_LIMIT_AUTH_TTL_MS) || 60000, limit: Number(process.env.RATE_LIMIT_AUTH_LIMIT) || 30 },
+      { name: '2fa', ttl: Number(process.env.RATE_LIMIT_2FA_TTL_MS) || 300000, limit: Number(process.env.RATE_LIMIT_2FA_LIMIT) || 5 },
     ]),
   ],
   controllers: [

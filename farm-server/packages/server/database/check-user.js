@@ -1,4 +1,4 @@
-require('dotenv').config({ path: 'C:\\Users\\OJOWA\\Documents\\Farm Management System\\.env' });
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '..', '.env') });
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 

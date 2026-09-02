@@ -2,13 +2,16 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 /**
- * Single shared env loader for the whole monorepo.
+ * Shared env loader for farm-server.
  *
- * Reads the root `.env` (repo root) and populates `process.env` for any keys
+ * Reads `.env` files and populates `process.env` for any keys
  * not already set. Safe to call multiple times (idempotent) and from any
- * working directory — it resolves the path relative to this file, which always
- * lives at `packages/env/dist/index.js` (or `src/index.ts` under ts-node),
- * i.e. three levels up from `packages/env`.
+ * working directory.
+ *
+ * Resolution order (first file found wins):
+ *   1. <farm-server-root>/.env          (the server's own .env)
+ *   2. <repo-root>/.env                 (legacy monorepo root .env)
+ *   3. <cwd>/.env                       (process.cwd fallback)
  */
 let loaded = false;
 
@@ -17,7 +20,10 @@ export function loadEnv(): void {
   loaded = true;
 
   const candidates = [
+    // farm-server/.env  (packages/server/env/src -> ../../..)
     join(__dirname, '..', '..', '..', '.env'),
+    // FMS repo root .env  (packages/server/env/src -> ../../../..)
+    join(__dirname, '..', '..', '..', '..', '.env'),
     join(process.cwd(), '.env'),
   ];
 

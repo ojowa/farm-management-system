@@ -92,7 +92,7 @@ export const signServiceToken = (user: VerifiedUser): string => {
     organizationId: user.organizationId,
     type: 'service',
   };
-  return sign(payload, resolveServiceSecret(), { expiresIn: '30s' });
+  return sign(payload, resolveServiceSecret(), { expiresIn: process.env.SERVICE_TOKEN_EXPIRY || '30s' });
 };
 
 /**

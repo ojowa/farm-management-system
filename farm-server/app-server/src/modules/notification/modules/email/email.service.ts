@@ -27,7 +27,7 @@ export class EmailService {
   private readonly fromEmail: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.fromEmail = this.configService.get('EMAIL_FROM', 'noreply@farmmanagement.com');
+    this.fromEmail = this.configService.get('EMAIL_FROM') || '';
     this.initializeTransporter();
   }
 

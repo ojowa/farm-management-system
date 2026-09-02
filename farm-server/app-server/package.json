@@ -58,7 +58,6 @@
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
-    "concurrently": "^9.0.0",
     "cookie-parser": "^1.4.6",
     "firebase-admin": "^12.0.0",
     "helmet": "^8.0.0",
@@ -82,6 +81,7 @@
     "@types/node": "^22.0.0",
     "@types/nodemailer": "^6.4.14",
     "prisma": "^6.0.0",
+    "concurrently": "^9.0.0",
     "ts-node": "^10.9.0",
     "typescript": "~5.8.3"
   }

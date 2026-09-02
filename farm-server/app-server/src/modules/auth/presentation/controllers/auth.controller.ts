@@ -8,8 +8,8 @@ import { LoginDto, RegisterDto, RegisterConsoleDto, RefreshTokenDto, VerifyMfaDt
 
 const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = { httpOnly: true, secure: isProduction, sameSite: 'lax' as const, path: '/' };
-const ACCESS_MAX_AGE = 15 * 60 * 1000;
-const REFRESH_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const ACCESS_MAX_AGE = Number(process.env.COOKIE_ACCESS_MAX_AGE_MS) || 15 * 60 * 1000;
+const REFRESH_MAX_AGE = Number(process.env.COOKIE_REFRESH_MAX_AGE_MS) || 7 * 24 * 60 * 60 * 1000;
 
 @Controller('auth')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
@@ -18,7 +18,7 @@ export class AuthController {
 
   @Post('login')
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  async login(@Body() body: LoginDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() body: LoginDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     const result = await this.authService.login(body, ctx);
 
@@ -32,7 +32,7 @@ export class AuthController {
 
   @Post('verify-mfa')
   @Throttle({ default: { ttl: 300000, limit: 5 } })
-  async verifyMFA(@Body() body: VerifyMfaDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async verifyMFA(@Body() body: VerifyMfaDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     const result = await this.authService.verifyMFA(body.mfaToken, body.code, ctx);
 
@@ -46,7 +46,7 @@ export class AuthController {
 
   @Post('register')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async register(@Body() body: RegisterDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async register(@Body() body: RegisterDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     const result = await this.authService.register(body, ctx);
 
@@ -60,14 +60,14 @@ export class AuthController {
 
   @Post('register-console')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async registerConsole(@Body() body: RegisterConsoleDto, @Req() req: any) {
+  async registerConsole(@Body() body: RegisterConsoleDto, @Req() req: any): Promise<any> {
     const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
     return this.authService.registerConsole(body, ctx);
   }
 
   @Post('refresh')
   @Throttle({ default: { ttl: 60000, limit: 20 } })
-  async refreshToken(@Body() body: RefreshTokenDto, @Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async refreshToken(@Body() body: RefreshTokenDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
     const refreshToken = req.cookies?.refreshToken || body?.refreshToken;
 
     // Detect refresh token reuse — if a revoked token is presented, revoke

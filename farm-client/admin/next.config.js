@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const gatewayUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 const nextConfig = {
   transpilePackages: ['@farm/types', '@farm/validation'],
   typescript: {
@@ -8,12 +10,16 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**.example.com',
+        hostname: '**',
       },
     ],
   },
   async rewrites() {
-    return [];
+    return [
+      { source: '/auth/:path*', destination: `${gatewayUrl}/auth/:path*` },
+      { source: '/api/:path*', destination: `${gatewayUrl}/api/:path*` },
+      { source: '/platform-:path*', destination: `${gatewayUrl}/platform-:path*` },
+    ];
   },
 };
 

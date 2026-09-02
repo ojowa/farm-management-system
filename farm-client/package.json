@@ -7,16 +7,18 @@
   "workspaces": [
     "admin",
     "console",
-    "mobile",
     "packages/*"
   ],
   "scripts": {
     "build": "npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth && npm run build -w @farm/api-client && npm run build -w @farm/hooks && npm run build -w @farm/ui && npm run build -w @farm/admin && npm run build -w @farm/console",
     "build:admin": "npm run build --workspace=@farm/admin",
     "build:console": "npm run build --workspace=@farm/console",
+    "dev": "npm run dev:admin & npm run dev:console",
     "dev:admin": "npm run dev --workspace=@farm/admin",
     "dev:console": "npm run dev --workspace=@farm/console",
-    "dev:mobile": "npm run start --workspace=@farm/mobile",
+    "start": "npm run start:admin & npm run start:console",
+    "start:admin": "npm run start --workspace=@farm/admin",
+    "start:console": "npm run start --workspace=@farm/console",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   }

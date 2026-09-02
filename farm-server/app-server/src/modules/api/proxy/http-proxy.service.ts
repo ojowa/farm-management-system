@@ -120,7 +120,7 @@ export class GatewayProxyService {
         data: req.body,
         params: req.query,
         headers,
-        timeout: 30000,
+        timeout: Number(process.env.PROXY_TIMEOUT_MS) || 30000,
       });
       return {
         success: true,

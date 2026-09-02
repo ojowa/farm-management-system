@@ -10,6 +10,13 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+const BCRYPT_SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+const ACCESS_TOKEN_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'];
+const REFRESH_TOKEN_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY || '7d') as jwt.SignOptions['expiresIn'];
+const REFRESH_TOKEN_DB_EXPIRY_MS = Number(process.env.REFRESH_TOKEN_DB_EXPIRY_MS) || 7 * 24 * 60 * 60 * 1000;
+const MFA_TOKEN_EXPIRY = (process.env.MFA_TOKEN_EXPIRY || '5m') as jwt.SignOptions['expiresIn'];
+const APP_NAME = process.env.APP_NAME || 'FarmManagement';
+
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -41,7 +48,7 @@ export class AuthService {
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Invalid credentials');
     if (user.twoFactorEnabled) {
-      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: '5m' });
+      const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: MFA_TOKEN_EXPIRY });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
     const accessToken = await this.generateAccessToken(user);
@@ -67,7 +74,7 @@ export class AuthService {
   async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
     const existing = await this.userRepo.findByEmail(data.email);
     if (existing) throw new ConflictException('Email already registered');
-    const passwordHash = await bcrypt.hash(data.password, 12);
+    const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
     const defaultRole = await this.roleRepo.findDefaultRole();
     const user = await this.userRepo.create({
       email: data.email,
@@ -87,7 +94,7 @@ export class AuthService {
     const existing = await this.userRepo.findByEmail(data.email);
     if (existing) throw new ConflictException('Email already registered');
 
-    const passwordHash = await bcrypt.hash(data.password, 12);
+    const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
 
     const superAdminRole = await this.roleRepo.findByName('SUPER_ADMIN', null);
     if (!superAdminRole) throw new BadRequestException('SUPER_ADMIN role not found — run seed first');
@@ -127,12 +134,12 @@ export class AuthService {
   }
 
   async generateRefreshToken(userId: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
-    const rawToken = jwt.sign({ sub: userId }, getJwtRefreshSecret(), { expiresIn: '7d' });
+    const rawToken = jwt.sign({ sub: userId }, getJwtRefreshSecret(), { expiresIn: REFRESH_TOKEN_EXPIRY });
     const tokenHash = hashToken(rawToken);
     await this.refreshTokenRepo.create({
       userId,
       tokenHash,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_DB_EXPIRY_MS),
       ipAddress: ctx?.ipAddress,
       deviceInfo: ctx?.deviceInfo,
     });
@@ -148,7 +155,7 @@ export class AuthService {
     const token = jwt.sign(
       { sub: user.id, email: user.email, role: user.role?.name || user.roleName, permissions, organizationId: user.organizationId },
       secret,
-      { expiresIn: '15m' }
+      { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
     return token;
   }
@@ -194,7 +201,7 @@ export class AuthService {
     if (!user) throw new NotFoundException('User not found');
     const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('Current password is incorrect');
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
     await this.userRepo.update(userId, { passwordHash } as any);
     await this.refreshTokenRepo.deleteAllForUser(userId);
   }
@@ -215,7 +222,7 @@ export class AuthService {
     const { authenticator } = await import('otplib');
     const secret = authenticator.generateSecret();
     await this.userRepo.update(userId, { twoFactorSecret: secret } as any);
-    return { secret, otpauthUrl: authenticator.keyuri(userId, 'FarmManagement', secret) };
+    return { secret, otpauthUrl: authenticator.keyuri(userId, APP_NAME, secret) };
   }
 
   async confirm2fa(userId: string, code: string) {

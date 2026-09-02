@@ -207,7 +207,7 @@ export class PlatformHealthService {
     for (const service of SERVICES) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), Number(process.env.HEALTH_CHECK_TIMEOUT_MS) || 5000);
         const start = Date.now();
         const response = await fetch(service.url, { signal: controller.signal });
         clearTimeout(timeout);

@@ -29,7 +29,7 @@ async function bootstrap() {
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port, process.env.LISTEN_HOST || '0.0.0.0');
   console.log(`Notification Service running on http://0.0.0.0:${port}`);
 }
 bootstrap();

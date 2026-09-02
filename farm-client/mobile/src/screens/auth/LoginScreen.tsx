@@ -8,48 +8,15 @@ import {
   Platform,
   ScrollView,
   Alert,
-  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
-import { TextInputField, Button, colors } from '../../components/common/UIComponents';
+import { TextInputField, Button } from '../../components/common/UIComponents';
 import { useAuth } from '../../hooks/useAuth';
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  logoSection: { alignItems: 'center', marginBottom: 48 },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoText: { fontSize: 36, color: '#FFFFFF', fontWeight: '700' },
-  title: { fontSize: 28, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: colors.textLight, textAlign: 'center', marginBottom: 32 },
-  form: { gap: 16 },
-  mfaSection: { marginTop: 24, alignItems: 'center' },
-  mfaTitle: { fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 8 },
-  mfaSubtitle: { fontSize: 13, color: colors.textLight, marginBottom: 16, textAlign: 'center' },
-  errorText: { fontSize: 13, color: colors.error, textAlign: 'center', marginBottom: 12 },
-  registerText: {
-    fontSize: 13,
-    color: colors.textLight,
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  registerLink: { color: colors.primary, fontWeight: '600' },
-});
+import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function LoginScreen() {
   const { login, verifyMFA, loading, error, mfaRequired, mfaSessionToken, clearError, resetMFA } = useAuth();
+  const { colors: themeColors, isDark } = useAppTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +36,7 @@ export default function LoginScreen() {
     clearError();
     try {
       await login(email.trim().toLowerCase(), password);
-    } catch (err: any) {
+    } catch {
       // Error is handled by the slice
     }
   };
@@ -84,7 +51,7 @@ export default function LoginScreen() {
     clearError();
     try {
       await verifyMFA(mfaSessionToken, mfaCode);
-    } catch (err: any) {
+    } catch {
       // Error is handled by the slice
     }
   };
@@ -94,9 +61,17 @@ export default function LoginScreen() {
     setMfaCode('');
   };
 
+  const handleContactAdmin = () => {
+    Alert.alert(
+      'Account Support',
+      'To request an account or reset your credentials, please contact your farm administrator or supervisor.',
+      [{ text: 'OK' }]
+    );
+  };
+
   if (mfaRequired) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -106,16 +81,20 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.logoSection}>
-              <View style={styles.logoCircle}>
+              <View style={[styles.logoCircle, { backgroundColor: themeColors.primary }]}>
                 <Text style={styles.logoText}>F</Text>
               </View>
-              <Text style={styles.title}>Two-Factor Auth</Text>
-              <Text style={styles.mfaSubtitle}>
+              <Text style={[styles.title, { color: themeColors.text }]}>Two-Factor Auth</Text>
+              <Text style={[styles.mfaSubtitle, { color: themeColors.textSecondary }]}>
                 Enter the 6-digit code from your authenticator app
               </Text>
             </View>
 
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && (
+              <Text style={[styles.errorText, { color: themeColors.error }]} accessibilityRole="alert">
+                {error}
+              </Text>
+            )}
 
             <View style={styles.form}>
               <TextInputField
@@ -127,6 +106,8 @@ export default function LoginScreen() {
                   clearError();
                 }}
                 keyboardType="numeric"
+                autoComplete="one-time-code"
+                textContentType="oneTimeCode"
                 accessibilityLabel="6-digit verification code"
               />
 
@@ -150,7 +131,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -160,14 +141,18 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.logoSection}>
-            <View style={styles.logoCircle}>
+            <View style={[styles.logoCircle, { backgroundColor: themeColors.primary }]}>
               <Text style={styles.logoText}>F</Text>
             </View>
-            <Text style={styles.title}>Farm Management</Text>
-            <Text style={styles.subtitle}>Sign in to your account</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Farm Management</Text>
+            <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>Sign in to your account</Text>
           </View>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && (
+            <Text style={[styles.errorText, { color: themeColors.error }]} accessibilityRole="alert">
+              {error}
+            </Text>
+          )}
 
           <View style={styles.form}>
             <TextInputField
@@ -179,6 +164,11 @@ export default function LoginScreen() {
                 clearError();
               }}
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
               accessibilityLabel="Email address"
             />
 
@@ -191,6 +181,25 @@ export default function LoginScreen() {
                 clearError();
               }}
               secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              accessibilityLabel="Password"
+              rightIcon={
+                <TouchableOpacity
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={{ fontSize: 13, color: themeColors.primary, fontWeight: '600' }}>
+                    {showPassword ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              }
             />
 
             <Button
@@ -201,12 +210,52 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Text style={styles.registerText}>
+          <Text style={[styles.registerText, { color: themeColors.textSecondary }]}>
             Don't have an account?{' '}
-            <Text style={styles.registerLink}>Contact your administrator</Text>
+            <Text
+              style={[styles.registerLink, { color: themeColors.primary }]}
+              onPress={handleContactAdmin}
+              accessibilityRole="link"
+              accessibilityLabel="Contact your administrator"
+            >
+              Contact your administrator
+            </Text>
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  logoSection: { alignItems: 'center', marginBottom: 48 },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoText: { fontSize: 36, color: '#FFFFFF', fontWeight: '700' },
+  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  subtitle: { fontSize: 14, textAlign: 'center', marginBottom: 32 },
+  form: { gap: 16 },
+  mfaSection: { marginTop: 24, alignItems: 'center' },
+  mfaTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  mfaSubtitle: { fontSize: 13, marginBottom: 16, textAlign: 'center' },
+  errorText: { fontSize: 13, textAlign: 'center', marginBottom: 12 },
+  registerText: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 24,
+  },
+  registerLink: { fontWeight: '600' },
+});

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  StyleProp,
 } from 'react-native';
 
 const colorsRaw = {
@@ -115,10 +116,17 @@ export interface InputProps {
   error?: string;
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
+  autoComplete?: string;
+  textContentType?: string;
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send';
+  onSubmitEditing?: () => void;
   editable?: boolean;
-  containerStyle?: ViewStyle;
-  style?: TextStyle;
+  containerStyle?: StyleProp<ViewStyle>;
+  style?: StyleProp<TextStyle>;
   accessibilityLabel?: string;
+  rightIcon?: React.ReactNode;
 }
 
 export const TextInputField: React.FC<InputProps> = ({
@@ -129,36 +137,57 @@ export const TextInputField: React.FC<InputProps> = ({
   error,
   secureTextEntry,
   keyboardType,
+  autoCapitalize,
+  autoCorrect,
+  autoComplete,
+  textContentType,
+  returnKeyType,
+  onSubmitEditing,
   editable = true,
   containerStyle,
   style,
   accessibilityLabel,
+  rightIcon,
 }) => {
   const [focused, setFocused] = React.useState(false);
 
   return (
     <View style={[styles.inputContainer, containerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput
+      <View
         style={[
           styles.input,
+          { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 },
           focused ? styles.inputFocused : null,
           !editable ? { backgroundColor: palette.light } : null,
-          style,
         ]}
-        placeholder={placeholder}
-        value={value}
-        onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        editable={editable}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholderTextColor={palette.textLight}
-        accessibilityLabel={accessibilityLabel || label || placeholder}
-        accessibilityRole="text"
-        accessibilityState={{ disabled: !editable }}
-      />
+      >
+        <TextInput
+          style={[
+            { flex: 1, paddingVertical: 10, fontSize: 16, color: palette.text },
+            style,
+          ]}
+          placeholder={placeholder}
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          autoComplete={autoComplete as any}
+          textContentType={textContentType as any}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
+          editable={editable}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholderTextColor={palette.textLight}
+          accessibilityLabel={accessibilityLabel || label || placeholder}
+          accessibilityRole="text"
+          accessibilityState={{ disabled: !editable }}
+        />
+        {rightIcon ? <View style={{ marginLeft: 8 }}>{rightIcon}</View> : null}
+      </View>
       {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
     </View>
   );
@@ -170,8 +199,8 @@ export interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   variant?: 'primary' | 'secondary';
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   icon?: React.ReactNode;
   accessibilityLabel?: string;
 }
@@ -232,7 +261,7 @@ export const Button: React.FC<ButtonProps> = ({
 
 export interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   accessibilityLabel?: string;
 }

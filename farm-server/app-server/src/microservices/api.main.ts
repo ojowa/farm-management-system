@@ -46,7 +46,7 @@ async function bootstrap() {
   });
 
   const config = new DocumentBuilder()
-    .setTitle('FMS API Router')
+    .setTitle(process.env.APP_NAME || 'FMS API Router')
     .setDescription('HTTP reverse proxy to microservices')
     .setVersion('2.0')
     .addBearerAuth()
@@ -55,7 +55,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document, { swaggerOptions: { persistAuthorization: true } });
 
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port, process.env.LISTEN_HOST || '0.0.0.0');
   console.log(`API Service (HTTP router) running on port ${port}`);
 }
 bootstrap();

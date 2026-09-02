@@ -2,8 +2,9 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '@/hooks/useAuth';
-import { colors } from '@/components/common/UIComponents';
+import { useAppTheme } from '@/theme/ThemeContext';
 import { usePermission } from '@/hooks/usePermission';
 
 const TAB_CONFIG = [
@@ -19,11 +20,16 @@ export default function AppLayout() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const user = useAppSelector((state) => state.auth.user);
   const { hasPermission } = usePermission();
+  const { colors: themeColors } = useAppTheme();
+  const insets = useSafeAreaInsets();
+
+  const bottomInset = Math.max(insets.bottom, 8);
+  const tabHeight = 56 + bottomInset;
 
   if (!isAuthenticated) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
       </View>
     );
   }
@@ -38,18 +44,19 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textLight,
+        tabBarActiveTintColor: themeColors.primary,
+        tabBarInactiveTintColor: themeColors.textSecondary,
         tabBarStyle: {
-          borderTopColor: colors.border,
+          backgroundColor: themeColors.tabBar || themeColors.surface,
+          borderTopColor: themeColors.border,
           borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 60,
+          paddingBottom: bottomInset,
+          paddingTop: 6,
+          height: tabHeight,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          marginTop: 4,
+          marginTop: 2,
         },
       }}
     >
@@ -60,7 +67,11 @@ export default function AppLayout() {
           options={{
             title: tab.title,
             tabBarLabel: tab.title,
-            tabBarIcon: ({ color }) => <Text style={{ fontSize: 24, color }}>{tab.icon}</Text>,
+            tabBarIcon: ({ color }) => (
+              <Text style={{ fontSize: 22, color }} accessibilityRole="image" accessibilityLabel={tab.title}>
+                {tab.icon}
+              </Text>
+            ),
           }}
         />
       ))}
@@ -85,6 +96,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
   },
 });

@@ -415,7 +415,7 @@ export default function SettingsScreen() {
             style={styles.settingItemRow}
             onPress={() => Alert.alert(
               'Contact Support',
-              'Email: support@farmhub.com\nPhone: +1 (555) 123-4567\n\nOur team is available Mon–Fri, 9 AM – 6 PM.',
+              `Email: ${process.env.EXPO_PUBLIC_SUPPORT_EMAIL || 'support@farmmanagement.com'}\nPhone: ${process.env.EXPO_PUBLIC_SUPPORT_PHONE || ''}\n\nOur team is available Mon–Fri, 9 AM – 6 PM.`,
               [{ text: 'Close' }]
             )}
             accessibilityRole="button"

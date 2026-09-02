@@ -61,6 +61,12 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
+    if (bootstrapped) {
+      hideSplash();
+    }
+  }, [bootstrapped]);
+
+  useEffect(() => {
     if (!bootstrapped) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -105,14 +111,14 @@ function RootLayoutNav() {
 
   if (!bootstrapped) {
     return (
-      <View style={styles.bootGate}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.bootGate, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.root} onTouchStart={handleTouchStart}>
+    <View style={[styles.root, { backgroundColor: themeColors.background }]} onTouchStart={handleTouchStart}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -134,18 +140,14 @@ function RootLayoutNav() {
 }
 
 function RootLayoutWithSplash() {
-  const [splashDismissed, setSplashDismissed] = useState(false);
-
-  useEffect(() => {
-    if (splashDismissed) hideSplash();
-  }, [splashDismissed]);
+  const { colors: themeColors } = useAppTheme();
 
   return (
     <PersistGate
       persistor={persistor}
       loading={
-        <View style={styles.bootGate}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={[styles.bootGate, { backgroundColor: themeColors.background }]}>
+          <ActivityIndicator size="large" color={themeColors.primary} />
         </View>
       }
     >
@@ -193,12 +195,10 @@ export default App;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   bootGate: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
   },
 });

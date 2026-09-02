@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 @Injectable()
 export class TimeoutInterceptor implements NestInterceptor {
   private readonly logger = new Logger('TimeoutInterceptor');
-  private readonly defaultTimeout = 30000;
+  private readonly defaultTimeout = Number(process.env.REQUEST_TIMEOUT_MS) || 30000;
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
