@@ -54,7 +54,7 @@ class SocketService {
     this.socket = io(SOCKET_URL, {
       auth: token ? { token } : undefined,
       withCredentials: true,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,

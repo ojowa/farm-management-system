@@ -8,6 +8,10 @@ export interface OfflineOperation {
   module: 'farms' | 'crops' | 'livestocks' | 'poultry' | 'finance' | 'tasks' | 'attendance';
   createdAt: number;
   retryCount: number;
+  /** Client-generated version for conflict detection */
+  clientVersion: number;
+  /** Server-assigned version from last known state */
+  serverVersion?: number;
 }
 
 export interface SyncState {
@@ -42,12 +46,13 @@ const syncSlice = createSlice({
     setReconnectAttempt: (state, action: PayloadAction<number>) => {
       state.reconnectAttempt = action.payload;
     },
-    enqueueOperation: (state, action: PayloadAction<Omit<OfflineOperation, 'id' | 'createdAt' | 'retryCount'>>) => {
+    enqueueOperation: (state, action: PayloadAction<Omit<OfflineOperation, 'id' | 'createdAt' | 'retryCount' | 'clientVersion'>>) => {
       state.offlineQueue.push({
         ...action.payload,
         id: `offline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         createdAt: Date.now(),
         retryCount: 0,
+        clientVersion: Date.now(),
       });
     },
     removeOperation: (state, action: PayloadAction<string>) => {

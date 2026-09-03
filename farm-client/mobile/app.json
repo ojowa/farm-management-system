@@ -28,14 +28,16 @@
       "versionCode": 1
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png"
     },
     "scheme": "farmapp",
     "plugins": [
       [
         "expo-router",
         {
-          "origin": "https://localhost:8081"
+          "origin": "http://localhost:8082"
         }
       ],
       "expo-secure-store"

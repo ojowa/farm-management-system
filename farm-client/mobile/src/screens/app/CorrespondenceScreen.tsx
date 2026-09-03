@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, TextInput, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { correspondenceAPI } from '../../services/api';
 import { usePermission } from '../../hooks/usePermission';
@@ -120,8 +121,9 @@ export default function CorrespondenceScreen() {
   const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
 
   return (
+    <SafeAreaView style={styles.container}>
     <ScrollView
-      style={styles.container}
+      style={{flex: 1}}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {view === 'list' && (
@@ -244,7 +246,7 @@ export default function CorrespondenceScreen() {
                 <Text style={styles.contentText}>{selected.content}</Text>
               </View>
             )}
-            {selected.attachments.length > 0 && (
+            {selected.attachments?.length > 0 && (
               <View style={styles.attachSection}>
                 <Text style={styles.attachTitle}>Attachments ({selected.attachments.length})</Text>
                 {selected.attachments.map((a: any) => (
@@ -261,6 +263,7 @@ export default function CorrespondenceScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

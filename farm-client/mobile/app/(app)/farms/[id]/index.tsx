@@ -4,10 +4,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { farmsAPI } from '../../../../src/services/api';
 import { Card, Button, colors } from '../../../../src/components/common/UIComponents';

@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
+import { apiClient } from '../../services/api';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -40,19 +41,19 @@ export default function LivestockHealthScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [vacRes, healthRes] = await Promise.all([
-        fetch('/api/vaccinations?status=overdue').then((r) => r.json()).catch(() => []),
-        fetch('/api/health-records?limit=10').then((r) => r.json()).catch(() => []),
+        apiClient.axiosInstance.get('/livestock/health/overdue').then((r) => r.data).catch(() => []),
+        apiClient.axiosInstance.get('/livestock/health', { params: { limit: 10 } }).then((r) => r.data).catch(() => []),
       ]);
       setVaccinations(Array.isArray(vacRes) ? vacRes : vacRes?.data || []);
       setHealthRecords(Array.isArray(healthRes) ? healthRes : healthRes?.data || []);
     } catch { /* ignore */ }
     finally { setLoading(false); setRefreshing(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
@@ -90,7 +91,7 @@ export default function LivestockHealthScreen() {
                 <View>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{v.animalName}</Text>
                   <Text style={styles.metaText}>{v.vaccine}</Text>
-                  <Text style={styles.metaText}>Due: {new Date(v.dueDate).toLocaleDateString()}</Text>
+                  <Text style={styles.metaText}>Due: {v.dueDate ? new Date(v.dueDate).toLocaleDateString() : '—'}</Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: VACCINATION_COLORS.overdue }]}>
                   <Text style={styles.badgeText}>Overdue</Text>
@@ -111,7 +112,7 @@ export default function LivestockHealthScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{r.animalName}</Text>
-                  <Text style={styles.metaText}>{r.type} — {new Date(r.date).toLocaleDateString()}</Text>
+                  <Text style={styles.metaText}>{r.type} — {r.date ? new Date(r.date).toLocaleDateString() : '—'}</Text>
                   {r.veterinarian && <Text style={styles.metaText}>Vet: {r.veterinarian}</Text>}
                 </View>
                 <View style={[styles.badge, { backgroundColor: colors.info }]}>

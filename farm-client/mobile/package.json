@@ -11,7 +11,15 @@
     "ios": "expo start --ios --port 8082 --offline",
     "web": "expo start --web --port 8082 --offline",
     "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --passWithNoTests",
+    "test:unit": "jest --testPathPattern='src/__tests__' --passWithNoTests",
+    "test:component": "jest --testPathPattern='\\.test\\.tsx$' --passWithNoTests",
+    "test:e2e:build:ios": "detox build --configuration ios.sim.debug",
+    "test:e2e:ios": "detox test --configuration ios.sim.debug",
+    "test:e2e:build:android": "detox build --configuration android.emu.debug",
+    "test:e2e:android": "detox test --configuration android.emu.debug",
+    "orbit": "npx expo start --dev-client --port 8082",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -21,6 +29,7 @@
     "axios": "^1.7.9",
     "expo": "~54.0.35",
     "expo-constants": "^18.0.13",
+    "expo-dev-client": "~6.0.21",
     "expo-image-picker": "~17.0.11",
     "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.24",
@@ -37,9 +46,15 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",
-    "@types/react": "^19.0.10",
-    "babel-preset-expo": "^57.0.3",
-    "typescript": "~5.8.3"
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/react": "~19.1.10",
+    "babel-preset-expo": "~54.0.10",
+    "detox": "^20.33.0",
+    "jest-expo": "^57.0.5",
+    "react-test-renderer": "^19.1.0",
+    "typescript": "~5.9.2"
   },
   "private": true
 }

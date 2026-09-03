@@ -4,11 +4,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { offlineFinanceAPI } from '../../../../src/services/offlineApi';
 import { TextInputField, Button, colors } from '../../../../src/components/common/UIComponents';

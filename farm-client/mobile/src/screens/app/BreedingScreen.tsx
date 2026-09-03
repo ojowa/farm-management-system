@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
+import { apiClient } from '../../services/api';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -40,15 +41,15 @@ export default function BreedingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/breeding-records').then((r) => r.json()).catch(() => []);
-      setRecords(Array.isArray(res) ? res : res?.data || []);
+      const res = await apiClient.axiosInstance.get('/livestock/breeding');
+      setRecords(Array.isArray(res.data) ? res.data : res.data?.data || []);
     } catch { /* ignore */ }
     finally { setLoading(false); setRefreshing(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
@@ -86,9 +87,9 @@ export default function BreedingScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
-                    {r.maleName} × {r.femaleName}
+                    {r.maleName || 'Unknown'} × {r.femaleName || 'Unknown'}
                   </Text>
-                  <Text style={styles.metaText}>Breed: {new Date(r.breedDate).toLocaleDateString()}</Text>
+                  <Text style={styles.metaText}>Breed: {r.breedDate ? new Date(r.breedDate).toLocaleDateString() : '—'}</Text>
                   {r.expectedDueDate && (
                     <Text style={styles.metaText}>Due: {new Date(r.expectedDueDate).toLocaleDateString()}</Text>
                   )}

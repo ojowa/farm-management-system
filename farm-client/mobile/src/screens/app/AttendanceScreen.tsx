@@ -4,14 +4,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   RefreshControl,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Card, Button, colors } from '../../components/common/UIComponents';
+import { Card, colors } from '../../components/common/UIComponents';
 import { attendanceAPI, workersAPI } from '../../services/api';
 import { offlineAttendanceAPI } from '../../services/offlineApi';
 
@@ -161,9 +161,9 @@ export default function AttendanceScreen() {
 
   const navigateToHistory = (worker: any) => {
     router.push({
-      pathname: '/attendance/history',
+      pathname: '/attendance/[workerId]',
       params: { workerId: worker.id, workerName: `${worker.firstName} ${worker.lastName}` },
-    } as any);
+    });
   };
 
   return (

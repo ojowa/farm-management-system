@@ -43,17 +43,36 @@ export function reconcileOfflineQueue(dispatch: AppDispatch) {
           case 'POST':
             await apiClient.axiosInstance.post(op.endpoint, op.data);
             break;
-          case 'PUT':
-            await apiClient.axiosInstance.put(op.endpoint, op.data);
+          case 'PUT': {
+            // Include If-Unmodified-Since header for conflict detection
+            const headers: Record<string, string> = {};
+            if (op.serverVersion) {
+              headers['If-Unmodified-Since'] = new Date(op.serverVersion).toUTCString();
+            }
+            await apiClient.axiosInstance.put(op.endpoint, op.data, { headers });
             break;
+          }
           case 'DELETE':
             await apiClient.axiosInstance.delete(op.endpoint);
             break;
         }
         dispatch(removeOperation(op.id));
-      } catch {
-        dispatch(incrementRetryCount(op.id));
-        await delay(RETRY_DELAY_MS * (op.retryCount + 1));
+      } catch (err: any) {
+        // 409 Conflict — server version is newer, operation is stale
+        if (err?.response?.status === 409) {
+          store.dispatch(
+            showToast({
+              id: `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              message: `A ${op.method} ${op.endpoint} was superseded by another change. Please retry.`,
+              type: 'warning',
+              duration: 6000,
+            })
+          );
+          dispatch(removeOperation(op.id));
+        } else {
+          dispatch(incrementRetryCount(op.id));
+          await delay(RETRY_DELAY_MS * (op.retryCount + 1));
+        }
       }
     }
 

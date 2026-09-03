@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
+import { apiClient } from '../../services/api';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -38,15 +39,15 @@ export default function PestDiseaseScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/pest-disease-records').then((r) => r.json()).catch(() => []);
-      setRecords(Array.isArray(res) ? res : res?.data || []);
+      const res = await apiClient.axiosInstance.get('/crops/pest-disease');
+      setRecords(Array.isArray(res.data) ? res.data : res.data?.data || []);
     } catch { /* ignore */ }
     finally { setLoading(false); setRefreshing(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
@@ -86,7 +87,7 @@ export default function PestDiseaseScreen() {
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{r.name}</Text>
                   <Text style={styles.metaText}>{r.cropName} — {r.type}</Text>
                   {r.treatment && <Text style={styles.metaText}>Treatment: {r.treatment}</Text>}
-                  <Text style={styles.metaText}>Detected: {new Date(r.dateDetected).toLocaleDateString()}</Text>
+                  <Text style={styles.metaText}>Detected: {r.dateDetected ? new Date(r.dateDetected).toLocaleDateString() : '—'}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
                   <View style={[styles.badge, { backgroundColor: SEVERITY_COLORS[r.severity] || '#9CA3AF' }]}>

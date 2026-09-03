@@ -4,13 +4,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   Modal,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { farmsAPI } from '../../../../src/services/api';
 import { offlineCropsAPI } from '../../../../src/services/offlineApi';

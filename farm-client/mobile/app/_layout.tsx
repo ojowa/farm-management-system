@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, View, GestureResponderEvent } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Provider } from 'react-redux';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -16,6 +16,7 @@ import { registerForPushNotifications, sendTokenToServer, setupNotificationListe
 import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
 import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/store/slices/authSlice';
 import { startInactivityTracker } from '../src/utils/inactivity';
+import { loadCurrencySymbol } from '../src/utils/currency';
 
 interface SplashShim {
   preventAutoHideAsync: () => Promise<void>;
@@ -50,6 +51,10 @@ function RootLayoutNav() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
   const { colors: themeColors } = useAppTheme();
+
+  useEffect(() => {
+    loadCurrencySymbol();
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -102,13 +107,6 @@ function RootLayoutNav() {
     };
   }, [isAuthenticated, resetInactivityTimer]);
 
-  // Reset inactivity timer on any touch — captures actual user interaction
-  const handleTouchStart = useCallback((_event: GestureResponderEvent) => {
-    if (isAuthenticated && inactivityTimerRef.current) {
-      resetInactivityTimer();
-    }
-  }, [isAuthenticated, resetInactivityTimer]);
-
   if (!bootstrapped) {
     return (
       <View style={[styles.bootGate, { backgroundColor: themeColors.background }]}>
@@ -118,7 +116,7 @@ function RootLayoutNav() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: themeColors.background }]} onTouchStart={handleTouchStart}>
+    <View style={[styles.root, { backgroundColor: themeColors.background }]}>
       <Stack
         screenOptions={{
           headerShown: false,

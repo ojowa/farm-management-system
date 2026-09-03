@@ -4,13 +4,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
 import { financeAPI } from '../../services/api';
 import { farmsAPI } from '../../services/api';
+import { formatCurrencyValue } from '../../utils/currency';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -57,9 +58,9 @@ export default function ProfitabilityScreen() {
         financeAPI.listSales(),
       ]);
 
-      const farmsList = farmsRes.status === 'fulfilled' ? (farmsRes.value.data.farms || farmsRes.value.data || []) : [];
-      const expensesList = expensesRes.status === 'fulfilled' ? (expensesRes.value.data.expenses || expensesRes.value.data || []) : [];
-      const salesList = salesRes.status === 'fulfilled' ? (salesRes.value.data.sales || salesRes.value.data || []) : [];
+      const farmsList = farmsRes.status === 'fulfilled' ? (farmsRes.value?.data?.farms || farmsRes.value?.data || []) : [];
+      const expensesList = expensesRes.status === 'fulfilled' ? (expensesRes.value?.data?.expenses || expensesRes.value?.data || []) : [];
+      const salesList = salesRes.status === 'fulfilled' ? (salesRes.value?.data?.sales || salesRes.value?.data || []) : [];
 
       const farmMap: Record<string, { name: string; revenue: number; expenses: number }> = {};
       farmsList.forEach((f: any) => {
@@ -103,7 +104,7 @@ export default function ProfitabilityScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => formatCurrencyValue(amount);
 
   if (loading) {
     return (

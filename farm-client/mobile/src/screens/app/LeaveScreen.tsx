@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   RefreshControl,
   Modal,
@@ -12,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePermission } from '../../hooks/usePermission';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { leaveAPI } from '../../services/api';

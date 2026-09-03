@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authAPI, apiClient } from '../../services/api';
+import { loadCurrencySymbol } from '../../utils/currency';
 
 export interface User {
   id: string;
@@ -68,7 +69,12 @@ export const login = createAsyncThunk(
       if (res.requiresMFA) {
         return { requiresMFA: true, mfaToken: res.mfaToken, user: res.user };
       }
+      // Set token expiry for client-side check
+      if (res.expiresIn) {
+        apiClient.setTokenExpiry(res.expiresIn * 1000);
+      }
       const profileRes = await authAPI.getProfile();
+      await loadCurrencySymbol();
       return {
         requiresMFA: false,
         user: profileRes.data,
@@ -86,6 +92,10 @@ export const verifyMFA = createAsyncThunk(
   async ({ mfaToken, code }: { mfaToken: string; code: string }, { rejectWithValue }) => {
     try {
       const res = await authAPI.verifyMFA(mfaToken, code);
+      // Set token expiry for client-side check
+      if (res.expiresIn) {
+        apiClient.setTokenExpiry(res.expiresIn * 1000);
+      }
       const profileRes = await authAPI.getProfile();
       return { user: profileRes.data, socketAccessToken: res.accessToken || null };
     } catch (err: any) {
@@ -220,6 +230,7 @@ const authSlice = createSlice({
         state.mfaSessionToken = null;
         state.lastLoginAt = null;
         state.socketAccessToken = null;
+        apiClient.clearTokenExpiry();
       })
       .addCase(refreshSocketToken.fulfilled, (state, action) => {
         if (action.payload) {

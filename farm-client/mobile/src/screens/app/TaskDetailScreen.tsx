@@ -4,11 +4,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { offlineTasksAPI } from '../../services/offlineApi';
@@ -128,7 +128,7 @@ export default function TaskDetailScreen() {
   };
 
   const handleEdit = () => {
-    router.push(`/tasks?edit=${task.id}` as any);
+    router.push('/tasks');
   };
 
   const handleDelete = () => {

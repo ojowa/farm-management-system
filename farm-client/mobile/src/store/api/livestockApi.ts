@@ -21,7 +21,7 @@ export const livestockApi = createApi({
   endpoints: (builder) => ({
     listLivestock: builder.query({
       query: (params) => ({
-        url: '/livestock',
+        url: '/livestocks',
         params,
       }),
       providesTags: (result) =>
@@ -33,12 +33,12 @@ export const livestockApi = createApi({
           : [{ type: 'Livestock' as const, id: 'LIST' }],
     }),
     getLivestock: builder.query({
-      query: (id: string) => `/livestock/${id}`,
+      query: (id: string) => `/livestocks/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Livestock', id }],
     }),
     createLivestock: builder.mutation({
       query: (data) => ({
-        url: '/livestock',
+        url: '/livestocks',
         method: 'POST',
         body: data,
       }),
@@ -46,7 +46,7 @@ export const livestockApi = createApi({
     }),
     updateLivestock: builder.mutation({
       query: ({ id, data }) => ({
-        url: `/livestock/${id}`,
+        url: `/livestocks/${id}`,
         method: 'PUT',
         body: data,
       }),
@@ -57,7 +57,7 @@ export const livestockApi = createApi({
     }),
     deleteLivestock: builder.mutation({
       query: (id: string) => ({
-        url: `/livestock/${id}`,
+        url: `/livestocks/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: (_result, _error, id) => [

@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
 import { irrigationAPI } from '../../services/api';
 
@@ -36,7 +36,7 @@ export default function IrrigationScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setError(null);
       const [sRes, lRes] = await Promise.all([
@@ -49,9 +49,9 @@ export default function IrrigationScreen() {
       setError('Failed to load irrigation data. Pull to retry.');
     }
     finally { setLoading(false); setRefreshing(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
@@ -89,7 +89,7 @@ export default function IrrigationScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{s.name}</Text>
-                  <Text style={styles.metaText}>{s.field} — {s.frequency} at {s.startTime}</Text>
+                  <Text style={styles.metaText}>{s.field || '—'} — {s.frequency || '—'} at {s.startTime || '—'}</Text>
                 </View>
                 <View style={[styles.badge, { backgroundColor: s.active ? '#10B981' : '#9CA3AF' }]}>
                   <Text style={styles.badgeText}>{s.active ? 'Active' : 'Inactive'}</Text>

@@ -4,13 +4,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
 import { inventoryAPI } from '../../services/api';
+import { formatCurrencyFixed } from '../../utils/currency';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -60,7 +62,7 @@ export default function LowStockScreen() {
       const res = await inventoryAPI.list();
       const list = res.data.items || res.data || [];
       const lowStock = list.filter(
-        (item: any) => item.quantity <= (item.minQuantity || LOW_STOCK_THRESHOLD)
+        (item: any) => item.quantity <= (item.minQuantity ?? LOW_STOCK_THRESHOLD)
       );
       setItems(lowStock);
     } catch { /* ignore */ }
@@ -140,14 +142,14 @@ export default function LowStockScreen() {
               {item.costPerUnit !== undefined && (
                 <View style={styles.itemRow}>
                   <Text style={styles.itemLabel}>Cost/Unit</Text>
-                  <Text style={styles.itemValue}>${item.costPerUnit.toFixed(2)}</Text>
+                  <Text style={styles.itemValue}>{formatCurrencyFixed(item.costPerUnit, 2)}</Text>
                 </View>
               )}
             </Card>
           ))
         )}
 
-        <TouchableOpacity style={styles.addButton} onPress={() => {}}>
+        <TouchableOpacity style={styles.addButton} onPress={() => Alert.alert('Coming Soon', 'Adding items from mobile will be available in a future update.')}>
           <Text style={styles.addButtonText}>+ Add Item</Text>
         </TouchableOpacity>
       </ScrollView>

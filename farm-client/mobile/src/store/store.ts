@@ -18,6 +18,7 @@ import { cropsApi } from './api/cropsApi';
 import { livestockApi } from './api/livestockApi';
 import { financeApi } from './api/financeApi';
 import { tasksApi } from './api/tasksApi';
+import { secureStorageAdapter } from '../utils/reduxSecureStorage';
 
 
 const uiPersistConfig = {
@@ -32,10 +33,11 @@ const uiPersistConfig = {
   ],
 };
 
+// Auth state uses secure storage (encrypted) to protect user data, tokens, permissions
 const authPersistConfig = {
   key: 'auth',
-  version: 1,
-  storage: AsyncStorage,
+  version: 2,
+  storage: secureStorageAdapter,
   blacklist: [
     'loading',
     'error',

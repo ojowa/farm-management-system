@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Text,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   RefreshControl,
@@ -12,6 +11,7 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { offlineFinanceAPI } from '../../services/offlineApi';
 import { Card, Button, colors } from '../../components/common/UIComponents';
@@ -22,6 +22,7 @@ import { describeApiError } from '../../utils/apiError';
 import { extractArray, extractTotal } from '../../utils/responseParser';
 import { transformExpense, transformSale, RawExpense, RawSale } from '../../utils/entityTransformers';
 import { setFinanceFilter } from '../../store/slices/uiSlice';
+import { formatCurrencyFixed } from '../../utils/currency';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -300,7 +301,7 @@ export default function FinanceScreen() {
 
   const renderItem = useCallback(({ item: transaction }: { item: Transaction }) => (
     <Card style={styles.transactionCard}>
-      <TouchableOpacity onPress={() => router.push(`/finance/${transaction.id}`)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${transaction.title}, ${transaction.type === 'income' ? 'income' : 'expense'} of $${Math.abs(transaction.amount).toFixed(0)}`}>
+      <TouchableOpacity onPress={() => router.push(`/finance/${transaction.id}`)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${transaction.title}, ${transaction.type === 'income' ? 'income' : 'expense'} of ${formatCurrencyFixed(transaction.amount)}`}>
         <View style={styles.transactionRow}>
           <Text style={styles.transactionIcon}>{transaction.icon}</Text>
           <View style={styles.transactionInfo}>
@@ -316,7 +317,7 @@ export default function FinanceScreen() {
                   : styles.transactionAmountNegative,
               ]}
             >
-              {transaction.type === 'income' ? '+' : '-'}${Math.abs(transaction.amount).toFixed(0)}
+              {transaction.type === 'income' ? '+' : '-'}{formatCurrencyFixed(transaction.amount)}
             </Text>
             <Text style={styles.transactionDate}>{transaction.date}</Text>
           </View>
@@ -360,15 +361,15 @@ export default function FinanceScreen() {
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Income</Text>
-            <Text style={styles.summaryValue}>+${totalIncome.toFixed(0)}</Text>
+            <Text style={styles.summaryValue}>+{formatCurrencyFixed(totalIncome)}</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Expense</Text>
-            <Text style={styles.summaryValue}>-${totalExpense.toFixed(0)}</Text>
+            <Text style={styles.summaryValue}>-{formatCurrencyFixed(totalExpense)}</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Net Profit</Text>
-            <Text style={styles.summaryValue}>${netProfit.toFixed(0)}</Text>
+            <Text style={styles.summaryValue}>{formatCurrencyFixed(netProfit)}</Text>
           </View>
         </View>
       </View>

@@ -3,11 +3,11 @@ import {
   View,
   StyleSheet,
   Text,
-  SafeAreaView,
   FlatList,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { equipmentAPI } from '../../services/api';

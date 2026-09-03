@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Text,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   RefreshControl,
@@ -11,6 +10,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { farmsAPI } from '../../services/api';
 import { offlineLivestockAPI, offlinePoultryAPI } from '../../services/offlineApi';

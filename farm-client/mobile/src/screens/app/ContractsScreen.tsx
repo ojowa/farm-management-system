@@ -3,15 +3,16 @@ import {
   View,
   StyleSheet,
   Text,
-  SafeAreaView,
   FlatList,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
 import { ScreenLoading, StateView } from '../../components/feedback';
 import { contractsAPI } from '../../services/api';
 import { describeApiError } from '../../utils/apiError';
 import { extractArray } from '../../utils/responseParser';
+import { formatCurrencyValue } from '../../utils/currency';
 
 interface Contract {
   id: string;
@@ -101,7 +102,7 @@ export default function ContractsScreen() {
           </Text>
         )}
         {item.value !== undefined && (
-          <Text style={styles.cardDetail}>Value: ${item.value.toLocaleString()}</Text>
+          <Text style={styles.cardDetail}>Value: {formatCurrencyValue(item.value)}</Text>
         )}
       </Card>
     );

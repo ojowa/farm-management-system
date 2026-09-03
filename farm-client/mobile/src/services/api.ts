@@ -1,12 +1,26 @@
 import axios, { AxiosInstance } from 'axios';
+import Constants from 'expo-constants';
 
 // Expo exposes env vars at build time via EXPO_PUBLIC_*; at runtime they
 // are inlined. We guard the access so type-check still works in an
 // environment without node typings.
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 
-const API_BASE_URL =
+const API_BASE_URL: string =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
+
+// Lazy store getter to avoid circular dependency
+let _storeRef: any = null;
+function getStore() {
+  if (!_storeRef) {
+    try {
+      _storeRef = require('../store/store').store;
+    } catch {
+      // Store not yet available
+    }
+  }
+  return _storeRef;
+}
 
 if (__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('localhost') && !API_BASE_URL.includes('192.168.')) {
   console.warn(
@@ -19,15 +33,21 @@ if (!__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('lo
   throw new Error('[API] FATAL: Production builds must use HTTPS. Set EXPO_PUBLIC_API_URL to an HTTPS URL.');
 }
 
+const APP_VERSION: string = Constants.expoConfig?.version || '1.0.0';
+
 class APIClient {
   public client: AxiosInstance;
+  private tokenExpiry: number | null = null;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
       withCredentials: true,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Version': APP_VERSION,
+      },
     });
 
     // Response interceptor — auto-refresh on 401
@@ -39,7 +59,7 @@ class APIClient {
       failedQueue = [];
     };
 
-    // Request interceptor — log outgoing requests
+    // Request interceptor — redact sensitive data in production
     this.client.interceptors.request.use(
       (config) => {
         if (__DEV__) {
@@ -85,6 +105,14 @@ class APIClient {
             return this.client(originalRequest);
           } catch (e) {
             processQueue(e);
+            // Refresh failed — trigger logout
+            try {
+              const store = getStore();
+              const { logout } = require('../store/slices/authSlice');
+              store?.dispatch(logout());
+            } catch {
+              // Non-critical — state cleanup failed, user may already be logged out
+            }
             return Promise.reject(e);
           } finally {
             isRefreshing = false;
@@ -98,6 +126,20 @@ class APIClient {
   get axiosInstance() {
     return this.client;
   }
+
+  setTokenExpiry(expiresInMs: number) {
+    this.tokenExpiry = Date.now() + expiresInMs;
+  }
+
+  isTokenExpired(): boolean {
+    if (!this.tokenExpiry) return false;
+    // Consider expired 30 seconds before actual expiry
+    return Date.now() >= this.tokenExpiry - 30000;
+  }
+
+  clearTokenExpiry() {
+    this.tokenExpiry = null;
+  }
 }
 
 export const apiClient = new APIClient();
@@ -106,7 +148,7 @@ export const farmsAPI = {
   list: (params?: any) => apiClient.axiosInstance.get('/farms', { params }),
   get: (id: string) => apiClient.axiosInstance.get(`/farms/${id}`),
   create: (data: any) => {
-    const { store } = require('../store/store');
+    const store = getStore();
     const orgId = store?.getState?.()?.auth?.user?.organizationId;
     return apiClient.axiosInstance.post('/farms', {
       organizationId: orgId,
@@ -223,7 +265,7 @@ export const poultryAPI = {
   list: (params?: any) => apiClient.axiosInstance.get('/poultry/flocks', { params }),
   get: (id: string) => apiClient.axiosInstance.get(`/poultry/flocks/${id}`),
   create: (data: any) => {
-    const { store } = require('../store/store');
+    const store = getStore();
     const orgId = store?.getState?.()?.auth?.user?.organizationId;
     const qty = Number(data.quantity) || 0;
     return apiClient.axiosInstance.post('/poultry/flocks', {
@@ -255,7 +297,6 @@ export const poultryAPI = {
 /** Helper to get the first available farm ID from the backend. */
 async function getDefaultFarmId(): Promise<string | undefined> {
   try {
-    const { store } = require('../store/store');
     const farmsRes = await apiClient.axiosInstance.get('/farms');
     const farms = Array.isArray(farmsRes.data) ? farmsRes.data : [];
     return farms[0]?.id;

@@ -4,11 +4,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../components/common/UIComponents';
 import { reportsAPI } from '../../services/api';
 
@@ -153,7 +154,7 @@ export default function ScheduledReportsScreen() {
           ))
         )}
 
-        <TouchableOpacity style={styles.scheduleButton} onPress={() => {}}>
+        <TouchableOpacity style={styles.scheduleButton} onPress={() => Alert.alert('Coming Soon', 'Scheduling reports from mobile will be available in a future update.')}>
           <Text style={styles.scheduleButtonText}>+ Schedule Report</Text>
         </TouchableOpacity>
       </ScrollView>

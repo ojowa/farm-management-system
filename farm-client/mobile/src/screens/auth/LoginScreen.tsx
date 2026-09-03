@@ -3,13 +3,13 @@ import {
   View,
   StyleSheet,
   Text,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Alert,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextInputField, Button } from '../../components/common/UIComponents';
 import { useAuth } from '../../hooks/useAuth';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -248,8 +248,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
   subtitle: { fontSize: 14, textAlign: 'center', marginBottom: 32 },
   form: { gap: 16 },
-  mfaSection: { marginTop: 24, alignItems: 'center' },
-  mfaTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
   mfaSubtitle: { fontSize: 13, marginBottom: 16, textAlign: 'center' },
   errorText: { fontSize: 13, textAlign: 'center', marginBottom: 12 },
   registerText: {

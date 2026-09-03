@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button, colors } from '../../components/common/UIComponents';
 import { rosterAPI, orgAdminAPI } from '../../services/api';
 import { usePermission } from '../../hooks/usePermission';
@@ -88,8 +89,9 @@ export default function RosterScreen() {
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
+    <SafeAreaView style={styles.container}>
     <ScrollView
-      style={styles.container}
+      style={{flex: 1}}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <Text style={styles.title}>Duty Roster</Text>
@@ -137,10 +139,10 @@ export default function RosterScreen() {
                 <Text style={styles.noAssign}>No assignments</Text>
               ) : (
                 dayAssignments.map((a) => (
-                  <View key={a.id} style={[styles.shiftTag, { backgroundColor: (SHIFT_COLORS[a.shift.color] || '#9CA3AF') + '20' }]}>
-                    <View style={[styles.shiftDot, { backgroundColor: SHIFT_COLORS[a.shift.color] || '#9CA3AF' }]} />
-                    <Text style={[styles.shiftName, { color: SHIFT_COLORS[a.shift.color] || '#9CA3AF' }]}>
-                      {a.shift.name} ({a.shift.startTime}–{a.shift.endTime})
+                  <View key={a.id} style={[styles.shiftTag, { backgroundColor: (SHIFT_COLORS[a.shift?.color] || '#9CA3AF') + '20' }]}>
+                    <View style={[styles.shiftDot, { backgroundColor: SHIFT_COLORS[a.shift?.color] || '#9CA3AF' }]} />
+                    <Text style={[styles.shiftName, { color: SHIFT_COLORS[a.shift?.color] || '#9CA3AF' }]}>
+                      {a.shift?.name || 'Unknown'} ({a.shift?.startTime || '—'}–{a.shift?.endTime || '—'})
                     </Text>
                   </View>
                 ))
@@ -150,6 +152,7 @@ export default function RosterScreen() {
         })
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

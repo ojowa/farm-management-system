@@ -8,7 +8,7 @@ const isExpoGo =
 
 let Notifications: typeof import('expo-notifications') | null = null;
 
-if (!isExpoGo) {
+if (!isExpoGo && Platform.OS !== 'web') {
   const N = require('expo-notifications');
   Notifications = N;
   N.setNotificationHandler({
@@ -134,16 +134,20 @@ function resolveRoute(data: NotificationData): string | null {
   if (data.screen && isAllowedRoute(data.screen)) return data.screen;
 
   if (data.module && data.moduleId) {
+    // Sanitize moduleId — only allow UUIDs and alphanumeric IDs
+    const safeId = /^[a-f0-9-]+$/i.test(data.moduleId) ? data.moduleId : null;
+    if (!safeId) return null;
+
     switch (data.module) {
       case 'farm':
-        return `/farms/${data.moduleId}`;
+        return `/(app)/farms/${safeId}`;
       case 'crop':
-        return `/crops/${data.moduleId}`;
+        return `/(app)/crops/${safeId}`;
       case 'livestock':
       case 'poultry':
-        return `/livestock/${data.moduleId}`;
+        return `/(app)/livestock/${safeId}`;
       case 'finance':
-        return `/finance/${data.moduleId}`;
+        return `/(app)/finance/${safeId}`;
     }
   }
 

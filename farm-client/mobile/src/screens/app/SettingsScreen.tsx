@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Switch,
   Alert,
@@ -13,6 +12,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, Button, colors } from '../../components/common/UIComponents';
@@ -432,7 +433,7 @@ export default function SettingsScreen() {
         <Card style={styles.settingItem}>
           <TouchableOpacity
             style={styles.settingItemRow}
-            onPress={() => Alert.alert('About', 'Farm Management System v1.0.0\n\n© 2024 FarmHub. All rights reserved.\n\nBuilt for modern agriculture.')}
+            onPress={() => Alert.alert('About', `Farm Management System v${Constants.expoConfig?.version || '1.0.0'}\n\n© 2024 FarmHub. All rights reserved.\n\nBuilt for modern agriculture.`)}
             accessibilityRole="button"
             accessibilityLabel="About Farm Management System"
           >
@@ -440,7 +441,7 @@ export default function SettingsScreen() {
               <Text style={styles.settingItemTitle}>About</Text>
               <Text style={styles.settingItemDescription}>App version and credits</Text>
             </View>
-            <Text style={styles.settingItemValue}>v1.0.0</Text>
+            <Text style={styles.settingItemValue}>v{Constants.expoConfig?.version || '1.0.0'}</Text>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
         </Card>

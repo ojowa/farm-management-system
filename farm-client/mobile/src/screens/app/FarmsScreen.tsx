@@ -3,13 +3,13 @@ import {
   View,
   StyleSheet,
   Text,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useListFarmsQuery, useDeleteFarmMutation } from '../../store/api';
 import { Card, Button, colors } from '../../components/common/UIComponents';

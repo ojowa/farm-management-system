@@ -4,10 +4,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAppSelector } from '../../hooks/useAuth';
 import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI, notificationsAPI } from '../../services/api';
@@ -18,6 +18,7 @@ import { describeApiError } from '../../utils/apiError';
 import { extractArray } from '../../utils/responseParser';
 import { transformFarm, transformLivestock, transformFlock, transformExpense, transformSale, RawFarm, RawLivestock, RawFlock, RawExpense, RawSale } from '../../utils/entityTransformers';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { formatCurrency } from '../../utils/currency';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -171,11 +172,7 @@ export default function DashboardScreen() {
     }
   };
 
-  const formatRevenue = (amount: number) => {
-    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `$${(amount / 1000).toFixed(1)}K`;
-    return `$${amount.toLocaleString()}`;
-  };
+  const formatRevenue = (amount: number) => formatCurrency(amount);
 
   const dynamicStyles = {
     container: {

@@ -87,8 +87,7 @@ export default function MessagesScreen() {
     }
     setSaving(true);
     try {
-      // Send to all org users (simplified for mobile)
-      await messagesAPI.send({ subject: subject.trim(), body: body.trim(), recipientIds: [], priority });
+      await messagesAPI.send({ subject: subject.trim(), body: body.trim(), priority });
       Alert.alert('Success', 'Message sent');
       setSubject('');
       setBody('');
