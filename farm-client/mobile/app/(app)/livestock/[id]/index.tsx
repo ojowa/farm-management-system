@@ -10,11 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { offlineLivestockAPI, offlinePoultryAPI } from '../../../../src/services/offlineApi';
-import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
-import { ScreenLoading, StateView } from '../../../../src/components/feedback';
-import { useToasts } from '../../../../src/hooks/useToasts';
-import { describeApiError } from '../../../../src/utils/apiError';
-import { useAppDispatch } from '../../../../src/hooks/useAuth';
+import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
+import { useToasts } from '../../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppDispatch } from '../../../../src/modules/auth/hooks/useAuth';
 import { setSelectedLivestockId } from '../../../../src/store/slices/uiSlice';
 
 const styles = StyleSheet.create({
@@ -114,12 +114,12 @@ export default function AnimalDetailScreen() {
 
     try {
       const response = await offlineLivestockAPI.get(id);
-      setAnimal({ ...(response.data.data || response.data), type: 'livestock' });
+      setAnimal({ ...(response.data as any), type: 'livestock' });
       dispatch(setSelectedLivestockId(id));
     } catch {
       try {
         const response = await offlinePoultryAPI.get(id);
-        setAnimal({ ...(response.data.data || response.data), type: 'poultry' });
+        setAnimal({ ...(response.data as any), type: 'poultry' });
         dispatch(setSelectedLivestockId(id));
       } catch (error: any) {
         const message = describeApiError(error, 'Failed to load animal details.');

@@ -1,94 +1,128 @@
 import axios, { AxiosInstance } from 'axios';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import type {
+  ApiResponse,
+  PaginatedResponse,
+  LoginRequest,
+  LoginResponse,
+  VerifyMfaRequest,
+  RegisterRequest,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+  User,
+  Farm,
+  CreateFarmRequest,
+  UpdateFarmRequest,
+  Field,
+  CreateFieldRequest,
+  Crop,
+  CreateCropRequest,
+  CropCycle,
+  CreateCropCycleRequest,
+  Livestock,
+  CreateLivestockRequest,
+  UpdateLivestockRequest,
+  Flock,
+  CreateFlockRequest,
+  Expense,
+  CreateExpenseRequest,
+  Sale,
+  CreateSaleRequest,
+  Worker,
+  CreateWorkerRequest,
+  Attendance,
+  ClockInRequest,
+  Task,
+  Shift,
+  ShiftAssignment,
+  LeaveRequest,
+  LeaveType,
+  Message,
+  Correspondence,
+  Notification,
+  Report,
+  ScheduledReport,
+  Contract,
+  Buyer,
+  MarketListing,
+  ProfitabilitySummary,
+  FarmProfitability,
+  HealthRecord,
+  VaccinationSchedule,
+  BreedingRecord,
+  WeightRecord,
+  PoultryHouse,
+  Pen,
+  Breed,
+  FeedingRecord,
+  VaccinationRecord,
+  MortalityRecord,
+  Medication,
+  Organization,
+  ListParams,
+} from './types';
 
-// Expo exposes env vars at build time via EXPO_PUBLIC_*; at runtime they
-// are inlined. We guard the access so type-check still works in an
-// environment without node typings.
+// ─── Config ────────────────────────────────────────────────────────────────────
+
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 
 const API_BASE_URL: string =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
 
-// Lazy store getter to avoid circular dependency
+const APP_VERSION: string = Constants.expoConfig?.version || '1.0.0';
+
 let _storeRef: any = null;
 function getStore() {
   if (!_storeRef) {
     try {
       _storeRef = require('../store/store').store;
-    } catch {
-      // Store not yet available
-    }
+    } catch {}
   }
   return _storeRef;
 }
 
 if (__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('localhost') && !API_BASE_URL.includes('192.168.')) {
-  console.warn(
-    '[API] WARNING: Using HTTP in non-local environment. ' +
-    'Set EXPO_PUBLIC_API_URL to an HTTPS URL for production builds.',
-  );
+  console.warn('[API] WARNING: Using HTTP in non-local environment.');
 }
 
-if (!__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('localhost')) {
-  throw new Error('[API] FATAL: Production builds must use HTTPS. Set EXPO_PUBLIC_API_URL to an HTTPS URL.');
-}
-
-const APP_VERSION: string = Constants.expoConfig?.version || '1.0.0';
+// ─── API Client ────────────────────────────────────────────────────────────────
 
 class APIClient {
   public client: AxiosInstance;
-  private tokenExpiry: number | null = null;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: 15000,
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
-        'X-Client-Version': APP_VERSION,
+        'x-platform': Platform.OS,
+        'x-app-version': APP_VERSION,
+        'x-device-id': Device.osInternalBuildId || Device.modelName || 'unknown',
       },
     });
 
-    // Response interceptor — auto-refresh on 401
     let isRefreshing = false;
-    let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (e: unknown) => void }> = [];
+    let failedQueue: Array<{ resolve: (v?: unknown) => void; reject: (e: unknown) => void }> = [];
 
     const processQueue = (error: unknown) => {
       failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve()));
       failedQueue = [];
     };
 
-    // Request interceptor — redact sensitive data in production
-    this.client.interceptors.request.use(
-      (config) => {
-        if (__DEV__) {
-          const safeData = config.data ? '[redacted]' : '';
-          console.log(`[API] --> ${config.method?.toUpperCase()} ${config.url}`, safeData);
-        }
-        return config;
-      },
-      (error) => {
-        if (__DEV__) console.warn('[API] Request error:', error.message);
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor — log responses + auto-refresh on 401
+    // Auto-unwrap { success, data, timestamp, requestId } envelope
     this.client.interceptors.response.use(
       (response) => {
-        if (__DEV__) {
-          console.log(`[API] <-- ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
+        if (response.data && typeof response.data === 'object' && 'success' in response.data && 'data' in response.data) {
+          response.data = response.data.data;
         }
         return response;
       },
       async (error) => {
         const originalRequest = error.config;
-        if (__DEV__) {
-          const status = error.response?.status || 'NETWORK';
-          const msg = error.response?.data?.message || error.message;
-          console.warn(`[API] <-- ${status} ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}: ${msg}`);
-        }
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (isRefreshing) {
             return new Promise((resolve, reject) => {
@@ -105,14 +139,11 @@ class APIClient {
             return this.client(originalRequest);
           } catch (e) {
             processQueue(e);
-            // Refresh failed — trigger logout
             try {
               const store = getStore();
-              const { logout } = require('../store/slices/authSlice');
+              const { logout } = require('../modules/auth/services/authSlice');
               store?.dispatch(logout());
-            } catch {
-              // Non-critical — state cleanup failed, user may already be logged out
-            }
+            } catch {}
             return Promise.reject(e);
           } finally {
             isRefreshing = false;
@@ -122,570 +153,716 @@ class APIClient {
       }
     );
   }
-
-  get axiosInstance() {
-    return this.client;
-  }
-
-  setTokenExpiry(expiresInMs: number) {
-    this.tokenExpiry = Date.now() + expiresInMs;
-  }
-
-  isTokenExpired(): boolean {
-    if (!this.tokenExpiry) return false;
-    // Consider expired 30 seconds before actual expiry
-    return Date.now() >= this.tokenExpiry - 30000;
-  }
-
-  clearTokenExpiry() {
-    this.tokenExpiry = null;
-  }
 }
 
 export const apiClient = new APIClient();
+const http = apiClient.client;
+
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+
+export const authAPI = {
+  login: (data: LoginRequest) =>
+    http.post<LoginResponse>('/auth/login', data),
+  register: (data: RegisterRequest) =>
+    http.post('/auth/register', data),
+  verifyMFA: (data: VerifyMfaRequest) =>
+    http.post<LoginResponse>('/auth/verify-mfa', data),
+  refresh: () =>
+    http.post('/auth/refresh'),
+  logout: () =>
+    http.post('/auth/logout').catch(() => {}),
+  getProfile: () =>
+    http.get<User>('/auth/me'),
+  updateProfile: (data: UpdateProfileRequest) =>
+    http.put<User>('/auth/profile', data),
+  changePassword: (data: ChangePasswordRequest) =>
+    http.put('/auth/password', data),
+  getPreferences: () =>
+    http.get('/auth/preferences'),
+  updatePreferences: (data: any) =>
+    http.put('/auth/preferences', data),
+  generate2FA: () =>
+    http.post('/auth/2fa/generate'),
+  enable2FA: (code: string) =>
+    http.post('/auth/2fa/enable', { code }),
+  disable2FA: (code: string) =>
+    http.post('/auth/2fa/disable', { code }),
+  listSessions: () =>
+    http.get('/auth/sessions'),
+  deleteSession: (tokenId: string) =>
+    http.delete(`/auth/sessions/${tokenId}`),
+  deleteAllSessions: () =>
+    http.delete('/auth/sessions'),
+};
+
+// ─── Farm ──────────────────────────────────────────────────────────────────────
 
 export const farmsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/farms', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/farms/${id}`),
-  create: (data: any) => {
-    const store = getStore();
-    const orgId = store?.getState?.()?.auth?.user?.organizationId;
-    return apiClient.axiosInstance.post('/farms', {
-      organizationId: orgId,
-      name: data.name,
-      farmType: data.farmType,
-      location: data.location || null,
-      size: Number(data.size) || 0,
-      status: data.status || 'active',
-    });
-  },
-  update: (id: string, data: any) =>
-    apiClient.axiosInstance.put(`/farms/${id}`, {
-      name: data.name,
-      location: data.location || null,
-      size: Number(data.size) || 0,
-      status: data.status || 'active',
-    }),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/farms/${id}`),
+  list: (params?: ListParams) =>
+    http.get<Farm[]>('/farms', { params }),
+  get: (id: string) =>
+    http.get<Farm>(`/farms/${id}`),
+  create: (data: CreateFarmRequest) =>
+    http.post<Farm>('/farms', data),
+  update: (id: string, data: UpdateFarmRequest) =>
+    http.put<Farm>(`/farms/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/farms/${id}`),
 };
+
+// ─── Fields ────────────────────────────────────────────────────────────────────
+
+export const fieldsAPI = {
+  list: (params?: { farmId?: string }) =>
+    http.get<Field[]>('/fields', { params }),
+  get: (id: string) =>
+    http.get<Field>(`/fields/${id}`),
+  create: (data: CreateFieldRequest) =>
+    http.post<Field>('/fields', data),
+  update: (id: string, data: { name?: string; size?: number }) =>
+    http.put<Field>(`/fields/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/fields/${id}`),
+};
+
+// ─── Crop ──────────────────────────────────────────────────────────────────────
 
 export const cropsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/crops', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/crops/${id}`),
-  /** Creates a Crop, then optionally creates a CropCycle if planting info is provided. */
-  create: async (data: any) => {
-    // Mobile sends { name, type, farmId, area, plantedDate, health, status }
-    // Backend Crop only accepts { name }
-    const cropRes = await apiClient.axiosInstance.post('/crops', { name: data.name });
-    const crop = cropRes.data;
-
-    // If planting date is provided, create a CropCycle
-    if (data.plantedDate && data.farmId) {
-      try {
-        // Get the farm to find a field
-        const farmRes = await apiClient.axiosInstance.get(`/farms/${data.farmId}`);
-        const fields = farmRes.data?.fields ?? [];
-        const fieldId = fields[0]?.id;
-        if (fieldId) {
-          await apiClient.axiosInstance.post('/cycles', {
-            fieldId,
-            cropId: crop.id,
-            plantingDate: data.plantedDate,
-            health: Number(data.health) || 100,
-            status: data.status || 'growing',
-          });
-        }
-      } catch (err) {
-        if (__DEV__) console.warn('[cropsAPI.create] Failed to create crop cycle:', err);
-      }
-    }
-    return cropRes;
-  },
-  update: async (id: string, data: any) => {
-    // Update crop name
-    const cropRes = await apiClient.axiosInstance.put(`/crops/${id}`, { name: data.name });
-    // Update crop cycle health/status if available
-    if (data.plantedDate || data.health !== undefined || data.status) {
-      try {
-        const cyclesRes = await apiClient.axiosInstance.get('/cycles');
-        const cycles = Array.isArray(cyclesRes.data) ? cyclesRes.data : [];
-        const cycle = cycles.find((c: any) => c.cropId === id);
-        if (cycle) {
-          await apiClient.axiosInstance.put(`/cycles/${cycle.id}`, {
-            health: Number(data.health) || undefined,
-            status: data.status || undefined,
-            harvestDate: data.status === 'completed' ? new Date().toISOString() : undefined,
-          });
-        }
-      } catch { /* best-effort */ }
-    }
-    return cropRes;
-  },
-  delete: (id: string) => apiClient.axiosInstance.delete(`/crops/${id}`),
-  listCycles: (params?: any) => apiClient.axiosInstance.get('/cycles', { params }),
+  list: (params?: ListParams) =>
+    http.get<Crop[]>('/crops', { params }),
+  get: (id: string) =>
+    http.get<Crop>(`/crops/${id}`),
+  create: (data: CreateCropRequest) =>
+    http.post<Crop>('/crops', data),
+  update: (id: string, data: { name?: string }) =>
+    http.put<Crop>(`/crops/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/crops/${id}`),
+  listCycles: (params?: ListParams & { fieldId?: string; cropId?: string; status?: string }) =>
+    http.get<CropCycle[]>('/crop-cycles', { params }),
+  getCycle: (id: string) =>
+    http.get<CropCycle>(`/crop-cycles/${id}`),
+  createCycle: (data: CreateCropCycleRequest) =>
+    http.post<CropCycle>('/crop-cycles', data),
+  updateCycle: (id: string, data: Partial<CreateCropCycleRequest>) =>
+    http.put<CropCycle>(`/crop-cycles/${id}`, data),
+  deleteCycle: (id: string) =>
+    http.delete(`/crop-cycles/${id}`),
 };
 
-const LIVESTOCK_STATUS_MAP: Record<string, string> = {
-  healthy: 'HEALTHY',
-  sick: 'SICK',
-  treatment: 'SOLD', // closest match
+// ─── Crop Stages / Lifecycle ──────────────────────────────────────────────────
+
+export const cropStagesAPI = {
+  calendar: (params?: any) =>
+    http.get('/crops/lifecycle/calendar', { params }),
+  listByCycle: (cropCycleId: string) =>
+    http.get(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`),
+  create: (cropCycleId: string, data: any) =>
+    http.post(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`, data),
+  update: (id: string, data: any) =>
+    http.put(`/crops/lifecycle/stages/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/crops/lifecycle/stages/${id}`),
 };
+
+// ─── Livestock ─────────────────────────────────────────────────────────────────
 
 export const livestockAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/livestocks', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/livestocks/${id}`),
-  create: (data: any) => {
-    return apiClient.axiosInstance.post('/livestocks', {
-      farmId: data.farmId,
-      species: data.name || data.breed || 'Unknown',
-      breed: data.breed || null,
-      gender: data.gender || 'MALE',
-      birthDate: data.birthDate || new Date().toISOString(),
-      status: LIVESTOCK_STATUS_MAP[data.health] || 'HEALTHY',
-    });
-  },
-  update: (id: string, data: any) =>
-    apiClient.axiosInstance.put(`/livestocks/${id}`, {
-      species: data.name || data.breed,
-      breed: data.breed || null,
-      gender: data.gender || undefined,
-      birthDate: data.birthDate || undefined,
-      status: LIVESTOCK_STATUS_MAP[data.health] || 'HEALTHY',
-    }),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/livestocks/${id}`),
+  list: (params?: ListParams & { farmId?: string; species?: string; status?: string }) =>
+    http.get<Livestock[]>('/livestock', { params }),
+  get: (id: string) =>
+    http.get<Livestock>(`/livestock/${id}`),
+  create: (data: CreateLivestockRequest) =>
+    http.post<Livestock>('/livestock', data),
+  update: (id: string, data: UpdateLivestockRequest) =>
+    http.put<Livestock>(`/livestock/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/livestock/${id}`),
 };
 
-const POULTRY_STATUS_MAP: Record<string, string> = {
-  healthy: 'ACTIVE',
-  sick: 'DECEASED',
-  treatment: 'SOLD',
+// ─── Livestock Health ─────────────────────────────────────────────────────────
+
+export const livestockHealthAPI = {
+  listByAnimal: (livestockId: string) =>
+    http.get<HealthRecord[]>(`/health/livestock/${livestockId}`),
+  create: (livestockId: string, data: any) =>
+    http.post<HealthRecord>(`/health/livestock/${livestockId}`, data),
+  listVaccinations: (livestockId: string) =>
+    http.get<VaccinationSchedule[]>(`/health/vaccinations/${livestockId}`),
+  scheduleVaccination: (livestockId: string, data: any) =>
+    http.post<VaccinationSchedule>(`/health/vaccinations/${livestockId}`, data),
+  administerVaccination: (id: string) =>
+    http.put(`/health/vaccinations/${id}/administer`),
+  overdueVaccinations: () =>
+    http.get<VaccinationSchedule[]>('/health/overdue'),
 };
+
+// ─── Breeding ──────────────────────────────────────────────────────────────────
+
+export const breedingAPI = {
+  list: (params?: { status?: string }) =>
+    http.get<BreedingRecord[]>('/breeding', { params }),
+  create: (data: any) =>
+    http.post<BreedingRecord>('/breeding', data),
+  update: (id: string, data: any) =>
+    http.put<BreedingRecord>(`/breeding/${id}`, data),
+  upcoming: () =>
+    http.get<BreedingRecord[]>('/breeding/upcoming'),
+};
+
+// ─── Weight ────────────────────────────────────────────────────────────────────
+
+export const weightAPI = {
+  listByAnimal: (livestockId: string) =>
+    http.get<WeightRecord[]>(`/weight/livestock/${livestockId}`),
+  recordForAnimal: (livestockId: string, data: any) =>
+    http.post<WeightRecord>(`/weight/livestock/${livestockId}`, data),
+  listByFlock: (flockId: string) =>
+    http.get<WeightRecord[]>(`/weight/flock/${flockId}`),
+  recordForFlock: (flockId: string, data: any) =>
+    http.post<WeightRecord>(`/weight/flock/${flockId}`, data),
+};
+
+// ─── Poultry Houses ───────────────────────────────────────────────────────────
+
+export const poultryHousesAPI = {
+  list: (params?: any) =>
+    http.get<PoultryHouse[]>('/poultry-houses', { params }),
+  get: (id: string) =>
+    http.get<PoultryHouse>(`/poultry-houses/${id}`),
+  create: (data: { farmId: string; name: string; capacity: number }) =>
+    http.post<PoultryHouse>('/poultry-houses', data),
+  update: (id: string, data: any) =>
+    http.put<PoultryHouse>(`/poultry-houses/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/poultry-houses/${id}`),
+};
+
+// ─── Pens ──────────────────────────────────────────────────────────────────────
+
+export const pensAPI = {
+  list: (params?: any) =>
+    http.get<Pen[]>('/pens', { params }),
+  get: (id: string) =>
+    http.get<Pen>(`/pens/${id}`),
+  create: (data: any) =>
+    http.post<Pen>('/pens', data),
+  update: (id: string, data: any) =>
+    http.put<Pen>(`/pens/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/pens/${id}`),
+};
+
+// ─── Breeds ────────────────────────────────────────────────────────────────────
+
+export const breedsAPI = {
+  list: (params?: any) =>
+    http.get<Breed[]>('/breeds', { params }),
+  get: (id: string) =>
+    http.get<Breed>(`/breeds/${id}`),
+  create: (data: any) =>
+    http.post<Breed>('/breeds', data),
+  update: (id: string, data: any) =>
+    http.put<Breed>(`/breeds/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/breeds/${id}`),
+};
+
+// ─── Flocks ────────────────────────────────────────────────────────────────────
 
 export const poultryAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/flocks', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/flocks/${id}`),
-  create: (data: any) => {
-    const store = getStore();
-    const orgId = store?.getState?.()?.auth?.user?.organizationId;
-    const qty = Number(data.quantity) || 0;
-    return apiClient.axiosInstance.post('/poultry/flocks', {
-      organizationId: orgId,
-      farmId: data.farmId,
-      penId: data.penId || '00000000-0000-0000-0000-000000000000',
-      breedId: data.breedId || '00000000-0000-0000-0000-000000000000',
-      batchCode: data.name || `BATCH-${Date.now()}`,
-      birdCount: qty,
-      currentCount: qty,
-      arrivalDate: data.birthDate || new Date().toISOString(),
-      currentAgeDays: 0,
-      status: POULTRY_STATUS_MAP[data.health] || 'ACTIVE',
-    });
-  },
+  list: (params?: any) =>
+    http.get<Flock[]>('/flocks', { params }),
+  get: (id: string) =>
+    http.get<Flock>(`/flocks/${id}`),
+  create: (data: CreateFlockRequest) =>
+    http.post<Flock>('/flocks', data),
   update: (id: string, data: any) =>
-    apiClient.axiosInstance.put(`/poultry/flocks/${id}`, {
-      batchCode: data.name,
-      currentCount: Number(data.quantity) || undefined,
-      status: POULTRY_STATUS_MAP[data.health] || undefined,
-      penId: data.penId || undefined,
-      breedId: data.breedId || undefined,
-    }),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/flocks/${id}`),
-  listPens: (params?: any) => apiClient.axiosInstance.get('/poultry/pens', { params }),
-  listBreeds: (params?: any) => apiClient.axiosInstance.get('/poultry/breeds', { params }),
+    http.put<Flock>(`/flocks/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/flocks/${id}`),
+  listPens: (params?: any) =>
+    http.get<Pen[]>('/pens', { params }),
+  listBreeds: (params?: any) =>
+    http.get<Breed[]>('/breeds', { params }),
 };
 
-/** Helper to get the first available farm ID from the backend. */
-async function getDefaultFarmId(): Promise<string | undefined> {
-  try {
-    const farmsRes = await apiClient.axiosInstance.get('/farms');
-    const farms = Array.isArray(farmsRes.data) ? farmsRes.data : [];
-    return farms[0]?.id;
-  } catch {
-    return undefined;
-  }
-}
+// ─── Feeding Records ──────────────────────────────────────────────────────────
+
+export const feedingRecordsAPI = {
+  list: (params?: any) =>
+    http.get<FeedingRecord[]>('/feeding-records', { params }),
+  get: (id: string) =>
+    http.get<FeedingRecord>(`/feeding-records/${id}`),
+  create: (data: { flockId: string; feedType: string; quantityKg: number; date: string }) =>
+    http.post<FeedingRecord>('/feeding-records', data),
+  update: (id: string, data: any) =>
+    http.put<FeedingRecord>(`/feeding-records/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/feeding-records/${id}`),
+};
+
+// ─── Vaccination Records ──────────────────────────────────────────────────────
+
+export const vaccinationRecordsAPI = {
+  list: (params?: any) =>
+    http.get<VaccinationRecord[]>('/vaccination-records', { params }),
+  get: (id: string) =>
+    http.get<VaccinationRecord>(`/vaccination-records/${id}`),
+  create: (data: { flockId: string; vaccine: string; dosage?: string; date: string }) =>
+    http.post<VaccinationRecord>('/vaccination-records', data),
+  update: (id: string, data: any) =>
+    http.put<VaccinationRecord>(`/vaccination-records/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/vaccination-records/${id}`),
+};
+
+// ─── Mortality Records ────────────────────────────────────────────────────────
+
+export const mortalityRecordsAPI = {
+  list: (params?: any) =>
+    http.get<MortalityRecord[]>('/mortality-records', { params }),
+  get: (id: string) =>
+    http.get<MortalityRecord>(`/mortality-records/${id}`),
+  create: (data: { flockId: string; count: number; cause?: string; date: string }) =>
+    http.post<MortalityRecord>('/mortality-records', data),
+  update: (id: string, data: any) =>
+    http.put<MortalityRecord>(`/mortality-records/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/mortality-records/${id}`),
+};
+
+// ─── Medications ──────────────────────────────────────────────────────────────
+
+export const medicationAPI = {
+  list: (params?: any) =>
+    http.get<Medication[]>('/medications', { params }),
+  get: (id: string) =>
+    http.get<Medication>(`/medications/${id}`),
+  create: (data: { flockId: string; name: string; dosage: string; frequency: string; startDate: string; endDate?: string; notes?: string }) =>
+    http.post<Medication>('/medications', data),
+  update: (id: string, data: any) =>
+    http.put<Medication>(`/medications/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/medications/${id}`),
+};
+
+// ─── Expenses ──────────────────────────────────────────────────────────────────
+
+export const expensesAPI = {
+  list: (params?: ListParams & { farmId?: string }) =>
+    http.get<Expense[]>('/expenses', { params }),
+  get: (id: string) =>
+    http.get<Expense>(`/expenses/${id}`),
+  create: (data: CreateExpenseRequest) =>
+    http.post<Expense>('/expenses', data),
+  update: (id: string, data: Partial<CreateExpenseRequest>) =>
+    http.put<Expense>(`/expenses/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/expenses/${id}`),
+};
+
+// ─── Sales ─────────────────────────────────────────────────────────────────────
+
+export const salesAPI = {
+  list: (params?: ListParams & { farmId?: string }) =>
+    http.get<Sale[]>('/sales', { params }),
+  get: (id: string) =>
+    http.get<Sale>(`/sales/${id}`),
+  create: (data: CreateSaleRequest) =>
+    http.post<Sale>('/sales', data),
+  update: (id: string, data: Partial<CreateSaleRequest>) =>
+    http.put<Sale>(`/sales/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/sales/${id}`),
+};
+
+// ─── Finance (convenience) ────────────────────────────────────────────────────
 
 export const financeAPI = {
-  /** Fetches both expenses and sales, merges into a single list. */
   list: async (params?: any) => {
     const [expensesRes, salesRes] = await Promise.all([
-      apiClient.axiosInstance.get('/finance/expenses', { params }),
-      apiClient.axiosInstance.get('/finance/sales', { params }),
+      expensesAPI.list(params),
+      salesAPI.list(params),
     ]);
     const expenses = Array.isArray(expensesRes.data) ? expensesRes.data : [];
     const sales = Array.isArray(salesRes.data) ? salesRes.data : [];
     return { data: [...expenses, ...sales] };
   },
-  listExpenses: (params?: any) => apiClient.axiosInstance.get('/finance/expenses', { params }),
-  listSales: (params?: any) => apiClient.axiosInstance.get('/finance/sales', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/finance/expenses/${id}`).catch(() => apiClient.axiosInstance.get(`/finance/sales/${id}`)),
-  getExpense: (id: string) => apiClient.axiosInstance.get(`/finance/expenses/${id}`),
-  getSale: (id: string) => apiClient.axiosInstance.get(`/finance/sales/${id}`),
-  create: async (data: any) => {
-    const farmId = await getDefaultFarmId();
-    if (data.type === 'income') {
-      const amount = Math.abs(Number(data.amount) || 0);
-      return apiClient.axiosInstance.post('/finance/sales', {
-        farmId,
-        item: data.title,
-        quantity: 1,
-        price: amount,
-        total: amount,
-        date: data.date,
-      });
-    }
-    return apiClient.axiosInstance.post('/finance/expenses', {
-      farmId,
-      title: data.title,
-      amount: Math.abs(Number(data.amount) || 0),
-      date: data.date,
-    });
-  },
-  createExpense: (data: any) => apiClient.axiosInstance.post('/finance/expenses', data),
-  createSale: (data: any) => apiClient.axiosInstance.post('/finance/sales', data),
-  update: async (id: string, data: any) => {
-    if (data.type === 'income') {
-      const amount = Math.abs(Number(data.amount) || 0);
-      return apiClient.axiosInstance.put(`/finance/sales/${id}`, {
-        item: data.title,
-        price: amount,
-        total: amount,
-        date: data.date,
-      });
-    }
-    return apiClient.axiosInstance.put(`/finance/expenses/${id}`, {
-      title: data.title,
-      amount: Math.abs(Number(data.amount) || 0),
-      date: data.date,
-    });
-  },
-  updateExpense: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/expenses/${id}`, data),
-  updateSale: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/sales/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/finance/expenses/${id}`).catch(() => apiClient.axiosInstance.delete(`/finance/sales/${id}`)),
-  deleteExpense: (id: string) => apiClient.axiosInstance.delete(`/finance/expenses/${id}`),
-  deleteSale: (id: string) => apiClient.axiosInstance.delete(`/finance/sales/${id}`),
-  getReports: (params?: any) => apiClient.axiosInstance.get('/reporting/reports', { params }),
+  get: (id: string) => expensesAPI.get(id),
+  create: (data: any) => expensesAPI.create(data),
+  update: (id: string, data: any) => expensesAPI.update(id, data),
+  delete: (id: string) => expensesAPI.delete(id),
+  listExpenses: expensesAPI.list,
+  listSales: salesAPI.list,
+  getExpense: expensesAPI.get,
+  getSale: salesAPI.get,
+  createExpense: expensesAPI.create,
+  createSale: salesAPI.create,
+  updateExpense: expensesAPI.update,
+  updateSale: salesAPI.update,
+  deleteExpense: expensesAPI.delete,
+  deleteSale: salesAPI.delete,
 };
 
-export const reportsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/reporting/reports', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/reporting/reports/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/reporting/reports', data),
-  generate: (templateId: string) => apiClient.axiosInstance.post('/reporting/reports/generate', { templateId }),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/reporting/reports/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/reporting/reports/${id}`),
+// ─── Contracts ────────────────────────────────────────────────────────────────
+
+export const contractsAPI = {
+  list: (params?: { type?: string; status?: string }) =>
+    http.get<Contract[]>('/contracts', { params }),
+  get: (id: string) =>
+    http.get<Contract>(`/contracts/${id}`),
+  create: (data: any) =>
+    http.post<Contract>('/contracts', data),
+  update: (id: string, data: any) =>
+    http.put<Contract>(`/contracts/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/contracts/${id}`),
 };
 
-export const inventoryAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/inventory', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/inventory/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/inventory', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/inventory/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/inventory/${id}`),
+// ─── Marketplace ──────────────────────────────────────────────────────────────
+
+export const marketplaceAPI = {
+  listBuyers: (params?: any) =>
+    http.get<Buyer[]>('/marketplace/buyers', { params }),
+  createBuyer: (data: any) =>
+    http.post<Buyer>('/marketplace/buyers', data),
+  updateBuyer: (id: string, data: any) =>
+    http.put<Buyer>(`/marketplace/buyers/${id}`, data),
+  deleteBuyer: (id: string) =>
+    http.delete(`/marketplace/buyers/${id}`),
+  listListings: (params?: { status?: string; entityType?: string }) =>
+    http.get<MarketListing[]>('/marketplace/listings', { params }),
+  createListing: (data: any) =>
+    http.post<MarketListing>('/marketplace/listings', data),
+  updateListing: (id: string, data: any) =>
+    http.put<MarketListing>(`/marketplace/listings/${id}`, data),
+  deleteListing: (id: string) =>
+    http.delete(`/marketplace/listings/${id}`),
 };
 
-export const workersAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/workers', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/workers/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/workers', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/workers/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/workers/${id}`),
-};
-
-export const poultryHousesAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/poultry-houses', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/poultry-houses/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/poultry/poultry-houses', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/poultry-houses/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/poultry-houses/${id}`),
-};
-
-export const feedingRecordsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/feeding-records', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/feeding-records/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/poultry/feeding-records', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/feeding-records/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/feeding-records/${id}`),
-};
-
-export const vaccinationRecordsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/vaccination-records', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/vaccination-records/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/poultry/vaccination-records', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/vaccination-records/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/vaccination-records/${id}`),
-};
-
-export const mortalityRecordsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/mortality-records', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/mortality-records/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/poultry/mortality-records', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/mortality-records/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/mortality-records/${id}`),
-};
-
-export const eggProductionAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/egg-production', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/egg-production/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/poultry/egg-production', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/egg-production/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/egg-production/${id}`),
-};
-
-export const medicationAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/poultry/medications', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/poultry/medications/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/poultry/medications', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/poultry/medications/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/poultry/medications/${id}`),
-};
-
-export const organizationsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/organizations', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/organizations/${id}`),
-  getBySlug: (slug: string) => apiClient.axiosInstance.get(`/organizations/slug/${slug}`),
-  create: (data: any) => apiClient.axiosInstance.post('/organizations', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/organizations/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/organizations/${id}`),
-};
-
-export const orgAdminAPI = {
-  getOrganization: () => apiClient.axiosInstance.get('/org-admin/me'),
-  updateOrganization: (data: any) => apiClient.axiosInstance.put('/org-admin/me', data),
-  listUsers: () => apiClient.axiosInstance.get('/org-admin/users'),
-  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string }) =>
-    apiClient.axiosInstance.post('/org-admin/users', data),
-  updateUser: (userId: string, data: any) => apiClient.axiosInstance.put(`/org-admin/users/${userId}`, data),
-  removeUser: (userId: string) => apiClient.axiosInstance.delete(`/org-admin/users/${userId}`),
-  listRoles: () => apiClient.axiosInstance.get('/org-admin/roles'),
-  getRole: (id: string) => apiClient.axiosInstance.get(`/org-admin/roles/${id}`),
-  createRole: (data: { name: string; description?: string; permissionIds?: string[] }) =>
-    apiClient.axiosInstance.post('/org-admin/roles', data),
-  updateRole: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) =>
-    apiClient.axiosInstance.put(`/org-admin/roles/${id}`, data),
-  deleteRole: (id: string) => apiClient.axiosInstance.delete(`/org-admin/roles/${id}`),
-};
-
-export const tasksAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/tasks', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/tasks/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/tasks', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/tasks/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/tasks/${id}`),
-  updateStatus: (id: string, status: string) => apiClient.axiosInstance.put(`/tasks/${id}/status`, { status }),
-};
-
-export const leaveAPI = {
-  types: () => apiClient.axiosInstance.get('/leave/types'),
-  requests: (params?: any) => apiClient.axiosInstance.get('/leave/requests', { params }),
-  balance: (params?: any) => apiClient.axiosInstance.get('/leave/balance', { params }),
-  createRequest: (data: any) => apiClient.axiosInstance.post('/leave/requests', data),
-  approve: (id: string) => apiClient.axiosInstance.put(`/leave/requests/${id}/approve`),
-  reject: (id: string, data?: any) => apiClient.axiosInstance.put(`/leave/requests/${id}/reject`, data),
-  cancel: (id: string) => apiClient.axiosInstance.put(`/leave/requests/${id}/cancel`),
-};
-
-export const rosterAPI = {
-  listShifts: () => apiClient.axiosInstance.get('/shifts'),
-  createShift: (data: any) => apiClient.axiosInstance.post('/shifts', data),
-  updateShift: (id: string, data: any) => apiClient.axiosInstance.put(`/shifts/${id}`, data),
-  deleteShift: (id: string) => apiClient.axiosInstance.delete(`/shifts/${id}`),
-  listAssignments: (params?: any) => apiClient.axiosInstance.get('/shift-assignments', { params }),
-  createAssignment: (data: any) => apiClient.axiosInstance.post('/shift-assignments', data),
-  deleteAssignment: (id: string) => apiClient.axiosInstance.delete(`/shift-assignments/${id}`),
-};
-
-export const messagesAPI = {
-  inbox: () => apiClient.axiosInstance.get('/messages/inbox'),
-  sent: () => apiClient.axiosInstance.get('/messages/sent'),
-  unreadCount: () => apiClient.axiosInstance.get('/messages/unread-count'),
-  get: (id: string) => apiClient.axiosInstance.get(`/messages/${id}`),
-  send: (data: any) => apiClient.axiosInstance.post('/messages', data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/messages/${id}`),
-};
-
-export const correspondenceAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/correspondence', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/correspondence/${id}`),
-  stats: () => apiClient.axiosInstance.get('/correspondence/stats'),
-  create: (data: any) => apiClient.axiosInstance.post('/correspondence', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/correspondence/${id}`, data),
-  archive: (id: string) => apiClient.axiosInstance.put(`/correspondence/${id}/archive`),
-  unarchive: (id: string) => apiClient.axiosInstance.put(`/correspondence/${id}/unarchive`),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/correspondence/${id}`),
-};
-
-export const notificationsAPI = {
-  list: (userId: string, params?: any) => apiClient.axiosInstance.get(`/notifications/user/${userId}`, { params }),
-  unreadCount: (userId: string) => apiClient.axiosInstance.get(`/notifications/user/${userId}/unread-count`),
-  markAsRead: (id: string) => apiClient.axiosInstance.put(`/notifications/${id}/read`),
-  markAllAsRead: (userId: string) => apiClient.axiosInstance.put(`/notifications/user/${userId}/read-all`),
-};
-
-export const attendanceAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/attendance', { params }),
-  getToday: () => apiClient.axiosInstance.get('/attendance/today'),
-  getSummary: (params: { workerId: string; month?: number; year?: number }) =>
-    apiClient.axiosInstance.get('/attendance/summary', { params }),
-  create: (data: any) => apiClient.axiosInstance.post('/attendance', data),
-  clockIn: (data: { workerId: string; workerName: string }) => apiClient.axiosInstance.post('/attendance/clock-in', data),
-  clockOut: (data: { workerId: string }) => apiClient.axiosInstance.post('/attendance/clock-out', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/attendance/${id}`, data),
-  bulkCreate: (records: any[]) => apiClient.axiosInstance.post('/attendance/bulk', { records }),
-};
-
-export const cropStagesAPI = {
-  calendar: (params?: any) => apiClient.axiosInstance.get('/crops/lifecycle/calendar', { params }),
-  listByCycle: (cropCycleId: string) => apiClient.axiosInstance.get(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`),
-  create: (cropCycleId: string, data: any) => apiClient.axiosInstance.post(`/crops/lifecycle/crop-cycle/${cropCycleId}/stages`, data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/crops/lifecycle/stages/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/crops/lifecycle/stages/${id}`),
-};
-
-export const livestockHealthAPI = {
-  listByAnimal: (livestockId: string) => apiClient.axiosInstance.get(`/livestock/health/livestock/${livestockId}`),
-  create: (livestockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/health/livestock/${livestockId}`, data),
-  listVaccinations: (livestockId: string) => apiClient.axiosInstance.get(`/livestock/health/vaccinations/${livestockId}`),
-  scheduleVaccination: (livestockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/health/vaccinations/${livestockId}`, data),
-  administerVaccination: (id: string) => apiClient.axiosInstance.put(`/livestock/health/vaccinations/${id}/administer`),
-  overdueVaccinations: () => apiClient.axiosInstance.get('/livestock/health/overdue'),
-};
-
-export const breedingAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/livestock/breeding', { params }),
-  create: (data: any) => apiClient.axiosInstance.post('/livestock/breeding', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/livestock/breeding/${id}`, data),
-  upcoming: () => apiClient.axiosInstance.get('/livestock/breeding/upcoming'),
-};
-
-export const weightAPI = {
-  listByAnimal: (livestockId: string) => apiClient.axiosInstance.get(`/livestock/weight/livestock/${livestockId}`),
-  recordForAnimal: (livestockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/weight/livestock/${livestockId}`, data),
-  listByFlock: (flockId: string) => apiClient.axiosInstance.get(`/livestock/weight/flock/${flockId}`),
-  recordForFlock: (flockId: string, data: any) => apiClient.axiosInstance.post(`/livestock/weight/flock/${flockId}`, data),
-};
-
-export const irrigationAPI = {
-  listSchedules: (params?: any) => apiClient.axiosInstance.get('/crops/irrigation/schedule', { params }),
-  createSchedule: (data: any) => apiClient.axiosInstance.post('/crops/irrigation/schedule', data),
-  updateSchedule: (id: string, data: any) => apiClient.axiosInstance.put(`/crops/irrigation/schedule/${id}`, data),
-  deleteSchedule: (id: string) => apiClient.axiosInstance.delete(`/crops/irrigation/schedule/${id}`),
-  createLog: (data: any) => apiClient.axiosInstance.post('/crops/irrigation/log', data),
-  listLogs: (params?: any) => apiClient.axiosInstance.get('/crops/irrigation/log', { params }),
-};
-
-export const pestDiseaseAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/crops/pest-disease', { params }),
-  active: () => apiClient.axiosInstance.get('/crops/pest-disease/active'),
-  create: (data: any) => apiClient.axiosInstance.post('/crops/pest-disease', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/crops/pest-disease/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/crops/pest-disease/${id}`),
-};
-
-export const weatherAPI = {
-  current: (lat: number, lon: number) => apiClient.axiosInstance.get('/weather/current', { params: { lat, lon } }),
-  forecast: (lat: number, lon: number, days?: number) => apiClient.axiosInstance.get('/weather/forecast', { params: { lat, lon, days } }),
-  alerts: (lat: number, lon: number) => apiClient.axiosInstance.get('/weather/alerts', { params: { lat, lon } }),
-};
+// ─── Profitability ────────────────────────────────────────────────────────────
 
 export const profitabilityAPI = {
-  byFarm: (params?: any) => apiClient.axiosInstance.get('/finance/profitability/farm', { params }),
-  summary: (params?: any) => apiClient.axiosInstance.get('/finance/profitability/summary', { params }),
+  byFarm: (params?: { farmId?: string; startDate?: string; endDate?: string }) =>
+    http.get<FarmProfitability[]>('/profitability/farm', { params }),
+  summary: (params?: { startDate?: string; endDate?: string }) =>
+    http.get<ProfitabilitySummary>('/profitability/summary', { params }),
 };
 
-export const yieldAPI = {
-  listByCrop: (cropId: string) => apiClient.axiosInstance.get(`/crops/yield/crop/${cropId}`),
-  create: (cropId: string, data: any) => apiClient.axiosInstance.post(`/crops/yield/crop/${cropId}`, data),
-  summary: (cropId: string) => apiClient.axiosInstance.get(`/crops/yield/crop/${cropId}/summary`),
+// ─── Workers ──────────────────────────────────────────────────────────────────
+
+export const workersAPI = {
+  list: (params?: ListParams & { farmId?: string }) =>
+    http.get<Worker[]>('/workers', { params }),
+  get: (id: string) =>
+    http.get<Worker>(`/workers/${id}`),
+  create: (data: CreateWorkerRequest) =>
+    http.post<Worker>('/workers', data),
+  update: (id: string, data: any) =>
+    http.put<Worker>(`/workers/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/workers/${id}`),
+};
+
+// ─── Attendance ────────────────────────────────────────────────────────────────
+
+export const attendanceAPI = {
+  list: (params?: any) =>
+    http.get<Attendance[]>('/attendance', { params }),
+  getToday: () =>
+    http.get<Attendance[]>('/attendance/today'),
+  getSummary: (params: { workerId: string; month?: number; year?: number }) =>
+    http.get('/attendance/summary', { params }),
+  create: (data: any) =>
+    http.post<Attendance>('/attendance', data),
+  clockIn: (data: ClockInRequest) =>
+    http.post<Attendance>('/attendance/clock-in', data),
+  clockOut: (data: { workerId: string }) =>
+    http.post<Attendance>('/attendance/clock-out', data),
+  update: (id: string, data: any) =>
+    http.put<Attendance>(`/attendance/${id}`, data),
+  bulkCreate: (records: any[]) =>
+    http.post('/attendance/bulk', { records }),
+};
+
+// ─── Tasks ─────────────────────────────────────────────────────────────────────
+
+export const tasksAPI = {
+  list: (params?: ListParams & { status?: string; assignedTo?: string }) =>
+    http.get<Task[]>('/tasks', { params }),
+  get: (id: string) =>
+    http.get<Task>(`/tasks/${id}`),
+  create: (data: any) =>
+    http.post<Task>('/tasks', data),
+  update: (id: string, data: any) =>
+    http.put<Task>(`/tasks/${id}`, data),
+  updateStatus: (id: string, status: string) =>
+    http.put<Task>(`/tasks/${id}/status`, { status }),
+  delete: (id: string) =>
+    http.delete(`/tasks/${id}`),
+};
+
+// ─── Shifts ────────────────────────────────────────────────────────────────────
+
+export const rosterAPI = {
+  listShifts: () =>
+    http.get<Shift[]>('/shifts'),
+  createShift: (data: any) =>
+    http.post<Shift>('/shifts', data),
+  updateShift: (id: string, data: any) =>
+    http.put<Shift>(`/shifts/${id}`, data),
+  deleteShift: (id: string) =>
+    http.delete(`/shifts/${id}`),
+  listAssignments: (params?: any) =>
+    http.get<ShiftAssignment[]>('/shift-assignments', { params }),
+  createAssignment: (data: any) =>
+    http.post<ShiftAssignment>('/shift-assignments', data),
+  bulkAssign: (data: any[]) =>
+    http.post('/shift-assignments/bulk', { records: data }),
+  deleteAssignment: (id: string) =>
+    http.delete(`/shift-assignments/${id}`),
+};
+
+// ─── Leave ─────────────────────────────────────────────────────────────────────
+
+export const leaveAPI = {
+  types: () =>
+    http.get<LeaveType[]>('/leave/types'),
+  createType: (data: any) =>
+    http.post<LeaveType>('/leave/types', data),
+  updateType: (id: string, data: any) =>
+    http.put<LeaveType>(`/leave/types/${id}`, data),
+  deleteType: (id: string) =>
+    http.delete(`/leave/types/${id}`),
+  requests: (params?: any) =>
+    http.get<LeaveRequest[]>('/leave/requests', { params }),
+  createRequest: (data: any) =>
+    http.post<LeaveRequest>('/leave/requests', data),
+  approve: (id: string) =>
+    http.put(`/leave/requests/${id}/approve`),
+  reject: (id: string, data?: any) =>
+    http.put(`/leave/requests/${id}/reject`, data),
+  cancel: (id: string) =>
+    http.put(`/leave/requests/${id}/cancel`),
+  balance: (params?: any) =>
+    http.get('/leave/balance', { params }),
+  upsertBalance: (data: any) =>
+    http.put('/leave/balance', data),
+};
+
+// ─── Messages ──────────────────────────────────────────────────────────────────
+
+export const messagesAPI = {
+  inbox: () =>
+    http.get<Message[]>('/messages/inbox'),
+  sent: () =>
+    http.get<Message[]>('/messages/sent'),
+  unreadCount: () =>
+    http.get<{ count: number }>('/messages/unread-count'),
+  get: (id: string) =>
+    http.get<Message>(`/messages/${id}`),
+  send: (data: any) =>
+    http.post<Message>('/messages', data),
+  delete: (id: string) =>
+    http.delete(`/messages/${id}`),
+};
+
+// ─── Correspondence ───────────────────────────────────────────────────────────
+
+export const correspondenceAPI = {
+  list: (params?: any) =>
+    http.get<Correspondence[]>('/correspondence', { params }),
+  get: (id: string) =>
+    http.get<Correspondence>(`/correspondence/${id}`),
+  stats: () =>
+    http.get('/correspondence/stats'),
+  getAttachment: (id: string) =>
+    http.get(`/correspondence/attachments/${id}`),
+  create: (data: any) =>
+    http.post<Correspondence>('/correspondence', data),
+  update: (id: string, data: any) =>
+    http.put<Correspondence>(`/correspondence/${id}`, data),
+  archive: (id: string) =>
+    http.put(`/correspondence/${id}/archive`),
+  unarchive: (id: string) =>
+    http.put(`/correspondence/${id}/unarchive`),
+  delete: (id: string) =>
+    http.delete(`/correspondence/${id}`),
+  addAttachment: (id: string, formData: FormData) =>
+    http.post(`/correspondence/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  deleteAttachment: (id: string) =>
+    http.delete(`/correspondence/attachments/${id}`),
+};
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notificationsAPI = {
+  list: (userId: string, params?: any) =>
+    http.get<Notification[]>(`/notifications/user/${userId}`, { params }),
+  get: (id: string) =>
+    http.get<Notification>(`/notifications/${id}`),
+  unreadCount: (userId: string) =>
+    http.get<{ count: number }>(`/notifications/user/${userId}/unread-count`),
+  markAsRead: (id: string) =>
+    http.put(`/notifications/${id}/read`),
+  markAllAsRead: (userId: string) =>
+    http.put(`/notifications/user/${userId}/read-all`),
+  delete: (id: string) =>
+    http.delete(`/notifications/${id}`),
+  registerDevice: (data: { token: string; platform: string; deviceId?: string }) =>
+    http.post('/devices/tokens', data),
+  unregisterDevice: (data: { token: string }) =>
+    http.delete('/devices/tokens', { data }),
+};
+
+// ─── Organizations ────────────────────────────────────────────────────────────
+
+export const organizationsAPI = {
+  list: (params?: any) =>
+    http.get<Organization[]>('/organizations', { params }),
+  get: (id: string) =>
+    http.get<Organization>(`/organizations/${id}`),
+  getBySlug: (slug: string) =>
+    http.get<Organization>(`/organizations/slug/${slug}`),
+  create: (data: any) =>
+    http.post<Organization>('/organizations', data),
+  update: (id: string, data: any) =>
+    http.put<Organization>(`/organizations/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/organizations/${id}`),
+  subscriptionPlans: () =>
+    http.get('/organizations/subscription-plans'),
+};
+
+// ─── Org Admin ────────────────────────────────────────────────────────────────
+
+export const orgAdminAPI = {
+  getOrganization: () =>
+    http.get<Organization>('/org-admin/me'),
+  updateOrganization: (data: any) =>
+    http.put<Organization>('/org-admin/me', data),
+  listUsers: () =>
+    http.get<User[]>('/org-admin/users'),
+  inviteUser: (data: { firstName: string; lastName: string; email: string; roleId?: string }) =>
+    http.post<User>('/org-admin/users', data),
+  updateUser: (userId: string, data: any) =>
+    http.put<User>(`/org-admin/users/${userId}`, data),
+  removeUser: (userId: string) =>
+    http.delete(`/org-admin/users/${userId}`),
+  listRoles: () =>
+    http.get('/org-admin/roles'),
+  getRole: (id: string) =>
+    http.get(`/org-admin/roles/${id}`),
+  createRole: (data: { name: string; description?: string; permissionIds?: string[] }) =>
+    http.post('/org-admin/roles', data),
+  updateRole: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) =>
+    http.put(`/org-admin/roles/${id}`, data),
+  deleteRole: (id: string) =>
+    http.delete(`/org-admin/roles/${id}`),
+};
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export const reportsAPI = {
+  list: (params?: any) =>
+    http.get<Report[]>('/reports', { params }),
+  get: (id: string) =>
+    http.get<Report>(`/reports/${id}`),
+  create: (data: any) =>
+    http.post<Report>('/reports', data),
+  update: (id: string, data: any) =>
+    http.put<Report>(`/reports/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/reports/${id}`),
 };
 
 export const scheduledReportsAPI = {
-  list: () => apiClient.axiosInstance.get('/reporting/schedule'),
-  create: (data: any) => apiClient.axiosInstance.post('/reporting/schedule', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/reporting/schedule/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/reporting/schedule/${id}`),
+  list: () =>
+    http.get<ScheduledReport[]>('/schedule'),
+  create: (data: any) =>
+    http.post<ScheduledReport>('/schedule', data),
+  update: (id: string, data: any) =>
+    http.put<ScheduledReport>(`/schedule/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/schedule/${id}`),
 };
 
-export const lowStockAPI = {
-  list: () => apiClient.axiosInstance.get('/inventory/low-stock'),
-  reorder: (id: string) => apiClient.axiosInstance.post(`/inventory/${id}/reorder`),
+// ─── Irrigation ───────────────────────────────────────────────────────────────
+
+export const irrigationAPI = {
+  listSchedules: (params?: any) =>
+    http.get('/irrigation/schedule', { params }),
+  createSchedule: (data: any) =>
+    http.post('/irrigation/schedule', data),
+  updateSchedule: (id: string, data: any) =>
+    http.put(`/irrigation/schedule/${id}`, data),
+  deleteSchedule: (id: string) =>
+    http.delete(`/irrigation/schedule/${id}`),
+  createLog: (data: any) =>
+    http.post('/irrigation/log', data),
+  listLogs: (params?: any) =>
+    http.get('/irrigation/log', { params }),
 };
 
-export const importExportAPI = {
-  exportFarms: (format?: string) => apiClient.axiosInstance.get('/farms/export/farms', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
-  importFarms: (data: any[]) => apiClient.axiosInstance.post('/farms/import/farms', { data }),
-  exportCrops: (format?: string) => apiClient.axiosInstance.get('/farms/export/crops', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
-  exportWorkers: (format?: string) => apiClient.axiosInstance.get('/farms/export/workers', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
-  exportInventory: (format?: string) => apiClient.axiosInstance.get('/inventory/export', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
-  importInventory: (data: any[]) => apiClient.axiosInstance.post('/inventory/import', { data }),
+// ─── Pest & Disease ───────────────────────────────────────────────────────────
+
+export const pestDiseaseAPI = {
+  list: (params?: any) =>
+    http.get('/pest-disease', { params }),
+  active: () =>
+    http.get('/pest-disease/active'),
+  create: (data: any) =>
+    http.post('/pest-disease', data),
+  update: (id: string, data: any) =>
+    http.put(`/pest-disease/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/pest-disease/${id}`),
 };
 
-export const farmMapAPI = {
-  all: () => apiClient.axiosInstance.get('/farms/map/all'),
-  updateLocation: (id: string, data: { latitude: number; longitude: number }) => apiClient.axiosInstance.put(`/farms/map/${id}/location`, data),
+// ─── Yield ────────────────────────────────────────────────────────────────────
+
+export const yieldAPI = {
+  listByCrop: (cropId: string) =>
+    http.get(`/yield/crop/${cropId}`),
+  create: (cropId: string, data: any) =>
+    http.post(`/yield/crop/${cropId}`, data),
+  summary: (cropId: string) =>
+    http.get(`/yield/crop/${cropId}/summary`),
 };
 
-export const equipmentAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/inventory/equipment', { params }),
-  get: (id: string) => apiClient.axiosInstance.get(`/inventory/equipment/${id}`),
-  create: (data: any) => apiClient.axiosInstance.post('/inventory/equipment', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/inventory/equipment/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/inventory/equipment/${id}`),
-  maintenanceHistory: (id: string) => apiClient.axiosInstance.get(`/inventory/equipment/${id}/maintenance`),
-  addMaintenance: (id: string, data: any) => apiClient.axiosInstance.post(`/inventory/equipment/${id}/maintenance`, data),
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+export const inventoryAPI = {
+  list: (params?: any) =>
+    http.get('/inventory', { params }),
+  get: (id: string) =>
+    http.get(`/inventory/${id}`),
+  create: (data: any) =>
+    http.post('/inventory', data),
+  update: (id: string, data: any) =>
+    http.put(`/inventory/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/inventory/${id}`),
+  lowStock: () =>
+    http.get('/inventory/low-stock'),
+  reorder: (id: string) =>
+    http.post(`/inventory/${id}/reorder`),
 };
 
-export const contractsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/finance/contracts', { params }),
-  create: (data: any) => apiClient.axiosInstance.post('/finance/contracts', data),
-  update: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/contracts/${id}`, data),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/finance/contracts/${id}`),
-};
+// ─── Egg Production ───────────────────────────────────────────────────────────
 
-export const documentsAPI = {
-  list: (params?: any) => apiClient.axiosInstance.get('/documents', { params }),
-  upload: (formData: FormData) => apiClient.axiosInstance.post('/documents/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  delete: (id: string) => apiClient.axiosInstance.delete(`/documents/${id}`),
-};
-
-export const marketplaceAPI = {
-  listBuyers: (params?: any) => apiClient.axiosInstance.get('/finance/marketplace/buyers', { params }),
-  createBuyer: (data: any) => apiClient.axiosInstance.post('/finance/marketplace/buyers', data),
-  updateBuyer: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/marketplace/buyers/${id}`, data),
-  deleteBuyer: (id: string) => apiClient.axiosInstance.delete(`/finance/marketplace/buyers/${id}`),
-  listListings: (params?: any) => apiClient.axiosInstance.get('/finance/marketplace/listings', { params }),
-  createListing: (data: any) => apiClient.axiosInstance.post('/finance/marketplace/listings', data),
-  updateListing: (id: string, data: any) => apiClient.axiosInstance.put(`/finance/marketplace/listings/${id}`, data),
-  deleteListing: (id: string) => apiClient.axiosInstance.delete(`/finance/marketplace/listings/${id}`),
-};
-
-export const authAPI = {
-  login: async (email: string, password: string) => {
-    try {
-      const res = await apiClient.axiosInstance.post('/auth/login', { email, password });
-      return res.data;
-    } catch (err: any) {
-      if (__DEV__) console.warn('[AUTH] Login failed:', err.response?.status);
-      throw err;
-    }
-  },
-  verifyMFA: async (mfaToken: string, code: string) => {
-    const res = await apiClient.axiosInstance.post('/auth/verify-mfa', { mfaToken, code });
-    return res.data;
-  },
-  logout: async () => {
-    try {
-      await apiClient.axiosInstance.post('/auth/logout');
-    } catch {
-      // Best-effort
-    }
-  },
-  getProfile: () => apiClient.axiosInstance.get('/auth/me'),
-  updateProfile: (data: any) => apiClient.axiosInstance.put('/auth/profile', data),
-  changePassword: (data: any) => apiClient.axiosInstance.put('/auth/password', data),
-  getPreferences: () => apiClient.axiosInstance.get('/auth/preferences'),
-  updatePreferences: (data: any) => apiClient.axiosInstance.put('/auth/preferences', data),
-  generate2FA: () => apiClient.axiosInstance.post('/auth/2fa/generate'),
-  enable2FA: (code: string) => apiClient.axiosInstance.post('/auth/2fa/enable', { code }),
-  disable2FA: (code: string) => apiClient.axiosInstance.post('/auth/2fa/disable', { code }),
+export const eggProductionAPI = {
+  list: (params?: any) =>
+    http.get('/egg-production', { params }),
+  get: (id: string) =>
+    http.get(`/egg-production/${id}`),
+  create: (data: any) =>
+    http.post('/egg-production', data),
+  update: (id: string, data: any) =>
+    http.put(`/egg-production/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/egg-production/${id}`),
 };

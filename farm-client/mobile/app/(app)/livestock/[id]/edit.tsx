@@ -14,10 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { farmsAPI } from '../../../../src/services/api';
 import { offlineLivestockAPI, offlinePoultryAPI } from '../../../../src/services/offlineApi';
-import { TextInputField, Button, colors } from '../../../../src/components/common/UIComponents';
-import { ScreenLoading, StateView } from '../../../../src/components/feedback';
-import { useToasts } from '../../../../src/hooks/useToasts';
-import { describeApiError } from '../../../../src/utils/apiError';
+import { TextInputField, Button, colors } from '../../../../src/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
+import { useToasts } from '../../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../../src/core/utils/apiError';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -188,7 +188,7 @@ export default function EditAnimalScreen() {
 
     try {
       const response = await offlineLivestockAPI.get(id);
-      const data = response.data.data || response.data;
+      const data = response.data as any;
         setAnimal({ ...data, type: 'livestock' });
         setFormData({
           name: data.name || data.species || '',
@@ -204,7 +204,7 @@ export default function EditAnimalScreen() {
       } catch {
         try {
           const response = await offlinePoultryAPI.get(id);
-          const data = response.data.data || response.data;
+          const data = response.data as any;
           setAnimal({ ...data, type: 'poultry' });
           setFormData({
             name: data.batchCode || data.name || '',
@@ -230,7 +230,7 @@ export default function EditAnimalScreen() {
   const fetchFarms = async () => {
     try {
       const response = await farmsAPI.list();
-      const farmsData = response.data.data || response.data;
+      const farmsData = response.data;
       setFarms(
         Array.isArray(farmsData)
           ? farmsData.map((f: any) => ({ id: f.id, name: f.name }))
@@ -244,7 +244,7 @@ export default function EditAnimalScreen() {
   const fetchPens = async () => {
     try {
       const response = await offlinePoultryAPI.listPens();
-      const data = response.data.data || response.data;
+      const data = response.data;
       setPens(
         Array.isArray(data)
           ? data.map((p: any) => ({ id: p.id, name: p.name }))
@@ -256,7 +256,7 @@ export default function EditAnimalScreen() {
   const fetchBreeds = async () => {
     try {
       const response = await offlinePoultryAPI.listBreeds();
-      const data = response.data.data || response.data;
+      const data = response.data;
       setBreeds(
         Array.isArray(data)
           ? data.map((b: any) => ({ id: b.id, name: b.name, birdType: b.birdType }))

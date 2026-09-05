@@ -6,17 +6,17 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { store, persistor } from '../src/store/store';
-import { ToastHost } from '../src/components/feedback';
-import { ErrorBoundary } from '../src/components/feedback/ErrorBoundary';
-import { ConnectionBanner } from '../src/components/layout/ConnectionBanner';
-import { useNetworkSync } from '../src/hooks/useNetworkSync';
-import { colors } from '../src/components/common/UIComponents';
-import { ThemeProvider, useAppTheme } from '../src/theme/ThemeContext';
+import { ToastHost } from '../src/core/ui/feedback';
+import { ErrorBoundary } from '../src/core/ui/feedback/ErrorBoundary';
+import { ConnectionBanner } from '../src/core/ui/layout/ConnectionBanner';
+import { useNetworkSync } from '../src/services/useNetworkSync';
+import { colors } from '../src/core/ui/UIComponents';
+import { ThemeProvider, useAppTheme } from '../src/core/theme/ThemeContext';
 import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
-import { useAppSelector, useAppDispatch } from '../src/hooks/useAuth';
-import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/store/slices/authSlice';
-import { startInactivityTracker } from '../src/utils/inactivity';
-import { loadCurrencySymbol } from '../src/utils/currency';
+import { useAppSelector, useAppDispatch } from '../src/modules/auth/hooks/useAuth';
+import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/modules/auth/services/authSlice';
+import { startInactivityTracker } from '../src/core/utils/inactivity';
+import { loadCurrencySymbol } from '../src/core/utils/currency';
 
 interface SplashShim {
   preventAutoHideAsync: () => Promise<void>;

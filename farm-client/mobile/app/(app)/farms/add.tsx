@@ -13,10 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { farmsAPI } from '../../../src/services/api';
-import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
-import { useToasts } from '../../../src/hooks/useToasts';
-import { describeApiError } from '../../../src/utils/apiError';
-import { useAppSelector } from '../../../src/hooks/useAuth';
+import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
+import { useToasts } from '../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../src/core/utils/apiError';
+import { useAppSelector } from '../../../src/modules/auth/hooks/useAuth';
 
 const styles = StyleSheet.create({
   container: {
@@ -162,9 +162,10 @@ export default function AddFarmScreen() {
         crops: formData.crops.trim() ? Number(formData.crops) : 0,
         animals: formData.animals.trim() ? Number(formData.animals) : 0,
         status: formData.status,
+        organizationId: user?.organizationId || '',
       };
 
-      await farmsAPI.create(farmData);
+      await farmsAPI.create(farmData as any);
       success('Farm created successfully');
       router.back();
     } catch (error: any) {

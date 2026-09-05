@@ -10,11 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { farmsAPI } from '../../../../src/services/api';
-import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
-import { ScreenLoading, StateView } from '../../../../src/components/feedback';
-import { useToasts } from '../../../../src/hooks/useToasts';
-import { describeApiError } from '../../../../src/utils/apiError';
-import { useAppDispatch } from '../../../../src/hooks/useAuth';
+import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
+import { useToasts } from '../../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppDispatch } from '../../../../src/modules/auth/hooks/useAuth';
 import { setSelectedFarmId } from '../../../../src/store/slices/uiSlice';
 
 const FARM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -164,7 +164,7 @@ export default function FarmDetailScreen() {
       setLoading(true);
       setLoadError(null);
       const response = await farmsAPI.get(id);
-      const farmData = response.data.data || response.data;
+      const farmData = response.data as any;
       setFarm(farmData);
       dispatch(setSelectedFarmId(id));
     } catch (error: any) {

@@ -10,15 +10,11 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
-import authReducer from './slices/authSlice';
+import authReducer from '../modules/auth/services/authSlice';
 import uiReducer from './slices/uiSlice';
 import syncReducer from './slices/syncSlice';
-import { farmsApi } from './api/farmsApi';
-import { cropsApi } from './api/cropsApi';
-import { livestockApi } from './api/livestockApi';
-import { financeApi } from './api/financeApi';
-import { tasksApi } from './api/tasksApi';
-import { secureStorageAdapter } from '../utils/reduxSecureStorage';
+import { farmsApi, cropsApi, livestockApi, financeApi, tasksApi } from './api';
+import { secureStorageAdapter } from '../core/utils/reduxSecureStorage';
 
 
 const uiPersistConfig = {

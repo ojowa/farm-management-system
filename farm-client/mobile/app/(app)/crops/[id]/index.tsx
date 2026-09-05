@@ -10,11 +10,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { offlineCropsAPI } from '../../../../src/services/offlineApi';
-import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
-import { ScreenLoading, StateView } from '../../../../src/components/feedback';
-import { useToasts } from '../../../../src/hooks/useToasts';
-import { describeApiError } from '../../../../src/utils/apiError';
-import { useAppDispatch } from '../../../../src/hooks/useAuth';
+import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
+import { useToasts } from '../../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppDispatch } from '../../../../src/modules/auth/hooks/useAuth';
 import { setSelectedCropId } from '../../../../src/store/slices/uiSlice';
 
 const styles = StyleSheet.create({
@@ -272,7 +272,7 @@ export default function CropDetailScreen() {
       setLoading(true);
       setLoadError(null);
       const response = await offlineCropsAPI.get(id);
-      const cropData = response.data.data || response.data;
+      const cropData = response.data as any;
       setCrop(cropData);
       dispatch(setSelectedCropId(id));
     } catch (error: any) {

@@ -15,5 +15,5 @@
     "app/**/*",
     "index.js"
   ],
-  "exclude": ["src/__tests__/**/*"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/__tests__/**/*"]
 }

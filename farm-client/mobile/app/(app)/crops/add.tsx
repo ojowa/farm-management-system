@@ -14,9 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { farmsAPI } from '../../../src/services/api';
 import { offlineCropsAPI } from '../../../src/services/offlineApi';
-import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
-import { useToasts } from '../../../src/hooks/useToasts';
-import { describeApiError } from '../../../src/utils/apiError';
+import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
+import { useToasts } from '../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../src/core/utils/apiError';
 
 const styles = StyleSheet.create({
   container: {
@@ -240,7 +240,7 @@ export default function AddCropScreen() {
   const fetchFarms = async () => {
     try {
       const response = await farmsAPI.list();
-      const farmsData = response.data.data || response.data;
+      const farmsData = response.data;
       const farmList = Array.isArray(farmsData)
         ? farmsData.map((f: any) => ({ id: f.id, name: f.name }))
         : [];

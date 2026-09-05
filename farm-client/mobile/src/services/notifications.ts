@@ -65,7 +65,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 export async function sendTokenToServer(expoPushToken: string): Promise<void> {
   try {
-    await apiClient.axiosInstance.post('/notifications/register', {
+    await apiClient.client.post('/notifications/register', {
       token: expoPushToken,
       platform: Platform.OS,
     });
@@ -79,7 +79,7 @@ export async function unregisterFromNotifications(): Promise<void> {
   try {
     const token = await Notifications.getExpoPushTokenAsync();
     if (token.data) {
-      await apiClient.axiosInstance.post('/notifications/unregister', {
+      await apiClient.client.post('/notifications/unregister', {
         token: token.data,
       });
     }

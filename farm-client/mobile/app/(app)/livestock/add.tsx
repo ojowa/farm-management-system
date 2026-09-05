@@ -14,9 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { farmsAPI } from '../../../src/services/api';
 import { offlineLivestockAPI, offlinePoultryAPI } from '../../../src/services/offlineApi';
-import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
-import { useToasts } from '../../../src/hooks/useToasts';
-import { describeApiError } from '../../../src/utils/apiError';
+import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
+import { useToasts } from '../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../src/core/utils/apiError';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -185,7 +185,7 @@ export default function AddAnimalScreen() {
   const fetchFarms = async () => {
     try {
       const response = await farmsAPI.list();
-      const farmsData = response.data.data || response.data;
+      const farmsData = response.data;
       setFarms(
         Array.isArray(farmsData)
           ? farmsData.map((f: any) => ({ id: f.id, name: f.name }))
@@ -199,7 +199,7 @@ export default function AddAnimalScreen() {
   const fetchPens = async () => {
     try {
       const response = await offlinePoultryAPI.listPens();
-      const data = response.data.data || response.data;
+      const data = response.data;
       setPens(
         Array.isArray(data)
           ? data.map((p: any) => ({ id: p.id, name: p.name }))
@@ -211,7 +211,7 @@ export default function AddAnimalScreen() {
   const fetchBreeds = async () => {
     try {
       const response = await offlinePoultryAPI.listBreeds();
-      const data = response.data.data || response.data;
+      const data = response.data;
       setBreeds(
         Array.isArray(data)
           ? data.map((b: any) => ({ id: b.id, name: b.name, birdType: b.birdType }))

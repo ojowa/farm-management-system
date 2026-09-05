@@ -13,11 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { TextInputField, Button, colors } from '../../../src/components/common/UIComponents';
-import { ScreenLoading, StateView } from '../../../src/components/feedback';
-import { useToasts } from '../../../src/hooks/useToasts';
-import { useAppDispatch } from '../../../src/hooks/useAuth';
-import { describeApiError } from '../../../src/utils/apiError';
+import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '../../../src/core/ui/feedback';
+import { useToasts } from '../../../src/core/hooks/useToasts';
+import { useAppDispatch } from '../../../src/modules/auth/hooks/useAuth';
+import { describeApiError } from '../../../src/core/utils/apiError';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../../../src/services/api';
 
@@ -108,7 +108,7 @@ export default function EditProfileScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await apiClient.axiosInstance.get('/auth/me');
+      const response = await apiClient.client.get('/auth/me');
       const data = response.data;
       setProfile(data);
       setFormData({
@@ -183,7 +183,7 @@ export default function EditProfileScreen() {
 
     setSubmitting(true);
     try {
-      await apiClient.axiosInstance.put('/auth/profile', {
+      await apiClient.client.put('/auth/profile', {
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
         avatar: formData.avatar || undefined,

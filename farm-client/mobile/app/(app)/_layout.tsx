@@ -3,9 +3,9 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppSelector } from '@/hooks/useAuth';
-import { useAppTheme } from '@/theme/ThemeContext';
-import { usePermission } from '@/hooks/usePermission';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { useAppTheme } from '@/core/theme/ThemeContext';
+import { usePermission } from '@/core/hooks/usePermission';
 
 const TAB_CONFIG = [
   { name: 'index', title: 'Home', icon: '🏠', permission: null, module: null },

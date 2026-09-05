@@ -11,9 +11,9 @@ module.exports = {
   clearMocks: true,
   collectCoverageFrom: [
     'src/store/slices/*.ts',
-    'src/utils/*.ts',
+    'src/core/utils/*.ts',
     'src/services/api.ts',
-    'src/components/**/*.tsx',
+    'src/core/ui/**/*.tsx',
     '!src/**/*.d.ts',
     '!src/**/index.ts',
   ],

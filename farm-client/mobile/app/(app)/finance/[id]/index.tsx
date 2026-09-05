@@ -10,10 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { offlineFinanceAPI } from '../../../../src/services/offlineApi';
-import { Card, Button, colors } from '../../../../src/components/common/UIComponents';
-import { ScreenLoading, StateView } from '../../../../src/components/feedback';
-import { useToasts } from '../../../../src/hooks/useToasts';
-import { describeApiError } from '../../../../src/utils/apiError';
+import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
+import { useToasts } from '../../../../src/core/hooks/useToasts';
+import { describeApiError } from '../../../../src/core/utils/apiError';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -127,7 +127,7 @@ export default function TransactionDetailScreen() {
       setLoading(true);
       setLoadError(null);
       const response = await offlineFinanceAPI.get(id);
-      setTransaction(response.data.data || response.data);
+      setTransaction(response.data as any);
     } catch (error: any) {
       const message = describeApiError(error, 'Failed to load transaction.');
       setLoadError(message);

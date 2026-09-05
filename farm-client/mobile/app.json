@@ -40,7 +40,14 @@
           "origin": "http://localhost:8082"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ],
+      "expo-image-picker"
     ]
   }
 }
