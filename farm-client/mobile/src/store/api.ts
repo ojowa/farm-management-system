@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from './store';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,

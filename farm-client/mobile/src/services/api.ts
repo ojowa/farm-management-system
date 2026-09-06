@@ -71,6 +71,10 @@ declare const process: { env?: Record<string, string | undefined> } | undefined;
 const API_BASE_URL: string =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
 
+if (!API_BASE_URL && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'test') {
+  throw new Error('[API] EXPO_PUBLIC_API_URL is not set. Create a .env file with your API URL.');
+}
+
 const APP_VERSION: string = Constants.expoConfig?.version || '1.0.0';
 
 let _storeRef: any = null;
@@ -85,6 +89,10 @@ function getStore() {
 
 if (__DEV__ && API_BASE_URL.startsWith('http://') && !API_BASE_URL.includes('localhost') && !API_BASE_URL.includes('192.168.')) {
   console.warn('[API] WARNING: Using HTTP in non-local environment.');
+}
+
+if (!__DEV__ && API_BASE_URL.startsWith('http://')) {
+  throw new Error('[API] HTTP is not allowed in production. Use HTTPS.');
 }
 
 // ─── API Client ────────────────────────────────────────────────────────────────

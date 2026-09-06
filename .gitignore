@@ -30,6 +30,12 @@ packages/*/src/**/*.d.ts.map
 *.key
 *.cert
 
+# Firebase / Google services (contain API keys and service account credentials)
+google-services.json
+GoogleService-Info.plist
+firebase-debug.log
+firebase-debug.*.log
+
 # Logs and databases
 npm-debug.log*
 yarn-debug.log*

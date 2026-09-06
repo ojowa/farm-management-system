@@ -18,7 +18,6 @@ import { ScreenLoading, StateView } from '../../../src/core/ui/feedback';
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { useAppDispatch } from '../../../src/modules/auth/hooks/useAuth';
 import { describeApiError } from '../../../src/core/utils/apiError';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../../../src/services/api';
 
 const styles = StyleSheet.create({

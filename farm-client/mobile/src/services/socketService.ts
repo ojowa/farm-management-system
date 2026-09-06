@@ -6,6 +6,10 @@ declare const process: { env?: Record<string, string | undefined> } | undefined;
 const API_BASE_URL =
   (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
 
+if (!API_BASE_URL && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'test') {
+  throw new Error('[Socket] EXPO_PUBLIC_API_URL is not set.');
+}
+
 const SOCKET_URL = API_BASE_URL;
 
 export type RealtimeEvent =

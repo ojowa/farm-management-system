@@ -29,7 +29,7 @@ export function reconcileOfflineQueue(dispatch: AppDispatch) {
         store.dispatch(
           showToast({
             id: `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            message: `A ${op.method} ${op.endpoint} change was dropped after too many failures. Please retry.`,
+            message: `A change was dropped after too many failures. Please retry.`,
             type: 'warning',
             duration: 6000,
           })
@@ -63,7 +63,7 @@ export function reconcileOfflineQueue(dispatch: AppDispatch) {
           store.dispatch(
             showToast({
               id: `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-              message: `A ${op.method} ${op.endpoint} was superseded by another change. Please retry.`,
+              message: `A change was superseded by another edit. Please retry.`,
               type: 'warning',
               duration: 6000,
             })

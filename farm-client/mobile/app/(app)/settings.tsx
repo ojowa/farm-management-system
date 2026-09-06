@@ -26,6 +26,7 @@ import {
   setupNotificationListeners,
 } from '@/services/notifications';
 import { orgAdminAPI } from '@/services/api';
+import { describeApiError } from '@/core/utils/apiError';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -159,7 +160,7 @@ export default function SettingsScreen() {
       setShowRoleModal(false);
       await loadRoles();
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.message || 'Failed to save role');
+      Alert.alert('Error', describeApiError(err, 'Failed to complete this action.'));
     } finally { setRoleSaving(false); }
   };
 
@@ -174,7 +175,7 @@ export default function SettingsScreen() {
             await orgAdminAPI.deleteRole(role.id);
             await loadRoles();
           } catch (err: any) {
-            Alert.alert('Error', err?.response?.data?.message || 'Failed to delete role');
+            Alert.alert('Error', describeApiError(err, 'Failed to complete this action.'));
           }
         },
       },

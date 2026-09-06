@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authAPI, apiClient } from '../../../services/api';
 import { loadCurrencySymbol } from '../../../core/utils/currency';
+import { clearQueue } from '../../../store/slices/syncSlice';
 
 export interface User {
   id: string;
@@ -79,7 +80,7 @@ export const login = createAsyncThunk(
       };
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] login failed');
-      return rejectWithValue(err.response?.data?.message || 'Login failed');
+      return rejectWithValue('Login failed. Please check your credentials and try again.');
     }
   }
 );
@@ -94,7 +95,7 @@ export const verifyMFA = createAsyncThunk(
       return { user: profileRes.data, socketAccessToken: data.accessToken || null };
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] MFA failed');
-      return rejectWithValue(err.response?.data?.message || 'MFA verification failed');
+      return rejectWithValue('MFA verification failed. Please try again.');
     }
   }
 );
@@ -129,9 +130,8 @@ export const refreshSocketToken = createAsyncThunk(
 
 export const logout = createAsyncThunk(
   'auth/logout',
-  async (_, { rejectWithValue }) => {
+  async (_, { dispatch, rejectWithValue }) => {
     try {
-      // Unregister push notifications before logging out
       try {
         const { unregisterFromNotifications } = await import('../../../services/notifications');
         await unregisterFromNotifications();
@@ -141,6 +141,11 @@ export const logout = createAsyncThunk(
       await authAPI.logout();
     } catch {
       // Best-effort — clear local state regardless
+    }
+    try {
+      dispatch(clearQueue());
+    } catch {
+      // Non-critical
     }
   }
 );

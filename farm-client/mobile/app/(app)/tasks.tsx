@@ -18,6 +18,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
 import { tasksAPI, workersAPI } from '@/services/api';
 import { offlineTasksAPI } from '@/services/offlineApi';
+import { describeApiError } from '@/core/utils/apiError';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -140,7 +141,7 @@ export default function TasksScreen() {
       const res = await offlineTasksAPI.list(params);
       setTasks(res.data);
     } catch {
-      console.warn('[TasksScreen] Failed to load tasks');
+      if (__DEV__) console.warn('[TasksScreen] Failed to load tasks');
     }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter]);
@@ -150,7 +151,7 @@ export default function TasksScreen() {
   useEffect(() => {
     if (canManageTasks) {
       workersAPI.list().then((res) => setWorkers(res.data)).catch(() => {
-        console.warn('[TasksScreen] Failed to load workers');
+        if (__DEV__) console.warn('[TasksScreen] Failed to load workers');
       });
     }
   }, []);
@@ -199,7 +200,7 @@ export default function TasksScreen() {
       setShowModal(false);
       await loadTasks();
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.error || 'Failed to save task');
+      Alert.alert('Error', describeApiError(err, 'Failed to complete this action.'));
     } finally { setSaving(false); }
   };
 
@@ -208,7 +209,7 @@ export default function TasksScreen() {
       await offlineTasksAPI.update(task.id, { status: newStatus });
       await loadTasks();
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.error || 'Failed to update');
+      Alert.alert('Error', describeApiError(err, 'Failed to complete this action.'));
     }
   };
 
@@ -223,7 +224,7 @@ export default function TasksScreen() {
             await offlineTasksAPI.delete(task.id);
             await loadTasks();
           } catch (err: any) {
-            Alert.alert('Error', err?.response?.data?.error || 'Failed to delete');
+            Alert.alert('Error', describeApiError(err, 'Failed to complete this action.'));
           }
         },
       },

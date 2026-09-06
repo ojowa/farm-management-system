@@ -5,6 +5,7 @@ import { Card, Button } from '@/core/ui/UIComponents';
 import { messagesAPI } from '@/services/api';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
+import { describeApiError } from '@/core/utils/apiError';
 
 interface Message {
   id: string;
@@ -95,7 +96,7 @@ export default function MessagesScreen() {
       setView('sent');
       await loadData();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.error || 'Failed to send');
+      Alert.alert('Error', describeApiError(err, 'Failed to complete this action.'));
     } finally { setSaving(false); }
   };
 
