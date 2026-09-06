@@ -5,23 +5,25 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "farmapp",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#2E7D32"
     },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
+    "icon": "./assets/icon.png",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTabletMode": true,
+      "supportsTablet": true,
       "bundleIdentifier": "com.farmmanagement.mobile",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "icon": "./assets/icon.png"
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2E7D32"
       },
       "package": "com.farmmanagement.mobile",
@@ -30,9 +32,20 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/icon.png"
+      "favicon": "./assets/favicon.png"
     },
-    "scheme": "farmapp",
+    "updates": {
+      "url": "https://u.expo.dev/farm-management-mobile",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "farm-management-mobile"
+      }
+    },
     "plugins": [
       [
         "expo-router",
@@ -47,7 +60,10 @@
           "sounds": []
         }
       ],
-      "expo-image-picker"
+      "expo-image-picker",
+      [
+        "./plugins/withCertificatePinning"
+      ]
     ]
   }
 }

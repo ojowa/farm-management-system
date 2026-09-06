@@ -3,7 +3,6 @@
 .env.local
 .env.*.local
 
-
 # Dependencies
 node_modules/
 
@@ -27,4 +26,12 @@ Thumbs.db
 .expo-shared/
 
 # Native builds
-ios/Pods/
+ios/
+android/
+
+# EAS
+eas-build-*.json
+
+# Firebase / Google services (credentials)
+google-services.json
+GoogleService-Info.plist

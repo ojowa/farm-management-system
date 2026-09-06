@@ -7,6 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:4022",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
+      },
       "ios": {
         "simulator": true
       },
@@ -16,6 +20,10 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.farmmanagement.com",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
+      },
       "ios": {
         "simulator": false
       },
@@ -24,6 +32,11 @@
       }
     },
     "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.farmmanagement.com",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
+      },
       "ios": {
         "autoIncrement": true
       },
@@ -31,14 +44,38 @@
         "autoIncrement": true,
         "buildType": "app-bundle"
       }
+    },
+    "development-local": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:4022",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
+      },
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview-local": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.farmmanagement.com",
+        "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
+      },
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": ""
-      },
+      "ios": {},
       "android": {
         "serviceAccountKeyPath": "./google-services.json"
       }
