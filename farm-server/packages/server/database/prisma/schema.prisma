@@ -252,6 +252,8 @@ model Flock {
   vaccinationRecords VaccinationRecord[]
   mortalityRecords MortalityRecord[]
   medications     Medication[]
+  eggProductions  EggProduction[]
+  poultrySales    PoultrySale[]
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -315,6 +317,50 @@ model Medication {
 
   @@index([flockId])
   @@index([status])
+}
+
+model EggProduction {
+  id             String   @id @default(uuid())
+  organizationId String
+  flockId        String
+  date           DateTime
+  totalEggs      Int
+  goodEggs       Int      @default(0)
+  brokenEggs     Int      @default(0)
+  notes          String?
+  createdById    String?
+  createdByName  String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([flockId])
+  @@index([organizationId])
+  @@index([date])
+}
+
+model PoultrySale {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String?
+  flockId        String?
+  date           DateTime
+  buyerName      String?
+  birdType       String
+  quantity       Int
+  weight         Float?
+  pricePerBird   Float?
+  totalAmount    Float
+  paymentMethod  String?
+  notes          String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([flockId])
+  @@index([date])
 }
 
 model Crop {

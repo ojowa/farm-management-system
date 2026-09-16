@@ -29,12 +29,12 @@ export interface LivestockHealthAPI {
 
 export function createLivestockHealthAPI(client: AxiosInstance): LivestockHealthAPI {
   return {
-    listByAnimal: (livestockId) => client.get(`/livestock/health/livestock/${livestockId}`),
-    create: (livestockId, data) => client.post(`/livestock/health/livestock/${livestockId}`, data),
-    listVaccinations: (livestockId) => client.get(`/livestock/health/vaccinations/${livestockId}`),
-    scheduleVaccination: (livestockId, data) => client.post(`/livestock/health/vaccinations/${livestockId}`, data),
-    administerVaccination: (id) => client.put(`/livestock/health/vaccinations/${id}/administer`),
-    overdueVaccinations: () => client.get('/livestock/health/overdue'),
+    listByAnimal: (livestockId) => client.get(`/health/livestock/${livestockId}`),
+    create: (livestockId, data) => client.post(`/health/livestock/${livestockId}`, data),
+    listVaccinations: (livestockId) => client.get(`/health/vaccinations/${livestockId}`),
+    scheduleVaccination: (livestockId, data) => client.post(`/health/vaccinations/${livestockId}`, data),
+    administerVaccination: (id) => client.put(`/health/vaccinations/${id}/administer`),
+    overdueVaccinations: () => client.get('/health/overdue'),
   };
 }
 
@@ -47,10 +47,10 @@ export interface BreedingAPI {
 
 export function createBreedingAPI(client: AxiosInstance): BreedingAPI {
   return {
-    list: (params) => client.get('/livestock/breeding', { params }),
-    create: (data) => client.post('/livestock/breeding', data),
-    update: (id, data) => client.put(`/livestock/breeding/${id}`, data),
-    upcoming: () => client.get('/livestock/breeding/upcoming'),
+    list: (params) => client.get('/breeding', { params }),
+    create: (data) => client.post('/breeding', data),
+    update: (id, data) => client.put(`/breeding/${id}`, data),
+    upcoming: () => client.get('/breeding/upcoming'),
   };
 }
 
@@ -63,9 +63,9 @@ export interface WeightAPI {
 
 export function createWeightAPI(client: AxiosInstance): WeightAPI {
   return {
-    listByAnimal: (livestockId) => client.get(`/livestock/weight/livestock/${livestockId}`),
-    recordForAnimal: (livestockId, data) => client.post(`/livestock/weight/livestock/${livestockId}`, data),
-    listByFlock: (flockId) => client.get(`/livestock/weight/flock/${flockId}`),
-    recordForFlock: (flockId, data) => client.post(`/livestock/weight/flock/${flockId}`, data),
+    listByAnimal: (livestockId) => client.get(`/weight/livestock/${livestockId}`),
+    recordForAnimal: (livestockId, data) => client.post(`/weight/livestock/${livestockId}`, data),
+    listByFlock: (flockId) => client.get(`/weight/flock/${flockId}`),
+    recordForFlock: (flockId, data) => client.post(`/weight/flock/${flockId}`, data),
   };
 }

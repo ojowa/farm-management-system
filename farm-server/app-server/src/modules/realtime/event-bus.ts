@@ -47,10 +47,13 @@ export class EventBus {
    * Other modules can subscribe with `@OnEvent('event.name')`.
    */
   emit(eventName: string, payload: any): void {
+    const parts = eventName.split('.');
+    const entity = parts[0];
+    const action = (['created', 'updated', 'deleted'].includes(parts[1]) ? parts[1] : 'created') as 'created' | 'updated' | 'deleted';
     this.logger.debug(`Emitting event: ${eventName}`);
     this.realtime.broadcastRealtimeEvent({
-      entity: eventName.split('.')[0],
-      action: 'created' as any,
+      entity,
+      action,
       data: payload,
       timestamp: new Date().toISOString(),
     });

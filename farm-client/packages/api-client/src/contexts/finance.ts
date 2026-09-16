@@ -15,16 +15,16 @@ export interface FinanceAPI {
 
 export function createFinanceAPI(client: AxiosInstance): FinanceAPI {
   return {
-    listExpenses: (params) => client.get('/finance/expenses', { params }),
-    getExpense: (id) => client.get(`/finance/expenses/${id}`),
-    createExpense: (data) => client.post('/finance/expenses', data),
-    updateExpense: (id, data) => client.put(`/finance/expenses/${id}`, data),
-    deleteExpense: (id) => client.delete(`/finance/expenses/${id}`),
-    listSales: (params) => client.get('/finance/sales', { params }),
-    getSale: (id) => client.get(`/finance/sales/${id}`),
-    createSale: (data) => client.post('/finance/sales', data),
-    updateSale: (id, data) => client.put(`/finance/sales/${id}`, data),
-    deleteSale: (id) => client.delete(`/finance/sales/${id}`),
+    listExpenses: (params) => client.get('/expenses', { params }),
+    getExpense: (id) => client.get(`/expenses/${id}`),
+    createExpense: (data) => client.post('/expenses', data),
+    updateExpense: (id, data) => client.put(`/expenses/${id}`, data),
+    deleteExpense: (id) => client.delete(`/expenses/${id}`),
+    listSales: (params) => client.get('/sales', { params }),
+    getSale: (id) => client.get(`/sales/${id}`),
+    createSale: (data) => client.post('/sales', data),
+    updateSale: (id, data) => client.put(`/sales/${id}`, data),
+    deleteSale: (id) => client.delete(`/sales/${id}`),
   };
 }
 
@@ -35,8 +35,8 @@ export interface ProfitabilityAPI {
 
 export function createProfitabilityAPI(client: AxiosInstance): ProfitabilityAPI {
   return {
-    byFarm: (params) => client.get('/finance/profitability/farm', { params }),
-    summary: (params) => client.get('/finance/profitability/summary', { params }),
+    byFarm: (params) => client.get('/profitability/farm', { params }),
+    summary: (params) => client.get('/profitability/summary', { params }),
   };
 }
 
@@ -49,10 +49,10 @@ export interface ContractsAPI {
 
 export function createContractsAPI(client: AxiosInstance): ContractsAPI {
   return {
-    list: (params) => client.get('/finance/contracts', { params }),
-    create: (data) => client.post('/finance/contracts', data),
-    update: (id, data) => client.put(`/finance/contracts/${id}`, data),
-    delete: (id) => client.delete(`/finance/contracts/${id}`),
+    list: (params) => client.get('/contracts', { params }),
+    create: (data) => client.post('/contracts', data),
+    update: (id, data) => client.put(`/contracts/${id}`, data),
+    delete: (id) => client.delete(`/contracts/${id}`),
   };
 }
 
@@ -69,13 +69,13 @@ export interface MarketplaceAPI {
 
 export function createMarketplaceAPI(client: AxiosInstance): MarketplaceAPI {
   return {
-    listBuyers: (params) => client.get('/finance/marketplace/buyers', { params }),
-    createBuyer: (data) => client.post('/finance/marketplace/buyers', data),
-    updateBuyer: (id, data) => client.put(`/finance/marketplace/buyers/${id}`, data),
-    deleteBuyer: (id) => client.delete(`/finance/marketplace/buyers/${id}`),
-    listListings: (params) => client.get('/finance/marketplace/listings', { params }),
-    createListing: (data) => client.post('/finance/marketplace/listings', data),
-    updateListing: (id, data) => client.put(`/finance/marketplace/listings/${id}`, data),
-    deleteListing: (id) => client.delete(`/finance/marketplace/listings/${id}`),
+    listBuyers: (params) => client.get('/marketplace/buyers', { params }),
+    createBuyer: (data) => client.post('/marketplace/buyers', data),
+    updateBuyer: (id, data) => client.put(`/marketplace/buyers/${id}`, data),
+    deleteBuyer: (id) => client.delete(`/marketplace/buyers/${id}`),
+    listListings: (params) => client.get('/marketplace/listings', { params }),
+    createListing: (data) => client.post('/marketplace/listings', data),
+    updateListing: (id, data) => client.put(`/marketplace/listings/${id}`, data),
+    deleteListing: (id) => client.delete(`/marketplace/listings/${id}`),
   };
 }

@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UsePipes,
   HttpCode,
   HttpStatus,
@@ -477,5 +478,125 @@ export class MedicationsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {
     return this.poultryService.deleteMedication(id);
+  }
+}
+
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@Controller('egg-production')
+export class EggProductionController {
+  constructor(private readonly poultryService: PoultryApplicationService) {}
+
+  @Permission('poultry.write')
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createEggProduction({
+      ...data,
+      organizationId: req.user?.organizationId || '',
+      createdById: req.user?.sub || null,
+      createdByName: req.user?.email || null,
+    });
+  }
+
+  @Permission('poultry.read')
+  @Get()
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('flockId') flockId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const filter: Record<string, unknown> = {};
+    if (flockId) filter.flockId = flockId;
+    if (startDate) filter.startDate = startDate;
+    if (endDate) filter.endDate = endDate;
+    return this.poultryService.getAllEggProductions(filter, {
+      page: parseInt(page || '1'),
+      limit: parseInt(limit || '20'),
+      sortBy: sortBy || 'date',
+      sortOrder: sortOrder || 'desc',
+    });
+  }
+
+  @Permission('poultry.read')
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.poultryService.getEggProductionById(id);
+  }
+
+  @Permission('poultry.write')
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() data: any) {
+    return this.poultryService.updateEggProduction(id, data);
+  }
+
+  @Permission('poultry.delete')
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('id') id: string) {
+    return this.poultryService.deleteEggProduction(id);
+  }
+}
+
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@Controller('poultry-sales')
+export class PoultrySalesController {
+  constructor(private readonly poultryService: PoultryApplicationService) {}
+
+  @Permission('poultry.write')
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createPoultrySale({
+      ...data,
+      organizationId: req.user?.organizationId || '',
+    });
+  }
+
+  @Permission('poultry.read')
+  @Get()
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('farmId') farmId?: string,
+    @Query('flockId') flockId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const filter: Record<string, unknown> = {};
+    if (farmId) filter.farmId = farmId;
+    if (flockId) filter.flockId = flockId;
+    if (startDate) filter.startDate = startDate;
+    if (endDate) filter.endDate = endDate;
+    return this.poultryService.getAllPoultrySales(filter, {
+      page: parseInt(page || '1'),
+      limit: parseInt(limit || '20'),
+      sortBy: sortBy || 'date',
+      sortOrder: sortOrder || 'desc',
+    });
+  }
+
+  @Permission('poultry.read')
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.poultryService.getPoultrySaleById(id);
+  }
+
+  @Permission('poultry.write')
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() data: any) {
+    return this.poultryService.updatePoultrySale(id, data);
+  }
+
+  @Permission('poultry.delete')
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('id') id: string) {
+    return this.poultryService.deletePoultrySale(id);
   }
 }

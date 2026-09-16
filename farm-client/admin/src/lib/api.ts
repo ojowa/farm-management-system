@@ -118,39 +118,39 @@ export const permissionsAPI = {
 };
 
 export const budgetsAPI = {
-  list: (params?: any) => apiClient.get('/finance/budgets', { params }),
-  get: (id: string) => apiClient.get(`/finance/budgets/${id}`),
-  create: (data: any) => apiClient.post('/finance/budgets', data),
-  update: (id: string, data: any) => apiClient.put(`/finance/budgets/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/finance/budgets/${id}`),
-  addCategory: (budgetId: string, data: any) => apiClient.post(`/finance/budgets/${budgetId}/categories`, data),
-  updateCategory: (categoryId: string, data: any) => apiClient.put(`/finance/budgets/categories/${categoryId}`, data),
-  deleteCategory: (categoryId: string) => apiClient.delete(`/finance/budgets/categories/${categoryId}`),
-  refresh: (budgetId: string) => apiClient.post(`/finance/budgets/${budgetId}/refresh`),
+  list: (params?: any) => apiClient.get('/budgets', { params }),
+  get: (id: string) => apiClient.get(`/budgets/${id}`),
+  create: (data: any) => apiClient.post('/budgets', data),
+  update: (id: string, data: any) => apiClient.put(`/budgets/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/budgets/${id}`),
+  addCategory: (budgetId: string, data: any) => apiClient.post(`/budgets/${budgetId}/categories`, data),
+  updateCategory: (categoryId: string, data: any) => apiClient.put(`/budgets/categories/${categoryId}`, data),
+  deleteCategory: (categoryId: string) => apiClient.delete(`/budgets/categories/${categoryId}`),
+  refresh: (budgetId: string) => apiClient.post(`/budgets/${budgetId}/refresh`),
 };
 
 export const pensAPI = {
-  list: (params?: any) => apiClient.get('/poultry/pens', { params }),
-  get: (id: string) => apiClient.get(`/poultry/pens/${id}`),
-  create: (data: any) => apiClient.post('/poultry/pens', data),
-  update: (id: string, data: any) => apiClient.put(`/poultry/pens/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/poultry/pens/${id}`),
+  list: (params?: any) => apiClient.get('/pens', { params }),
+  get: (id: string) => apiClient.get(`/pens/${id}`),
+  create: (data: any) => apiClient.post('/pens', data),
+  update: (id: string, data: any) => apiClient.put(`/pens/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/pens/${id}`),
 };
 
 export const breedsAPI = {
-  list: (params?: any) => apiClient.get('/poultry/breeds', { params }),
-  get: (id: string) => apiClient.get(`/poultry/breeds/${id}`),
-  create: (data: any) => apiClient.post('/poultry/breeds', data),
-  update: (id: string, data: any) => apiClient.put(`/poultry/breeds/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/poultry/breeds/${id}`),
+  list: (params?: any) => apiClient.get('/breeds', { params }),
+  get: (id: string) => apiClient.get(`/breeds/${id}`),
+  create: (data: any) => apiClient.post('/breeds', data),
+  update: (id: string, data: any) => apiClient.put(`/breeds/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/breeds/${id}`),
 };
 
 export const flocksAPI = {
-  list: (params?: any) => apiClient.get('/poultry/flocks', { params }),
-  get: (id: string) => apiClient.get(`/poultry/flocks/${id}`),
-  create: (data: any) => apiClient.post('/poultry/flocks', data),
-  update: (id: string, data: any) => apiClient.put(`/poultry/flocks/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/poultry/flocks/${id}`),
+  list: (params?: any) => apiClient.get('/flocks', { params }),
+  get: (id: string) => apiClient.get(`/flocks/${id}`),
+  create: (data: any) => apiClient.post('/flocks', data),
+  update: (id: string, data: any) => apiClient.put(`/flocks/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/flocks/${id}`),
 };
 
 export const importExportAPI = {
@@ -168,9 +168,9 @@ export const farmMapAPI = {
 };
 
 export const notificationsAPI = {
-  list: (params?: any) => apiClient.get('/notifications', { params }),
+  list: (userId: string, params?: any) => apiClient.get(`/notifications/user/${userId}`, { params }),
   markRead: (id: string) => apiClient.put(`/notifications/${id}/read`),
-  markAllRead: () => apiClient.put('/notifications/read-all'),
+  markAllRead: (userId: string) => apiClient.put(`/notifications/user/${userId}/read-all`),
   delete: (id: string) => apiClient.delete(`/notifications/${id}`),
 };
 

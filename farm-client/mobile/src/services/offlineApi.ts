@@ -88,21 +88,21 @@ export const offlineLivestockAPI = {
   get: (id: string) => livestockAPI.get(id),
   create: (data: any) => {
     if (!isOnline()) {
-      queueWrite('livestocks', 'POST', '/livestocks', data);
+      queueWrite('livestocks', 'POST', '/livestock', data);
       return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
     }
     return livestockAPI.create(data);
   },
   update: (id: string, data: any) => {
     if (!isOnline()) {
-      queueWrite('livestocks', 'PUT', `/livestocks/${id}`, data);
+      queueWrite('livestocks', 'PUT', `/livestock/${id}`, data);
       return Promise.resolve({ data: { ...data, id } } as any);
     }
     return livestockAPI.update(id, data);
   },
   delete: (id: string) => {
     if (!isOnline()) {
-      queueWrite('livestocks', 'DELETE', `/livestocks/${id}`);
+      queueWrite('livestocks', 'DELETE', `/livestock/${id}`);
       return Promise.resolve({ data: { success: true } } as any);
     }
     return livestockAPI.delete(id);
@@ -116,21 +116,21 @@ export const offlinePoultryAPI = {
   listBreeds: (params?: any) => poultryAPI.listBreeds(params),
   create: (data: any) => {
     if (!isOnline()) {
-      queueWrite('poultry', 'POST', '/poultry/flocks', data);
+      queueWrite('poultry', 'POST', '/flocks', data);
       return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
     }
     return poultryAPI.create(data);
   },
   update: (id: string, data: any) => {
     if (!isOnline()) {
-      queueWrite('poultry', 'PUT', `/poultry/flocks/${id}`, data);
+      queueWrite('poultry', 'PUT', `/flocks/${id}`, data);
       return Promise.resolve({ data: { ...data, id } } as any);
     }
     return poultryAPI.update(id, data);
   },
   delete: (id: string) => {
     if (!isOnline()) {
-      queueWrite('poultry', 'DELETE', `/poultry/flocks/${id}`);
+      queueWrite('poultry', 'DELETE', `/flocks/${id}`);
       return Promise.resolve({ data: { success: true } } as any);
     }
     return poultryAPI.delete(id);
@@ -142,7 +142,7 @@ export const offlineFinanceAPI = {
   get: (id: string) => financeAPI.get(id),
   create: (data: any) => {
     if (!isOnline()) {
-      const endpoint = data.type === 'income' ? '/finance/sales' : '/finance/expenses';
+      const endpoint = data.type === 'income' ? '/sales' : '/expenses';
       queueWrite('finance', 'POST', endpoint, data);
       return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
     }
@@ -150,7 +150,7 @@ export const offlineFinanceAPI = {
   },
   update: (id: string, data: any) => {
     if (!isOnline()) {
-      const endpoint = data.type === 'income' ? `/finance/sales/${id}` : `/finance/expenses/${id}`;
+      const endpoint = data.type === 'income' ? `/sales/${id}` : `/expenses/${id}`;
       queueWrite('finance', 'PUT', endpoint, data);
       return Promise.resolve({ data: { ...data, id } } as any);
     }
@@ -158,7 +158,7 @@ export const offlineFinanceAPI = {
   },
   delete: (id: string) => {
     if (!isOnline()) {
-      queueWrite('finance', 'DELETE', `/finance/expenses/${id}`);
+      queueWrite('finance', 'DELETE', `/expenses/${id}`);
       return Promise.resolve({ data: { success: true } } as any);
     }
     return financeAPI.delete(id);

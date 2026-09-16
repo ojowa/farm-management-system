@@ -13,29 +13,15 @@ export interface PushPayload {
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
-  private fcmInitialized = false;
+  private readonly expoAccessToken: string | undefined;
 
   constructor(
     private readonly configService: ConfigService,
     @Inject('DeviceTokenRepository') private readonly deviceTokenRepo: DeviceTokenRepository,
   ) {
-    this.initializeFCM();
-  }
-
-  private initializeFCM(): void {
-    const projectId = this.configService.get('FIREBASE_PROJECT_ID');
-    const clientEmail = this.configService.get('FIREBASE_CLIENT_EMAIL');
-    const privateKey = this.configService.get('FIREBASE_PRIVATE_KEY');
-
-    if (projectId && clientEmail && privateKey) {
-      try {
-        this.fcmInitialized = true;
-        this.logger.log('Firebase Cloud Messaging initialized');
-      } catch (error) {
-        this.logger.error('Failed to initialize Firebase:', error);
-      }
-    } else {
-      this.logger.warn('Firebase not configured - push notifications will be logged only');
+    this.expoAccessToken = this.configService.get('EXPO_ACCESS_TOKEN');
+    if (!this.expoAccessToken) {
+      this.logger.warn('EXPO_ACCESS_TOKEN not configured — push notifications will be logged only');
     }
   }
 
@@ -64,34 +50,31 @@ export class PushService {
   }
 
   async sendToDevice(token: string, payload: PushPayload): Promise<void> {
-    if (this.fcmInitialized) {
-      const admin = await import('firebase-admin');
-
+    if (this.expoAccessToken) {
       const message = {
-        token,
-        notification: {
-          title: payload.title,
-          body: payload.body,
-          icon: payload.icon,
-          badge: payload.badge,
-        },
+        to: token,
+        sound: 'default',
+        title: payload.title,
+        body: payload.body,
+        icon: payload.icon,
+        badge: payload.badge ? parseInt(payload.badge, 10) : undefined,
         data: payload.data,
-        webpush: {
-          notification: {
-            title: payload.title,
-            body: payload.body,
-            icon: payload.icon || '/icons/notification-icon.png',
-            badge: payload.badge || '/icons/badge-icon.png',
-            vibrate: [100, 50, 100],
-            actions: [
-              { action: 'open', title: 'Open' },
-              { action: 'dismiss', title: 'Dismiss' },
-            ],
-          },
-        },
       };
 
-      await admin.messaging().send(message);
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.expoAccessToken ? { Authorization: `Bearer ${this.expoAccessToken}` } : {}),
+        },
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Expo push failed (${response.status}): ${errorText}`);
+      }
+
       this.logger.debug(`Push notification sent to ${token.substring(0, 10)}...`);
     } else {
       this.logger.log(`[PUSH LOG] To: ${token.substring(0, 10)}... | Title: ${payload.title}`);
@@ -149,8 +132,11 @@ export class PushService {
   }
 
   private isTokenInvalid(error: any): boolean {
-    return error?.code === 'messaging/registration-token-not-registered' ||
-           error?.code === 'messaging/invalid-registration-token';
+    const message = error?.message || '';
+    return message.includes('InvalidCredentials') ||
+           message.includes('DeviceNotRegistered') ||
+           message.includes('MessageTooBig') ||
+           message.includes('MessageRateExceeded');
   }
 
   private async deactivateToken(tokenId: string): Promise<void> {

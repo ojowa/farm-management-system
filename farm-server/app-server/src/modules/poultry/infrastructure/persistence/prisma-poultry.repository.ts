@@ -10,6 +10,8 @@ import {
   VaccinationRecordFilter,
   MortalityRecordFilter,
   MedicationFilter,
+  EggProductionFilter,
+  PoultrySaleFilter,
   PaginatedResult,
 } from '../../domain/repositories/poultry.repository';
 import {
@@ -21,6 +23,8 @@ import {
   VaccinationRecord,
   MortalityRecord,
   Medication,
+  EggProduction,
+  PoultrySale,
 } from '../../domain/entities/poultry.entity';
 
 @Injectable()
@@ -276,5 +280,74 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
 
   async deleteMedication(id: string): Promise<void> {
     await prisma.medication.delete({ where: { id } });
+  }
+
+  // ── EggProduction ──
+  async findEggProductionById(id: string): Promise<EggProduction | null> {
+    return prisma.eggProduction.findUnique({ where: { id } }) as Promise<EggProduction | null>;
+  }
+
+  async findAllEggProductions(filter: EggProductionFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<EggProduction>> {
+    const skip = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (filter.flockId) where.flockId = filter.flockId;
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) (where.date as any).gte = new Date(filter.startDate);
+      if (filter.endDate) (where.date as any).lte = new Date(filter.endDate);
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.eggProduction.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.eggProduction.count({ where }),
+    ]);
+    return { data: data as EggProduction[], total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async createEggProduction(data: Omit<EggProduction, 'id' | 'createdAt' | 'updatedAt'>): Promise<EggProduction> {
+    return prisma.eggProduction.create({ data }) as Promise<EggProduction>;
+  }
+
+  async updateEggProduction(id: string, data: Partial<EggProduction>): Promise<EggProduction> {
+    return prisma.eggProduction.update({ where: { id }, data }) as Promise<EggProduction>;
+  }
+
+  async deleteEggProduction(id: string): Promise<void> {
+    await prisma.eggProduction.delete({ where: { id } });
+  }
+
+  // ── PoultrySale ──
+  async findPoultrySaleById(id: string): Promise<PoultrySale | null> {
+    return prisma.poultrySale.findUnique({ where: { id } }) as Promise<PoultrySale | null>;
+  }
+
+  async findAllPoultrySales(filter: PoultrySaleFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultrySale>> {
+    const skip = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (filter.farmId) where.farmId = filter.farmId;
+    if (filter.flockId) where.flockId = filter.flockId;
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) (where.date as any).gte = new Date(filter.startDate);
+      if (filter.endDate) (where.date as any).lte = new Date(filter.endDate);
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.poultrySale.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.poultrySale.count({ where }),
+    ]);
+    return { data: data as PoultrySale[], total, page, totalPages: Math.ceil(total / limit) };
+  }
+
+  async createPoultrySale(data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>): Promise<PoultrySale> {
+    return prisma.poultrySale.create({ data }) as Promise<PoultrySale>;
+  }
+
+  async updatePoultrySale(id: string, data: Partial<PoultrySale>): Promise<PoultrySale> {
+    return prisma.poultrySale.update({ where: { id }, data }) as Promise<PoultrySale>;
+  }
+
+  async deletePoultrySale(id: string): Promise<void> {
+    await prisma.poultrySale.delete({ where: { id } });
   }
 }

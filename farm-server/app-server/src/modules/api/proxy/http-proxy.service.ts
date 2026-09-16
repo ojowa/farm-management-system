@@ -23,12 +23,12 @@ export class GatewayProxyService {
     {
       name: 'farm',
       baseUrl: process.env.FARM_SERVICE_URL || 'http://localhost:4011',
-      routes: ['farms', 'fields'],
+      routes: ['farms', 'fields', 'documents', 'inventory', 'equipment'],
     },
     {
       name: 'crop',
       baseUrl: process.env.CROP_SERVICE_URL || 'http://localhost:4020',
-      routes: ['crops', 'crop-cycles', 'lifecycle', 'irrigation', 'pest-disease', 'yield'],
+      routes: ['crops', 'crop-cycles', 'lifecycle', 'irrigation', 'pest-disease', 'yield', 'egg-production'],
     },
     {
       name: 'livestock',
@@ -38,12 +38,12 @@ export class GatewayProxyService {
     {
       name: 'poultry',
       baseUrl: process.env.POULTRY_SERVICE_URL || 'http://localhost:4013',
-      routes: ['poultry', 'medications'],
+      routes: ['poultry', 'pens', 'breeds', 'flocks', 'poultry-houses', 'feeding-records', 'vaccination-records', 'mortality-records', 'medications', 'egg-production', 'poultry-sales'],
     },
     {
       name: 'finance',
       baseUrl: process.env.FINANCE_SERVICE_URL || 'http://localhost:4014',
-      routes: ['finance', 'expenses', 'sales', 'contracts', 'marketplace', 'profitability'],
+      routes: ['finance', 'expenses', 'sales', 'contracts', 'marketplace', 'profitability', 'budgets'],
     },
     {
       name: 'hr',

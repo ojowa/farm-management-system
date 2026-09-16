@@ -95,14 +95,14 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   @SubscribeMessage('join')
   handleJoinRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: string }
+    @MessageBody() data: { userId: string; organizationId?: string }
   ): { event: string; data: { success: boolean; userId: string } } {
     const authenticatedUserId = (client as any).userId as string;
     if (!authenticatedUserId) {
       throw new UnauthorizedException('Not authenticated');
     }
 
-    const { userId } = data;
+    const { userId, organizationId } = data;
     if (userId !== authenticatedUserId) {
       this.logger.warn(`User ${authenticatedUserId} attempted to join room for ${userId}`);
       return { event: 'error', data: { success: false, userId } };
@@ -110,6 +110,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     const roomName = `user:${userId}`;
     client.join(roomName);
+
+    if (organizationId) {
+      const orgRoom = `org:${organizationId}`;
+      client.join(orgRoom);
+    }
 
     if (!this.userSockets.has(userId)) {
       this.userSockets.set(userId, new Set());
@@ -146,7 +151,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     return { event: 'left', data: { success: true, userId } };
   }
 
-  broadcastRealtimeEvent(event: RealtimeEvent): void {
+  broadcastRealtimeEvent(event: RealtimeEvent, organizationId?: string): void {
     if (!this.server) {
       this.logger.warn('Socket.IO server not initialized, cannot broadcast event');
       return;
@@ -158,8 +163,14 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     };
 
     const entityEventName = `${payload.entity}.${payload.action}`;
-    this.server.emit(entityEventName, payload);
-    this.server.emit('realtime:event', payload);
+
+    if (organizationId) {
+      this.server.to(`org:${organizationId}`).emit(entityEventName, payload);
+      this.server.to(`org:${organizationId}`).emit('realtime:event', payload);
+    } else {
+      this.server.emit(entityEventName, payload);
+      this.server.emit('realtime:event', payload);
+    }
     this.logger.log(`Broadcasted realtime event: ${entityEventName}`);
   }
 }

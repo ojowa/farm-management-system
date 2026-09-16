@@ -12,13 +12,13 @@ export interface PoultryAPI {
 
 export function createPoultryAPI(client: AxiosInstance): PoultryAPI {
   return {
-    list: (params) => client.get('/poultry/flocks', { params }),
-    get: (id) => client.get(`/poultry/flocks/${id}`),
-    create: (data) => client.post('/poultry/flocks', data),
-    update: (id, data) => client.put(`/poultry/flocks/${id}`, data),
-    delete: (id) => client.delete(`/poultry/flocks/${id}`),
-    listPens: (params) => client.get('/poultry/pens', { params }),
-    listBreeds: (params) => client.get('/poultry/breeds', { params }),
+    list: (params) => client.get('/flocks', { params }),
+    get: (id) => client.get(`/flocks/${id}`),
+    create: (data) => client.post('/flocks', data),
+    update: (id, data) => client.put(`/flocks/${id}`, data),
+    delete: (id) => client.delete(`/flocks/${id}`),
+    listPens: (params) => client.get('/pens', { params }),
+    listBreeds: (params) => client.get('/breeds', { params }),
   };
 }
 
@@ -32,11 +32,11 @@ export interface PoultryHousesAPI {
 
 export function createPoultryHousesAPI(client: AxiosInstance): PoultryHousesAPI {
   return {
-    list: (params) => client.get('/poultry/poultry-houses', { params }),
-    get: (id) => client.get(`/poultry/poultry-houses/${id}`),
-    create: (data) => client.post('/poultry/poultry-houses', data),
-    update: (id, data) => client.put(`/poultry/poultry-houses/${id}`, data),
-    delete: (id) => client.delete(`/poultry/poultry-houses/${id}`),
+    list: (params) => client.get('/poultry-houses', { params }),
+    get: (id) => client.get(`/poultry-houses/${id}`),
+    create: (data) => client.post('/poultry-houses', data),
+    update: (id, data) => client.put(`/poultry-houses/${id}`, data),
+    delete: (id) => client.delete(`/poultry-houses/${id}`),
   };
 }
 
@@ -50,11 +50,11 @@ export interface FeedingRecordsAPI {
 
 export function createFeedingRecordsAPI(client: AxiosInstance): FeedingRecordsAPI {
   return {
-    list: (params) => client.get('/poultry/feeding-records', { params }),
-    get: (id) => client.get(`/poultry/feeding-records/${id}`),
-    create: (data) => client.post('/poultry/feeding-records', data),
-    update: (id, data) => client.put(`/poultry/feeding-records/${id}`, data),
-    delete: (id) => client.delete(`/poultry/feeding-records/${id}`),
+    list: (params) => client.get('/feeding-records', { params }),
+    get: (id) => client.get(`/feeding-records/${id}`),
+    create: (data) => client.post('/feeding-records', data),
+    update: (id, data) => client.put(`/feeding-records/${id}`, data),
+    delete: (id) => client.delete(`/feeding-records/${id}`),
   };
 }
 
@@ -68,11 +68,11 @@ export interface VaccinationRecordsAPI {
 
 export function createVaccinationRecordsAPI(client: AxiosInstance): VaccinationRecordsAPI {
   return {
-    list: (params) => client.get('/poultry/vaccination-records', { params }),
-    get: (id) => client.get(`/poultry/vaccination-records/${id}`),
-    create: (data) => client.post('/poultry/vaccination-records', data),
-    update: (id, data) => client.put(`/poultry/vaccination-records/${id}`, data),
-    delete: (id) => client.delete(`/poultry/vaccination-records/${id}`),
+    list: (params) => client.get('/vaccination-records', { params }),
+    get: (id) => client.get(`/vaccination-records/${id}`),
+    create: (data) => client.post('/vaccination-records', data),
+    update: (id, data) => client.put(`/vaccination-records/${id}`, data),
+    delete: (id) => client.delete(`/vaccination-records/${id}`),
   };
 }
 
@@ -86,11 +86,11 @@ export interface MortalityRecordsAPI {
 
 export function createMortalityRecordsAPI(client: AxiosInstance): MortalityRecordsAPI {
   return {
-    list: (params) => client.get('/poultry/mortality-records', { params }),
-    get: (id) => client.get(`/poultry/mortality-records/${id}`),
-    create: (data) => client.post('/poultry/mortality-records', data),
-    update: (id, data) => client.put(`/poultry/mortality-records/${id}`, data),
-    delete: (id) => client.delete(`/poultry/mortality-records/${id}`),
+    list: (params) => client.get('/mortality-records', { params }),
+    get: (id) => client.get(`/mortality-records/${id}`),
+    create: (data) => client.post('/mortality-records', data),
+    update: (id, data) => client.put(`/mortality-records/${id}`, data),
+    delete: (id) => client.delete(`/mortality-records/${id}`),
   };
 }
 
@@ -104,11 +104,11 @@ export interface EggProductionAPI {
 
 export function createEggProductionAPI(client: AxiosInstance): EggProductionAPI {
   return {
-    list: (params) => client.get('/poultry/egg-production', { params }),
-    get: (id) => client.get(`/poultry/egg-production/${id}`),
-    create: (data) => client.post('/poultry/egg-production', data),
-    update: (id, data) => client.put(`/poultry/egg-production/${id}`, data),
-    delete: (id) => client.delete(`/poultry/egg-production/${id}`),
+    list: (params) => client.get('/egg-production', { params }),
+    get: (id) => client.get(`/egg-production/${id}`),
+    create: (data) => client.post('/egg-production', data),
+    update: (id, data) => client.put(`/egg-production/${id}`, data),
+    delete: (id) => client.delete(`/egg-production/${id}`),
   };
 }
 
@@ -122,11 +122,11 @@ export interface MedicationAPI {
 
 export function createMedicationAPI(client: AxiosInstance): MedicationAPI {
   return {
-    list: (params) => client.get('/poultry/medications', { params }),
-    get: (id) => client.get(`/poultry/medications/${id}`),
-    create: (data) => client.post('/poultry/medications', data),
-    update: (id, data) => client.put(`/poultry/medications/${id}`, data),
-    delete: (id) => client.delete(`/poultry/medications/${id}`),
+    list: (params) => client.get('/medications', { params }),
+    get: (id) => client.get(`/medications/${id}`),
+    create: (data) => client.post('/medications', data),
+    update: (id, data) => client.put(`/medications/${id}`, data),
+    delete: (id) => client.delete(`/medications/${id}`),
   };
 }
 
@@ -140,10 +140,10 @@ export interface PoultrySalesAPI {
 
 export function createPoultrySalesAPI(client: AxiosInstance): PoultrySalesAPI {
   return {
-    list: (params) => client.get('/poultry/sales', { params }),
-    get: (id) => client.get(`/poultry/sales/${id}`),
-    create: (data) => client.post('/poultry/sales', data),
-    update: (id, data) => client.put(`/poultry/sales/${id}`, data),
-    delete: (id) => client.delete(`/poultry/sales/${id}`),
+    list: (params) => client.get('/poultry-sales', { params }),
+    get: (id) => client.get(`/poultry-sales/${id}`),
+    create: (data) => client.post('/poultry-sales', data),
+    update: (id, data) => client.put(`/poultry-sales/${id}`, data),
+    delete: (id) => client.delete(`/poultry-sales/${id}`),
   };
 }

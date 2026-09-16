@@ -44,9 +44,9 @@ export interface YieldAPI {
 
 export function createYieldAPI(client: AxiosInstance): YieldAPI {
   return {
-    listByCrop: (cropId) => client.get(`/crops/yield/crop/${cropId}`),
-    create: (cropId, data) => client.post(`/crops/yield/crop/${cropId}`, data),
-    summary: (cropId) => client.get(`/crops/yield/crop/${cropId}/summary`),
+    listByCrop: (cropId) => client.get(`/yield/crop/${cropId}`),
+    create: (cropId, data) => client.post(`/yield/crop/${cropId}`, data),
+    summary: (cropId) => client.get(`/yield/crop/${cropId}/summary`),
   };
 }
 
@@ -61,12 +61,12 @@ export interface IrrigationAPI {
 
 export function createIrrigationAPI(client: AxiosInstance): IrrigationAPI {
   return {
-    listSchedules: (params) => client.get('/crops/irrigation/schedule', { params }),
-    createSchedule: (data) => client.post('/crops/irrigation/schedule', data),
-    updateSchedule: (id, data) => client.put(`/crops/irrigation/schedule/${id}`, data),
-    deleteSchedule: (id) => client.delete(`/crops/irrigation/schedule/${id}`),
-    createLog: (data) => client.post('/crops/irrigation/log', data),
-    listLogs: (params) => client.get('/crops/irrigation/log', { params }),
+    listSchedules: (params) => client.get('/irrigation/schedule', { params }),
+    createSchedule: (data) => client.post('/irrigation/schedule', data),
+    updateSchedule: (id, data) => client.put(`/irrigation/schedule/${id}`, data),
+    deleteSchedule: (id) => client.delete(`/irrigation/schedule/${id}`),
+    createLog: (data) => client.post('/irrigation/log', data),
+    listLogs: (params) => client.get('/irrigation/log', { params }),
   };
 }
 
@@ -80,10 +80,10 @@ export interface PestDiseaseAPI {
 
 export function createPestDiseaseAPI(client: AxiosInstance): PestDiseaseAPI {
   return {
-    list: (params) => client.get('/crops/pest-disease', { params }),
-    active: () => client.get('/crops/pest-disease/active'),
-    create: (data) => client.post('/crops/pest-disease', data),
-    update: (id, data) => client.put(`/crops/pest-disease/${id}`, data),
-    delete: (id) => client.delete(`/crops/pest-disease/${id}`),
+    list: (params) => client.get('/pest-disease', { params }),
+    active: () => client.get('/pest-disease/active'),
+    create: (data) => client.post('/pest-disease', data),
+    update: (id, data) => client.put(`/pest-disease/${id}`, data),
+    delete: (id) => client.delete(`/pest-disease/${id}`),
   };
 }

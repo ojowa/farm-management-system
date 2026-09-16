@@ -1,5 +1,4 @@
 import { io, Socket } from 'socket.io-client';
-import { apiClient } from '../services/api';
 
 declare const process: { env?: Record<string, string | undefined> } | undefined;
 
@@ -30,8 +29,11 @@ export type RealtimeEvent =
   | 'finance.deleted';
 
 export interface RealtimePayload {
-  id: string;
+  entity?: string;
+  action?: string;
+  id?: string;
   data?: any;
+  timestamp?: string;
 }
 
 type EventCallback = (payload: RealtimePayload) => void;

@@ -65,4 +65,16 @@ export class FinanceEventService {
   emitMarketListingDeletedEvent(listingId: string) {
     this.events.emitDomainEvent('finance', 'deleted', { id: listingId });
   }
+
+  emitBudgetCreatedEvent(budget: any) {
+    this.events.emitDomainEvent('finance', 'created', budget);
+  }
+
+  emitBudgetUpdatedEvent(budget: any) {
+    this.events.emitDomainEvent('finance', 'updated', budget);
+  }
+
+  emitBudgetDeletedEvent(budgetId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: budgetId });
+  }
 }

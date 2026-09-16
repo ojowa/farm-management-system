@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete, UsePipes, ValidationPipe, Param } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 
@@ -181,5 +181,38 @@ export class AuthController {
     }
     await this.authService.disable2fa(req.user?.id, body.code);
     return { message: '2FA disabled successfully' };
+  }
+
+  @Get('my-organizations')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  async getMyOrganizations(@Req() req: any) {
+    return this.authService.getMyOrganizations(req.user?.id);
+  }
+
+  @Post('switch-organization')
+  @UseGuards(JwtAuthGuard)
+  async switchOrganization(@Req() req: any, @Body() body: { organizationId: string }, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.switchOrganization(req.user?.id, body.organizationId);
+
+    if (result.accessToken && result.refreshToken) {
+      res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });
+      res.cookie('refreshToken', result.refreshToken, { ...COOKIE_OPTS, maxAge: REFRESH_MAX_AGE });
+    }
+
+    return result;
+  }
+
+  @Get('users')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  async listAllUsers() {
+    return this.authService.listAllUsers();
+  }
+
+  @Put('users/:userId')
+  @UseGuards(JwtAuthGuard)
+  async updateUser(@Param('userId') userId: string, @Body() body: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }) {
+    return this.authService.updateUser(userId, body);
   }
 }

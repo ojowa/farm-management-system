@@ -262,4 +262,66 @@ export class FinanceApplicationService {
     await this.eventService.emitMarketListingDeletedEvent(id);
     return { deleted: true };
   }
+
+  // ── Budget CRUD ──────────────────────────────────────
+
+  async createBudget(data: { organizationId: string; farmId?: string; name: string; description?: string; startDate: Date | string; endDate: Date | string; status?: string }) {
+    const { prisma } = await import('@farm/database');
+    const budget = await prisma.budget.create({
+      data: {
+        organizationId: data.organizationId,
+        farmId: data.farmId || null,
+        name: data.name,
+        description: data.description || null,
+        startDate: this.toDate(data.startDate),
+        endDate: this.toDate(data.endDate),
+        status: data.status || 'ACTIVE',
+      },
+    });
+    await this.eventService.emitBudgetCreatedEvent(budget);
+    return budget;
+  }
+
+  async getBudgetById(id: string) {
+    const { prisma } = await import('@farm/database');
+    const budget = await prisma.budget.findUnique({
+      where: { id },
+      include: { categories: true, farm: true },
+    });
+    if (!budget) throw new NotFoundException(`Budget with ID ${id} not found`);
+    return budget;
+  }
+
+  async getAllBudgets(filter: { organizationId?: string; farmId?: string; status?: string } = {}) {
+    const { prisma } = await import('@farm/database');
+    const where: Record<string, unknown> = {};
+    if (filter.organizationId) where.organizationId = filter.organizationId;
+    if (filter.farmId) where.farmId = filter.farmId;
+    if (filter.status) where.status = filter.status;
+    return prisma.budget.findMany({
+      where,
+      include: { categories: true, farm: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateBudget(id: string, data: { name?: string; description?: string; status?: string; farmId?: string }) {
+    const { prisma } = await import('@farm/database');
+    await this.getBudgetById(id);
+    const budget = await prisma.budget.update({
+      where: { id },
+      data,
+      include: { categories: true },
+    });
+    await this.eventService.emitBudgetUpdatedEvent(budget);
+    return budget;
+  }
+
+  async deleteBudget(id: string) {
+    const { prisma } = await import('@farm/database');
+    await this.getBudgetById(id);
+    await prisma.budget.delete({ where: { id } });
+    await this.eventService.emitBudgetDeletedEvent(id);
+    return { deleted: true };
+  }
 }

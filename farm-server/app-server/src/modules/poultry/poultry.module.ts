@@ -8,6 +8,8 @@ import {
   VaccinationRecordsController,
   MortalityRecordsController,
   MedicationsController,
+  EggProductionController,
+  PoultrySalesController,
 } from './presentation/controllers/poultry.controller';
 import { PoultryApplicationService } from './application/services/poultry.service';
 import { PrismaPoultryRepository } from './infrastructure/persistence/prisma-poultry.repository';
@@ -25,6 +27,8 @@ import { RealtimeModule } from '../realtime/realtime.module';
     VaccinationRecordsController,
     MortalityRecordsController,
     MedicationsController,
+    EggProductionController,
+    PoultrySalesController,
   ],
   providers: [
     PoultryApplicationService,

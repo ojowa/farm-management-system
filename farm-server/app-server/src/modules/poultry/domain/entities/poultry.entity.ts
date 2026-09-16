@@ -74,3 +74,36 @@ export interface Medication {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface EggProduction {
+  id: string;
+  organizationId: string;
+  flockId: string;
+  date: Date;
+  totalEggs: number;
+  goodEggs: number;
+  brokenEggs: number;
+  notes: string | null;
+  createdById: string | null;
+  createdByName: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PoultrySale {
+  id: string;
+  organizationId: string;
+  farmId: string | null;
+  flockId: string | null;
+  date: Date;
+  buyerName: string | null;
+  birdType: string;
+  quantity: number;
+  weight: number | null;
+  pricePerBird: number | null;
+  totalAmount: number;
+  paymentMethod: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}

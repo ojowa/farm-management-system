@@ -11,12 +11,12 @@ export interface ReportsAPI {
 
 export function createReportsAPI(client: AxiosInstance): ReportsAPI {
   return {
-    list: (params) => client.get('/reporting/reports', { params }),
-    get: (id) => client.get(`/reporting/reports/${id}`),
-    create: (data) => client.post('/reporting/reports', data),
-    generate: (templateId) => client.post('/reporting/reports/generate', { templateId }),
-    update: (id, data) => client.put(`/reporting/reports/${id}`, data),
-    delete: (id) => client.delete(`/reporting/reports/${id}`),
+    list: (params) => client.get('/reports', { params }),
+    get: (id) => client.get(`/reports/${id}`),
+    create: (data) => client.post('/reports', data),
+    generate: (templateId) => client.post('/reports/generate', { templateId }),
+    update: (id, data) => client.put(`/reports/${id}`, data),
+    delete: (id) => client.delete(`/reports/${id}`),
   };
 }
 
@@ -29,9 +29,9 @@ export interface ScheduledReportsAPI {
 
 export function createScheduledReportsAPI(client: AxiosInstance): ScheduledReportsAPI {
   return {
-    list: () => client.get('/reporting/schedule'),
-    create: (data) => client.post('/reporting/schedule', data),
-    update: (id, data) => client.put(`/reporting/schedule/${id}`, data),
-    delete: (id) => client.delete(`/reporting/schedule/${id}`),
+    list: () => client.get('/schedule'),
+    create: (data) => client.post('/schedule', data),
+    update: (id, data) => client.put(`/schedule/${id}`, data),
+    delete: (id) => client.delete(`/schedule/${id}`),
   };
 }

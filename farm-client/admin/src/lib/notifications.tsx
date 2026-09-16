@@ -39,8 +39,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      const { data } = await notificationsAPI.list({ limit: 50 });
+      const { data } = await notificationsAPI.list(user.id, { limit: 50 });
       setNotifications(data);
       setUnreadCount(data.filter((n: Notification) => !n.read).length);
     } catch (error) {
@@ -48,7 +49,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const markAsRead = useCallback(async (id: string) => {
     try {
@@ -63,14 +64,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markAllAsRead = useCallback(async () => {
+    if (!user?.id) return;
     try {
-      await notificationsAPI.markAllRead();
+      await notificationsAPI.markAllRead(user.id);
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
-  }, []);
+  }, [user?.id]);
 
   const deleteNotification = useCallback(async (id: string) => {
     try {

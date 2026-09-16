@@ -7,6 +7,8 @@ import {
   VaccinationRecord,
   MortalityRecord,
   Medication,
+  EggProduction,
+  PoultrySale,
 } from '../entities/poultry.entity';
 
 export interface PaginationParams {
@@ -66,6 +68,19 @@ export interface MedicationFilter {
   search?: string;
 }
 
+export interface EggProductionFilter {
+  flockId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface PoultrySaleFilter {
+  farmId?: string;
+  flockId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface PoultryAggregateRepository {
   // PoultryHouse
   findPoultryHouseById(id: string): Promise<PoultryHouse | null>;
@@ -122,4 +137,18 @@ export interface PoultryAggregateRepository {
   createMedication(data: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): Promise<Medication>;
   updateMedication(id: string, data: Partial<Medication>): Promise<Medication>;
   deleteMedication(id: string): Promise<void>;
+
+  // EggProduction
+  findEggProductionById(id: string): Promise<EggProduction | null>;
+  findAllEggProductions(filter: EggProductionFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<EggProduction>>;
+  createEggProduction(data: Omit<EggProduction, 'id' | 'createdAt' | 'updatedAt'>): Promise<EggProduction>;
+  updateEggProduction(id: string, data: Partial<EggProduction>): Promise<EggProduction>;
+  deleteEggProduction(id: string): Promise<void>;
+
+  // PoultrySale
+  findPoultrySaleById(id: string): Promise<PoultrySale | null>;
+  findAllPoultrySales(filter: PoultrySaleFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultrySale>>;
+  createPoultrySale(data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>): Promise<PoultrySale>;
+  updatePoultrySale(id: string, data: Partial<PoultrySale>): Promise<PoultrySale>;
+  deletePoultrySale(id: string): Promise<void>;
 }

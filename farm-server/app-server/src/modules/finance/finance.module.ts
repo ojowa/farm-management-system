@@ -4,6 +4,7 @@ import {
   SaleController,
   ContractController,
   MarketplaceController,
+  BudgetsController,
 } from './presentation/controllers/finance.controller';
 import { ProfitabilityController } from './presentation/controllers/profitability.controller';
 import { FinanceApplicationService } from './application/services/finance.service';
@@ -21,7 +22,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
   imports: [RealtimeModule],
-  controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, ProfitabilityController],
+  controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, BudgetsController, ProfitabilityController],
   providers: [
     FinanceApplicationService,
     ProfitabilityService,

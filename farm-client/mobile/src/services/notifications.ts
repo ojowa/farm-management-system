@@ -65,7 +65,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
 export async function sendTokenToServer(expoPushToken: string): Promise<void> {
   try {
-    await apiClient.client.post('/notifications/register', {
+    await apiClient.client.post('/devices/tokens', {
       token: expoPushToken,
       platform: Platform.OS,
     });
@@ -79,8 +79,8 @@ export async function unregisterFromNotifications(): Promise<void> {
   try {
     const token = await Notifications.getExpoPushTokenAsync();
     if (token.data) {
-      await apiClient.client.post('/notifications/unregister', {
-        token: token.data,
+      await apiClient.client.delete('/devices/tokens', {
+        data: { token: token.data },
       });
     }
   } catch {

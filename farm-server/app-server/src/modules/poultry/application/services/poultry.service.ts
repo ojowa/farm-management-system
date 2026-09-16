@@ -9,6 +9,8 @@ import {
   VaccinationRecordFilter,
   MortalityRecordFilter,
   MedicationFilter,
+  EggProductionFilter,
+  PoultrySaleFilter,
   PaginatedResult,
   PaginationParams,
 } from '../../domain/repositories/poultry.repository';
@@ -22,6 +24,8 @@ import {
   VaccinationRecord,
   MortalityRecord,
   Medication,
+  EggProduction,
+  PoultrySale,
 } from '../../domain/entities/poultry.entity';
 
 @Injectable()
@@ -325,6 +329,76 @@ export class PoultryApplicationService {
   async deleteMedication(id: string): Promise<{ deleted: boolean }> {
     await this.getMedicationById(id);
     await this.repo.deleteMedication(id);
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
+    return { deleted: true };
+  }
+
+  // ── EggProduction ──
+  async createEggProduction(data: Omit<EggProduction, 'id' | 'createdAt' | 'updatedAt'> & { date?: Date | string }): Promise<EggProduction> {
+    await this.getFlockById(data.flockId);
+    const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : new Date();
+    const record = await this.repo.createEggProduction({ ...data, date });
+    this.events.emitDomainEvent('poultry', 'created', record);
+    return record;
+  }
+
+  async getEggProductionById(id: string): Promise<EggProduction> {
+    const record = await this.repo.findEggProductionById(id);
+    if (!record) throw new NotFoundException(`Egg production record with ID ${id} not found`);
+    return record;
+  }
+
+  async getAllEggProductions(filter: EggProductionFilter = {}, params: PaginationParams = {}): Promise<PaginatedResult<EggProduction>> {
+    const { sortBy = 'date', sortOrder = 'desc', page = 1, limit = 20 } = params;
+    return this.repo.findAllEggProductions(filter, sortBy, sortOrder, page, limit);
+  }
+
+  async updateEggProduction(id: string, data: Partial<EggProduction> & { date?: Date | string }): Promise<EggProduction> {
+    await this.getEggProductionById(id);
+    if (data.flockId) await this.getFlockById(data.flockId);
+    const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
+    const record = await this.repo.updateEggProduction(id, { ...data, date });
+    this.events.emitDomainEvent('poultry', 'updated', record);
+    return record;
+  }
+
+  async deleteEggProduction(id: string): Promise<{ deleted: boolean }> {
+    await this.getEggProductionById(id);
+    await this.repo.deleteEggProduction(id);
+    this.events.emitDomainEvent('poultry', 'deleted', { id });
+    return { deleted: true };
+  }
+
+  // ── PoultrySale ──
+  async createPoultrySale(data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'> & { date?: Date | string }): Promise<PoultrySale> {
+    const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : new Date();
+    const record = await this.repo.createPoultrySale({ ...data, date });
+    this.events.emitDomainEvent('poultry', 'created', record);
+    return record;
+  }
+
+  async getPoultrySaleById(id: string): Promise<PoultrySale> {
+    const record = await this.repo.findPoultrySaleById(id);
+    if (!record) throw new NotFoundException(`Poultry sale record with ID ${id} not found`);
+    return record;
+  }
+
+  async getAllPoultrySales(filter: PoultrySaleFilter = {}, params: PaginationParams = {}): Promise<PaginatedResult<PoultrySale>> {
+    const { sortBy = 'date', sortOrder = 'desc', page = 1, limit = 20 } = params;
+    return this.repo.findAllPoultrySales(filter, sortBy, sortOrder, page, limit);
+  }
+
+  async updatePoultrySale(id: string, data: Partial<PoultrySale> & { date?: Date | string }): Promise<PoultrySale> {
+    await this.getPoultrySaleById(id);
+    const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
+    const record = await this.repo.updatePoultrySale(id, { ...data, date });
+    this.events.emitDomainEvent('poultry', 'updated', record);
+    return record;
+  }
+
+  async deletePoultrySale(id: string): Promise<{ deleted: boolean }> {
+    await this.getPoultrySaleById(id);
+    await this.repo.deletePoultrySale(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id });
     return { deleted: true };
   }

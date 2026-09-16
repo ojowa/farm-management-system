@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger, UnauthorizedException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, signServiceToken } from '@farm/auth-server';
 
@@ -28,7 +28,6 @@ export class AuthMiddleware implements NestMiddleware {
     const cleanPath = url.split('?')[0];
 
     const isPublic = this.publicPaths.has(cleanPath) ||
-      cleanPath.startsWith('/auth/') ||
       cleanPath.startsWith('/docs') ||
       cleanPath.startsWith('/health');
 
@@ -59,7 +58,12 @@ export class AuthMiddleware implements NestMiddleware {
         }
       } catch (err: any) {
         this.logger.debug(`[Auth] Token verification failed for ${cleanPath}: ${err.message}`);
+        if (!isPublic) {
+          throw new UnauthorizedException('Invalid or expired token');
+        }
       }
+    } else if (!isPublic) {
+      throw new UnauthorizedException('Authentication required');
     }
 
     next();

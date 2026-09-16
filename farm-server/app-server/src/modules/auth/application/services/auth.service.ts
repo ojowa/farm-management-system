@@ -244,4 +244,82 @@ export class AuthService {
     if (!isValid) throw new UnauthorizedException('Invalid 2FA code — cannot disable without verification');
     await this.userRepo.update(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
   }
+
+  async getMyOrganizations(userId: string) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const { prisma } = await import('@farm/database');
+    const userOrgs = await prisma.userOrganization.findMany({
+      where: { userId },
+      include: { organization: true },
+    });
+
+    if (userOrgs.length === 0 && user.organizationId) {
+      const org = await prisma.organization.findUnique({
+        where: { id: user.organizationId },
+      });
+      return org ? [{ organization: org, isDefault: true }] : [];
+    }
+
+    return userOrgs.map((uo: any) => ({
+      ...uo.organization,
+      isDefault: uo.organizationId === user.organizationId,
+    }));
+  }
+
+  async switchOrganization(userId: string, organizationId: string) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    const { prisma } = await import('@farm/database');
+    const membership = await prisma.userOrganization.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+    });
+
+    if (!membership && user.organizationId !== organizationId) {
+      throw new UnauthorizedException('User is not a member of this organization');
+    }
+
+    const updated = await this.userRepo.update(userId, { organizationId } as any);
+    const accessToken = await this.generateAccessToken(updated);
+    const refreshToken = await this.generateRefreshToken(userId);
+
+    return { user: updated, accessToken, refreshToken };
+  }
+
+  async listAllUsers() {
+    const { prisma } = await import('@farm/database');
+    return prisma.user.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        isActive: true,
+        organizationId: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateUser(userId: string, data: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }) {
+    const { prisma } = await import('@farm/database');
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        isActive: true,
+        organizationId: true,
+        role: true,
+      },
+    });
+    return user;
+  }
 }

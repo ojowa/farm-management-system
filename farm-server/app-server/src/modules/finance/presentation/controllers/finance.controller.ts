@@ -236,3 +236,45 @@ export class MarketplaceController {
     return this.financeService.deleteMarketListing(id);
   }
 }
+
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@Controller('budgets')
+export class BudgetsController {
+  constructor(private readonly financeService: FinanceApplicationService) {}
+
+  @Permission('finance.read')
+  @Get()
+  async findAll(
+    @Req() req: any,
+    @Query('farmId') farmId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.financeService.getAllBudgets({ organizationId: getOrgId(req), farmId, status });
+  }
+
+  @Permission('finance.read')
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.financeService.getBudgetById(id);
+  }
+
+  @Permission('finance.write')
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Req() req: any, @Body() body: any) {
+    return this.financeService.createBudget({ ...body, organizationId: getOrgId(req) });
+  }
+
+  @Permission('finance.write')
+  @Put(':id')
+  async update(@Param('id') id: string, @Body() body: any) {
+    return this.financeService.updateBudget(id, body);
+  }
+
+  @Permission('finance.delete')
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('id') id: string) {
+    return this.financeService.deleteBudget(id);
+  }
+}
