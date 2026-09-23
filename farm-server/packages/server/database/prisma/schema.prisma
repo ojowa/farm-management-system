@@ -331,6 +331,8 @@ model EggProduction {
   createdById    String?
   createdByName  String?
 
+  flock          Flock    @relation(fields: [flockId], references: [id])
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -353,6 +355,8 @@ model PoultrySale {
   totalAmount    Float
   paymentMethod  String?
   notes          String?
+
+  flock          Flock?   @relation(fields: [flockId], references: [id])
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
