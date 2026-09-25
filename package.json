@@ -9,8 +9,8 @@
     "start": "node scripts/start.js",
     "start:services": "node scripts/start.js",
     "start:services:dev": "node scripts/start.js --dev",
-    "build:client": "npm run build --workspace=farm-client",
-    "build:server": "npm run build --workspace=farm-server",
+    "build:client": "npm --prefix farm-client run build",
+    "build:server": "npm --prefix farm-server run build",
     "lint": "echo \"Run lint in farm-client or farm-server individually\""
   },
   "devDependencies": {

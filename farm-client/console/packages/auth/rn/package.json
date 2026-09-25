@@ -1,0 +1,4 @@
+{
+  "main": "../dist/rn.js",
+  "types": "../dist/rn.d.ts"
+}

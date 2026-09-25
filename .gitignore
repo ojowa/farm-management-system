@@ -15,9 +15,9 @@ coverage/
 *.tsbuildinfo
 
 # Stray compiled JS in source directories (tsc accidentally writing to src/)
-packages/*/src/**/*.js
-packages/*/src/**/*.d.ts
-packages/*/src/**/*.d.ts.map
+**/packages/*/src/**/*.js
+**/packages/*/src/**/*.d.ts
+**/packages/*/src/**/*.d.ts.map
 
 # Environment variables and secrets
 .env

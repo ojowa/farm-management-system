@@ -1,0 +1,4 @@
+{
+  "main": "../dist/paths.js",
+  "types": "../dist/paths.d.ts"
+}

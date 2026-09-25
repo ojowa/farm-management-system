@@ -25,7 +25,9 @@ export class AuthMiddleware implements NestMiddleware {
 
   use(req: Request, _res: Response, next: NextFunction) {
     const url = (req as any).originalUrl || req.url;
-    const cleanPath = url.split('?')[0];
+    // Strip the global prefix (/v1) so public-path checks below match the
+    // logical path (e.g. /v1/auth/login -> /auth/login).
+    const cleanPath = url.split('?')[0].replace(/^\/v1(?=\/|$)/, '');
 
     const isPublic = this.publicPaths.has(cleanPath) ||
       cleanPath.startsWith('/docs') ||

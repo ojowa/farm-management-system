@@ -35,69 +35,84 @@ Uses npm scripts to start all backend services and frontend apps.
 
 ### Architecture
 
-Deployed as a single Render web service:
+Defined as a [Render Blueprint](https://render.com/docs/blueprint-spec) in [`render.yaml`](../../render.yaml) at the repo root — three web services, one repo:
 
-| Component | Details |
-|-----------|---------|
-| Backend | NestJS microservices running via `concurrently` |
-| Frontend | Next.js apps (admin, console) |
-| Database | Neon PostgreSQL (hosted) |
-| Build | `npm run build` with increased memory |
+| Service | rootDir | Runtime | URL |
+|---------|---------|---------|-----|
+| `fms-api` | `farm-server` | NestJS gateway + 13 microservices | `https://fms-api.onrender.com` |
+| `fms-admin` | `farm-client/admin` | Next.js admin dashboard | `https://fms-admin.onrender.com` |
+| `fms-console` | `farm-client/console` | Next.js platform console | `https://fms-console.onrender.com` |
+
+Database: Neon PostgreSQL (hosted, free tier — Render's free Postgres expires after 30 days).
 
 ### Deploy Steps
 
-1. Push to GitHub
-2. Connect Render to the repository
-3. Set environment variables in Render dashboard
-4. Deploy
+1. Push the repo to GitHub/GitLab
+2. Render Dashboard → **New → Blueprint** → select the repo (Render picks up `render.yaml`)
+3. Set `DATABASE_URL` when prompted (or afterwards in each service's Environment tab) to your Neon connection string:
+   `postgresql://user:pass@ep-xxx.neon.tech/FMS?sslmode=require`
+4. Let the blueprint create all three services (`fms-api` runs `prisma migrate deploy` via `preDeployCommand` on every deploy)
+5. Seed once after the first successful deploy:
+   ```bash
+   # Render Shell on fms-api, or locally against Neon:
+   cd farm-server
+   npm run seed
+   ```
+6. Verify the auto-generated domains: if Render assigns different `*.onrender.com` URLs than the
+   hardcoded `https://fms-*.onrender.com` values in `render.yaml`, update these env vars and redeploy:
+   - `fms-api` → `CORS_ORIGINS`
+   - `fms-admin` → `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SOCKET_URL`
+   - `fms-console` → `API_GATEWAY_URL`
 
 ### Environment Variables
 
-Required:
+Set automatically by the blueprint (`render.yaml`):
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | Neon PostgreSQL connection string | `postgresql://neondb_owner:xxx@ep-xxx.neon.tech/FMS?sslmode=require` |
-| `JWT_SECRET` | JWT signing secret (min 32 chars) | `your-secret-key` |
-| `JWT_REFRESH_SECRET` | Refresh token secret | `your-refresh-secret` |
-| `MFA_SECRET` | MFA secret | `your-mfa-secret` |
-| `SERVICE_SECRET` | Service-to-service secret | `your-service-secret` |
+| Service | Variable | Source |
+|---------|----------|--------|
+| fms-api | `DATABASE_URL` | `sync: false` — paste Neon string in dashboard |
+| fms-api | `JWT_SECRET`, `JWT_REFRESH_SECRET`, `MFA_SECRET`, `SERVICE_SECRET` | `generateValue: true` |
+| fms-api | `CORS_ORIGINS` | hardcoded (frontend URLs) |
+| fms-admin | `NEXT_PUBLIC_API_URL` | hardcoded (`…/v1`) |
+| fms-admin | `NEXT_PUBLIC_SOCKET_URL` | hardcoded (gateway, Socket.IO) |
+| fms-console | `API_GATEWAY_URL` | hardcoded (`…/v1`) |
 
-Optional for notification-service:
+Optional for notification-service (set in `fms-api` dashboard if needed):
 
 | Variable | Description |
 |----------|-------------|
 | `FIREBASE_PROJECT_ID` | Firebase project ID |
 | `FIREBASE_PRIVATE_KEY` | Firebase private key |
 | `FIREBASE_CLIENT_EMAIL` | Firebase client email |
-
-Optional for email:
-
-| Variable | Description |
-|----------|-------------|
-| `SMTP_HOST` | SMTP server host |
-| `SMTP_PORT` | SMTP server port |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
+| `SMTP_HOST` / `SMTP_PORT` | SMTP server |
+| `SMTP_USER` / `SMTP_PASS` | SMTP credentials |
 
 ### Build Configuration
 
-The build process:
+**fms-api** (`rootDir: farm-server`):
 
-1. Run Prisma migrations
-2. Build server workspace packages (domain-core, types-server, env, utils, validation-server, auth-server, database)
-3. Build app-server (NestJS) with increased memory (`--max-old-space-size=4096`)
-4. Build client workspace packages
-5. Build admin and console apps
+1. `npm ci && npm run build` — builds workspace packages (domain-core, types-server, env, utils, validation-server, auth-server, database) then `app-server` (13 NestJS projects)
+2. `preDeployCommand: npm run migrate` — `prisma migrate deploy` before each deploy
+3. `startCommand: npm run start` — runs all microservices via `concurrently`
+4. Listens on Render's `$PORT` (`api.main.ts` falls back to `PORT` when `API_SERVICE_PORT` is unset)
+5. Health check: `GET /v1/health`
 
-```yaml
-buildCommand: |
-  npm install --workspaces
-  npm run build --workspace=farm-server
-  npm run build --workspace=farm-client
-startCommand: |
-  npm run start
-```
+**fms-admin / fms-console** (`rootDir: farm-client/admin` / `farm-client/console` — each app is an independent npm project with its own lockfile):
+
+1. `npm ci && npm run build` — installs the app's own packages (from `packages/`) and builds them, then the Next app
+2. `startCommand: npx next start -p $PORT` (Next.js reads Render's `$PORT`; run from `rootDir`)
+3. `buildFilter.paths` covers the app directory plus `tsconfig.base.json` (root config referenced by package tsconfigs)
+
+### Free Tier Notes
+
+- Render Hobby plan: **750 free instance hours/month** across all services. Free services spin down
+  after 15 min without traffic (~1 min to wake). Three always-on services would exceed 750 h, so
+  expect spin-downs with light traffic — fine for demos, upgrade to Starter for production.
+- Render's free Postgres **expires after 30 days** — always use Neon (or a paid Render Postgres).
+- Socket.IO is served by `fms-api` (gateway). Realtime events emitted inside a microservice process
+  reach clients only if the client is connected to that process; cross-process fan-out would need a
+  Redis adapter (not currently configured).
+
 
 ---
 
@@ -113,22 +128,24 @@ startCommand: |
 
 ```bash
 # Development: push schema changes
-cd farm-server
+cd farm-server/packages/server/database
 npx prisma db push
 
-# Production: use migrations
-npx prisma migrate deploy
+# Production: apply committed migrations (auto-run pre-deploy on Render)
+cd farm-server
+npm run migrate
 
 # Generate client after migration
+cd farm-server/packages/server/database
 npx prisma generate
 ```
 
 ### Seeding Production
 
 ```bash
-# Only run once on initial setup
+# Only run once on initial setup (run in Render Shell on fms-api, or locally against Neon)
 cd farm-server
-npx tsx prisma/seed.ts
+npm run seed
 ```
 
 ---
@@ -140,7 +157,7 @@ npx tsx prisma/seed.ts
 The API gateway exposes a health endpoint:
 
 ```bash
-curl http://localhost:4000/health
+curl http://localhost:4000/v1/health
 ```
 
 ### SystemHealth Model
@@ -170,9 +187,9 @@ The platform-service tracks health status for all services:
 Builds and tests the admin app:
 
 1. Checkout code
-2. Install npm + Node 22
-3. Install dependencies in `farm-client/`
-4. Build workspace dependencies (types, validation, auth)
+2. Install npm + Node 22 (cached on `farm-client/admin/package-lock.json`)
+3. Install dependencies in `farm-client/admin/`
+4. Build packages & app (`npm run build`)
 5. Typecheck admin
 6. Run tests
 7. Upload `.next` build artifact (7-day retention)

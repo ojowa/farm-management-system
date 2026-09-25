@@ -33,11 +33,10 @@ See [GETTING_STARTED.md](./getting-started.md) for details.
 
 ```
 FMS/
-├── farm-client/          # Frontend workspace
-│   ├── admin/            # Admin dashboard (Next.js)
-│   ├── console/          # Platform console (Next.js)
-│   ├── mobile/           # Mobile app (Expo)
-│   └── packages/         # Shared client libraries
+├── farm-client/          # Frontend root (admin & console are independent npm projects)
+│   ├── admin/            # Admin dashboard (Next.js) + its packages/ (own lockfile)
+│   ├── console/          # Platform console (Next.js) + its packages/ (own lockfile)
+│   └── mobile/           # Mobile app (Expo) + packages/ui-native
 ├── farm-server/          # Backend workspace
 │   ├── app-server/       # NestJS microservices
 │   └── packages/server/  # Shared server libraries
@@ -140,16 +139,13 @@ const farms = await this.prisma.farm.findMany();
 ### Running Tests
 
 ```bash
-# All tests
-npm test --workspaces
-
-# Frontend tests
-cd farm-client
-npm test --workspace=@farm/admin
-
 # Backend tests
 cd farm-server
 npm test --workspaces
+
+# Frontend tests (each app is independent)
+cd farm-client/admin
+npm test
 ```
 
 ### Test Frameworks

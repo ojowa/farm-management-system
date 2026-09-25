@@ -59,24 +59,21 @@ The Farm Management System is a multi-tenant SaaS platform built with a **modula
 
 ## Monorepo Structure
 
-The project uses **two independent workspace roots** within a single repository:
+The project uses **independent install roots** within a single repository: one backend workspace and two standalone frontend apps:
 
 ```
 FMS/
 ├── package.json              # Root: orchestration scripts only (no workspaces)
-├── farm-client/              # Frontend workspace root
-│   ├── package.json          # Workspaces: admin, console, mobile, packages/*
-│   ├── admin/                # Farm owner/manager dashboard (Next.js, port 4003)
-│   ├── console/              # Platform admin console (Next.js, port 4002)
-│   ├── mobile/               # Mobile app (Expo SDK 54, port 8082)
-│   └── packages/             # Client shared libraries
-│       ├── api-client/       # Axios API client
-│       ├── auth/             # Auth types & helpers
-│       ├── hooks/            # Shared React hooks
-│       ├── types/            # TypeScript types
-│       ├── ui/               # Shared React components (Tailwind)
-│       ├── ui-native/        # Shared React Native components
-│       └── validation/       # Zod schemas
+├── farm-client/              # Frontend root (orchestrator package.json, no workspaces)
+│   ├── package.json          # Delegates to admin/ and console/ via npm --prefix
+│   ├── admin/                # Standalone npm project — own lockfile & node_modules
+│   │   ├── src/              # Farm owner/manager dashboard (Next.js, port 4003)
+│   │   └── packages/         # Bundled: api-client, auth, hooks, types, ui, validation
+│   ├── console/              # Standalone npm project — own lockfile & node_modules
+│   │   ├── src/              # Platform admin console (Next.js, port 4002)
+│   │   └── packages/         # Bundled: api-client, auth, types, ui
+│   ├── mobile/               # Mobile app (Expo SDK 54, port 8082) — fully standalone
+│   │   └── packages/ui-native/  # Shared React Native components (not yet imported)
 ├── farm-server/              # Backend workspace root
 │   ├── package.json          # Workspaces: app-server, packages/server/*
 │   ├── app-server/           # Modular monolith (NestJS, port 4000)
@@ -93,12 +90,13 @@ FMS/
 └── docs/                     # Documentation
 ```
 
-### Key Design Decision: Two Workspace Roots
+### Key Design Decision: Independent Install Roots
 
 The frontend and backend are **completely independent** — zero cross-dependencies:
-- `farm-client/` has its own `package.json` with workspaces for admin, console, mobile, and client packages
-- `farm-server/` has its own `package.json` with workspaces for app-server and server packages
-- Each can be installed, built, and deployed independently
+- `farm-client/admin` and `farm-client/console` are separate npm projects with their own lockfiles, `node_modules`, and private `packages/` (api-client, auth, types, ui are intentionally duplicated so each app installs/builds alone)
+- `farm-client/package.json` is a thin orchestrator (`npm --prefix admin|console run …`) with no workspaces
+- `farm-server/` has its own workspaces for app-server and server packages
+- Each root can be installed, built, and deployed independently (each Render service `rootDir`s into a single app)
 - Shared concepts (types, auth, validation) have separate implementations on each side
 
 ## Service Map

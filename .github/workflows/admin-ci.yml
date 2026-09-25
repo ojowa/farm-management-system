@@ -18,13 +18,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: farm-client/admin/package-lock.json
 
       - name: Install dependencies
-        run: npm install
-        working-directory: farm-client
+        run: npm ci
+        working-directory: farm-client/admin
 
-      - name: Build workspace dependencies
-        run: npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth
+      - name: Build packages & app
+        run: npm run build
+        working-directory: farm-client/admin
 
       - name: Type check
         run: npx tsc --noEmit

@@ -1,12 +1,14 @@
 import { loadEnv } from '@farm/env';
 loadEnv();
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ApiModule } from '../modules/api/api.module';
+import { RealtimeModule } from '../modules/realtime/realtime.module';
 import { GatewayExceptionFilter } from '../modules/api/filters/gateway-exception.filter';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -15,17 +17,19 @@ import cookieParser from 'cookie-parser';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
     ApiModule,
+    RealtimeModule,
   ],
 })
 class ApiHttpModule {}
 
 async function bootstrap() {
-  const port = Number(process.env.API_SERVICE_PORT) || 4022;
+  const port = Number(process.env.API_SERVICE_PORT || process.env.PORT) || 4022;
   const app = await NestFactory.create(ApiHttpModule, { logger: ['error', 'warn', 'log', 'debug'] });
 
   app.setGlobalPrefix('v1');
   app.use(cookieParser());
   app.use(helmet());
+  app.useWebSocketAdapter(new IoAdapter(app));
   app.useGlobalFilters(new GatewayExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }));
 

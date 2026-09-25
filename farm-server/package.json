@@ -13,9 +13,9 @@
     "build:app": "npm run build --workspace=@farm/app-server",
     "start": "npm run start:all --workspace=@farm/app-server",
     "start:dev": "npm run dev:all --workspace=@farm/app-server",
-    "migrate": "npx prisma migrate deploy",
-    "migrate:dev": "npx prisma migrate dev",
-    "seed": "npx tsx prisma/seed.ts",
+    "migrate": "npm run migrate:deploy --workspace=@farm/database",
+    "migrate:dev": "npm run migrate:dev --workspace=@farm/database",
+    "seed": "npm run db:seed --workspace=@farm/database",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
   }

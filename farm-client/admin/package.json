@@ -2,9 +2,13 @@
   "name": "@farm/admin",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev -p 4003",
-    "build": "next build --no-lint",
+    "build:packages": "npm run build -w @farm/types && npm run build -w @farm/validation && npm run build -w @farm/auth && npm run build -w @farm/api-client && npm run build -w @farm/hooks && npm run build -w @farm/ui",
+    "build": "npm run build:packages && next build --no-lint",
     "start": "next start -p 4003",
     "lint": "echo \"No linter configured\"",
     "test": "vitest run",
@@ -50,5 +54,11 @@
     "tailwindcss": "^4.3.1",
     "typescript": "^5.8.3",
     "vitest": "^4.1.9"
+  },
+  "allowScripts": {
+    "core-js@3.50.0": true,
+    "esbuild@0.28.2": true,
+    "sharp@0.33.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }

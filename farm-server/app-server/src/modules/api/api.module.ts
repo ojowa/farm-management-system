@@ -12,7 +12,7 @@ import { ResponseTransformInterceptor } from './interceptors/response-transform.
 import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 
 @Module({
-  controllers: [GatewayProxyController, HealthController],
+  controllers: [HealthController, GatewayProxyController],
   providers: [
     GatewayProxyService,
     RoutingService,

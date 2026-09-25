@@ -1,0 +1,71 @@
+# Render Blueprint — Farm Management System
+#
+# Provisions three web services:
+#   fms-api    — NestJS gateway + microservices (farm-server)
+#   fms-admin  — Next.js admin dashboard  (farm-client/admin)
+#   fms-console— Next.js platform console (farm-client/console)
+#
+# Database is NOT provisioned here — use Neon (free tier) and paste the
+# connection string into DATABASE_URL (sync: false) in the Render dashboard.
+#
+# Deploy: Render Dashboard → New → Blueprint → point at this repo.
+# After the first deploy, verify the auto-generated *.onrender.com domains
+# and update CORS_ORIGINS / NEXT_PUBLIC_* below if they differ.
+
+services:
+  - type: web
+    name: fms-api
+    runtime: node
+    plan: free
+    rootDir: farm-server
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    preDeployCommand: npm run migrate
+    healthCheckPath: /v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # Neon Postgres connection string (sslmode=require)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: MFA_SECRET
+        generateValue: true
+      - key: SERVICE_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://fms-admin.onrender.com,https://fms-console.onrender.com
+
+  - type: web
+    name: fms-admin
+    runtime: node
+    plan: free
+    rootDir: farm-client/admin
+    buildFilter:
+      paths:
+        - farm-client/admin/**
+        - tsconfig.base.json
+    buildCommand: npm ci && npm run build
+    startCommand: npx next start -p $PORT
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://fms-api.onrender.com/v1
+      - key: NEXT_PUBLIC_SOCKET_URL
+        value: https://fms-api.onrender.com
+
+  - type: web
+    name: fms-console
+    runtime: node
+    plan: free
+    rootDir: farm-client/console
+    buildFilter:
+      paths:
+        - farm-client/console/**
+        - tsconfig.base.json
+    buildCommand: npm ci && npm run build
+    startCommand: npx next start -p $PORT
+    envVars:
+      - key: API_GATEWAY_URL
+        value: https://fms-api.onrender.com/v1

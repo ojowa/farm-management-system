@@ -18,8 +18,10 @@ Get the Farm Management System running locally in under 10 minutes.
 git clone https://github.com/ojowa/farm-management-system.git
 cd farm-management-system
 
-# Install all dependencies (two workspace roots)
-npm install --workspaces
+# Install all dependencies (server workspace + two independent client apps)
+npm --prefix farm-server install
+npm --prefix farm-client/admin install
+npm --prefix farm-client/console install
 ```
 
 ## 2. Database Setup
@@ -127,11 +129,10 @@ All users share the password: `password123`
 
 ```
 FMS/
-├── farm-client/          # Frontend workspace
-│   ├── admin/            # Admin dashboard (Next.js)
-│   ├── console/          # Platform console (Next.js)
-│   ├── mobile/           # Mobile app (Expo)
-│   └── packages/         # Shared client libraries
+├── farm-client/          # Frontend (admin & console are independent npm projects)
+│   ├── admin/            # Admin dashboard (Next.js) + its packages/ (own lockfile)
+│   ├── console/          # Platform console (Next.js) + its packages/ (own lockfile)
+│   └── mobile/           # Mobile app (Expo) + packages/ui-native
 ├── farm-server/          # Backend workspace
 │   ├── app-server/       # NestJS microservices
 │   └── packages/server/  # Shared server libraries
@@ -161,10 +162,11 @@ taskkill /F /PID <pid>
 
 ### npm install fails
 ```bash
-# Clear cache and retry
+# Clear cache and retry (run inside the app you're working on)
 npm cache clean --force
+cd farm-client/admin   # or farm-client/console, or farm-server
 rm -rf node_modules
-npm install --workspaces
+npm install
 ```
 
 ### Database connection refused
