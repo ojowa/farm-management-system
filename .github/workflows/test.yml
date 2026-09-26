@@ -1,0 +1,121 @@
+name: Test Suite
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: farm-server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: farm-server
+
+      - name: Build
+        run: npm run build
+        working-directory: farm-server
+
+      - name: Run tests
+        run: npm test
+        working-directory: farm-server
+
+  admin:
+    name: Admin
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: farm-client/admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: farm-client/admin
+
+      - name: Build packages & app
+        run: npm run build
+        working-directory: farm-client/admin
+
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: farm-client/admin
+
+      - name: Run tests
+        run: npm test
+        working-directory: farm-client/admin
+
+  console:
+    name: Console
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: farm-client/console/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: farm-client/console
+
+      - name: Build packages & app
+        run: npm run build
+        working-directory: farm-client/console
+
+      - name: Type check
+        run: npx tsc --noEmit
+        working-directory: farm-client/console
+
+      - name: Run tests
+        run: npm test --if-present
+        working-directory: farm-client/console
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: farm-client/mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        working-directory: farm-client/mobile
+
+      - name: Type check
+        run: npm run typecheck
+        working-directory: farm-client/mobile
+
+      - name: Run tests
+        run: npm test
+        working-directory: farm-client/mobile

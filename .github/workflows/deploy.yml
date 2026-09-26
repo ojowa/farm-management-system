@@ -1,0 +1,27 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'render.yaml'
+
+jobs:
+  trigger-render:
+    name: Trigger Render Deploy
+    runs-on: ubuntu-latest
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    steps:
+      - name: Trigger Render deploy hook
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: No deploy hook configured
+        if: ${{ env.RENDER_DEPLOY_HOOK_URL == '' }}
+        run: |
+          echo "RENDER_DEPLOY_HOOK_URL secret is not set — nothing to trigger."
+          echo "The Render blueprint already auto-deploys on push to main."
+          echo "To enable this workflow: Render Dashboard → service → Settings → Deploy"
+          echo "→ Deploy hook → copy the URL → add it as a repo secret named RENDER_DEPLOY_HOOK_URL."
