@@ -30,7 +30,7 @@ const DropdownMenu = ({ children, trigger, align = 'end' }: DropdownMenuProps) =
       {open && (
         <div
           className={cn(
-            'fixed z-50 min-w-[8rem] origin-top-right rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
+            'absolute z-50 min-w-[8rem] origin-top-right rounded-md border bg-popover p-1 text-popover-foreground shadow-md',
             align === 'end' && 'right-0',
             align === 'start' && 'left-0',
             align === 'center' && 'left-1/2 -translate-x-1/2'

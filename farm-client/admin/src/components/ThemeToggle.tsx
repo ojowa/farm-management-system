@@ -7,15 +7,14 @@ import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/compone
 import { Button } from '@/components/ui/button';
 
 export function ThemeToggle() {
-  const { theme, setTheme, toggleTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const Icon = theme === 'system' ? Monitor : resolvedTheme === 'dark' ? Moon : Sun;
 
   return (
     <DropdownMenu
       trigger={
-        <Button variant="ghost" size="icon" aria-label="Toggle theme">
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <Monitor className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+        <Button variant="ghost" size="icon" aria-label="Toggle theme" title="Theme">
+          <Icon className="h-5 w-5" />
         </Button>
       }
     >
