@@ -49,7 +49,11 @@ export function useFetch<T>(
     try {
       const res = await fetcherRef.current();
       if (!mountedRef.current) return;
-      const d = res.data as any;
+      const raw = res.data as any;
+      // Every admin page reads `data.<something>`. A few list endpoints still
+      // return a bare array, so normalise those to `{ data: [...] }` instead of
+      // making each page handle both shapes.
+      const d = Array.isArray(raw) ? { data: raw } : raw;
       setData(d);
       evictOldestEntry();
       cache.set(key, { data: d, timestamp: Date.now() });

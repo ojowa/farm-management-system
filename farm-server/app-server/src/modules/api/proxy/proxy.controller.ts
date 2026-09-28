@@ -22,7 +22,18 @@ export class GatewayProxyController {
   @All('*')
   proxyAll(@Req() req: Request, @Res() res: Response, @Next() next: NextFunction) {
     const fullPath = req.url.split('?')[0];
-    const path = fullPath.replace(/^\/?v1\//, '').replace(/^\/?/, '');
+    let path = fullPath.replace(/^\/?v1\//, '').replace(/^\/?/, '');
+
+    // The console app namespaces its platform endpoints under /api/*
+    // (e.g. /api/platform-users) and relies on the Next rewrite to relay them
+    // to `${gatewayUrl}/api/...`. There is no "api" service behind the
+    // gateway, so drop the alias prefix whenever the remainder routes to a
+    // real service segment.
+    const withoutApiAlias = path.replace(/^api\//, '');
+    if (withoutApiAlias !== path && this.proxyService.findService(withoutApiAlias)) {
+      path = withoutApiAlias;
+    }
+
     const segment = path.split('/')[0];
 
     if (!segment || !this.proxyService.findService(path)) {
@@ -34,7 +45,12 @@ export class GatewayProxyController {
 
     return this.proxyService
       .proxyRequest(req, res, path, verifiedUser, serviceToken)
-      .then((data) => res.json(data))
+      .then(({ status, body, setCookie }) => {
+        if (setCookie && setCookie.length) {
+          res.setHeader('Set-Cookie', setCookie);
+        }
+        res.status(status).json(body);
+      })
       .catch(next);
   }
 }

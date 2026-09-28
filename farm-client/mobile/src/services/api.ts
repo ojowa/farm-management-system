@@ -130,6 +130,23 @@ class APIClient {
         return response;
       },
       async (error) => {
+        // Normalise the gateway's error envelope so callers can always read
+        // `error.response.data.message` / `.statusCode`.
+        const body = error?.response?.data;
+        if (body && typeof body === 'object' && body.success === false) {
+          const payload = body.data ?? body.error;
+          if (payload && typeof payload === 'object') {
+            const normalized: any = { ...payload };
+            if (normalized.message === undefined && typeof body.error?.message === 'string') {
+              normalized.message = body.error.message;
+            }
+            if (normalized.statusCode === undefined && body.error?.statusCode !== undefined) {
+              normalized.statusCode = body.error.statusCode;
+            }
+            error.response.data = normalized;
+          }
+        }
+
         const originalRequest = error.config;
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (isRefreshing) {
@@ -160,6 +177,17 @@ class APIClient {
         return Promise.reject(error);
       }
     );
+
+    // Attach the access token (same source RTK Query uses) so native clients
+    // don't depend on the platform cookie jar. The gateway accepts either
+    // `Authorization: Bearer` or the `accessToken` cookie.
+    this.client.interceptors.request.use((config) => {
+      const token = getStore()?.getState?.()?.auth?.socketAccessToken;
+      if (token && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
   }
 }
 

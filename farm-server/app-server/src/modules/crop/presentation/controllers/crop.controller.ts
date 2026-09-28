@@ -47,13 +47,16 @@ export class CropController {
     const filter: { name?: string } = {};
     if (name) filter.name = name;
 
-    return this.cropService.getAllCrops({
+    const result = await this.cropService.getAllCrops({
       sortBy,
       sortOrder,
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,
       filter,
     });
+    // `crops` is the legacy key; `data` is what the web clients read.
+    const crops = (result as any)?.crops ?? (Array.isArray(result) ? result : []);
+    return { ...(result as any), data: crops };
   }
 
   @Permission('crop.read')

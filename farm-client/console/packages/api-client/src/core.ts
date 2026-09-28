@@ -7,6 +7,46 @@ export interface APIClientConfig {
   withCredentials?: boolean;
 }
 
+/**
+ * The gateway always responds with `{ success, data, timestamp, requestId }`.
+ * Call sites across admin/console/mobile expect the payload directly, so unwrap
+ * it here — for success responses only, and only for JSON bodies (blob/texture
+ * downloads must be left untouched).
+ */
+function unwrapEnvelope<T extends { data: any }>(response: T): T {
+  const body = response.data;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return response;
+  if (body.success !== true || !('data' in body) || typeof body.timestamp !== 'string') {
+    return response;
+  }
+  response.data = body.data;
+  return response;
+}
+
+/**
+ * Normalise the two error shapes the gateway produces (proxied downstream
+ * errors as `{ success:false, data }` and gateway errors as
+ * `{ success:false, error }`) into a single `{ statusCode, message }` payload
+ * so `err.response.data.message` works everywhere.
+ */
+function normalizeError(error: any) {
+  const body = error?.response?.data;
+  if (body && typeof body === 'object' && body.success === false) {
+    const payload = body.data ?? body.error;
+    if (payload && typeof payload === 'object') {
+      const normalized = { ...payload };
+      if (normalized.message === undefined && typeof body.error?.message === 'string') {
+        normalized.message = body.error.message;
+      }
+      if (normalized.statusCode === undefined && body.error?.statusCode !== undefined) {
+        normalized.statusCode = body.error.statusCode;
+      }
+      error.response.data = normalized;
+    }
+  }
+  return Promise.reject(error);
+}
+
 export function createAPIClient(config: APIClientConfig = {}): AxiosInstance {
   const baseURL = config.baseURL!;
   const client = axios.create({
@@ -15,6 +55,12 @@ export function createAPIClient(config: APIClientConfig = {}): AxiosInstance {
     headers: config.headers || { 'Content-Type': 'application/json' },
     withCredentials: config.withCredentials ?? true,
   });
+
+  client.interceptors.response.use((response) => {
+    const responseType = response.config?.responseType || 'json';
+    if (responseType !== 'json' && responseType !== 'text') return response;
+    return unwrapEnvelope(response);
+  }, normalizeError);
 
   return client;
 }

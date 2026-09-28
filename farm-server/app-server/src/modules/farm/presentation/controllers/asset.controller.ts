@@ -8,15 +8,50 @@ import {
   Param,
   Query,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
   UseGuards,
+  BadRequestException,
+  NotFoundException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, createReadStream, mkdirSync } from 'fs';
+import { Response } from 'express';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { prisma } from '@farm/database';
 
 function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');
+}
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
+mkdirSync(UPLOAD_DIR, { recursive: true });
+
+const DOCUMENT_TYPE_BY_EXT: Record<string, string> = {
+  '.png': 'IMAGE',
+  '.jpg': 'IMAGE',
+  '.jpeg': 'IMAGE',
+  '.gif': 'IMAGE',
+  '.webp': 'IMAGE',
+  '.svg': 'IMAGE',
+  '.pdf': 'PDF',
+  '.csv': 'SPREADSHEET',
+  '.xls': 'SPREADSHEET',
+  '.xlsx': 'SPREADSHEET',
+  '.doc': 'DOCUMENT',
+  '.docx': 'DOCUMENT',
+  '.txt': 'DOCUMENT',
+  '.md': 'DOCUMENT',
+};
+
+function inferDocumentType(filename: string): string {
+  const ext = extname(filename || '').toLowerCase();
+  return DOCUMENT_TYPE_BY_EXT[ext] || 'OTHER';
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -59,6 +94,52 @@ export class DocumentsController {
     ]);
 
     return { data, total, page: pageNum, totalPages: Math.ceil(total / limitNum) };
+  }
+
+  @Permission('farm.write')
+  @Post('upload')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: UPLOAD_DIR,
+        filename: (_req, file, cb) =>
+          cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname) || ''}`),
+      }),
+      limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 10 * 1024 * 1024 },
+    }),
+  )
+  async upload(
+    @Req() req: any,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('A "file" field is required');
+
+    const name = (req.body?.name as string) || file.originalname;
+    return prisma.document.create({
+      data: {
+        organizationId: getOrgId(req),
+        name,
+        type: (req.body?.type as string) || inferDocumentType(file.originalname),
+        entityId: req.body?.entityId || null,
+        entityType: req.body?.entityType || null,
+        uploadedById: req.user?.sub || null,
+        uploadedByName: req.user?.email || null,
+        fileSize: file.size ?? null,
+        mimeType: file.mimetype || null,
+        url: `/v1/documents/content/${encodeURIComponent(file.filename)}`,
+      },
+    });
+  }
+
+  @Permission('farm.read')
+  @Get('content/:filename')
+  async download(@Param('filename') filename: string, @Res() res: Response) {
+    const safe = filename.replace(/[/\\]/g, '');
+    const filePath = join(UPLOAD_DIR, safe);
+    if (!existsSync(filePath)) throw new NotFoundException('File not found');
+    res.setHeader('Content-Disposition', `attachment; filename="${safe}"`);
+    return createReadStream(filePath).pipe(res);
   }
 
   @Permission('farm.read')
@@ -206,6 +287,19 @@ export class InventoryController {
   }
 
   @Permission('farm.read')
+  @Get('export')
+  async exportInventory(
+    @Req() req: any,
+    @Query('format') format?: string,
+  ) {
+    const data = await prisma.inventory.findMany({
+      where: { organizationId: getOrgId(req) },
+      orderBy: { name: 'asc' },
+    });
+    return { format: format || 'json', data };
+  }
+
+  @Permission('farm.read')
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return prisma.inventory.findUnique({ where: { id } });
@@ -249,19 +343,6 @@ export class InventoryController {
   async delete(@Param('id') id: string) {
     await prisma.inventory.delete({ where: { id } });
     return { deleted: true };
-  }
-
-  @Permission('farm.read')
-  @Get('export')
-  async exportInventory(
-    @Req() req: any,
-    @Query('format') format?: string,
-  ) {
-    const data = await prisma.inventory.findMany({
-      where: { organizationId: getOrgId(req) },
-      orderBy: { name: 'asc' },
-    });
-    return { format: format || 'json', data };
   }
 
   @Permission('farm.write')

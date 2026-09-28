@@ -2,17 +2,19 @@ import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { GatewayProxyService } from './proxy/http-proxy.service';
 import { GatewayProxyController } from './proxy/proxy.controller';
 import { HealthController } from './proxy/health.controller';
+import { WeatherController } from './weather/weather.controller';
 import { RoutingService } from './proxy/routing.service';
 import { RequestIdMiddleware } from './middleware/request-id.middleware';
 import { DeviceInfoMiddleware } from './middleware/device-info.middleware';
 import { AuthMiddleware } from './middleware/auth.middleware';
+import { RawBodyMiddleware } from './middleware/raw-body.middleware';
 import { RequestLoggingInterceptor } from './interceptors/request-logging.interceptor';
 import { TimeoutInterceptor } from './interceptors/timeout.interceptor';
 import { ResponseTransformInterceptor } from './interceptors/response-transform.interceptor';
 import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 
 @Module({
-  controllers: [HealthController, GatewayProxyController],
+  controllers: [HealthController, WeatherController, GatewayProxyController],
   providers: [
     GatewayProxyService,
     RoutingService,
@@ -25,6 +27,9 @@ import { AuditLogInterceptor } from './interceptors/audit-log.interceptor';
 })
 export class ApiModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(RawBodyMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
     consumer
       .apply(RequestIdMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });

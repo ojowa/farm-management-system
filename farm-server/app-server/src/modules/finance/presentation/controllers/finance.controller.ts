@@ -252,6 +252,32 @@ export class BudgetsController {
     return this.financeService.getAllBudgets({ organizationId: getOrgId(req), farmId, status });
   }
 
+  @Permission('finance.write')
+  @Put('categories/:categoryId')
+  async updateCategory(@Param('categoryId') categoryId: string, @Body() body: any) {
+    return this.financeService.updateBudgetCategory(categoryId, body);
+  }
+
+  @Permission('finance.delete')
+  @Delete('categories/:categoryId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteCategory(@Param('categoryId') categoryId: string) {
+    return this.financeService.deleteBudgetCategory(categoryId);
+  }
+
+  @Permission('finance.write')
+  @Post(':id/categories')
+  @HttpCode(HttpStatus.CREATED)
+  async addCategory(@Param('id') id: string, @Body() body: any) {
+    return this.financeService.addBudgetCategory(id, body);
+  }
+
+  @Permission('finance.write')
+  @Post(':id/refresh')
+  async refresh(@Param('id') id: string) {
+    return this.financeService.refreshBudget(id);
+  }
+
   @Permission('finance.read')
   @Get(':id')
   async findOne(@Param('id') id: string) {

@@ -140,8 +140,10 @@ export class AttendanceController {
   @Permission('hr.write')
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
-  bulkCreate(@Req() req: any, @Body() body: { records: any[] }) {
-    return this.hrService.bulkCreateAttendance(getOrgId(req), body.records);
+  bulkCreate(@Req() req: any, @Body() body: any) {
+    // Accepts `{ records }`, `{ attendance }` or a bare array.
+    const rows = Array.isArray(body) ? body : body?.records || body?.attendance || [];
+    return this.hrService.bulkCreateAttendance(getOrgId(req), rows);
   }
 }
 
@@ -260,8 +262,10 @@ export class ShiftAssignmentsController {
   @Permission('hr.write')
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
-  bulkCreate(@Req() req: any, @Body() body: { assignments: any[] }) {
-    return this.hrService.bulkCreateShiftAssignments(getOrgId(req), body.assignments);
+  bulkCreate(@Req() req: any, @Body() body: { assignments?: any[]; records?: any[] }) {
+    // Web sends `{ assignments }`, mobile sends `{ records }`.
+    const rows = body?.assignments || body?.records || [];
+    return this.hrService.bulkCreateShiftAssignments(getOrgId(req), rows);
   }
 
   @Permission('hr.delete')

@@ -11,9 +11,27 @@ import {
   HttpStatus,
   Req,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
+import { prisma } from '@farm/database';
 import { ReportApplicationService } from '../../application/services/report.service';
+
+/** Titles used when the web console generates a report from a template. */
+const TEMPLATE_TITLES: Record<string, string> = {
+  'farm-summary': 'Farm Summary',
+  'crop-report': 'Crop Report',
+  'livestock-report': 'Livestock Report',
+  'poultry-report': 'Poultry Report',
+  'financial-report': 'Financial Report',
+  'inventory-report': 'Inventory Report',
+  'inventory': 'Inventory Report',
+  'weather-summary': 'Weather Summary',
+  'weather': 'Weather Summary',
+  'finance': 'Financial Report',
+  'hr': 'Workforce Report',
+  'workforce': 'Workforce Report',
+};
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('reports')
@@ -31,13 +49,43 @@ export class ReportController {
     @Query('farmId') farmId?: string,
   ) {
     const organizationId = String(req.user?.organizationId || '');
-    return this.reportService.getAllReports(organizationId, {
+    const result = await this.reportService.getAllReports(organizationId, {
       sortBy: sortBy || 'createdAt',
       sortOrder: sortOrder || 'desc',
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 20,
       farmId,
     });
+    // Web clients read `payload.data.reports`.
+    return { data: result };
+  }
+
+  @Permission('reporting.write')
+  @Post('generate')
+  @HttpCode(HttpStatus.CREATED)
+  async generate(@Req() req: any, @Body() body: { templateId?: string }) {
+    const organizationId = String(req.user?.organizationId || '');
+    const templateId = String(body?.templateId || '').trim();
+    if (!templateId) throw new BadRequestException('templateId is required');
+
+    const farms = await prisma.farm.findMany({
+      where: { organizationId },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    });
+    const farmId = farms[0]?.id;
+    if (!farmId) throw new BadRequestException('No farm available for this organization');
+
+    const report = await this.reportService.createReport(
+      {
+        farmId,
+        title: `${TEMPLATE_TITLES[templateId] || templateId} — ${new Date().toISOString().slice(0, 10)}`,
+        status: 'completed',
+        parameters: { templateId },
+      },
+      organizationId,
+    );
+    return { report, templateId };
   }
 
   @Permission('reporting.read')

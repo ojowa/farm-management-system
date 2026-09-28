@@ -181,7 +181,15 @@ export class AuthService {
       throw new UnauthorizedException('User ID is missing from token');
     }
     try {
-      const user = await this.userRepo.findById(userId);
+      const { prisma } = await import('@farm/database');
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        // Web clients derive the UI permission set from
+        // `user.role.permissions[].permission.name`.
+        include: {
+          role: { include: { permissions: { include: { permission: true } } } },
+        },
+      });
       if (!user) throw new NotFoundException('User not found');
       const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
       return userWithoutPassword;
@@ -320,6 +328,41 @@ export class AuthService {
         role: true,
       },
     });
+    return user;
+  }
+
+  async toggleUserActive(userId: string) {
+    const { prisma } = await import('@farm/database');
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isActive: true },
+    });
+    if (!existing) throw new NotFoundException('User not found');
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isActive: !existing.isActive },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        isActive: true,
+        organizationId: true,
+        role: true,
+      },
+    });
+
+    // A deactivated account must not keep using live sessions.
+    if (!user.isActive) {
+      try {
+        await this.logoutAllSessions(userId);
+      } catch {
+        // Session revocation is best-effort — the guard already rejects
+        // deactivated users on the next token verification.
+      }
+    }
+
     return user;
   }
 }

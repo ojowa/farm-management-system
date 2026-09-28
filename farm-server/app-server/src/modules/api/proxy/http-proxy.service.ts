@@ -10,6 +10,15 @@ export interface ServiceConfig {
   routes: string[];
 }
 
+export interface ProxyResult {
+  /** HTTP status returned by the downstream service. */
+  status: number;
+  /** Response envelope handed back to the client. */
+  body: any;
+  /** `Set-Cookie` headers emitted by the downstream service, if any. */
+  setCookie?: string[];
+}
+
 @Injectable()
 export class GatewayProxyService {
   private readonly logger = new Logger(GatewayProxyService.name);
@@ -28,7 +37,7 @@ export class GatewayProxyService {
     {
       name: 'crop',
       baseUrl: process.env.CROP_SERVICE_URL || 'http://localhost:4020',
-      routes: ['crops', 'crop-cycles', 'lifecycle', 'irrigation', 'pest-disease', 'yield', 'egg-production'],
+      routes: ['crops', 'crop-cycles', 'lifecycle', 'irrigation', 'pest-disease', 'yield'],
     },
     {
       name: 'livestock',
@@ -87,15 +96,17 @@ export class GatewayProxyService {
     path: string,
     verifiedUser: VerifiedUser | null,
     serviceToken: string | null,
-  ): Promise<any> {
+  ): Promise<ProxyResult> {
     const service = this.findService(path);
     if (!service) {
       throw new ServiceUnavailableException(`No service found for path: ${path}`);
     }
 
     const targetUrl = `${service.baseUrl}/${path}`;
+    const contentType = String(req.headers['content-type'] || '');
+    const isMultipart = contentType.toLowerCase().startsWith('multipart/form-data');
     const headers: Record<string, string> = {
-      'Content-Type': (req.headers['content-type'] as string) || 'application/json',
+      'Content-Type': contentType || 'application/json',
       'x-user-id': verifiedUser?.id || '',
       'x-user-role': verifiedUser?.role || '',
       'x-organization-id': verifiedUser?.organizationId || '',
@@ -113,32 +124,64 @@ export class GatewayProxyService {
       headers['Authorization'] = req.headers.authorization;
     }
 
+    // Cookie-based auth: the browser only ever talks to the gateway, so the
+    // cookie jar has to be relayed downstream (services read
+    // `req.cookies.accessToken` in JwtAuthGuard) and `Set-Cookie` has to be
+    // relayed back so token rotation reaches the browser.
+    if (req.headers.cookie) {
+      headers['cookie'] = req.headers.cookie;
+    }
+
     try {
       const response = await axios({
         method: req.method as any,
         url: targetUrl,
-        data: req.body,
+        // Multipart payloads are buffered by RawBodyMiddleware; everything
+        // else was parsed by Express' JSON/urlencoded parsers.
+        data: isMultipart ? ((req as any).rawBody ?? Buffer.alloc(0)) : req.body,
         params: req.query,
         headers,
         timeout: Number(process.env.PROXY_TIMEOUT_MS) || 30000,
+        // A downstream 4xx/5xx is data we want to inspect and forward, not a
+        // transport failure.
+        validateStatus: () => true,
       });
+
+      const setCookie = readSetCookie(response.headers);
+      const ok = response.status >= 200 && response.status < 300;
+
       return {
-        success: true,
-        data: response.data,
-        timestamp: new Date().toISOString(),
-        requestId: (req as any).requestId || '',
+        status: response.status,
+        body: {
+          success: ok,
+          data: response.data,
+          timestamp: new Date().toISOString(),
+          requestId: (req as any).requestId || '',
+        },
+        setCookie,
       };
     } catch (error: any) {
       this.logger.error(`Proxy error for ${service.name}: ${error.message}`);
       if (error.response) {
         return {
-          success: false,
-          data: error.response.data,
-          timestamp: new Date().toISOString(),
-          requestId: (req as any).requestId || '',
+          status: error.response.status,
+          body: {
+            success: false,
+            data: error.response.data,
+            timestamp: new Date().toISOString(),
+            requestId: (req as any).requestId || '',
+          },
+          setCookie: readSetCookie(error.response.headers),
         };
       }
       throw new ServiceUnavailableException(`Service ${service.name} is unavailable`);
     }
   }
+}
+
+function readSetCookie(headers: any): string[] | undefined {
+  const raw = headers?.['set-cookie'] ?? headers?.['Set-Cookie'];
+  if (!raw) return undefined;
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list.length ? list : undefined;
 }

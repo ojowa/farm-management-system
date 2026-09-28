@@ -56,11 +56,29 @@ export const userHasAnyRole = (
 
 /**
  * Extract flat permission names from a user object with a Prisma-shaped role.
+ *
+ * Handles every shape the API has produced:
+ *   - `role.permissions = [{ permission: { name } }]`        (Prisma to-one)
+ *   - `role.permissions = [{ permission: [{ name }] }]`      (legacy nested)
+ *   - `role.permissions = [{ permissionId }]`                (bare join row)
+ *   - `user.permissions = ['farm.read', ...]`                (flat/JWT)
  */
 export const extractPermissions = (user: any): string[] => {
-  return (
-    user?.role?.permissions?.flatMap(
-      (rp: any) => rp.permission?.map((p: any) => p.name) ?? []
-    ) ?? []
-  );
+  const collect = (entry: any): string[] => {
+    if (!entry) return [];
+    if (typeof entry === 'string') return [entry];
+    if (Array.isArray(entry)) return entry.flatMap(collect);
+    if (typeof entry.name === 'string') return [entry.name];
+    if (entry.permission !== undefined && entry.permission !== null) {
+      return collect(entry.permission);
+    }
+    return [];
+  };
+
+  const fromRole = Array.isArray(user?.role?.permissions)
+    ? user.role.permissions.flatMap((rp: any) => collect(rp))
+    : [];
+  const fromUser = Array.isArray(user?.permissions) ? collect(user.permissions) : [];
+
+  return Array.from(new Set([...fromRole, ...fromUser]));
 };

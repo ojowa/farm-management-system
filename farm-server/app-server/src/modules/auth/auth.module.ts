@@ -5,6 +5,7 @@ import { AuthController } from './presentation/controllers/auth.controller';
 import { RolesController } from './presentation/controllers/roles.controller';
 import { PermissionsController } from './presentation/controllers/permissions.controller';
 import { AdminController } from './presentation/controllers/admin.controller';
+import { AdminUsersController } from './presentation/controllers/admin-users.controller';
 import { OrgAdminController } from './presentation/controllers/org-admin.controller';
 import { ApiKeysController } from './presentation/controllers/api-keys.controller';
 import { PlatformRolesController } from './presentation/controllers/platform-roles.controller';
@@ -34,6 +35,7 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
     RolesController,
     PermissionsController,
     AdminController,
+    AdminUsersController,
     OrgAdminController,
     ApiKeysController,
     PlatformRolesController,

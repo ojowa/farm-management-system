@@ -324,4 +324,116 @@ export class FinanceApplicationService {
     await this.eventService.emitBudgetDeletedEvent(id);
     return { deleted: true };
   }
+
+  // ── Budget categories ────────────────────────────────
+
+  async addBudgetCategory(budgetId: string, data: { name: string; budgetAmount: number }) {
+    const { prisma } = await import('@farm/database');
+    await this.getBudgetById(budgetId);
+    return prisma.budgetCategory.create({
+      data: {
+        budgetId,
+        name: data.name,
+        budgetAmount: Number(data.budgetAmount) || 0,
+      },
+    });
+  }
+
+  async updateBudgetCategory(categoryId: string, data: { name?: string; budgetAmount?: number }) {
+    const { prisma } = await import('@farm/database');
+    const existing = await prisma.budgetCategory.findUnique({ where: { id: categoryId } });
+    if (!existing) throw new NotFoundException(`Budget category with ID ${categoryId} not found`);
+
+    return prisma.budgetCategory.update({
+      where: { id: categoryId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.budgetAmount !== undefined ? { budgetAmount: Number(data.budgetAmount) } : {}),
+      },
+    });
+  }
+
+  async deleteBudgetCategory(categoryId: string) {
+    const { prisma } = await import('@farm/database');
+    const existing = await prisma.budgetCategory.findUnique({ where: { id: categoryId } });
+    if (!existing) throw new NotFoundException(`Budget category with ID ${categoryId} not found`);
+
+    await prisma.budgetCategory.delete({ where: { id: categoryId } });
+    return { deleted: true };
+  }
+
+  /**
+   * Recompute `spentAmount` for every category of a budget from the expenses
+   * recorded in the budget window.
+   *
+   * Expenses carry no category column, so spending is attributed by matching
+   * the expense title against the category name first; whatever is left over
+   * is distributed proportionally to each category's `budgetAmount` so the
+   * category totals always add up to the real spend.
+   */
+  async refreshBudget(budgetId: string) {
+    const { prisma } = await import('@farm/database');
+    const budget = await this.getBudgetById(budgetId);
+    const categories: any[] = budget.categories || [];
+    if (categories.length === 0) return budget;
+
+    const expenseWhere: Record<string, unknown> = {
+      organizationId: budget.organizationId,
+      date: { gte: new Date(budget.startDate), lte: new Date(budget.endDate) },
+    };
+    if (budget.farmId) expenseWhere.farmId = budget.farmId;
+
+    const expenses = await prisma.expense.findMany({ where: expenseWhere });
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    const spentById = new Map<string, number>(categories.map((c) => [c.id, 0]));
+    let matched = 0;
+
+    for (const expense of expenses) {
+      const amount = Number(expense.amount) || 0;
+      const title = String(expense.title || '').toLowerCase();
+      const hit = categories.find((c) => {
+        const name = String(c.name || '').trim().toLowerCase();
+        return name.length > 0 && title.includes(name);
+      });
+      if (hit) {
+        spentById.set(hit.id, (spentById.get(hit.id) || 0) + amount);
+        matched = round2(matched + amount);
+      }
+    }
+
+    const totalSpent = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const remainder = round2(totalSpent - matched);
+    const targets = categories.map((c) => round2(spentById.get(c.id) || 0));
+
+    if (remainder > 0) {
+      const totalBudgeted = categories.reduce((s, c) => s + (Number(c.budgetAmount) || 0), 0);
+      if (totalBudgeted > 0) {
+        let distributed = 0;
+        categories.forEach((c, i) => {
+          const share = round2(remainder * ((Number(c.budgetAmount) || 0) / totalBudgeted));
+          targets[i] = round2(targets[i] + share);
+          distributed = round2(distributed + share);
+        });
+        const drift = round2(remainder - distributed);
+        if (drift !== 0) {
+          let largest = 0;
+          categories.forEach((c, i) => {
+            if ((Number(c.budgetAmount) || 0) > (Number(categories[largest].budgetAmount) || 0)) largest = i;
+          });
+          targets[largest] = round2(targets[largest] + drift);
+        }
+      } else {
+        targets[0] = round2(targets[0] + remainder);
+      }
+    }
+
+    await Promise.all(
+      categories.map((c, i) =>
+        prisma.budgetCategory.update({ where: { id: c.id }, data: { spentAmount: targets[i] } }),
+      ),
+    );
+
+    return this.getBudgetById(budgetId);
+  }
 }
