@@ -72,14 +72,14 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { hasPermission } = usePermission();
+  const { hasPermission, permissions } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
 
   const filteredNav = navigation.filter((item) => {
     if (item.adminOnly && item.permission && !hasPermission(item.permission)) return false;
-    if (item.module && user?.role?.permissions) {
-      const modules = user.role.permissions.flatMap((p: any) => p.permission?.map((pp: any) => pp.name?.split('.')[0]) || []);
-      if (modules.length > 0 && !modules.includes(item.module)) return false;
+    if (item.module && permissions.length > 0) {
+      const modules = Array.from(new Set(permissions.map((p) => p.split('.')[0])));
+      if (!modules.includes(item.module)) return false;
     }
     if (item.permission && !hasPermission(item.permission)) return false;
     return true;

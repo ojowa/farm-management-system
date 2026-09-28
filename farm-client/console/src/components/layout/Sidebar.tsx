@@ -75,7 +75,9 @@ function UserSection({ collapsed }: { collapsed: boolean }) {
   const { user, logout } = useAuth();
   const initials = user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` : 'A';
   const name = user ? `${user.firstName} ${user.lastName}` : 'Admin';
-  const role = user?.role?.replace('_', ' ') || 'Developer';
+  const rawRole: any = user?.role;
+  const roleName: string | undefined = typeof rawRole === 'string' ? rawRole : rawRole?.name;
+  const role = roleName?.replace('_', ' ') || 'Developer';
 
   return (
     <div className="flex items-center gap-3 px-3 py-2">
