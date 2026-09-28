@@ -8,7 +8,6 @@ const nextConfig = {
     return [
       { source: '/auth/:path*', destination: `${gatewayUrl}/auth/:path*` },
       { source: '/api/:path*', destination: `${gatewayUrl}/api/:path*` },
-      { source: '/platform-:path*', destination: `${gatewayUrl}/platform-:path*` },
     ];
   },
 };

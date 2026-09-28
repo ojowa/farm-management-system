@@ -15,5 +15,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/auth/:path*', '/api/:path*', '/platform-:path*'],
+  matcher: ['/auth/:path*', '/api/:path*'],
 };

@@ -194,27 +194,27 @@ export const platformOptionsAPI = {
   platformAdminRoles: () => apiClient.get('/api/platform-options/platform-admin-roles'),
 };
 
-// ── Auth-domain APIs (gateway root) ────────────────────────
+// ── Auth-domain APIs (relayed through the /api/* alias) ─────
 export const platformRolesAPI = {
-  list: () => apiClient.get('/platform-roles'),
-  get: (id: string) => apiClient.get(`/platform-roles/${id}`),
-  create: (data: any) => apiClient.post('/platform-roles', data),
-  update: (id: string, data: any) => apiClient.put(`/platform-roles/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/platform-roles/${id}`),
-  setPermissions: (id: string, permissionIds: string[]) => apiClient.post(`/platform-roles/${id}/permissions`, { permissionIds }),
+  list: () => apiClient.get('/api/platform-roles'),
+  get: (id: string) => apiClient.get(`/api/platform-roles/${id}`),
+  create: (data: any) => apiClient.post('/api/platform-roles', data),
+  update: (id: string, data: any) => apiClient.put(`/api/platform-roles/${id}`, data),
+  delete: (id: string) => apiClient.delete(`/api/platform-roles/${id}`),
+  setPermissions: (id: string, permissionIds: string[]) => apiClient.post(`/api/platform-roles/${id}/permissions`, { permissionIds }),
 };
 
 export const platformPermissionsAPI = {
-  list: () => apiClient.get('/platform-permissions'),
-  create: (data: any) => apiClient.post('/platform-permissions', data),
-  delete: (id: string) => apiClient.delete(`/platform-permissions/${id}`),
+  list: () => apiClient.get('/api/platform-permissions'),
+  create: (data: any) => apiClient.post('/api/platform-permissions', data),
+  delete: (id: string) => apiClient.delete(`/api/platform-permissions/${id}`),
 };
 
 export const platformApiKeysAPI = {
-  list: () => apiClient.get('/platform-api-keys'),
-  create: (data: any) => apiClient.post('/platform-api-keys', data),
-  toggle: (id: string) => apiClient.patch(`/platform-api-keys/${id}/toggle`),
-  delete: (id: string) => apiClient.delete(`/platform-api-keys/${id}`),
+  list: () => apiClient.get('/api/platform-api-keys'),
+  create: (data: any) => apiClient.post('/api/platform-api-keys', data),
+  toggle: (id: string) => apiClient.patch(`/api/platform-api-keys/${id}/toggle`),
+  delete: (id: string) => apiClient.delete(`/api/platform-api-keys/${id}`),
 };
 
 // ── Legacy aliases for backward compatibility ───────────────

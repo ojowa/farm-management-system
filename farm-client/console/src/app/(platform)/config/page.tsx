@@ -17,7 +17,7 @@ export default function ConfigPage() {
   const loadConfigs = async () => {
     setLoading(true);
     try {
-      const res = await platformClient.get('/platform-config');
+      const res = await platformClient.get('/api/platform-config');
       setConfigs(res.data.configs || []);
     } catch (err) {
       toastError(getErrorMessage(err));
@@ -32,7 +32,7 @@ export default function ConfigPage() {
     if (value === undefined) return;
     setSaving(true);
     try {
-      await platformClient.patch('/platform-config', { configs: [{ key, value }] });
+      await platformClient.patch('/api/platform-config', { configs: [{ key, value }] });
       toastSuccess(`Updated ${key}`);
       setEditing((prev) => { const n = { ...prev }; delete n[key]; return n; });
       loadConfigs();
@@ -46,7 +46,7 @@ export default function ConfigPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await platformClient.patch('/platform-config', { configs: [newConfig] });
+      await platformClient.patch('/api/platform-config', { configs: [newConfig] });
       toastSuccess('Config created');
       setShowForm(false);
       setNewConfig({ key: '', value: '', description: '', category: '' });
