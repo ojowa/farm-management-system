@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { scopedPrisma as prisma } from '@farm/database';
 import { CropRepository, CropCycleRepository } from '../../domain/repositories/crop.repository';
 import { Crop, CropCycle } from '../../domain/entities/crop.entity';
+import { safeOrderBy } from '../../../../common/sort';
+
+const CROP_SORTABLE = ['id', 'name'] as const;
+const CROP_CYCLE_SORTABLE = ['id', 'status', 'startDate', 'endDate', 'createdAt'] as const;
 
 @Injectable()
 export class PrismaCropRepository implements CropRepository {
@@ -16,7 +20,7 @@ export class PrismaCropRepository implements CropRepository {
     limit?: number;
     filter?: { name?: string };
   }): Promise<{ crops: Crop[]; total: number }> {
-    const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 10, filter = {} } = options || {};
+    const { sortBy = 'name', sortOrder = 'desc', page = 1, limit = 10, filter = {} } = options || {};
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -30,7 +34,7 @@ export class PrismaCropRepository implements CropRepository {
     const [crops, total] = await Promise.all([
       prisma.crop.findMany({
         where,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: safeOrderBy(sortBy, sortOrder, CROP_SORTABLE, 'name'),
         skip,
         take: limit,
       }),
@@ -81,7 +85,7 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
       prisma.cropCycle.findMany({
         where,
         include: { crop: true, field: true },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: safeOrderBy(sortBy, sortOrder, CROP_CYCLE_SORTABLE, 'createdAt'),
         skip,
         take: limit,
       }),

@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { scopedPrisma as prisma } from '@farm/database';
+import { safeOrderBy } from '../../../../common/sort';
+
+// These three models have no `createdAt` column, so they cannot be sorted by
+// the default `sortBy=createdAt` the controller passes down.
+const POULTRY_HOUSE_SORTABLE = ['id', 'farmId', 'name', 'capacity'] as const;
+const PEN_SORTABLE = ['id', 'poultryHouseId', 'name', 'capacity'] as const;
+const BREED_SORTABLE = ['id', 'name', 'birdType'] as const;
 import {
   PoultryAggregateRepository,
   PoultryHouseFilter,
@@ -41,7 +48,7 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' };
 
     const [data, total] = await Promise.all([
-      prisma.poultryHouse.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.poultryHouse.findMany({ where, orderBy: safeOrderBy(sortBy, sortOrder, POULTRY_HOUSE_SORTABLE, 'name'), skip, take: limit }),
       prisma.poultryHouse.count({ where }),
     ]);
     return { data: data as PoultryHouse[], total, page, totalPages: Math.ceil(total / limit) };
@@ -71,7 +78,7 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' };
 
     const [data, total] = await Promise.all([
-      prisma.pen.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.pen.findMany({ where, orderBy: safeOrderBy(sortBy, sortOrder, PEN_SORTABLE, 'name'), skip, take: limit }),
       prisma.pen.count({ where }),
     ]);
     return { data: data as Pen[], total, page, totalPages: Math.ceil(total / limit) };
@@ -101,7 +108,7 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     if (filter.birdType) where.birdType = filter.birdType;
 
     const [data, total] = await Promise.all([
-      prisma.breed.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      prisma.breed.findMany({ where, orderBy: safeOrderBy(sortBy, sortOrder, BREED_SORTABLE, 'name'), skip, take: limit }),
       prisma.breed.count({ where }),
     ]);
     return { data: data as Breed[], total, page, totalPages: Math.ceil(total / limit) };
