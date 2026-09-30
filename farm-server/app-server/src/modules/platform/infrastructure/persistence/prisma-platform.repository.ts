@@ -122,8 +122,10 @@ export class PrismaAuditLogRepository implements AuditLogRepository {
     startDate?: string;
     endDate?: string;
   }): Promise<{ logs: AuditLog[]; total: number }> {
-    const page = query.page || 1;
-    const limit = query.limit || 50;
+    // Express query params arrive as strings; Prisma rejects string
+    // take/skip values with PrismaClientValidationError (HTTP 500).
+    const page = Math.max(1, Math.floor(Number(query.page))) || 1;
+    const limit = Math.min(500, Math.max(1, Math.floor(Number(query.limit)))) || 50;
     const skip = (page - 1) * limit;
 
     const where: any = {};
