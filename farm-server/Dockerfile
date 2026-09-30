@@ -16,6 +16,8 @@ RUN npm ci
 
 COPY . /app
 
+RUN npx prisma generate --schema packages/server/database/prisma/schema.prisma
+
 RUN npm run build
 
 ENV NODE_ENV=production

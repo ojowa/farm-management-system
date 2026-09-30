@@ -5,15 +5,21 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const schemaPath = path.join(root, 'prisma', 'schema.prisma');
 
-// Find the generated client index.d.ts (could be in local node_modules or hoisted)
+// Find the generated client index.d.ts (could be in local node_modules or hoisted).
+// A real generated client always has schema.prisma copied next to it; the stub that
+// @prisma/client ships (and its postinstall leaves behind when no schema is found)
+// only has index.d.ts, so require both to avoid mistaking the stub for a real client.
 function findClient() {
-  const localPath = path.join(root, 'node_modules', '.prisma', 'client', 'index.d.ts');
-  if (fs.existsSync(localPath)) return localPath;
-
-  // npm workspaces hoist .prisma/client to the workspace root (farm-server)
-  const hoistedPath = path.join(root, '..', '..', '..', 'node_modules', '.prisma', 'client', 'index.d.ts');
-  if (fs.existsSync(hoistedPath)) return hoistedPath;
-
+  const dirs = [
+    path.join(root, 'node_modules', '.prisma', 'client'),
+    // npm workspaces hoist .prisma/client to the workspace root (farm-server)
+    path.join(root, '..', '..', '..', 'node_modules', '.prisma', 'client'),
+  ];
+  for (const dir of dirs) {
+    if (fs.existsSync(path.join(dir, 'index.d.ts')) && fs.existsSync(path.join(dir, 'schema.prisma'))) {
+      return path.join(dir, 'index.d.ts');
+    }
+  }
   return null;
 }
 
