@@ -1,4 +1,4 @@
-import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import { RoleRepository } from '../../domain/repositories/role.repository';
 
@@ -28,14 +28,19 @@ export class RolesService {
   }
 
   async create(data: { name: string; description?: string; organizationId?: string }) {
-    return prisma.role.create({ data });
+    if (!data?.name?.trim()) throw new BadRequestException('Role name is required');
+    return prisma.role.create({ data: { ...data, name: data.name.trim() } });
   }
 
   async update(id: string, data: { name?: string; description?: string }) {
     const role = await prisma.role.findUnique({ where: { id } });
     if (!role) throw new NotFoundException('Role not found');
-    if (role.isSystem) throw new Error('Cannot rename system role');
-    return prisma.role.update({ where: { id }, data });
+    if (role.isSystem) throw new BadRequestException('System roles cannot be renamed');
+    if (data.name !== undefined && !data.name.trim()) throw new BadRequestException('Role name is required');
+    return prisma.role.update({
+      where: { id },
+      data: { ...data, name: data.name !== undefined ? data.name.trim() : undefined },
+    });
   }
 
   async delete(id: string) {
@@ -44,8 +49,8 @@ export class RolesService {
       include: { _count: { select: { users: true } } },
     });
     if (!role) throw new NotFoundException('Role not found');
-    if (role.isSystem) throw new Error('Cannot delete system role');
-    if (role._count.users > 0) throw new Error('Cannot delete role with assigned users');
+    if (role.isSystem) throw new BadRequestException('System roles cannot be deleted');
+    if (role._count.users > 0) throw new ConflictException('Cannot delete role with assigned users');
     return prisma.role.delete({ where: { id } });
   }
 

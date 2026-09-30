@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { scopedPrisma as prisma } from '@farm/database';
 import { ReportRepository, ScheduledReportRepository } from '../../domain/repositories/report.repository';
 import { Report, ScheduledReport } from '../../domain/entities/report.entity';
@@ -75,7 +75,7 @@ export class PrismaReportRepository implements ReportRepository {
 
   async update(id: string, data: Partial<Report>): Promise<Report> {
     const existing = await this.findById(id);
-    if (!existing) throw new Error('Report not found');
+    if (!existing) throw new NotFoundException('Report not found');
     const merged = { ...existing, ...data };
     const row = await prisma.report.update({
       where: { id },

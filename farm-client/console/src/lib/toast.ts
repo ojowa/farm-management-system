@@ -43,5 +43,20 @@ export function toastInfo(message: string) {
 }
 
 export function getErrorMessage(err: any): string {
-  return err?.response?.data?.message || err?.message || 'An unexpected error occurred.';
+  const data = err?.response?.data;
+  const asText = (value: any): string | undefined => {
+    if (Array.isArray(value)) {
+      const joined = value.filter(Boolean).join('. ');
+      return joined || undefined;
+    }
+    return typeof value === 'string' && value.trim() ? value : undefined;
+  };
+  return (
+    asText(data?.message) ||
+    asText(data?.error?.message) ||
+    asText(typeof data?.error === 'string' ? data.error : undefined) ||
+    asText(data?.data?.message) ||
+    asText(err?.message) ||
+    'An unexpected error occurred.'
+  );
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 
 @Injectable()
@@ -11,7 +11,10 @@ export class PermissionsService {
   }
 
   async create(data: { name: string; description?: string; category?: string }) {
-    return prisma.permission.create({ data });
+    if (!data?.name?.trim()) throw new BadRequestException('Permission name is required');
+    return prisma.permission.create({
+      data: { ...data, name: data.name.trim(), description: data.description || null, category: data.category || null },
+    });
   }
 
   async delete(id: string) {
@@ -20,7 +23,7 @@ export class PermissionsService {
       include: { _count: { select: { roles: true } } },
     });
     if (!permission) throw new NotFoundException('Permission not found');
-    if (permission._count.roles > 0) throw new Error('Cannot delete permission assigned to roles');
+    if (permission._count.roles > 0) throw new ConflictException('Cannot delete permission assigned to roles');
     return prisma.permission.delete({ where: { id } });
   }
 }

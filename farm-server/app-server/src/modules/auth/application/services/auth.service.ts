@@ -72,16 +72,21 @@ export class AuthService {
   }
 
   async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const existing = await this.userRepo.findByEmail(data.email);
+    const email = data.email?.trim();
+    const firstName = data.firstName?.trim();
+    const lastName = data.lastName?.trim();
+    if (!email || !firstName || !lastName) throw new BadRequestException('email, firstName and lastName are required');
+    const existing = await this.userRepo.findByEmail(email);
     if (existing) throw new ConflictException('Email already registered');
-    const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
     const defaultRole = await this.roleRepo.findDefaultRole();
+    if (!defaultRole) throw new BadRequestException('No default role configured — run seed first');
+    const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
     const user = await this.userRepo.create({
-      email: data.email,
+      email,
       passwordHash,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      roleId: defaultRole?.id || '',
+      firstName,
+      lastName,
+      roleId: defaultRole.id,
       organizationId: data.organizationId,
     });
     const accessToken = this.generateAccessToken(user);
@@ -91,7 +96,11 @@ export class AuthService {
   }
 
   async registerConsole(data: { email: string; password: string; firstName: string; middleName?: string; lastName: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const existing = await this.userRepo.findByEmail(data.email);
+    const email = data.email?.trim();
+    const firstName = data.firstName?.trim();
+    const lastName = data.lastName?.trim();
+    if (!email || !firstName || !lastName) throw new BadRequestException('email, firstName and lastName are required');
+    const existing = await this.userRepo.findByEmail(email);
     if (existing) throw new ConflictException('Email already registered');
 
     const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
@@ -100,11 +109,11 @@ export class AuthService {
     if (!superAdminRole) throw new BadRequestException('SUPER_ADMIN role not found — run seed first');
 
     const user = await this.userRepo.create({
-      email: data.email,
+      email,
       passwordHash,
-      firstName: data.firstName,
+      firstName,
       middleName: data.middleName,
-      lastName: data.lastName,
+      lastName,
       roleId: superAdminRole.id,
     });
 

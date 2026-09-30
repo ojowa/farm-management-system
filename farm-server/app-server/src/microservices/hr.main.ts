@@ -1,4 +1,5 @@
 import { loadEnv } from '@farm/env';
+import { AllExceptionsFilter } from '../shared/filters/all-exceptions.filter';
 loadEnv();
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -29,6 +30,7 @@ async function bootstrap() {
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen(port, process.env.LISTEN_HOST || '0.0.0.0');
   console.log(`HR Service running on http://0.0.0.0:${port}`);
 }

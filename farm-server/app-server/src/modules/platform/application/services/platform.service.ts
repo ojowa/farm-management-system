@@ -320,9 +320,9 @@ export class PlatformUserService {
     const updated = await prisma.user.update({
       where: { id },
       data: {
-        firstName: data.firstName ?? undefined,
-        lastName: data.lastName ?? undefined,
-        email: data.email ?? undefined,
+        firstName: data.firstName?.trim() || undefined,
+        lastName: data.lastName?.trim() || undefined,
+        email: data.email?.trim() || undefined,
         isActive: data.isActive ?? undefined,
       },
     });
@@ -453,18 +453,38 @@ export class PlatformOrganizationService {
   }
 
   async createOrganization(data: any, auditUserId: string) {
+    const name = String(data?.name ?? '').trim();
+    if (!name) throw new BadRequestException('Organization name is required');
+
+    // Empty strings violate the unique constraints on slug/email (only NULLs
+    // are repeatable), so normalise blanks to null and derive a clean slug.
+    const slug = String(data?.slug ?? '').trim().toLowerCase() ||
+      name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const email = String(data?.email ?? '').trim() || null;
+    const phone = String(data?.phone ?? '').trim() || null;
+    const industry = String(data?.industry ?? '').trim() || null;
+
     const { prisma } = await import('@farm/database');
-    const org = await prisma.organization.create({
-      data: {
-        name: data.name,
-        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
-        email: data.email,
-        phone: data.phone,
-        industry: data.industry,
-        subscriptionPlan: data.subscriptionPlan || 'FREE',
-        subscriptionStatus: data.subscriptionStatus || 'TRIAL',
-      },
-    });
+    let org;
+    try {
+      org = await prisma.organization.create({
+        data: {
+          name,
+          slug,
+          email,
+          phone,
+          industry,
+          subscriptionPlan: data.subscriptionPlan || 'FREE',
+          subscriptionStatus: data.subscriptionStatus || 'TRIAL',
+        },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        const field = Array.isArray(e?.meta?.target) ? e.meta.target.join(', ') : e?.meta?.target || 'slug or email';
+        throw new ConflictException(`An organization with that ${field} already exists`);
+      }
+      throw e;
+    }
     await this.auditLogRepo.create({ userId: auditUserId, action: 'organization.create', entity: 'Organization', entityId: org.id });
     return org;
   }
