@@ -402,7 +402,10 @@ export class FinanceApplicationService {
       }
     }
 
-    const totalSpent = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalSpent = expenses.reduce(
+      (sum: number, e: { amount?: unknown }) => sum + (Number(e.amount) || 0),
+      0,
+    );
     const remainder = round2(totalSpent - matched);
     const targets = categories.map((c) => round2(spentById.get(c.id) || 0));
 
