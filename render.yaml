@@ -15,14 +15,39 @@
 services:
   - type: web
     name: fms-api
-    runtime: node
+    runtime: docker
     plan: free
-    rootDir: farm-server
-    buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm run start
+    dockerfilePath: ./farm-server/Dockerfile
+    dockerContext: ./farm-server
     preDeployCommand: npm run migrate
     healthCheckPath: /v1/health
     envVars:
+      # Merged-process mode: all domain services run in one container (port 4099),
+      # the gateway (PORT) proxies to them via these URLs. Keeps free tier = 1 instance.
+      - key: DOMAINS_SERVICE_PORT
+        value: "4099"
+      - key: AUTH_SERVICE_URL
+        value: http://localhost:4099
+      - key: FARM_SERVICE_URL
+        value: http://localhost:4099
+      - key: CROP_SERVICE_URL
+        value: http://localhost:4099
+      - key: LIVESTOCK_SERVICE_URL
+        value: http://localhost:4099
+      - key: POULTRY_SERVICE_URL
+        value: http://localhost:4099
+      - key: FINANCE_SERVICE_URL
+        value: http://localhost:4099
+      - key: HR_SERVICE_URL
+        value: http://localhost:4099
+      - key: NOTIFICATION_SERVICE_URL
+        value: http://localhost:4099
+      - key: ORGANIZATION_SERVICE_URL
+        value: http://localhost:4099
+      - key: PLATFORM_SERVICE_URL
+        value: http://localhost:4099
+      - key: REPORTING_SERVICE_URL
+        value: http://localhost:4099
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
