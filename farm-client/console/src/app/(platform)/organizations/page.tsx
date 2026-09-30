@@ -16,6 +16,10 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [planOptions, setPlanOptions] = useState<SelectOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<SelectOption[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const emptyForm = { name: '', slug: '', email: '', phone: '', industry: '', subscriptionPlan: 'FREE', subscriptionStatus: 'TRIAL' };
+  const [form, setForm] = useState(emptyForm);
 
   const loadOrgs = async () => {
     setLoading(true);
@@ -61,13 +65,46 @@ export default function OrganizationsPage() {
     } catch (err) { toastError(getErrorMessage(err)); }
   };
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const payload: Record<string, string> = { name: form.name.trim() };
+      if (form.slug.trim()) payload.slug = form.slug.trim();
+      if (form.email.trim()) payload.email = form.email.trim();
+      if (form.phone.trim()) payload.phone = form.phone.trim();
+      if (form.industry.trim()) payload.industry = form.industry.trim();
+      payload.subscriptionPlan = form.subscriptionPlan;
+      payload.subscriptionStatus = form.subscriptionStatus;
+      await platformOrgsAPI.create(payload);
+      toastSuccess('Organization created');
+      setShowCreate(false);
+      setForm(emptyForm);
+      setPage(1);
+      loadOrgs();
+    } catch (err) { toastError(getErrorMessage(err)); }
+    setCreating(false);
+  };
+
   const totalPages = Math.ceil(total / 20);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Organizations</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage and monitor all organizations on your platform</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Organizations</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage and monitor all organizations on your platform</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCreate(true)}
+          className="inline-flex items-center px-4 py-2.5 bg-[#16a34a] text-white text-sm font-medium rounded-lg hover:bg-[#15803d] transition-colors"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Organization
+        </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
@@ -243,6 +280,137 @@ export default function OrganizationsPage() {
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !creating && setShowCreate(false)}></div>
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-gray-900">New Organization</h2>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                disabled={creating}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Name *</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Acme Farms Ltd"
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Slug</label>
+                <input
+                  value={form.slug}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  placeholder="auto-generated from name"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                />
+                <p className="mt-1 text-xs text-gray-400">Leave blank to derive it from the name.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="ops@acme.com"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                  <input
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="+234 800 000 0000"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Industry</label>
+                <input
+                  value={form.industry}
+                  onChange={(e) => setForm({ ...form, industry: e.target.value })}
+                  placeholder="Poultry, Crop farming..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Plan</label>
+                  <select
+                    value={form.subscriptionPlan}
+                    onChange={(e) => setForm({ ...form, subscriptionPlan: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                  >
+                    {planOptions.length > 0 ? (
+                      planOptions.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)
+                    ) : (
+                      <option value="FREE">FREE</option>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                  <select
+                    value={form.subscriptionStatus}
+                    onChange={(e) => setForm({ ...form, subscriptionStatus: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
+                  >
+                    {statusOptions.length > 0 ? (
+                      statusOptions.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)
+                    ) : (
+                      <>
+                        <option value="TRIAL">TRIAL</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  disabled={creating}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !form.name.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#16a34a] rounded-lg hover:bg-[#15803d] disabled:opacity-50 transition-colors"
+                >
+                  {creating ? 'Creating...' : 'Create Organization'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
