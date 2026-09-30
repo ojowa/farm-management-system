@@ -35,7 +35,6 @@ import {
   Wrench,
   FileText,
   Store,
-  LogOut,
 } from 'lucide-react';
 
 const navigation = [
@@ -72,7 +71,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { hasPermission, permissions } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -148,20 +147,6 @@ export function Sidebar() {
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={() => logout()}
-          title="Log out"
-          aria-label="Log out"
-          className={cn(
-            'mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-400 dark:hover:bg-red-950/40',
-            collapsed && 'justify-center px-0'
-          )}
-        >
-          <LogOut className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-          {!collapsed && <span>Log out</span>}
-        </button>
       </div>
     </aside>
   );
