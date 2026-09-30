@@ -65,7 +65,7 @@ export class AuthService {
     const { authenticator } = await import('otplib');
     const isValid = authenticator.verify({ token: code, secret: user.twoFactorSecret! });
     if (!isValid) throw new UnauthorizedException('Invalid MFA code');
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { user: userWithoutPassword, accessToken, refreshToken };
@@ -89,7 +89,7 @@ export class AuthService {
       roleId: defaultRole.id,
       organizationId: data.organizationId,
     });
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash: _, twoFactorSecret: __, ...userWithoutPassword } = user as any;
     return { user: userWithoutPassword, accessToken, refreshToken };
@@ -128,7 +128,7 @@ export class AuthService {
     if (!stored) throw new UnauthorizedException('Invalid refresh token');
     const user = await this.userRepo.findById(stored.userId);
     if (!user) throw new NotFoundException('User not found');
-    const accessToken = this.generateAccessToken(user);
+    const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     // Revoke old token and record which new token replaced it
     const newTokenHash = hashToken(refreshToken);

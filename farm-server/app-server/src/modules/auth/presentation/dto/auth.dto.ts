@@ -62,9 +62,11 @@ export class RegisterConsoleDto {
 }
 
 export class RefreshTokenDto {
+  // Optional: both frontends call /auth/refresh bodyless and rely on the
+  // httpOnly refreshToken cookie (see auth.controller: req.cookies || body).
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  refreshToken!: string;
+  refreshToken?: string;
 }
 
 export class VerifyMfaDto {
