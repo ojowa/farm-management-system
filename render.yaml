@@ -18,7 +18,7 @@ services:
     runtime: node
     plan: free
     rootDir: farm-server
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
     preDeployCommand: npm run migrate
     healthCheckPath: /v1/health

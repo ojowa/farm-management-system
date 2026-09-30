@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Microservices - each domain module runs as an independent NestJS HTTP server",
+  "main": "dist/microservices/api.main.js",
   "scripts": {
     "build": "nest build auth-service farm-service livestock-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service api-service",
     "build:auth": "nest build auth-service",

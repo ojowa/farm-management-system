@@ -5,7 +5,7 @@
   "types": "./dist/index.d.ts",
   "private": true,
   "scripts": {
-    "build": "npx tsc"
+    "build": "tsc -p ."
   },
   "devDependencies": {
     "@types/node": "^22.13.5",
