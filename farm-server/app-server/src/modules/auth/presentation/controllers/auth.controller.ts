@@ -7,7 +7,13 @@ import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth-server/nestjs';
 import { LoginDto, RegisterDto, RegisterConsoleDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
-const COOKIE_OPTS = { httpOnly: true, secure: isProduction, sameSite: 'lax' as const, path: '/' };
+const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax') as 'lax' | 'strict' | 'none';
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: isProduction || COOKIE_SAMESITE === 'none',
+  sameSite: COOKIE_SAMESITE,
+  path: '/',
+};
 const ACCESS_MAX_AGE = Number(process.env.COOKIE_ACCESS_MAX_AGE_MS) || 15 * 60 * 1000;
 const REFRESH_MAX_AGE = Number(process.env.COOKIE_REFRESH_MAX_AGE_MS) || 7 * 24 * 60 * 60 * 1000;
 

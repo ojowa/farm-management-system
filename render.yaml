@@ -36,7 +36,15 @@ services:
       - key: SERVICE_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://fms-admin.onrender.com,https://fms-console.onrender.com
+        value: https://farm-management-system-lake.vercel.app,https://farm-management-system-three-navy.vercel.app
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: ADMIN_URL
+        value: https://farm-management-system-lake.vercel.app
+      - key: CONSOLE_URL
+        value: https://farm-management-system-three-navy.vercel.app/login
+      - key: MOBILE_URL
+        value: https://fms-mobile-3an1wd.vercel.app
 
   - type: web
     name: fms-admin
