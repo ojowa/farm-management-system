@@ -22,8 +22,9 @@ export default function RolesPage() {
         platformRolesAPI.list(),
         platformPermissionsAPI.list(),
       ]);
-      setRoles(rolesRes.data);
-      setPermissions(permsRes.data);
+      const roleList: PlatformAdminRole[] = Array.isArray(rolesRes.data) ? rolesRes.data : [];
+      setRoles(roleList.map((role) => ({ ...role, permissions: role.permissions ?? [] })));
+      setPermissions(Array.isArray(permsRes.data) ? permsRes.data : []);
     } catch (err) { toastError(getErrorMessage(err)); }
     setLoading(false);
   };

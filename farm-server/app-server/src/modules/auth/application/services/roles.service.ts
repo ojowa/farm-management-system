@@ -9,6 +9,7 @@ export class RolesService {
   async findAll() {
     return prisma.role.findMany({
       include: {
+        permissions: { include: { permission: true } },
         _count: { select: { permissions: true, users: true } },
       },
     });
