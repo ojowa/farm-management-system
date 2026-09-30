@@ -10,9 +10,9 @@ function findClient() {
   const localPath = path.join(root, 'node_modules', '.prisma', 'client', 'index.d.ts');
   if (fs.existsSync(localPath)) return localPath;
 
-  // npm workspaces may hoist .prisma/client to the repo root
-  const repoRootPath = path.join(root, '..', '..', '..', '..', 'node_modules', '.prisma', 'client', 'index.d.ts');
-  if (fs.existsSync(repoRootPath)) return repoRootPath;
+  // npm workspaces hoist .prisma/client to the workspace root (farm-server)
+  const hoistedPath = path.join(root, '..', '..', '..', 'node_modules', '.prisma', 'client', 'index.d.ts');
+  if (fs.existsSync(hoistedPath)) return hoistedPath;
 
   return null;
 }
