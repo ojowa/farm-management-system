@@ -24,10 +24,13 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
 
 @Module({
   imports: [
+    // Only the 'default' throttler is registered. Named throttlers declared
+    // here (previously 'auth' and '2fa') apply to EVERY route unless a route
+    // explicitly skips them by name, and bare @SkipThrottle() only skips
+    // 'default' — so the extra named throttlers were silently capping routes
+    // like /auth/me at 5 hits/5min for all users at once.
     ThrottlerModule.forRoot([
       { name: 'default', ttl: Number(process.env.RATE_LIMIT_DEFAULT_TTL_MS) || 60000, limit: Number(process.env.RATE_LIMIT_DEFAULT_LIMIT) || 30 },
-      { name: 'auth', ttl: Number(process.env.RATE_LIMIT_AUTH_TTL_MS) || 60000, limit: Number(process.env.RATE_LIMIT_AUTH_LIMIT) || 30 },
-      { name: '2fa', ttl: Number(process.env.RATE_LIMIT_2FA_TTL_MS) || 300000, limit: Number(process.env.RATE_LIMIT_2FA_LIMIT) || 5 },
     ]),
   ],
   controllers: [

@@ -26,6 +26,10 @@ async function bootstrap() {
   const port = Number(process.env.API_SERVICE_PORT || process.env.PORT) || 4022;
   const app = await NestFactory.create(ApiHttpModule, { logger: ['error', 'warn', 'log', 'debug'] });
 
+  // Behind Render's load balancer, trust X-Forwarded-For so req.ip (used for
+  // rate limiting and audit logs) is the real client instead of the proxy.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.setGlobalPrefix('v1');
   app.use(cookieParser());
   app.use(helmet());

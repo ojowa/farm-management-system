@@ -42,6 +42,10 @@ class DomainsHttpModule {}
 async function bootstrap() {
   const port = Number(process.env.DOMAINS_SERVICE_PORT) || 4099;
   const app = await NestFactory.create(DomainsHttpModule, { logger: ['error', 'warn', 'log'] });
+  // The gateway forwards the client IP via X-Forwarded-For; without this,
+  // req.ip is the gateway's localhost address and every user shares one
+  // rate-limit bucket per route.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(cookieParser());
   app.use(helmet());
   app.use(rlsMiddleware);

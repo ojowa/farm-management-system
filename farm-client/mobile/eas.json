@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:4022",
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
       },
       "ios": {
@@ -21,7 +21,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.farmmanagement.com",
+        "EXPO_PUBLIC_API_URL": "https://fmsbackend-366u.onrender.com/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
       },
       "ios": {
@@ -34,7 +34,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.farmmanagement.com",
+        "EXPO_PUBLIC_API_URL": "https://fmsbackend-366u.onrender.com/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
       },
       "ios": {
@@ -49,7 +49,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:4022",
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
       },
       "ios": {
@@ -62,7 +62,7 @@
     "preview-local": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.farmmanagement.com",
+        "EXPO_PUBLIC_API_URL": "https://fmsbackend-366u.onrender.com/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
       },
       "ios": {

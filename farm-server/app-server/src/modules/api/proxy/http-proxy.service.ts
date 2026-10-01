@@ -114,6 +114,9 @@ export class GatewayProxyService {
       'x-request-id': (req as any).requestId || '',
       'x-platform': (req.headers['x-platform'] as string) || '',
       'x-device-id': (req.headers['x-device-id'] as string) || '',
+      // Propagate the real client IP so downstream rate limiting and audit
+      // logs key on the end user, not the gateway's localhost address.
+      'x-forwarded-for': String(req.ip || ''),
     };
 
     if (serviceToken) {

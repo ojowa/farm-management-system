@@ -9,7 +9,9 @@ if (!API_BASE_URL && typeof process !== 'undefined' && process.env?.NODE_ENV !==
   throw new Error('[Socket] EXPO_PUBLIC_API_URL is not set.');
 }
 
-const SOCKET_URL = API_BASE_URL;
+// Socket.IO is served at the API root, not under /v1 — derive the base URL
+// from the API URL so a single env var can drive both clients.
+const SOCKET_URL = API_BASE_URL.replace(/\/v1\/?$/, '');
 
 export type RealtimeEvent =
   | 'farm.created'
