@@ -12,6 +12,7 @@ out/
 bin/
 obj/
 coverage/
+tmp/
 *.tsbuildinfo
 
 # Stray compiled JS in source directories (tsc accidentally writing to src/)
