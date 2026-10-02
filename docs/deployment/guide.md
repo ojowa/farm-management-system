@@ -2,24 +2,17 @@
 
 ## Local Development
 
-### Docker Compose
-
-Starts PostgreSQL and PgBouncer:
-
-```bash
-docker compose -f infra/docker-compose.yml up -d
-```
+### Local PostgreSQL + PgBouncer
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| farm-postgres | 5432 | PostgreSQL 16 |
-| farm-pgbouncer | 6432 | Connection pooling (transaction mode) |
+| PostgreSQL | 5432 | PostgreSQL 16 |
+| PgBouncer | 6432 | Connection pooling (transaction mode) |
 
 Configuration:
 - Max client connections: 200
 - Default pool size: 20
 - Auth: SCRAM-SHA-256
-- Persistent volume: `postgres_data`
 
 ### Start All Services
 
@@ -212,7 +205,6 @@ taskkill /F /PID <pid>
 
 ```bash
 # Ensure PostgreSQL is running
-docker compose -f infra/docker-compose.yml up -d
 
 # Check connection
 psql "postgresql://postgres:Aarinola@localhost:5432/FMS"

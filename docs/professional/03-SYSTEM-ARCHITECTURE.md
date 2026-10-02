@@ -304,7 +304,7 @@ farm-management-system/
 │   ├── platform-service/         # Platform Service (original, retained)
 │   └── reporting-service/        # Reporting Service (original, retained)
 │
-├── infra/                        # Infrastructure (Docker, Terraform)
+├── infra/                        # Infrastructure (PgBouncer config)
 ├── docs/                         # Documentation (this set)
 ├── scripts/                      # Build, seed, utility scripts
 ├── turbo.json                    # Turborepo configuration
@@ -320,7 +320,7 @@ farm-management-system/
 
 ```
 ┌─────────────────────────────────────┐
-│  Docker Compose                      │
+│  Local database                      │
 │  ┌───────────────┐  ┌────────────┐  │
 │  │ PostgreSQL 16  │  │ PgBouncer  │  │
 │  │ :5432          │  │ :6432      │  │

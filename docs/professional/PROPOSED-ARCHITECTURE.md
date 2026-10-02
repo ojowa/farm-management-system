@@ -479,8 +479,7 @@ Step 1: Merge notification-service Socket.IO into app-server
 Step 2: Remove duplicate WebSocket gateway
 Step 3: Remove service URL env vars (AUTH_SERVICE_URL, etc.)
 Step 4: Update .env (only DATABASE_URL, JWT_SECRET needed)
-Step 5: Update docker-compose (2 services instead of 9)
-Step 6: Update render.yaml (2 services instead of 16)
+Step 5: Update render.yaml (2 services instead of 16)
 ```
 
 ---

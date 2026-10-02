@@ -10,7 +10,6 @@ Get the Farm Management System running locally in under 10 minutes.
 | npm | 10.27+ | `npm --version` |
 | PostgreSQL | 16+ | `psql --version` |
 | Git | 2.x+ | `git --version` |
-| Docker | Optional | `docker --version` |
 
 ## 1. Clone & Install
 
@@ -26,15 +25,7 @@ npm --prefix farm-client/console install
 
 ## 2. Database Setup
 
-### Option A: Docker (Recommended)
-
-```bash
-docker compose -f infra/docker-compose.yml up -d
-```
-
-This starts PostgreSQL on port 5432 and PgBouncer on port 6432.
-
-### Option B: Local PostgreSQL
+### Local PostgreSQL
 
 1. Install PostgreSQL 16
 2. Create a database named `FMS`
@@ -137,7 +128,7 @@ FMS/
 │   ├── app-server/       # NestJS microservices
 │   └── packages/server/  # Shared server libraries
 ├── scripts/              # Build/start scripts
-├── infra/                # Docker infrastructure
+├── infra/                # PgBouncer configuration
 └── docs/                 # Documentation
 ```
 
@@ -172,9 +163,6 @@ npm install
 ### Database connection refused
 ```bash
 # Ensure PostgreSQL is running
-docker compose -f infra/docker-compose.yml up -d
-
-# Or check local PostgreSQL service
 # Windows: services.msc → PostgreSQL
 # macOS: brew services start postgresql
 # Linux: sudo systemctl start postgresql

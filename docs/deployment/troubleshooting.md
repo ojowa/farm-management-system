@@ -123,10 +123,7 @@ npm install
 
 **Solution:**
 ```bash
-# Start PostgreSQL via Docker
-docker compose -f infra/docker-compose.yml up -d
-
-# Or check local service
+# Start PostgreSQL
 # Windows: services.msc → PostgreSQL
 # macOS: brew services start postgresql
 # Linux: sudo systemctl start postgresql

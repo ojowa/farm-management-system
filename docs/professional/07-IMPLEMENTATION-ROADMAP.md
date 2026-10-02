@@ -240,7 +240,6 @@ Foundation       Core Modules     Advanced         Production       Scale
 |-----------|-----------|---------|
 | Package manager | pnpm | 9+ |
 | Build system | Turborepo | 2+ |
-| Containerization | Docker | 24+ |
 | CI/CD | GitHub Actions | Latest |
 | Hosting | Render.com | — |
 | Database hosting | Supabase / Neon | — |

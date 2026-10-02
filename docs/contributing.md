@@ -15,7 +15,6 @@ Guidelines for contributing to the Farm Management System.
 git clone https://github.com/ojowa/farm-management-system.git
 cd farm-management-system
 npm install --workspaces
-docker compose -f infra/docker-compose.yml up -d
 
 # Setup database
 cd farm-server

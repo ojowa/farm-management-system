@@ -70,7 +70,6 @@ These directories exist under `packages/` but contain no code or `package.json`:
 
 Currently scattered at the monorepo root:
 
-- `docker-compose.yml` (Postgres + PgBouncer)
 - `pgbouncer/` (config files)
 - `render.yaml` + `render.yml` (deployment config)
 - `scripts/` (devops scripts)
@@ -211,7 +210,6 @@ farm-management-system/
 │       └── reporting-domain/
 │
 ├── infra/                             # INFRASTRUCTURE [NEW]
-│   ├── docker-compose.yml             # Postgres + PgBouncer
 │   ├── pgbouncer/                     # PgBouncer config
 │   ├── render.yaml                    # Render deployment
 │   └── render.yml                     # Render deployment (alt)
@@ -233,7 +231,6 @@ farm-management-system/
 | Current Location | New Location | Reason |
 |---|---|---|
 | `pgbouncer/` (root) | `infra/pgbouncer/` | Infrastructure grouping |
-| `docker-compose.yml` (root) | `infra/docker-compose.yml` | Infrastructure grouping |
 | `render.yaml` + `render.yml` (root) | `infra/render.yaml` | Infrastructure grouping |
 | `packages/ui/` (unused) | `packages/ui/` + `packages/ui-native/` | Web + RN split |
 | No shared hooks | `packages/hooks/` | DRY custom hooks |
@@ -754,22 +751,12 @@ Move from `src/app/(platform)/layout.tsx` (195 lines):
 
 ```bash
 mkdir infra
-mv docker-compose.yml infra/
 mv pgbouncer/ infra/
 mv render.yaml infra/
 mv render.yml infra/
 ```
 
-### 9b. Update References
-
-Update any scripts or CI/CD that reference the moved files:
-
-| File | Old Path | New Path |
-|---|---|---|
-| `scripts/*.sh` | `./docker-compose.yml` | `./infra/docker-compose.yml` |
-| `.github/workflows/*.yml` | `docker-compose.yml` | `infra/docker-compose.yml` |
-
-### 9c. Clean Empty Packages
+### 9b. Clean Empty Packages
 
 ```bash
 rm -rf packages/charts packages/config packages/constants
@@ -946,7 +933,7 @@ Week 5+:   Phase 6 (server components, if desired)
 ### Quick Wins (Do First)
 
 1. Delete empty `packages/` directories (5 minutes)
-2. Move `docker-compose.yml` + `pgbouncer/` to `infra/` (10 minutes)
+2. Move `pgbouncer/` to `infra/` (10 minutes)
 3. Fix permission duplication in web + admin (30 minutes)
 4. Add `@farm/types` to console's dependencies (10 minutes)
 

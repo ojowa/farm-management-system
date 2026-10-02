@@ -15,13 +15,20 @@
 services:
   - type: web
     name: fms-api
-    runtime: docker
+    runtime: node
     plan: free
-    dockerfilePath: ./farm-server/Dockerfile
-    dockerContext: ./farm-server
+    # Working directory is farm-server; the repo root is still checked out, so
+    # app-server/tsconfig.json (../../) and packages/server/*/tsconfig.json
+    # (../../../../) reach the shared tsconfig.base.json at the repo root.
+    rootDir: farm-server
+    buildCommand: npm ci && npm run build
+    startCommand: node scripts/start-prod.js
     preDeployCommand: npm run migrate
     healthCheckPath: /v1/health
     envVars:
+      # Node 20 - the backend targets NestJS 11, which requires >= 20.
+      - key: NODE_VERSION
+        value: "20"
       # Merged-process mode: all domain services run in one container (port 4099),
       # the gateway (PORT) proxies to them via these URLs. Keeps free tier = 1 instance.
       - key: DOMAINS_SERVICE_PORT

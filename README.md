@@ -34,7 +34,7 @@ A multi-tenant SaaS platform for managing farm operations — crops, livestock, 
 | Validation | Zod |
 | Real-time | Socket.IO |
 | Testing | Vitest (admin, web), Jest (services, mobile) |
-| Deployment | Render.com + Docker Compose |
+| Deployment | Render.com |
 
 ---
 
@@ -46,8 +46,7 @@ git clone <repo-url>
 cd "Farm Management System"
 npm install
 
-# Set up database (Docker)
-docker compose -f infra/docker-compose.yml up -d
+# Set up database (PostgreSQL — local or Neon; DATABASE_URL lives in farm-server/.env)
 npm run db:push
 npm run db:seed
 
@@ -119,7 +118,7 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full architecture detai
 | [Architecture](docs/architecture/overview.md) | System design, auth flow, DDD, multi-tenancy |
 | [API Reference](docs/api/reference.md) | All API endpoints documented |
 | [Database](docs/architecture/database.md) | 42 Prisma models reference |
-| [Deployment](docs/deployment/guide.md) | Docker, Render, environment variables |
+| [Deployment](docs/deployment/guide.md) | Render, environment variables |
 | [Mobile](docs/mobile/overview.md) | Expo SDK 54 setup, emulator, mobile dev |
 | [Contributing](docs/contributing.md) | Code style, PR process, conventions |
 | [Security Hardening](docs/security/hardening.md) | RBAC audit, security fixes |

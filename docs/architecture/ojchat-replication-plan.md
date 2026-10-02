@@ -130,13 +130,13 @@ Port from OJChat:
 Like OJChat's `start-all` script, create a script that:
 - Starts all 12+ services in parallel
 - Starts the API Gateway
-- Optionally starts infrastructure (PostgreSQL, Redis) via Docker Compose
+- Optionally starts infrastructure (PostgreSQL, Redis)
 
-### 5.2 Update Docker Compose (if applicable)
+### 5.2 Process management (if applicable)
 
-Currently: `infra/docker-compose.yml` runs a single app-server container.
+Currently: a single process runs all app-server services.
 
-Change to: One container per microservice + API Gateway, or a single container with all processes managed by `pm2` or similar.
+Change to: one process per microservice, or a single process with all services managed by `pm2` or similar.
 
 ### 5.3 Update deployment config
 
@@ -166,7 +166,7 @@ Critical: Ensure multi-tenant Row-Level Security functions correctly across serv
 | Decision | Options | Recommendation |
 |----------|---------|----------------|
 | **Service discovery** | Static URLs (env vars) vs service registry (Consul, etcd) | Static URLs — simpler, matches OJChat |
-| **Process manager** | pm2 vs Docker per service vs single container | Docker per service — production-grade |
+| **Process manager** | pm2 per service vs OS service vs single process | pm2 per service — production-grade |
 | **Database connections** | One connection pool per service vs shared | One pool per service — true isolation |
 | **Shared code** | npm packages vs `libs/` directory | `libs/` directory — matches OJChat monorepo pattern |
 | **Keep DDD?** | Yes (FMS advantage) vs flatten to match OJChat | Keep DDD — it's an improvement |

@@ -157,7 +157,7 @@ on a microservices architecture. It provides four purpose-built interfaces:
 - Push notifications (Firebase)
 - Platform administration (feature flags, subscriptions, audit logs)
 - Mobile offline sync (SyncQueue)
-- Docker Compose local development
+- Local development with PostgreSQL + PgBouncer
 - Render.com production deployment
 
 ### 5.2 Out of Scope (Future Phases)
@@ -209,7 +209,7 @@ The system is built on a proven, modern stack:
 - **Database:** PostgreSQL 16 + Prisma ORM + PgBouncer
 - **Auth:** JWT + bcryptjs + TOTP MFA
 - **Real-time:** Socket.IO (WebSocket)
-- **Deployment:** Render.com (production), Docker Compose (development)
+- **Deployment:** Render.com (production), local processes (development)
 
 See [Technology Stack & Justification](./04-TECHNOLOGY-STACK.md) for full rationale.
 

@@ -91,7 +91,7 @@ FMS addresses these challenges through a **single platform** comprising:
 | **Database** | PostgreSQL 16 + Prisma ORM + PgBouncer connection pooling |
 | **Auth** | JWT (access/refresh tokens), httpOnly cookies (browser), Bearer (mobile), MFA/TOTP |
 | **Real-time** | Socket.IO (WebSocket events) |
-| **Deployment** | Render.com (production), Docker Compose (development) |
+| **Deployment** | Render.com (production), local processes (development) |
 | **Monorepo** | Turborepo + pnpm workspaces (23+ packages) |
 | **Testing** | Vitest (admin/web), Jest (services/mobile) — 67 mobile tests passing |
 

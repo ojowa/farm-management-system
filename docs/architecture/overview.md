@@ -55,7 +55,7 @@ The Farm Management System is a multi-tenant SaaS platform built with a **modula
 | **Push Notifications** | Firebase Admin SDK |
 | **Email** | Nodemailer |
 | **Testing** | Vitest (admin), Jest (services, mobile) |
-| **Deployment** | Render.com (production), Docker Compose (local) |
+| **Deployment** | Render.com (production) |
 
 ## Monorepo Structure
 
@@ -85,7 +85,7 @@ FMS/
 │       ├── types/            # Server TypeScript types
 │       ├── utils/            # Utility functions
 │       └── validation/       # Server Zod schemas
-├── infra/                    # Infrastructure (Docker, etc.)
+├── infra/                    # PgBouncer configuration
 ├── scripts/                  # Build/start orchestration
 └── docs/                     # Documentation
 ```
@@ -305,7 +305,7 @@ See [DATABASE.md](./database.md) for the full model reference.
 ### Local Development
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d   # PostgreSQL + PgBouncer
+# PostgreSQL + PgBouncer must be running (see docs/deployment/guide.md)
 npm run dev                                         # All services
 ```
 

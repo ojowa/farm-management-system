@@ -112,7 +112,6 @@ domain modeling.
 | Setup complexity | ✅ Minimal | ⚠️ Moderate | ⚠️ Moderate | ❌ High |
 | Build caching | ✅ Native | ✅ Native | ❌ | ✅ |
 | pnpm workspace support | ✅ Native | ✅ | ⚠️ | ✅ |
-| Docker support | ✅ | ✅ | ❌ | ✅ |
 | Bundle size | ✅ Small | ⚠️ Large | ✅ Small | ⚠️ Large |
 
 **Decision:** Turborepo + pnpm provides the simplest, fastest monorepo setup
@@ -132,7 +131,7 @@ with native caching and workspace support.
 | Expo SDK | 54 | Latest stable |
 | React Native | 0.81.5 | Latest |
 | Prisma | 6.19.3 | Client |
-| PostgreSQL | 16 | Docker image |
+| PostgreSQL | 16 | Relational database |
 | PgBouncer | 1.23.1 | Connection pooling |
 | pnpm | 10.27.0 | Package manager |
 
