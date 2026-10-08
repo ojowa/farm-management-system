@@ -18,11 +18,12 @@
 #   - Do NOT let a second blueprint (e.g. the repo-root render.yaml) manage
 #     this same service — one resource, one blueprint. The root render.yaml
 #     also defines fms-api; remove it from there once this blueprint is live.
-#   - Render preserves existing dashboard env values on sync (DATABASE_URL etc).
+#   - ALL environment variables (DATABASE_URL, secrets, *_SERVICE_URL, CORS
+#     origins, etc.) are managed manually in the Render Dashboard — this
+#     blueprint only defines how to build and run farm-server. See the
+#     commented checklist at the bottom of this file.
 #
 # Deploy: Render Dashboard → New → Blueprint → point at this file.
-# After the first deploy, verify the auto-generated *.onrender.com domain and
-# update CORS_ORIGINS / NEXT_PUBLIC_* below if they differ.
 
 services:
   - type: web
@@ -44,55 +45,36 @@ services:
     startCommand: node scripts/start-prod.js
     preDeployCommand: npm run migrate
     healthCheckPath: /v1/health
-    envVars:
-      # Node 20 - the backend targets NestJS 11, which requires >= 20.
-      - key: NODE_VERSION
-        value: "20"
-      # Merged-process mode: all domain services run in one container (port 4099),
-      # the gateway (PORT) proxies to them via these URLs. Keeps free tier = 1 instance.
-      - key: DOMAINS_SERVICE_PORT
-        value: "4099"
-      - key: AUTH_SERVICE_URL
-        value: http://localhost:4099
-      - key: FARM_SERVICE_URL
-        value: http://localhost:4099
-      - key: CROP_SERVICE_URL
-        value: http://localhost:4099
-      - key: LIVESTOCK_SERVICE_URL
-        value: http://localhost:4099
-      - key: POULTRY_SERVICE_URL
-        value: http://localhost:4099
-      - key: FINANCE_SERVICE_URL
-        value: http://localhost:4099
-      - key: HR_SERVICE_URL
-        value: http://localhost:4099
-      - key: NOTIFICATION_SERVICE_URL
-        value: http://localhost:4099
-      - key: ORGANIZATION_SERVICE_URL
-        value: http://localhost:4099
-      - key: PLATFORM_SERVICE_URL
-        value: http://localhost:4099
-      - key: REPORTING_SERVICE_URL
-        value: http://localhost:4099
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        sync: false # Neon Postgres connection string (sslmode=require)
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: MFA_SECRET
-        generateValue: true
-      - key: SERVICE_SECRET
-        generateValue: true
-      - key: CORS_ORIGINS
-        value: https://farm-management-system-lake.vercel.app,https://farm-management-system-three-navy.vercel.app
-      - key: COOKIE_SAMESITE
-        value: none
-      - key: ADMIN_URL
-        value: https://farm-management-system-lake.vercel.app
-      - key: CONSOLE_URL
-        value: https://farm-management-system-three-navy.vercel.app/login
-      - key: MOBILE_URL
-        value: https://fms-mobile-3an1wd.vercel.app
+    # NOTE: no envVars here on purpose — all env vars are managed in the
+    # Render Dashboard (Environment page) for this service.
+
+# ---------------------------------------------------------------------------
+# Environment variables to set in the Render Dashboard → service → Environment.
+# (Comments only — the blueprint deliberately does not manage any of them.)
+# Without the *_SERVICE_URL vars the gateway proxies to ports 4010-4020 where
+# nothing listens in merged-process mode, so those are REQUIRED, not optional.
+#
+#   NODE_VERSION=20
+#   NODE_ENV=production
+#   DOMAINS_SERVICE_PORT=4099
+#   AUTH_SERVICE_URL=http://localhost:4099
+#   FARM_SERVICE_URL=http://localhost:4099
+#   CROP_SERVICE_URL=http://localhost:4099
+#   LIVESTOCK_SERVICE_URL=http://localhost:4099
+#   POULTRY_SERVICE_URL=http://localhost:4099
+#   FINANCE_SERVICE_URL=http://localhost:4099
+#   HR_SERVICE_URL=http://localhost:4099
+#   NOTIFICATION_SERVICE_URL=http://localhost:4099
+#   ORGANIZATION_SERVICE_URL=http://localhost:4099
+#   PLATFORM_SERVICE_URL=http://localhost:4099
+#   REPORTING_SERVICE_URL=http://localhost:4099
+#   DATABASE_URL=postgresql://... (Neon, sslmode=require)
+#   JWT_SECRET=...            (generate)
+#   JWT_REFRESH_SECRET=...    (generate)
+#   MFA_SECRET=...            (generate)
+#   SERVICE_SECRET=...        (generate)
+#   CORS_ORIGINS=https://farm-management-system-lake.vercel.app,https://farm-management-system-three-navy.vercel.app
+#   COOKIE_SAMESITE=none
+#   ADMIN_URL=https://farm-management-system-lake.vercel.app
+#   CONSOLE_URL=https://farm-management-system-three-navy.vercel.app/login
+#   MOBILE_URL=https://fms-mobile-3an1wd.vercel.app
