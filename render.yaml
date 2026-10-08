@@ -21,7 +21,14 @@ services:
     # app-server/tsconfig.json (../../) and packages/server/*/tsconfig.json
     # (../../../../) reach the shared tsconfig.base.json at the repo root.
     rootDir: farm-server
-    buildCommand: npm ci && npm run build
+    # --include=dev is REQUIRED: NODE_ENV=production (env var below) is visible
+    # at build time, and npm then skips devDependencies — which removes
+    # `typescript` and `@types/node`, so `tsc` falls back to Render's system
+    # TypeScript and fails with TS5102/TS5108 ("baseUrl"/"node10" removed)
+    # and TS2688 (cannot find type definition 'node'). Forcing --include=dev
+    # installs the exact lockfile versions (typescript 5.8.3) regardless of
+    # NODE_ENV; npm run scripts then pick the local tsc ahead of any global one.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node scripts/start-prod.js
     preDeployCommand: npm run migrate
     healthCheckPath: /v1/health
