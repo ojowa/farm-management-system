@@ -22,8 +22,14 @@ import cookieParser from 'cookie-parser';
 })
 class ApiHttpModule {}
 
-async function bootstrap() {
-  const port = Number(process.env.API_SERVICE_PORT || process.env.PORT) || 4022;
+/**
+ * Build and fully configure the API gateway without binding a port.
+ *
+ * Used by the CLI bootstrap below (Render / local `node dist/microservices/api.main`)
+ * and by `server.js`, the Vercel serverless entrypoint, which wraps the returned
+ * Express instance instead of calling `app.listen()`.
+ */
+export async function createApiApp() {
   const app = await NestFactory.create(ApiHttpModule, { logger: ['error', 'warn', 'log', 'debug'] });
 
   // Behind Render's load balancer, trust X-Forwarded-For so req.ip (used for
@@ -63,7 +69,19 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document, { swaggerOptions: { persistAuthorization: true } });
 
+  await app.init();
+  return app;
+}
+
+async function bootstrap() {
+  const port = Number(process.env.API_SERVICE_PORT || process.env.PORT) || 4022;
+  const app = await createApiApp();
   await app.listen(port, process.env.LISTEN_HOST || '0.0.0.0');
   console.log(`API Service (HTTP router) running on port ${port}`);
 }
-bootstrap();
+
+// Only listen when executed directly (`node dist/microservices/api.main.js`);
+// `server.js` (Vercel) requires this module and calls createApiApp() itself.
+if (require.main === module) {
+  bootstrap();
+}

@@ -18,5 +18,8 @@
     "seed": "npm run db:seed --workspace=@farm/database",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }
