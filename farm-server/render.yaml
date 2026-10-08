@@ -1,0 +1,98 @@
+# Render Blueprint — FMS API (farm-server)
+#
+# This blueprint lives INSIDE farm-server so the backend can be managed on its
+# own. Render does not auto-detect it: you must point a Blueprint at it.
+#
+#   Render Dashboard → New → Blueprint → connect ojowa/farm-management-system
+#   → branch main → Blueprint Path: farm-server/render.yaml → Deploy Blueprint
+#
+# (If the blueprint already exists, set the path on its Settings page.)
+#
+# On review, Render will offer to ADOPT your existing API service — the service
+# `name` below must match the existing service's name in the dashboard or a
+# brand-new service gets created instead. Change `name:` if yours differs.
+#
+# Notes:
+#   - rootDir / buildCommand / startCommand / preDeployCommand paths are
+#     relative to the repository root (rootDir) and to rootDir (commands).
+#   - Do NOT let a second blueprint (e.g. the repo-root render.yaml) manage
+#     this same service — one resource, one blueprint. The root render.yaml
+#     also defines fms-api; remove it from there once this blueprint is live.
+#   - Render preserves existing dashboard env values on sync (DATABASE_URL etc).
+#
+# Deploy: Render Dashboard → New → Blueprint → point at this file.
+# After the first deploy, verify the auto-generated *.onrender.com domain and
+# update CORS_ORIGINS / NEXT_PUBLIC_* below if they differ.
+
+services:
+  - type: web
+    name: fms-api
+    runtime: node
+    plan: free
+    # Working directory is farm-server; the repo root is still checked out, so
+    # app-server/tsconfig.json (../../) and packages/server/*/tsconfig.json
+    # (../../../../) reach the shared tsconfig.base.json at the repo root.
+    rootDir: farm-server
+    # --include=dev is REQUIRED: NODE_ENV=production (env var below) is visible
+    # at build time, and npm then skips devDependencies — which removes
+    # `typescript` and `@types/node`, so `tsc` falls back to Render's system
+    # TypeScript and fails with TS5102/TS5108 ("baseUrl"/"node10" removed)
+    # and TS2688 (cannot find type definition 'node'). Forcing --include=dev
+    # installs the exact lockfile versions (typescript 5.8.3) regardless of
+    # NODE_ENV; npm run scripts then pick the local tsc ahead of any global one.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node scripts/start-prod.js
+    preDeployCommand: npm run migrate
+    healthCheckPath: /v1/health
+    envVars:
+      # Node 20 - the backend targets NestJS 11, which requires >= 20.
+      - key: NODE_VERSION
+        value: "20"
+      # Merged-process mode: all domain services run in one container (port 4099),
+      # the gateway (PORT) proxies to them via these URLs. Keeps free tier = 1 instance.
+      - key: DOMAINS_SERVICE_PORT
+        value: "4099"
+      - key: AUTH_SERVICE_URL
+        value: http://localhost:4099
+      - key: FARM_SERVICE_URL
+        value: http://localhost:4099
+      - key: CROP_SERVICE_URL
+        value: http://localhost:4099
+      - key: LIVESTOCK_SERVICE_URL
+        value: http://localhost:4099
+      - key: POULTRY_SERVICE_URL
+        value: http://localhost:4099
+      - key: FINANCE_SERVICE_URL
+        value: http://localhost:4099
+      - key: HR_SERVICE_URL
+        value: http://localhost:4099
+      - key: NOTIFICATION_SERVICE_URL
+        value: http://localhost:4099
+      - key: ORGANIZATION_SERVICE_URL
+        value: http://localhost:4099
+      - key: PLATFORM_SERVICE_URL
+        value: http://localhost:4099
+      - key: REPORTING_SERVICE_URL
+        value: http://localhost:4099
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # Neon Postgres connection string (sslmode=require)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: MFA_SECRET
+        generateValue: true
+      - key: SERVICE_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://farm-management-system-lake.vercel.app,https://farm-management-system-three-navy.vercel.app
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: ADMIN_URL
+        value: https://farm-management-system-lake.vercel.app
+      - key: CONSOLE_URL
+        value: https://farm-management-system-three-navy.vercel.app/login
+      - key: MOBILE_URL
+        value: https://fms-mobile-3an1wd.vercel.app
