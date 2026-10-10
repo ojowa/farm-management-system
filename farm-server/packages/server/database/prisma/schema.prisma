@@ -1307,6 +1307,10 @@ model Document {
   fileSize        Int?
   mimeType        String?
   url             String
+  // Object-storage key (S3-compatible / local). Nullable for rows created
+  // before object storage was introduced or via the metadata-only endpoint.
+  storageKey      String?
+  storageDriver   String?
 
   createdAt       DateTime @default(now())
 

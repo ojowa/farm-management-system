@@ -7,6 +7,7 @@ import { PlatformUsersController } from './presentation/controllers/platform-use
 import { PlatformOrganizationsController } from './presentation/controllers/platform-organizations.controller';
 import { PlatformBroadcastsController } from './presentation/controllers/platform-broadcasts.controller';
 import { PlatformConfigController } from './presentation/controllers/platform-config.controller';
+import { PlatformStorageController } from './presentation/controllers/platform-storage.controller';
 import { PlatformOptionsController } from './presentation/controllers/platform-options.controller';
 import {
   PlatformFeatureFlagService,
@@ -29,8 +30,10 @@ import {
   PrismaPlatformConfigRepository,
 } from './infrastructure/persistence/prisma-platform.repository';
 import { PlatformAdminGuard, SuperAdminGuard } from './presentation/guards/platform-admin.guard';
+import { StorageModule } from '../../shared/storage';
 
 @Module({
+  imports: [StorageModule],
   controllers: [
     PlatformFeaturesController,
     PlatformSubscriptionsController,
@@ -40,6 +43,7 @@ import { PlatformAdminGuard, SuperAdminGuard } from './presentation/guards/platf
     PlatformOrganizationsController,
     PlatformBroadcastsController,
     PlatformConfigController,
+    PlatformStorageController,
     PlatformOptionsController,
   ],
   providers: [

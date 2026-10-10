@@ -90,6 +90,7 @@ function buildRoutes(): ServiceRoute[] {
     { path: '/platform-broadcasts', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
     { path: '/platform-audit', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
     { path: '/platform-config', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
+    { path: '/platform-storage', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
     { path: '/platform-users', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
 
     // Reporting Context

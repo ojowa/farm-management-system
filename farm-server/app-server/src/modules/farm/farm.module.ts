@@ -5,9 +5,10 @@ import { FarmApplicationService } from './application/services/farm.service';
 import { PrismaFarmRepository, PrismaFieldRepository } from './infrastructure/persistence/prisma-farm.repository';
 import { FarmEventService } from './infrastructure/messaging/farm.event.service';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { StorageModule } from '../../shared/storage';
 
 @Module({
-  imports: [RealtimeModule],
+  imports: [RealtimeModule, StorageModule],
   controllers: [FarmController, FieldController, DocumentsController, InventoryController, EquipmentController],
   providers: [
     FarmApplicationService,

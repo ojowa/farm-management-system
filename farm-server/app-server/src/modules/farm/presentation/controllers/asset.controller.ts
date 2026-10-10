@@ -13,22 +13,31 @@ import {
   HttpStatus,
   UseGuards,
   BadRequestException,
+  Logger,
   NotFoundException,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
+import { randomUUID } from 'crypto';
 import { extname, join } from 'path';
 import { existsSync, createReadStream, mkdirSync } from 'fs';
 import { Response } from 'express';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { prisma } from '@farm/database';
+import {
+  StorageService,
+  StorageObjectNotFoundError,
+  buildDocumentKey,
+} from '../../../../shared/storage';
 
 function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');
 }
 
+// Legacy local-disk directory. New uploads go to the configured object store
+// (see StorageService); this remains only to serve pre-existing local files.
 const UPLOAD_DIR =
   process.env.UPLOAD_DIR ||
   (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
@@ -65,6 +74,10 @@ function inferDocumentType(filename: string): string {
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('documents')
 export class DocumentsController {
+  private readonly logger = new Logger(DocumentsController.name);
+
+  constructor(private readonly storage: StorageService) {}
+
   @Permission('farm.read')
   @Get()
   async findAll(
@@ -109,11 +122,7 @@ export class DocumentsController {
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: UPLOAD_DIR,
-        filename: (_req, file, cb) =>
-          cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname) || ''}`),
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 10 * 1024 * 1024 },
     }),
   )
@@ -123,10 +132,17 @@ export class DocumentsController {
   ) {
     if (!file) throw new BadRequestException('A "file" field is required');
 
+    const orgId = getOrgId(req);
     const name = (req.body?.name as string) || file.originalname;
+    const id = randomUUID();
+    const storageKey = buildDocumentKey(orgId, file.originalname);
+
+    await this.storage.upload(storageKey, file.buffer, file.mimetype);
+
     return prisma.document.create({
       data: {
-        organizationId: getOrgId(req),
+        id,
+        organizationId: orgId,
         name,
         type: (req.body?.type as string) || inferDocumentType(file.originalname),
         entityId: req.body?.entityId || null,
@@ -135,7 +151,9 @@ export class DocumentsController {
         uploadedByName: req.user?.email || null,
         fileSize: file.size ?? null,
         mimeType: file.mimetype || null,
-        url: `/v1/documents/content/${encodeURIComponent(file.filename)}`,
+        storageKey,
+        storageDriver: await this.storage.getDriver(),
+        url: `/v1/documents/${id}/content`,
       },
     });
   }
@@ -148,6 +166,34 @@ export class DocumentsController {
     if (!existsSync(filePath)) throw new NotFoundException('File not found');
     res.setHeader('Content-Disposition', `attachment; filename="${safe}"`);
     return createReadStream(filePath).pipe(res);
+  }
+
+  @Permission('farm.read')
+  @Get(':id/content')
+  async downloadById(@Req() req: any, @Param('id') id: string, @Res() res: Response) {
+    const doc = await prisma.document.findUnique({ where: { id } });
+    if (!doc || doc.organizationId !== getOrgId(req)) {
+      throw new NotFoundException('Document not found');
+    }
+    if (!doc.storageKey) throw new NotFoundException('File content unavailable');
+
+    let object;
+    try {
+      object = await this.storage.download(doc.storageKey);
+    } catch (err) {
+      if (err instanceof StorageObjectNotFoundError) {
+        throw new NotFoundException('File content unavailable');
+      }
+      throw err;
+    }
+
+    res.setHeader('Content-Type', doc.mimeType || object.contentType || 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${encodeURIComponent(doc.name || 'download')}"`,
+    );
+    if (object.contentLength) res.setHeader('Content-Length', String(object.contentLength));
+    return object.stream.pipe(res);
   }
 
   @Permission('farm.read')
@@ -194,6 +240,13 @@ export class DocumentsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string) {
+    const doc = await prisma.document.findUnique({ where: { id } });
+    if (doc?.storageKey) {
+      await this.storage.delete(doc.storageKey).catch((err) => {
+        // Don't block metadata deletion if the object is already gone.
+        this.logger.warn(`Failed to delete storage object ${doc.storageKey}: ${err?.message}`);
+      });
+    }
     await prisma.document.delete({ where: { id } });
     return { deleted: true };
   }

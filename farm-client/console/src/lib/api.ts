@@ -185,6 +185,33 @@ export const platformConfigAPI = {
     apiClient.patch('/api/platform-config', { configs }),
 };
 
+export interface StorageSettingsInput {
+  driver?: 's3' | 'local';
+  bucket?: string;
+  region?: string;
+  endpoint?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  forcePathStyle?: boolean;
+}
+
+export interface StorageSettings {
+  driver: 's3' | 'local';
+  bucket: string;
+  region: string;
+  endpoint: string;
+  accessKeyId: string;
+  hasSecretAccessKey: boolean;
+  forcePathStyle: boolean;
+  source: 'database' | 'environment';
+}
+
+export const platformStorageAPI = {
+  get: () => apiClient.get('/api/platform-storage'),
+  update: (data: StorageSettingsInput) => apiClient.put('/api/platform-storage', data),
+  test: (data: StorageSettingsInput) => apiClient.post('/api/platform-storage/test', data),
+};
+
 export const platformOptionsAPI = {
   all: () => apiClient.get('/api/platform-options'),
   plans: () => apiClient.get('/api/platform-options/plans'),

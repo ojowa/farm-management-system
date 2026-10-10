@@ -84,6 +84,20 @@ services:
         value: https://farm-management-system-three-navy.vercel.app/login
       - key: MOBILE_URL
         value: https://fms-mobile-3an1wd.vercel.app
+      # Object storage for document uploads (S3-compatible, e.g. Cloudflare R2).
+      # Leave STORAGE_DRIVER unset so the driver auto-selects "s3" when a bucket
+      # is configured, otherwise it falls back to local disk. Values here can
+      # also be overridden at runtime from the console (stored in the database).
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
 
   - type: web
     name: fms-admin
