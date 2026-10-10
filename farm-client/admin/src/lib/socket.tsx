@@ -31,7 +31,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const joinedRef = useRef(false);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SOCKET_URL!;
+    const url = process.env.NEXT_PUBLIC_SOCKET_URL;
+    // Realtime is opt-out via NEXT_PUBLIC_REALTIME_ENABLED=false. Serverless
+    // hosts (e.g. Vercel) cannot serve persistent WebSocket/socket.io
+    // connections, so skip connecting there to avoid reconnect/error loops.
+    const enabled = process.env.NEXT_PUBLIC_REALTIME_ENABLED !== 'false';
+
+    if (!enabled || !url) {
+      setIsConnected(false);
+      setReconnecting(false);
+      return;
+    }
 
     const socket = io(url, {
       autoConnect: true,
