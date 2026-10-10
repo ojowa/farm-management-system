@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Plus } from 'lucide-react';
 import { usePermission } from '@/lib/usePermission';
 import { messagesAPI, orgAdminAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -8,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/lib/toasts';
 
 interface Message {
@@ -23,7 +25,7 @@ interface Message {
   recipients?: Array<{ id: string; recipientId: string; recipientName: string; isRead: boolean }>;
 }
 
-type View = 'inbox' | 'sent' | 'compose' | 'message';
+type View = 'inbox' | 'sent' | 'message';
 
 const PRIORITY_COLORS: Record<string, string> = {
   LOW: 'gray',
@@ -32,11 +34,13 @@ const PRIORITY_COLORS: Record<string, string> = {
   URGENT: 'red',
 };
 
+const EMPTY_COMPOSE = { subject: '', body: '', recipientIds: [] as string[], priority: 'NORMAL' };
+
 export default function MessagesPage() {
   const { canCreate } = usePermission();
   const { toast } = useToast();
   const { user } = useAuth();
-  const canSend = canCreate('messaging');
+  const canSend = canCreate('communication');
 
   const [view, setView] = useState<View>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);
@@ -46,7 +50,8 @@ export default function MessagesPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [workers, setWorkers] = useState<any[]>([]);
 
-  const [composeForm, setComposeForm] = useState({ subject: '', body: '', recipientIds: [] as string[], priority: 'NORMAL' });
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeForm, setComposeForm] = useState(EMPTY_COMPOSE);
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -78,6 +83,11 @@ export default function MessagesPage() {
     } catch { toast({ title: 'Failed to load message', type: 'error' }); }
   };
 
+  const openCompose = () => {
+    setComposeForm(EMPTY_COMPOSE);
+    setComposeOpen(true);
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!composeForm.subject.trim() || !composeForm.body.trim()) {
@@ -90,7 +100,8 @@ export default function MessagesPage() {
     try {
       await messagesAPI.send(composeForm);
       toast({ title: 'Message sent', type: 'success' });
-      setComposeForm({ subject: '', body: '', recipientIds: [], priority: 'NORMAL' });
+      setComposeForm(EMPTY_COMPOSE);
+      setComposeOpen(false);
       setView('sent');
       await loadData();
     } catch (err: any) {
@@ -128,7 +139,11 @@ export default function MessagesPage() {
             Messages {unreadCount > 0 && <span className="text-sm font-normal text-gray-500">({unreadCount} unread)</span>}
           </h1>
         </div>
-        {canSend && <Button onClick={() => { setView('compose'); setSelected(null); }}>+ Compose</Button>}
+        {canSend && (
+          <Button onClick={openCompose}>
+            <Plus className="h-4 w-4 mr-2" /> New Message
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -141,45 +156,6 @@ export default function MessagesPage() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading messages...</div>
-      ) : view === 'compose' ? (
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">New Message</h2>
-          <form onSubmit={handleSend} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                {workers.length === 0 ? <p className="text-sm text-gray-500">No users available</p> : workers.map((w: any) => (
-                  <button key={w.id} type="button" onClick={() => toggleRecipient(w.id)} className={`text-xs px-3 py-1.5 rounded-full transition-colors ${composeForm.recipientIds.includes(w.id) ? 'bg-green-100 text-green-700 font-medium border border-green-300' : 'bg-gray-100 text-gray-700 border border-transparent'}`}>
-                    {w.firstName} {w.lastName}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                <Input value={composeForm.subject} onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })} required placeholder="Message subject" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                <select value={composeForm.priority} onChange={(e) => setComposeForm({ ...composeForm, priority: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-                  <option value="LOW">Low</option>
-                  <option value="NORMAL">Normal</option>
-                  <option value="HIGH">High</option>
-                  <option value="URGENT">Urgent</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-              <textarea value={composeForm.body} onChange={(e) => setComposeForm({ ...composeForm, body: e.target.value })} rows={6} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required placeholder="Type your message..." />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="ghost" onClick={() => setView('inbox')}>Cancel</Button>
-              <Button type="submit" loading={saving}>Send</Button>
-            </div>
-          </form>
-        </Card>
       ) : view === 'message' && selected ? (
         <Card>
           <div className="flex items-start justify-between mb-4">
@@ -227,6 +203,47 @@ export default function MessagesPage() {
           )}
         </div>
       )}
+
+      <Dialog open={composeOpen} onOpenChange={setComposeOpen} title="New Message">
+        <form onSubmit={handleSend} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
+              {workers.length === 0 ? <p className="text-sm text-gray-500">No users available</p> : workers.map((w: any) => (
+                <button key={w.id} type="button" onClick={() => toggleRecipient(w.id)} className={`text-xs px-3 py-1.5 rounded-full transition-colors ${composeForm.recipientIds.includes(w.id) ? 'bg-green-100 text-green-700 font-medium border border-green-300' : 'bg-gray-100 text-gray-700 border border-transparent'}`}>
+                  {w.firstName} {w.lastName}
+                </button>
+              ))}
+            </div>
+            {composeForm.recipientIds.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">{composeForm.recipientIds.length} recipient{composeForm.recipientIds.length > 1 ? 's' : ''} selected</p>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <Input value={composeForm.subject} onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })} required placeholder="Message subject" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select value={composeForm.priority} onChange={(e) => setComposeForm({ ...composeForm, priority: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <option value="LOW">Low</option>
+                <option value="NORMAL">Normal</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea value={composeForm.body} onChange={(e) => setComposeForm({ ...composeForm, body: e.target.value })} rows={6} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required placeholder="Type your message..." />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setComposeOpen(false)}>Cancel</Button>
+            <Button type="submit" loading={saving}>Send</Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }
