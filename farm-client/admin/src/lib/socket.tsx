@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo, ReactNode } from 'react';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { useAuth } from '@/lib/auth';
 
 interface SocketContextValue {
@@ -43,37 +43,48 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const socket = io(url, {
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 15,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      transports: ['websocket', 'polling'],
-    });
+    let disposed = false;
+    let socket: Socket | null = null;
 
-    socketRef.current = socket;
+    // Loaded lazily so the socket.io client never reaches the initial bundle,
+    // and is dropped from the page entirely when realtime is disabled.
+    void import('socket.io-client').then(({ io }) => {
+      if (disposed) return;
 
-    socket.on('connect', () => {
-      setIsConnected(true);
-      setReconnecting(false);
-    });
+      const s = io(url, {
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: 15,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        transports: ['websocket', 'polling'],
+      });
 
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-      joinedRef.current = false;
-    });
+      socket = s;
+      socketRef.current = s;
 
-    socket.on('reconnect_attempt', () => setReconnecting(true));
-    socket.on('reconnect', () => setReconnecting(false));
-    socket.on('reconnect_failed', () => setReconnecting(false));
+      s.on('connect', () => {
+        setIsConnected(true);
+        setReconnecting(false);
+      });
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      s.on('disconnect', () => {
+        setIsConnected(false);
+        joinedRef.current = false;
+      });
+
+      s.on('reconnect_attempt', () => setReconnecting(true));
+      s.on('reconnect', () => setReconnecting(false));
+      s.on('reconnect_failed', () => setReconnecting(false));
+
+      s.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
     });
 
     return () => {
-      socket.disconnect();
+      disposed = true;
+      socket?.disconnect();
       socketRef.current = null;
       joinedRef.current = false;
       setIsConnected(false);
