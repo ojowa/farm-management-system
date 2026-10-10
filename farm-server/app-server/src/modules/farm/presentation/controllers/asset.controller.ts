@@ -29,8 +29,16 @@ function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');
 }
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || join(process.cwd(), 'uploads');
-mkdirSync(UPLOAD_DIR, { recursive: true });
+const UPLOAD_DIR =
+  process.env.UPLOAD_DIR ||
+  (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? join('/tmp', 'uploads')
+    : join(process.cwd(), 'uploads'));
+try {
+  mkdirSync(UPLOAD_DIR, { recursive: true });
+} catch {
+  // Read-only filesystem (e.g. Vercel serverless): uploads are ephemeral.
+}
 
 const DOCUMENT_TYPE_BY_EXT: Record<string, string> = {
   '.png': 'IMAGE',
