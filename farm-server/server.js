@@ -101,7 +101,11 @@ app.use((req, res, next) => {
 app.use((err, req, res, _next) => {
   console.error('[server.js] request failed:', err);
   if (!res.headersSent) {
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      detail: err && (err.stack || err.message || String(err)),
+    });
   }
 });
 
