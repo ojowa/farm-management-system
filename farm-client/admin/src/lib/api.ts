@@ -2,7 +2,12 @@ import { createFarmManagementClient, FarmManagementClient, APIClientConfig } fro
 import axios from 'axios';
 
 const config: APIClientConfig = {
-  baseURL: process.env.NEXT_PUBLIC_API_URL!,
+  // Same-origin path proxied to the gateway (see next.config.js rewrites).
+  // Hitting our own origin keeps the auth cookie first-party: the Set-Cookie
+  // from /auth/login lands on this host, which is what src/middleware.ts
+  // guards on. A cross-origin URL would store it on the API host instead and
+  // the middleware would bounce every page back to /login.
+  baseURL: '/v1',
   timeout: 15000,
   withCredentials: true,
 };

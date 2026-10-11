@@ -37,9 +37,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     // loaded at all (it is imported lazily below).
     const enabled = process.env.NEXT_PUBLIC_REALTIME_ENABLED !== 'false';
 
-    // The server authenticates every handshake from the accessToken cookie, so
-    // an anonymous socket is always rejected — don't churn connections on the
-    // login screen.
+    // The socket connects directly to the API host, which is a different origin
+    // on Vercel, so the HttpOnly accessToken cookie is not attached to the
+    // handshake. Fetch the token from our own origin and send it in the
+    // handshake `auth` payload. Skip connecting when signed out — an anonymous
+    // socket is always rejected — so we don't churn reconnects on the login
+    // screen.
     if (!enabled || !url || !isAuthenticated) {
       setIsConnected(false);
       setReconnecting(false);
@@ -50,9 +53,19 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     let disposed = false;
     let socket: Socket | null = null;
 
-    // Loaded lazily so the socket.io client never reaches the initial bundle,
-    // and is dropped from the page entirely when realtime is disabled.
-    void import('socket.io-client').then(({ io }) => {
+    void (async () => {
+      let token: string | null = null;
+      try {
+        const res = await fetch('/realtime-token', { credentials: 'same-origin' });
+        if (res.ok) token = ((await res.json()) as { token: string | null }).token;
+      } catch {
+        // Fall through to the bail-out below.
+      }
+      if (disposed || !token) return;
+
+      // Loaded lazily so the socket.io client never reaches the initial bundle,
+      // and is dropped from the page entirely when realtime is disabled.
+      const { io } = await import('socket.io-client');
       if (disposed) return;
 
       const s = io(url, {
@@ -62,6 +75,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10000,
         transports: ['websocket'],
+        auth: { token },
       });
 
       socket = s;
@@ -84,7 +98,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       s.on('connect_error', (error) => {
         console.error('Socket connection error:', error);
       });
-    });
+    })();
 
     return () => {
       disposed = true;
