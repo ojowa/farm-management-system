@@ -32,14 +32,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SOCKET_URL;
-    // Realtime is opt-out via NEXT_PUBLIC_REALTIME_ENABLED=false. Serverless
-    // hosts (e.g. Vercel) cannot serve persistent WebSocket/socket.io
-    // connections, so skip connecting there to avoid reconnect/error loops.
+    // Set NEXT_PUBLIC_REALTIME_ENABLED=false on hosts that cannot serve
+    // persistent WebSocket connections; the socket.io client is then never
+    // loaded at all (it is imported lazily below).
     const enabled = process.env.NEXT_PUBLIC_REALTIME_ENABLED !== 'false';
 
-    if (!enabled || !url) {
+    // The server authenticates every handshake from the accessToken cookie, so
+    // an anonymous socket is always rejected — don't churn connections on the
+    // login screen.
+    if (!enabled || !url || !isAuthenticated) {
       setIsConnected(false);
       setReconnecting(false);
+      joinedRef.current = false;
       return;
     }
 
@@ -90,7 +94,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setIsConnected(false);
       setReconnecting(false);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   // Auto-join user room when connected
   useEffect(() => {
