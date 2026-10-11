@@ -10,13 +10,17 @@
  * listens on 127.0.0.1:4099 and the gateway proxies to it through the
  * *_SERVICE_URL variables, exactly as in production.
  *
- * Vercel sees this file import `express` and export an Express app, so it
- * deploys the app as one function (Fluid compute, 300s default max duration).
+ * Vercel sees this file import `express` and export an http.Server built on
+ * the Express app, so it deploys the app as one function (Fluid compute, 300s
+ * default max duration) with WebSocket upgrades handled by socket.io.
  */
 const { loadEnv } = require('@farm/env');
 loadEnv();
 
 const express = require('express');
+const http = require('http');
+const { Server: SocketIOServer } = require('socket.io');
+const { verifyAccessToken } = require('@farm/auth-server');
 
 const DOMAIN_PORT = Number(process.env.DOMAINS_SERVICE_PORT) || 4099;
 const DOMAIN_BASE = `http://127.0.0.1:${DOMAIN_PORT}`;
@@ -105,4 +109,77 @@ app.use((err, req, res, _next) => {
   }
 });
 
-module.exports = app;
+// ---------------------------------------------------------------------------
+// Realtime (socket.io)
+//
+// Vercel Functions expose WebSockets only when the module exports an
+// http.Server, so the NestJS @WebSocketGateway (which never binds a port here)
+// cannot own the connection. We attach socket.io to this server instead and
+// share the instance with the domains app via a global so
+// RealtimeGateway.broadcastRealtimeEvent() can emit through it.
+//
+// This is single-instance delivery: a user's room lives on whichever function
+// instance accepted the socket, so an event raised by another instance will not
+// reach it. Adding Redis pub/sub would lift that limitation.
+// ---------------------------------------------------------------------------
+function parseOrigins() {
+  const raw = process.env.CORS_ORIGINS;
+  if (!raw) return ['http://localhost:3000'];
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function parseCookieHeader(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  for (const pair of cookieHeader.split(';')) {
+    const [key, ...rest] = pair.split('=');
+    if (key) cookies[key.trim()] = rest.join('=').trim();
+  }
+  return cookies;
+}
+
+const httpServer = http.createServer(app);
+
+const io = new SocketIOServer(httpServer, {
+  cors: { origin: parseOrigins(), credentials: true },
+  // Vercel only upgrades WebSocket connections; long-polling is unsupported,
+  // so clients must use transports: ['websocket'].
+  transports: ['websocket'],
+});
+
+// Let the realtime gateway broadcast to these same connections.
+global.__FMS_SOCKET_IO__ = io;
+
+io.on('connection', (socket) => {
+  let token = socket.handshake.auth?.token;
+  if (!token && socket.handshake.headers?.cookie) {
+    token = parseCookieHeader(socket.handshake.headers.cookie).accessToken;
+  }
+
+  let userId;
+  try {
+    if (!token || typeof token !== 'string') throw new Error('missing token');
+    const user = verifyAccessToken(token);
+    userId = user.id;
+  } catch (err) {
+    console.warn(`[server.js] socket rejected: ${err?.message || 'invalid token'} (${socket.id})`);
+    socket.disconnect(true);
+    return;
+  }
+
+  socket.on('join', (data = {}) => {
+    // Only ever let a socket join its own room.
+    if (data.userId !== userId) return;
+    socket.join(`user:${userId}`);
+    if (data.organizationId) socket.join(`org:${data.organizationId}`);
+    socket.emit('joined', { success: true, userId });
+  });
+
+  socket.on('leave', (data = {}) => {
+    if (data.userId !== userId) return;
+    socket.leave(`user:${userId}`);
+    socket.emit('left', { success: true, userId });
+  });
+});
+
+module.exports = httpServer;

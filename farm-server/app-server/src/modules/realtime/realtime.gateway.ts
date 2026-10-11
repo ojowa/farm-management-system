@@ -152,7 +152,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   broadcastRealtimeEvent(event: RealtimeEvent, organizationId?: string): void {
-    if (!this.server) {
+    // On Vercel the domains app runs inside server.js, which owns the exposed
+    // http server and therefore the live socket.io connections. Prefer that
+    // shared instance so broadcasts reach clients; fall back to the gateway's
+    // own server everywhere else (local/Render, where it binds a port).
+    const shared = (global as any).__FMS_SOCKET_IO__ as Server | undefined;
+    const io = shared || this.server;
+    if (!io) {
       this.logger.warn('Socket.IO server not initialized, cannot broadcast event');
       return;
     }
@@ -165,11 +171,11 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     const entityEventName = `${payload.entity}.${payload.action}`;
 
     if (organizationId) {
-      this.server.to(`org:${organizationId}`).emit(entityEventName, payload);
-      this.server.to(`org:${organizationId}`).emit('realtime:event', payload);
+      io.to(`org:${organizationId}`).emit(entityEventName, payload);
+      io.to(`org:${organizationId}`).emit('realtime:event', payload);
     } else {
-      this.server.emit(entityEventName, payload);
-      this.server.emit('realtime:event', payload);
+      io.emit(entityEventName, payload);
+      io.emit('realtime:event', payload);
     }
     this.logger.log(`Broadcasted realtime event: ${entityEventName}`);
   }

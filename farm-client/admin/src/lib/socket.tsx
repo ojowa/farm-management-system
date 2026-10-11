@@ -57,7 +57,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         reconnectionAttempts: 15,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10000,
-        transports: ['websocket', 'polling'],
+        transports: ['websocket'],
       });
 
       socket = s;
