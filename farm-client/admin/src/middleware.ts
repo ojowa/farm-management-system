@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register'];
+// /auth/* must stay public: the login/refresh calls are proxied to the API
+// here, and the cookie they return is what this middleware guards on. Gate them
+// and the request is redirected before it ever reaches the API.
+const PUBLIC_PATHS = ['/login', '/register', '/auth'];
 
 // Static files served from /public (manifest.json, favicon, fonts, icons, …)
 // must not be bounced to the login screen — the browser expects JSON/SVG, not
