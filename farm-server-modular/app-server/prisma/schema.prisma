@@ -1,0 +1,1401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // uncomment next line if you use Prisma <5.10
+  // directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  email     String?  @unique
+  phone     String?
+  logo      String?
+  website   String?
+  industry  String?
+
+  subscriptionPlan     String   @default("FREE")
+  subscriptionStatus   String   @default("TRIAL")
+  subscriptionPlanId   String?
+  settings             Json     @default("{}")
+
+  users     User[]
+  farms     Farm[]
+  workers   Worker[]
+  inventory Inventory[]
+  expenses  Expense[]
+  sales     Sale[]
+  livestock Livestock[]
+  budgets   Budget[]
+  memberships UserOrganization[]
+  roles      Role[]
+  featureOverrides FeatureFlagOverride[]
+  subscriptionPlanRef SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id              String   @id @default(uuid())
+  organizationId  String?
+
+  firstName       String
+  lastName        String
+  middleName      String?
+  email           String?  @unique
+  phone           String?  @unique
+
+  passwordHash    String
+  roleId          String
+  avatar          String?
+
+  isActive        Boolean  @default(true)
+  lastLoginAt     DateTime?
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret String?
+  notificationPreferences Json?
+
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  role            Role         @relation(fields: [roleId], references: [id])
+
+  refreshTokens   RefreshToken[]
+  auditLogs       AuditLog[]
+  memberships     UserOrganization[]
+  sessions        UserSession[]
+  apiKeys         ApiKey[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model UserOrganization {
+  id              String   @id @default(uuid())
+  userId          String
+  organizationId  String
+  roleInOrg       String   @default("WORKER")
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model Role {
+  id               String @id @default(uuid())
+  name             String
+  description      String?
+  isSystem         Boolean @default(false)
+  isPlatformAdmin  Boolean @default(false)
+  organizationId   String?
+
+  permissions      RolePermission[]
+  users            User[]
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model Permission {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String?
+  category    String?
+
+  roles       RolePermission[]
+
+  createdAt   DateTime @default(now())
+}
+
+model RolePermission {
+  roleId        String
+  permissionId  String
+
+  role          Role       @relation(fields: [roleId], references: [id])
+  permission    Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model RefreshToken {
+  id              String   @id @default(uuid())
+  userId          String
+  tokenHash       String   @unique
+  expiresAt       DateTime
+  revoked         Boolean  @default(false)
+  replacedByToken String?
+  deviceInfo      String?
+  ipAddress       String?
+
+  user            User     @relation(fields: [userId], references: [id])
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+model Farm {
+  id              String   @id @default(uuid())
+  organizationId  String
+
+  name            String
+  farmType        String   // CROP, LIVESTOCK, POULTRY, DAIRY, AQUACULTURE
+  location        String?
+  latitude        Float?
+  longitude       Float?
+  size            Float    @default(0)
+  status          String   @default("active")
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  fields          Field[]
+  poultryHouses   PoultryHouse[]
+  flocks          Flock[]
+  workers         Worker[]
+  inventory       Inventory[]
+  expenses        Expense[]
+  sales           Sale[]
+  livestock       Livestock[]
+  budgets         Budget[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmType])
+}
+
+model Field {
+  id        String @id @default(uuid())
+  farmId    String
+  name      String
+  size      Float
+
+  farm      Farm @relation(fields: [farmId], references: [id])
+
+  cropCycles CropCycle[]
+
+  @@index([farmId])
+}
+
+model PoultryHouse {
+  id        String @id @default(uuid())
+  farmId    String
+  name      String
+  capacity  Int
+
+  farm      Farm @relation(fields: [farmId], references: [id])
+  pens      Pen[]
+
+  @@index([farmId])
+}
+
+model Pen {
+  id              String @id @default(uuid())
+  poultryHouseId  String
+  name            String
+  capacity        Int
+
+  poultryHouse    PoultryHouse @relation(fields: [poultryHouseId], references: [id])
+
+  flocks          Flock[]
+
+  @@index([poultryHouseId])
+}
+
+model Breed {
+  id        String @id @default(uuid())
+  name      String
+  birdType  String // Enum-like string (BROILER, LAYER, etc)
+
+  flocks    Flock[]
+}
+
+model Flock {
+  id              String @id @default(uuid())
+  organizationId  String
+  farmId          String
+  penId           String
+  breedId         String
+
+  batchCode       String @unique
+  birdCount       Int
+  currentCount    Int
+
+  arrivalDate     DateTime
+  currentAgeDays  Int
+
+  status          String // Enum-like string (ACTIVE, SOLD, etc)
+
+  farm            Farm @relation(fields: [farmId], references: [id])
+  pen             Pen @relation(fields: [penId], references: [id])
+  breed           Breed @relation(fields: [breedId], references: [id])
+
+  feedingRecords   FeedingRecord[]
+  vaccinationRecords VaccinationRecord[]
+  mortalityRecords MortalityRecord[]
+  medications     Medication[]
+  eggProductions  EggProduction[]
+  poultrySales    PoultrySale[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+}
+
+model FeedingRecord {
+  id        String @id @default(uuid())
+  flockId   String
+
+  feedType  String
+  quantityKg Float
+  date      DateTime
+
+  flock     Flock @relation(fields: [flockId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model VaccinationRecord {
+  id        String @id @default(uuid())
+  flockId   String
+
+  vaccine   String
+  dosage    String?
+  date      DateTime
+
+  flock     Flock @relation(fields: [flockId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model MortalityRecord {
+  id        String @id @default(uuid())
+  flockId   String
+
+  count     Int
+  cause     String?
+  date      DateTime
+
+  flock     Flock @relation(fields: [flockId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Medication {
+  id          String    @id @default(uuid())
+  flockId     String
+  name        String
+  dosage      String
+  frequency   String
+  startDate   DateTime
+  endDate     DateTime?
+  notes       String?
+  status      String    @default("ACTIVE")
+  flock       Flock     @relation(fields: [flockId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([flockId])
+  @@index([status])
+}
+
+model EggProduction {
+  id             String   @id @default(uuid())
+  organizationId String
+  flockId        String
+  date           DateTime
+  totalEggs      Int
+  goodEggs       Int      @default(0)
+  brokenEggs     Int      @default(0)
+  notes          String?
+  createdById    String?
+  createdByName  String?
+
+  flock          Flock    @relation(fields: [flockId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([flockId])
+  @@index([organizationId])
+  @@index([date])
+}
+
+model PoultrySale {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String?
+  flockId        String?
+  date           DateTime
+  buyerName      String?
+  birdType       String
+  quantity       Int
+  weight         Float?
+  pricePerBird   Float?
+  totalAmount    Float
+  paymentMethod  String?
+  notes          String?
+
+  flock          Flock?   @relation(fields: [flockId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([flockId])
+  @@index([date])
+}
+
+model Crop {
+  id    String @id @default(uuid())
+  name  String
+
+  cropCycles CropCycle[]
+}
+
+model CropCycle {
+  id             String   @id @default(uuid())
+  organizationId String
+  fieldId        String
+  cropId         String
+
+  plantingDate   DateTime
+  harvestDate    DateTime?
+  health         Int      @default(100)
+  status         String   @default("growing")
+
+  field          Field    @relation(fields: [fieldId], references: [id])
+  crop           Crop     @relation(fields: [cropId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([fieldId])
+  @@index([cropId])
+}
+
+model Inventory {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+
+  name             String
+  category         String
+  quantity         Float
+  unit             String
+  minimumQuantity  Float @default(0)
+
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  farm             Farm         @relation(fields: [farmId], references: [id])
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+}
+
+model Expense {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+
+  title     String
+  amount    Float
+  date      DateTime
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  farm         Farm         @relation(fields: [farmId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([farmId])
+}
+
+model Sale {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+
+  item      String
+  quantity  Float
+  price     Float
+  total     Float
+
+  date      DateTime
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  farm         Farm         @relation(fields: [farmId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([farmId])
+}
+
+model Budget {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String?
+  name           String
+  description    String?
+  startDate      DateTime
+  endDate        DateTime
+  status         String   @default("ACTIVE")
+
+  categories     BudgetCategory[]
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm?        @relation(fields: [farmId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([status])
+}
+
+model BudgetCategory {
+  id             String   @id @default(uuid())
+  budgetId       String
+  name           String
+  budgetAmount   Float
+  spentAmount    Float   @default(0)
+
+  budget         Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([budgetId])
+}
+
+model Worker {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+
+  userId         String?
+  firstName      String
+  middleName     String?
+  lastName       String
+  email          String?
+  phone          String?
+  position       String
+  department     String?
+  hireDate       DateTime?
+  status         String   @default("ACTIVE")
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm         @relation(fields: [farmId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([userId])
+  @@index([status])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  organizationId String?
+  action         String
+  entity         String
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  userAgent      String?
+
+  user           User?    @relation(fields: [userId], references: [id])
+
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model SyncQueue {
+  id        String @id @default(uuid())
+
+  entity    String
+  entityId  String
+  operation String
+  payload   String
+
+  synced    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model Livestock {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+  species        String
+  breed          String?
+  gender         String
+  birthDate      DateTime
+  status         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm         @relation(fields: [farmId], references: [id])
+
+  @@index([organizationId])
+  @@index([farmId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO")
+  link      String?
+  entityType String?
+  entityId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String
+  platform  String   // "web", "ios", "android"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
+  @@index([token])
+  @@index([active])
+}
+
+model Task {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String?
+  title          String
+  description    String?
+  priority       String   @default("MEDIUM")
+  status         String   @default("PENDING")
+
+  assignedToId   String?
+  assignedToName String?
+  createdById    String?
+  createdByName  String?
+
+  dueDate        DateTime?
+  completedAt    DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([assignedToId])
+  @@index([status])
+}
+
+model LeaveType {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  daysPerYear    Int      @default(0)
+  isPaid         Boolean  @default(true)
+  isActive       Boolean  @default(true)
+
+  leaveRequests  LeaveRequest[]
+  leaveBalances  LeaveBalance[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model LeaveRequest {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  leaveTypeId    String
+  startDate      DateTime
+  endDate        DateTime
+  days           Int
+  reason         String?
+  status         String   @default("PENDING")
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectionReason String?
+
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+}
+
+model LeaveBalance {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  leaveTypeId    String
+  year           Int
+  totalDays      Int      @default(0)
+  usedDays       Int      @default(0)
+
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, leaveTypeId, year])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// ── Phase 2: Duty Roster ──────────────────────────────────
+
+model Shift {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  startTime      String   // "08:00"
+  endTime        String   // "16:00"
+  color          String?  @default("#3B82F6")
+  isActive       Boolean  @default(true)
+
+  assignments    ShiftAssignment[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model ShiftAssignment {
+  id             String   @id @default(uuid())
+  organizationId String
+  shiftId        String
+  userId         String
+  date           DateTime // date only (no time)
+  notes          String?
+
+  shift          Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@unique([shiftId, userId, date])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([date])
+}
+
+// ── Worker Attendance ─────────────────────────────────────
+
+model Attendance {
+  id             String   @id @default(uuid())
+  organizationId String
+  workerId       String
+  workerName     String
+  date           DateTime
+  status         String   // PRESENT, ABSENT, LATE, HALF_DAY, ON_LEAVE
+  clockIn        String?  // "HH:MM"
+  clockOut       String?  // "HH:MM"
+  hoursWorked    Float?
+  notes          String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([workerId, date])
+  @@index([organizationId])
+  @@index([workerId])
+  @@index([date])
+  @@index([status])
+}
+
+// ── Phase 3: Internal Messaging ───────────────────────────
+
+model Message {
+  id             String   @id @default(uuid())
+  organizationId String
+  senderId       String
+  senderName     String
+  subject        String
+  body           String
+  priority       String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+
+  recipients     MessageRecipient[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model MessageRecipient {
+  id             String   @id @default(uuid())
+  messageId      String
+  recipientId    String
+  recipientName  String
+  organizationId String
+  isRead         Boolean  @default(false)
+  readAt         DateTime?
+
+  message        Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@unique([messageId, recipientId])
+  @@index([recipientId])
+  @@index([organizationId])
+  @@index([isRead])
+}
+
+// ── Phase 4: Correspondence ───────────────────────────────
+
+model Correspondence {
+  id              String   @id @default(uuid())
+  organizationId  String
+  referenceNumber String   @unique
+  title           String
+  type            String   // INCOMING, OUTGOING, INTERNAL
+  category        String   @default("OTHER") // MEMO, LETTER, REPORT, NOTICE, OTHER
+  from            String?  // sender/originator
+  to              String?  // recipient/destination
+  content         String?
+  status          String   @default("DRAFT") // DRAFT, SENT, RECEIVED, ARCHIVED
+  priority        String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  receivedDate    DateTime?
+  createdById     String
+  createdByName   String
+  archivedAt      DateTime?
+
+  attachments     CorrespondenceAttachment[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([type])
+  @@index([createdById])
+}
+
+model CorrespondenceAttachment {
+  id              String   @id @default(uuid())
+  correspondenceId String
+  fileName        String
+  fileSize        Int
+  fileUrl         String
+  fileType        String?
+  uploadedById    String
+  organizationId  String
+
+  correspondence  Correspondence @relation(fields: [correspondenceId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([correspondenceId])
+  @@index([organizationId])
+}
+
+// ── Platform Console: Feature Flags ───────────────────────
+
+model FeatureFlag {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  name          String
+  description   String?
+  category      String   @default("core")
+  defaultValue  Boolean  @default(true)
+  isEnabled     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orgOverrides  FeatureFlagOverride[]
+}
+
+model FeatureFlagOverride {
+  id              String      @id @default(uuid())
+  featureFlagId   String
+  organizationId  String
+  isEnabled       Boolean
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  featureFlag     FeatureFlag  @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([featureFlagId, organizationId])
+  @@index([organizationId])
+}
+
+// ── Platform Console: Subscriptions ───────────────────────
+
+model SubscriptionPlan {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  displayName   String
+  description   String?
+  price         Decimal  @default(0)
+  currency      String   @default("USD")
+  billingCycle  String   @default("MONTHLY")
+  maxUsers      Int      @default(5)
+  maxFarms      Int      @default(1)
+  maxStorage    Int      @default(100)
+  features      Json     @default("[]")
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  organizations Organization[]
+}
+
+// ── Platform Console: User Sessions ───────────────────────
+
+model UserSession {
+  id          String   @id @default(uuid())
+  userId      String
+  app         String
+  deviceInfo  Json?
+  ipAddress   String?
+  isActive    Boolean  @default(true)
+  loginAt     DateTime @default(now())
+  lastActive  DateTime @default(now())
+  logoutAt    DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([app])
+  @@index([isActive])
+}
+
+// ── Platform Console: System Health ───────────────────────
+
+model SystemHealth {
+  id          String   @id @default(uuid())
+  serviceName String
+  status      String   @default("healthy")
+  uptime      Int      @default(0)
+  memoryUsage Json?
+  lastCheck   DateTime @default(now())
+  metadata    Json?
+
+  @@unique([serviceName])
+  @@index([status])
+  @@index([lastCheck])
+}
+
+// ── Platform Console: Broadcasts ──────────────────────────
+
+model Broadcast {
+  id          String   @id @default(uuid())
+  title       String
+  message     String
+  type        String   @default("INFO")
+  targetOrgs  String[] @default([])
+  isActive    Boolean  @default(true)
+  startsAt    DateTime @default(now())
+  expiresAt   DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([startsAt])
+}
+
+// ── Platform Console: Platform Config ─────────────────────
+
+model PlatformConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  description String?
+  category    String   @default("general")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Priority 2: Crop Calendar & Lifecycle ────────────────
+
+model CropStage {
+  id             String   @id @default(uuid())
+  organizationId String
+  cropCycleId    String
+  stage          String   // PREPARATION, PLANTING, GERMINATION, GROWING, FLOWERING, FRUITING, HARVESTING, POST_HARVEST
+  startDate      DateTime
+  endDate        DateTime?
+  notes          String?
+  createdById    String?
+  createdByName  String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([cropCycleId])
+  @@index([organizationId])
+  @@index([stage])
+  @@index([startDate])
+}
+
+// ── Priority 2: Livestock Health Records ─────────────────
+
+model HealthRecord {
+  id              String   @id @default(uuid())
+  organizationId  String
+  livestockId     String
+  type            String   // VACCINATION, TREATMENT, CHECKUP, SURGERY, DEWORMING, OTHER
+  date            DateTime
+  description     String
+  veterinarian    String?
+  medications     String?
+  cost            Float?
+  nextCheckupDate DateTime?
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([livestockId])
+  @@index([organizationId])
+  @@index([type])
+  @@index([date])
+}
+
+model VaccinationSchedule {
+  id              String   @id @default(uuid())
+  organizationId  String
+  livestockId     String
+  vaccineName     String
+  scheduledDate   DateTime
+  administeredDate DateTime?
+  status          String   @default("SCHEDULED") // SCHEDULED, ADMINISTERD, MISSED, CANCELLED
+  notes           String?
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([livestockId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+// ── Priority 2: Livestock Breeding Records ───────────────
+
+model BreedingRecord {
+  id              String   @id @default(uuid())
+  organizationId  String
+  sireId          String
+  sireName        String?
+  damId           String
+  damName         String?
+  breedingDate    DateTime
+  expectedDueDate DateTime?
+  actualBirthDate DateTime?
+  offspringCount  Int?
+  status          String   @default("PLANNED") // PLANNED, BRED, CONFIRMED, BORN, FAILED
+  notes           String?
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([sireId])
+  @@index([damId])
+  @@index([status])
+}
+
+// ── Priority 2: Weight/Growth Tracking ───────────────────
+
+model WeightRecord {
+  id              String   @id @default(uuid())
+  organizationId  String
+  livestockId     String?
+  flockId         String?
+  weight          Float
+  unit            String   @default("kg")
+  recordedDate    DateTime
+  notes           String?
+  createdById     String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([livestockId])
+  @@index([flockId])
+  @@index([organizationId])
+  @@index([recordedDate])
+}
+
+// ── Priority 2: Irrigation Scheduling ────────────────────
+
+model IrrigationSchedule {
+  id              String   @id @default(uuid())
+  organizationId  String
+  farmId          String
+  cropCycleId     String?
+  name            String
+  frequency       String   // DAILY, WEEKLY, CUSTOM
+  waterAmount     Float
+  unit            String   @default("liters")
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean  @default(true)
+  lastRun         DateTime?
+  nextRun         DateTime?
+  createdById     String?
+
+  logs            IrrigationLog[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([isActive])
+}
+
+model IrrigationLog {
+  id              String   @id @default(uuid())
+  organizationId  String
+  scheduleId      String
+  farmId          String
+  date            DateTime
+  duration        Float?   // minutes
+  waterAmount     Float
+  unit            String   @default("liters")
+  notes           String?
+  recordedById    String?
+  recordedByName  String?
+
+  schedule        IrrigationSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([scheduleId])
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([date])
+}
+
+// ── Priority 2: Pest & Disease Management ────────────────
+
+model PestDiseaseRecord {
+  id              String   @id @default(uuid())
+  organizationId  String
+  cropCycleId     String?
+  farmId          String
+  type            String   // PEST, DISEASE, WEED, OTHER
+  name            String
+  severity        String   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  identifiedDate  DateTime
+  treatment       String?
+  treatedDate     DateTime?
+  outcome         String?
+  notes           String?
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([cropCycleId])
+  @@index([type])
+  @@index([severity])
+  @@index([identifiedDate])
+}
+
+// ── Priority 3: Yield Tracking ──────────────────────────
+
+model YieldRecord {
+  id              String   @id @default(uuid())
+  organizationId  String
+  cropId          String
+  cropCycleId     String?
+  quantity        Float
+  unit            String   @default("kg")
+  quality         String?  // GRADE_A, GRADE_B, GRADE_C, PREMIUM
+  harvestedDate   DateTime
+  notes           String?
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([cropId])
+  @@index([cropCycleId])
+  @@index([organizationId])
+  @@index([harvestedDate])
+}
+
+// ── Priority 3: Automated/Scheduled Reports ─────────────
+
+model Report {
+  id              String   @id @default(uuid())
+  organizationId  String
+  farmId          String?
+  title           String
+  status          String   @default("pending")
+  parameters      Json     @default("{}")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([status])
+}
+
+model ScheduledReport {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  template        String   // FINANCIAL_SUMMARY, CROP_PRODUCTION, LIVESTOCK_HEALTH, INVENTORY, CUSTOM
+  recipients      String[] @default([])
+  frequency       String   // DAILY, WEEKLY, MONTHLY, QUARTERLY
+  lastSent        DateTime?
+  nextSend        DateTime?
+  isActive        Boolean  @default(true)
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([nextSend])
+}
+
+// ── Priority 4: Equipment & Machinery Tracking ──────────
+
+model Equipment {
+  id              String   @id @default(uuid())
+  organizationId  String
+  farmId          String?
+  name            String
+  type            String   // TRACTOR, HARVESTER, IRRIGATION, VEHICLE, TOOL, OTHER
+  model           String?
+  serialNumber    String?
+  purchaseDate    DateTime?
+  purchaseCost    Float?
+  status          String   @default("ACTIVE") // ACTIVE, UNDER_MAINTENANCE, RETIRED
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  notes           String?
+
+  maintenanceRecords MaintenanceRecord[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+  @@index([status])
+}
+
+model MaintenanceRecord {
+  id              String   @id @default(uuid())
+  organizationId  String
+  equipmentId     String
+  type            String   // SCHEDULED, REPAIR, INSPECTION, OTHER
+  date            DateTime
+  cost            Float?
+  description     String
+  performedBy     String?
+
+  equipment       Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@index([equipmentId])
+  @@index([organizationId])
+  @@index([date])
+}
+
+// ── Priority 4: Contract Management ─────────────────────
+
+model Contract {
+  id              String   @id @default(uuid())
+  organizationId  String
+  type            String   // BUY, SELL
+  buyerSellerName String
+  entityId        String?
+  entityType      String?  // farm, crop, livestock
+  startDate       DateTime
+  endDate         DateTime?
+  value           Float
+  status          String   @default("DRAFT") // DRAFT, ACTIVE, COMPLETED, CANCELLED
+  terms           String?
+  createdById     String?
+  createdByName   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([status])
+}
+
+// ── Priority 4: Document/File Management ────────────────
+
+model Document {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  type            String   // IMAGE, PDF, SPREADSHEET, DOCUMENT, OTHER
+  entityId        String?
+  entityType      String?  // farm, crop, livestock, worker, contract, invoice
+  uploadedById    String?
+  uploadedByName  String?
+  fileSize        Int?
+  mimeType        String?
+  url             String
+  // Object-storage key (S3-compatible / local). Nullable for rows created
+  // before object storage was introduced or via the metadata-only endpoint.
+  storageKey      String?
+  storageDriver   String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([entityId, entityType])
+  @@index([uploadedById])
+}
+
+// ── Priority 4: Marketplace / Buyer Management ──────────
+
+model Buyer {
+  id              String   @id @default(uuid())
+  organizationId  String
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         String?
+  type            String   @default("INDIVIDUAL") // INDIVIDUAL, COMPANY, COOPERATIVE
+  notes           String?
+
+  listings        MarketListing[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+}
+
+model MarketListing {
+  id              String   @id @default(uuid())
+  organizationId  String
+  buyerId         String?
+  entityType      String   // crop, livestock, poultry
+  entityId        String?
+  title           String
+  price           Float
+  unit            String   @default("kg")
+  quantity        Float
+  status          String   @default("ACTIVE") // ACTIVE, SOLD, CANCELLED
+  listedDate      DateTime
+  soldDate        DateTime?
+
+  buyer           Buyer? @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([buyerId])
+  @@index([status])
+  @@index([entityType])
+}
+
+model ApiKey {
+  id             String   @id @default(uuid())
+  userId         String
+  name           String
+  keyPrefix      String
+  keyHash        String
+  service        String
+  isActive       Boolean  @default(true)
+  lastUsedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyPrefix])
+}
+
+// ── Auth: Email Verification ─────────────────────────────
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  type      String   // EMAIL_VERIFICATION, PASSWORD_RESET
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([type])
+}

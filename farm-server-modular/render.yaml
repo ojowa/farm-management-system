@@ -1,0 +1,75 @@
+# Render Blueprint — FMS API (farm-server-modular)
+#
+# This blueprint lives INSIDE farm-server-modular so the backend can be
+# managed on its own. Render does not auto-detect it: you must point a
+# Blueprint at it.
+#
+#   Render Dashboard → New → Blueprint → connect ojowa/farm-management-system
+#   → branch main → Blueprint Path: farm-server-modular/render.yaml
+#   → Deploy Blueprint
+#
+# Topology note: this is a MODULAR MONOLITH — one Node process
+# (scripts/start-prod.js → app-server/dist/main.js) serves every bounded
+# context behind a single /v1 surface. There is no gateway and no
+# *_SERVICE_URL routing; do not copy those variables from the old
+# farm-server blueprint.
+#
+# Notes:
+#   - rootDir / buildCommand / startCommand / preDeployCommand paths are
+#     relative to the repository root (rootDir) and to rootDir (commands).
+#   - ALL environment variables (DATABASE_URL, secrets, CORS origins, etc.)
+#     are managed manually in the Render Dashboard — this blueprint only
+#     defines how to build and run the app. See the commented checklist at
+#     the bottom of this file.
+#
+# Deploy: Render Dashboard → New → Blueprint → point at this file.
+
+services:
+  - type: web
+    name: fms-api-modular
+    runtime: node
+    plan: free
+    # Working directory is farm-server-modular; the repo root is still checked
+    # out, so app-server/tsconfig.json (../../) and packages/server/*/tsconfig
+    # files (../../../../) reach the shared tsconfig.base.json at the repo root.
+    rootDir: farm-server-modular
+    # --include=dev is REQUIRED: NODE_ENV=production (env var below) is visible
+    # at build time, and npm then skips devDependencies — which removes
+    # `typescript` and `@types/node`, so `tsc` falls back to Render's system
+    # TypeScript and fails with TS5102/TS5108 ("baseUrl"/"node10" removed)
+    # and TS2688 (cannot find type definition 'node'). Forcing --include=dev
+    # installs the exact lockfile versions (typescript 5.8.3) regardless of
+    # NODE_ENV; npm run scripts then pick the local tsc ahead of any global one.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node scripts/start-prod.js
+    preDeployCommand: npm run migrate
+    healthCheckPath: /v1/health
+    # NOTE: no envVars here on purpose — all env vars are managed in the
+    # Render Dashboard (Environment page) for this service.
+
+# ---------------------------------------------------------------------------
+# Environment variables to set in Render Dashboard → service → Environment.
+# (Comments only — the blueprint deliberately does not manage any of them.)
+#
+#   NODE_VERSION=20
+#   NODE_ENV=production
+#   API_SERVICE_PORT=4022        # single HTTP port for the monolith
+#   DATABASE_URL=postgresql://... (Neon, sslmode=require)
+#   JWT_SECRET=...               # (generate)
+#   JWT_REFRESH_SECRET=...       # (generate)
+#   MFA_SECRET=...               # (generate)
+#   SERVICE_SECRET=...           # (generate)
+#   CORS_ORIGINS=https://farm-management-system-lake.vercel.app,https://farm-management-system-three-navy.vercel.app
+#   COOKIE_SAMESITE=none
+#   ADMIN_URL=https://farm-management-system-lake.vercel.app
+#   CONSOLE_URL=https://farm-management-system-three-navy.vercel.app/login
+#   MOBILE_URL=https://fms-mobile-3an1wd.vercel.app
+#
+#   # Object storage for document uploads (S3-compatible: AWS S3, Cloudflare R2…).
+#   # Unset STORAGE_DRIVER to auto-select "s3" when S3_BUCKET is set, else "local".
+#   STORAGE_DRIVER=s3
+#   S3_BUCKET=fms-documents
+#   S3_REGION=auto
+#   S3_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
+#   S3_ACCESS_KEY_ID=...
+#   S3_SECRET_ACCESS_KEY=...
