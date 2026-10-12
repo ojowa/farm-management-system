@@ -20,11 +20,14 @@ export function loadEnv(): void {
   loaded = true;
 
   const candidates = [
-    // farm-server-modular/.env  (app-server/dist/kernel/env -> ../../../../)
+    // app-server/.env
+    join(__dirname, '..', '..', '..', '.env'),
+    // farm-server-modular/.env
     join(__dirname, '..', '..', '..', '..', '.env'),
     // repo root .env
     join(__dirname, '..', '..', '..', '..', '..', '.env'),
     join(process.cwd(), '.env'),
+    join(process.cwd(), '..', '.env'),
   ];
 
   let content: string | null = null;

@@ -117,4 +117,11 @@ io.on('connection', (socket) => {
   });
 });
 
-module.exports = httpServer;
+if (require.main === module) {
+  const port = Number(process.env.PORT || process.env.API_SERVICE_PORT) || 4022;
+  httpServer.listen(port, process.env.LISTEN_HOST || '0.0.0.0', () => {
+    console.log(`[server.js] listening on port ${port}`);
+  });
+} else {
+  module.exports = httpServer;
+}

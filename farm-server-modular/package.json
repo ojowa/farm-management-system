@@ -11,6 +11,7 @@
     "build": "npm --prefix app-server run build",
     "build:app": "npm --prefix app-server run build",
     "start": "npm --prefix app-server run start",
+    "postdeploy": "npm --prefix app-server run postdeploy",
     "start:dev": "npm --prefix app-server run dev",
     "migrate": "npm --prefix app-server run migrate:deploy",
     "migrate:dev": "npm --prefix app-server run migrate:dev",

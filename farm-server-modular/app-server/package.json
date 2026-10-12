@@ -7,12 +7,14 @@
   "scripts": {
     "prisma:generate": "prisma generate",
     "build": "npm run prisma:generate && nest build",
+    "prestart": "npx prisma migrate deploy --schema prisma/schema.prisma",
     "start": "node dist/main.js",
+    "postdeploy": "npx prisma migrate deploy --schema prisma/schema.prisma",
     "start:prod": "node ../scripts/start-prod.js",
     "dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "migrate:deploy": "prisma migrate deploy",
-    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "npx prisma migrate deploy --schema prisma/schema.prisma",
+    "migrate:dev": "npx prisma migrate dev --schema prisma/schema.prisma",
     "db:seed": "ts-node prisma/seed.ts",
     "db:check-roles": "ts-node prisma/check-roles.ts",
     "db:check-user": "node prisma/check-user.js"
