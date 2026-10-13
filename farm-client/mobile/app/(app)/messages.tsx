@@ -29,10 +29,14 @@ const PRIORITY_COLORS: Record<string, string> = {
   URGENT: '#EF4444',
 };
 
+type RecipientOption = { id: string; firstName: string; lastName: string; role: string | null };
+
 export default function MessagesScreen() {
   const { user } = useAuth();
   const { canCreate } = usePermission();
-  const canSend = canCreate('messaging');
+  // The seeded permission family is `communication.*` — `messaging.write`
+  // never existed, so compose was hidden for everyone.
+  const canSend = canCreate('communication');
 
   const [view, setView] = useState<ScreenView>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);
@@ -47,6 +51,9 @@ export default function MessagesScreen() {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [priority, setPriority] = useState('NORMAL');
+  const [recipientIds, setRecipientIds] = useState<string[]>([]);
+  const [recipientsList, setRecipientsList] = useState<RecipientOption[]>([]);
+  const [recipientsLoading, setRecipientsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -70,6 +77,19 @@ export default function MessagesScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
+  const loadRecipients = useCallback(async () => {
+    setRecipientsLoading(true);
+    try {
+      const { data } = await messagesAPI.recipients();
+      setRecipientsList(data as RecipientOption[]);
+    } catch {
+      Alert.alert('Error', 'Failed to load people you can message');
+    } finally { setRecipientsLoading(false); }
+  }, []);
+
+  const toggleRecipient = (id: string) =>
+    setRecipientIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
+
   const openMessage = async (msg: Message) => {
     try {
       const { data } = await messagesAPI.get(msg.id);
@@ -86,13 +106,18 @@ export default function MessagesScreen() {
       Alert.alert('Error', 'Subject and body are required');
       return;
     }
+    if (recipientIds.length === 0) {
+      Alert.alert('Error', 'Select at least one recipient');
+      return;
+    }
     setSaving(true);
     try {
-      await messagesAPI.send({ subject: subject.trim(), body: body.trim(), priority });
+      await messagesAPI.send({ subject: subject.trim(), body: body.trim(), priority, recipientIds });
       Alert.alert('Success', 'Message sent');
       setSubject('');
       setBody('');
       setPriority('NORMAL');
+      setRecipientIds([]);
       setView('sent');
       await loadData();
     } catch (err: any) {
@@ -136,7 +161,10 @@ export default function MessagesScreen() {
           Messages {unreadCount > 0 && <Text style={styles.unreadBadge}>({unreadCount})</Text>}
         </Text>
         {canSend && view !== 'compose' && (
-          <TouchableOpacity onPress={() => { setView('compose'); setSelected(null); }} accessibilityLabel="Compose new message">
+          <TouchableOpacity
+            onPress={() => { setView('compose'); setSelected(null); setRecipientIds([]); loadRecipients(); }}
+            accessibilityLabel="Compose new message"
+          >
             <Text style={styles.composeBtn}>+ Compose</Text>
           </TouchableOpacity>
         )}
@@ -167,6 +195,36 @@ export default function MessagesScreen() {
         /* Compose */
         <Card>
           <Text style={styles.sectionTitle}>New Message</Text>
+          <Text style={styles.composeLabel}>To:</Text>
+          {recipientsLoading ? (
+            <Text style={styles.recipientsHint}>Loading people...</Text>
+          ) : recipientsList.length === 0 ? (
+            <Text style={styles.recipientsHint}>No one else in your organization yet</Text>
+          ) : (
+            <View style={styles.chipWrap}>
+              {recipientsList.map((r) => {
+                const isSelected = recipientIds.includes(r.id);
+                return (
+                  <TouchableOpacity
+                    key={r.id}
+                    onPress={() => toggleRecipient(r.id)}
+                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
+                  >
+                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                      {r.firstName} {r.lastName}{r.role ? ` · ${r.role}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+          {recipientIds.length > 0 && (
+            <Text style={styles.recipientsHint}>
+              {recipientIds.length} recipient{recipientIds.length > 1 ? 's' : ''} selected
+            </Text>
+          )}
           <TextInput
             style={styles.input}
             value={subject}
@@ -252,7 +310,7 @@ export default function MessagesScreen() {
                         </View>
                       </View>
                       <Text style={styles.messageListMeta}>
-                        {view === 'inbox' ? `From: ${msg.senderName}` : `To: ${msg.recipients?.[0]?.recipientName || '—'}`}
+                        {view === 'inbox' ? `From: ${msg.senderName}` : `To: ${msg.recipients?.map((r) => r.recipientName).join(', ') || '—'}`}
                         {' · '}{formatDate(msg.createdAt)}
                       </Text>
                     </View>
@@ -287,6 +345,13 @@ const styles = StyleSheet.create({
   textArea: { height: 120, textAlignVertical: 'top' },
   priorityRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   label: { fontSize: 14, color: '#374151' },
+  composeLabel: { fontSize: 14, color: '#374151', marginBottom: 8 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: 'transparent' },
+  chipSelected: { backgroundColor: '#D1FAE5', borderColor: '#10B981' },
+  chipText: { fontSize: 12, color: '#374151' },
+  chipTextSelected: { color: '#065F46', fontWeight: '600' },
+  recipientsHint: { fontSize: 12, color: '#9CA3AF', marginBottom: 12 },
   priorityBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#F3F4F6' },
   priorityBtnText: { fontSize: 12, color: '#6B7280' },
   composeActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },

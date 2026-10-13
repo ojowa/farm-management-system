@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
+import { PermissionAny, PermissionAnyGuard } from '../../../../core/auth/permission-any.guard';
 import { HrApplicationService } from '../../application/services/hr.service';
 
 function getOrgId(req: any): string {
@@ -376,43 +377,55 @@ export class LeaveBalanceController {
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+/**
+ * Messaging serves two audiences: managers/supervisors in the admin app
+ * (`hr.*`) and workers on the mobile app (`communication.*`), so every route
+ * accepts either permission family.
+ */
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('messages')
 export class MessagesController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  @PermissionAny('hr.read', 'communication.read')
   @Get('inbox')
   inbox(@Req() req: any) {
     return this.hrService.getInbox(getOrgId(req), getUserId(req));
   }
 
-  @Permission('hr.read')
+  @PermissionAny('hr.read', 'communication.read')
   @Get('sent')
   sent(@Req() req: any) {
     return this.hrService.getSentMessages(getOrgId(req), getUserId(req));
   }
 
-  @Permission('hr.read')
+  @PermissionAny('hr.read', 'communication.read')
   @Get('unread-count')
   unreadCount(@Req() req: any) {
     return this.hrService.getUnreadCount(getOrgId(req), getUserId(req));
   }
 
-  @Permission('hr.read')
+  /** People the caller can message: active users of their own organization. */
+  @PermissionAny('hr.read', 'communication.read')
+  @Get('recipients')
+  listRecipients(@Req() req: any) {
+    return this.hrService.getMessageRecipients(getOrgId(req), getUserId(req));
+  }
+
+  @PermissionAny('hr.read', 'communication.read')
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.hrService.getMessageById(id, getUserId(req), getOrgId(req));
   }
 
-  @Permission('hr.write')
+  @PermissionAny('hr.write', 'communication.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createMessage(getOrgId(req), getUserId(req), getUserName(req), body);
   }
 
-  @Permission('hr.delete')
+  @PermissionAny('hr.delete', 'communication.write')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @Req() req: any) {

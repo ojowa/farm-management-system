@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { usePermission } from '@/lib/usePermission';
-import { messagesAPI, orgAdminAPI } from '@/lib/api';
+import { messagesAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,8 +66,10 @@ export default function MessagesPage() {
       setSent(sentRes.data);
       setUnreadCount(unreadRes.data.count);
       if (canSend) {
-        const wRes = await orgAdminAPI.listUsers();
-        setWorkers(wRes.data);
+        // Served by the messaging API itself, so hr.write senders don't also
+        // need users.read just to see who they can write to.
+        const rRes = await messagesAPI.recipients();
+        setWorkers(rRes.data);
       }
     } catch { /* ignore */ }
     finally { setLoading(false); }

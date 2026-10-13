@@ -789,6 +789,27 @@ export class HrApplicationService {
     return { ...message, isRead: true };
   }
 
+  /** People the caller can message: active users of their own organization. */
+  async getMessageRecipients(organizationId: string, userId: string) {
+    const { prisma } = await import('../../../../kernel/database');
+    const users = await prisma.user.findMany({
+      where: { organizationId, isActive: true, id: { not: userId } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: { select: { name: true } },
+      },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    });
+    return users.map((u: any) => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      role: u.role?.name || null,
+    }));
+  }
+
   async createMessage(organizationId: string, senderId: string, senderName: string, data: {
     subject: string;
     body: string;
@@ -796,8 +817,22 @@ export class HrApplicationService {
     priority?: string;
   }) {
     const { subject, body: messageBody, recipientIds, priority } = data;
-    if (!subject || !messageBody || !Array.isArray(recipientIds) || recipientIds.length === 0) {
+    const uniqueIds = [...new Set((Array.isArray(recipientIds) ? recipientIds : []).filter(Boolean))];
+    if (!subject || !messageBody || uniqueIds.length === 0) {
       throw new BadRequestException('subject, body, and recipientIds are required');
+    }
+
+    // Recipients must be real, active users of the caller's organization.
+    // Ids from other organizations would silently never land (inboxes are
+    // organization-scoped), and recipient names are stored denormalized for
+    // the Sent list, so resolve them here instead of writing blanks.
+    const { prisma } = await import('../../../../kernel/database');
+    const recipients = await prisma.user.findMany({
+      where: { id: { in: uniqueIds }, organizationId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (recipients.length === 0) {
+      throw new BadRequestException('No valid recipients in your organization');
     }
 
     const message = await this.messageRepo.create({
@@ -810,10 +845,10 @@ export class HrApplicationService {
     });
 
     await this.messageRecipientRepo.createMany(
-      recipientIds.map((recipientId) => ({
+      recipients.map((r: any) => ({
         messageId: message.id,
-        recipientId,
-        recipientName: '',
+        recipientId: r.id,
+        recipientName: `${r.firstName} ${r.lastName}`.trim(),
         organizationId,
       }))
     );

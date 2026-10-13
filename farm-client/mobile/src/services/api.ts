@@ -696,6 +696,8 @@ export const messagesAPI = {
     http.get<Message[]>('/messages/sent'),
   unreadCount: () =>
     http.get<{ count: number }>('/messages/unread-count'),
+  recipients: () =>
+    http.get<Array<{ id: string; firstName: string; lastName: string; role: string | null }>>('/messages/recipients'),
   get: (id: string) =>
     http.get<Message>(`/messages/${id}`),
   send: (data: any) =>

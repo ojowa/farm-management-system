@@ -90,6 +90,8 @@ export interface MessagesAPI {
   inbox: () => Promise<any>;
   sent: () => Promise<any>;
   unreadCount: () => Promise<any>;
+  /** People in the caller's organization they can message (no users.read needed). */
+  recipients: () => Promise<any>;
   get: (id: string) => Promise<any>;
   send: (data: { subject: string; body: string; recipientIds: string[]; priority?: string }) => Promise<any>;
   delete: (id: string) => Promise<any>;
@@ -100,6 +102,7 @@ export function createMessagesAPI(client: AxiosInstance): MessagesAPI {
     inbox: () => client.get('/messages/inbox'),
     sent: () => client.get('/messages/sent'),
     unreadCount: () => client.get('/messages/unread-count'),
+    recipients: () => client.get('/messages/recipients'),
     get: (id) => client.get(`/messages/${id}`),
     send: (data) => client.post('/messages', data),
     delete: (id) => client.delete(`/messages/${id}`),

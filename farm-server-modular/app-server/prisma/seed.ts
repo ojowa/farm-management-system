@@ -163,7 +163,7 @@ async function main() {
       'hr.read', 'leave.read', 'leave.write',
     ],
     VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'farm.read', 'hr.read'],
-    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'communication.read', 'notification.read', 'leave.read', 'leave.write'],
+    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
   }
 
   for (const [roleName, perms] of Object.entries(rolePermissions)) {
