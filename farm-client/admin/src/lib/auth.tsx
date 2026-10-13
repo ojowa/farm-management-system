@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { startInactivityTracker } from '@/lib/inactivity';
-import { isPublicPath } from '@farm/auth/paths';
+import { isPublicPath } from '@/lib/paths';
 
 interface User {
   id: string;

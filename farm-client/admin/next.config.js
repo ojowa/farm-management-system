@@ -2,7 +2,6 @@
 const gatewayUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/v1';
 
 const nextConfig = {
-  transpilePackages: ['@farm/types', '@farm/validation'],
   typescript: {
     ignoreBuildErrors: false,
   },

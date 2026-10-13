@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { createFarmManagementClient } from '@farm/api-client';
+import { createFarmManagementClient } from '@/lib/api-client';
 
 /**
  * Server-side API client that reads auth cookies from the request.

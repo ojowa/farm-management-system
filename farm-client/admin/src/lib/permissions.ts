@@ -1,1 +1,1 @@
-export { matchesPermission, extractPermissions } from '@farm/auth';
+export { matchesPermission, extractPermissions } from '@/lib/roles';

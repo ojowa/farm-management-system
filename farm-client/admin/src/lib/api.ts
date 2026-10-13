@@ -1,4 +1,4 @@
-import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@farm/api-client';
+import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@/lib/api-client';
 import axios from 'axios';
 
 const config: APIClientConfig = {
@@ -71,7 +71,7 @@ const client: FarmManagementClient = createFarmManagementClient(config);
 
 export const apiClient = client.client;
 
-// ── Re-export standard modules from @farm/api-client ───────
+// ── Re-export standard modules from @/lib/api-client ────────
 export const farmsAPI = client.farms;
 export const cropsAPI = client.crops;
 export const livestockAPI = client.livestock;
@@ -115,7 +115,7 @@ export const adminAPI = client.admin;
 // ── Auth API (from web) ──────────────────────────────────
 export const authAPI = client.auth;
 
-// ── Admin-specific extras (not in @farm/api-client) ────────
+// ── Admin-specific extras (not in @/lib/api-client) ─────────
 export const reportingAPI = reportsAPI;
 
 export const permissionsAPI = {
