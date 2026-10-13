@@ -707,31 +707,37 @@ export class PlatformOrganizationService {
     };
   }
 
+  /**
+   * Members of an organization are simply its users (single-organization
+   * model: `User.organizationId`). The legacy `UserOrganization` join table
+   * is never written anywhere, so reading it returned an empty list for
+   * every organization.
+   */
   async getOrganizationMembers(id: string) {
     const { prisma } = await import('@farm/database');
     const org = await prisma.organization.findUnique({ where: { id } });
     if (!org) throw new NotFoundException('Organization not found');
 
-    const members = await prisma.userOrganization.findMany({
+    const users = await prisma.user.findMany({
       where: { organizationId: id },
-      include: { user: { include: { role: true } } },
+      include: { role: true },
       orderBy: { createdAt: 'desc' },
     });
 
     return {
-      members: members.map((m: any) => ({
-        id: m.id,
-        userId: m.userId,
-        roleInOrg: m.roleInOrg,
-        isActive: m.isActive,
+      members: users.map((u: any) => ({
+        id: u.id,
+        userId: u.id,
+        roleInOrg: u.role?.name || 'UNKNOWN',
+        isActive: u.isActive,
         user: {
-          id: m.user.id,
-          email: m.user.email,
-          firstName: m.user.firstName,
-          lastName: m.user.lastName,
-          role: m.user.role?.name,
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          role: u.role?.name,
         },
-        createdAt: m.createdAt.toISOString(),
+        createdAt: u.createdAt.toISOString(),
       })),
     };
   }

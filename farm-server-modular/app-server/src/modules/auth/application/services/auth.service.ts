@@ -1,4 +1,4 @@
-import { Inject,  Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, UnauthorizedException, BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -262,40 +262,37 @@ export class AuthService {
     await this.userRepo.update(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
   }
 
+  /**
+   * Single-organization model: an account belongs to at most one organization
+   * through `User.organizationId`. (The `UserOrganization` membership table
+   * this used to read is never written — every call fell through to the same
+   * one-org fallback anyway.)
+   */
   async getMyOrganizations(userId: string) {
     const user = await this.userRepo.findById(userId);
     if (!user) throw new NotFoundException('User not found');
+    if (!user.organizationId) return [];
 
     const { prisma } = await import('../../../../kernel/database');
-    const userOrgs = await prisma.userOrganization.findMany({
-      where: { userId },
-      include: { organization: true },
+    const org = await prisma.organization.findUnique({
+      where: { id: user.organizationId },
     });
-
-    if (userOrgs.length === 0 && user.organizationId) {
-      const org = await prisma.organization.findUnique({
-        where: { id: user.organizationId },
-      });
-      return org ? [{ organization: org, isDefault: true }] : [];
-    }
-
-    return userOrgs.map((uo: any) => ({
-      ...uo.organization,
-      isDefault: uo.organizationId === user.organizationId,
-    }));
+    return org ? [{ organization: org, isDefault: true }] : [];
   }
 
+  /**
+   * Re-issues tokens for the caller's organization. Self-service switching to
+   * a *different* organization is rejected on purpose: with one organization
+   * per account, moving someone is a platform-admin action (console Users
+   * page) — otherwise any signed-in user could join any organization simply
+   * by naming its id.
+   */
   async switchOrganization(userId: string, organizationId: string) {
     const user = await this.userRepo.findById(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const { prisma } = await import('../../../../kernel/database');
-    const membership = await prisma.userOrganization.findUnique({
-      where: { userId_organizationId: { userId, organizationId } },
-    });
-
-    if (!membership && user.organizationId !== organizationId) {
-      throw new UnauthorizedException('User is not a member of this organization');
+    if (user.organizationId !== organizationId) {
+      throw new ForbiddenException('Your account belongs to a single organization. A platform administrator can move you.');
     }
 
     const updated = await this.userRepo.update(userId, { organizationId } as any);
