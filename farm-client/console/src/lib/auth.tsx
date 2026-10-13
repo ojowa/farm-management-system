@@ -21,6 +21,13 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Pages where a session check is pointless. An anonymous visitor is sent here
+// precisely because they have no session, so probing /auth/me from these pages
+// is a guaranteed 401 in the API logs — and its only outcome (`isLoading: false`,
+// not authenticated) is already the state we settle into. `login()` and
+// `retryAuth()` still fetch whenever a session actually matters.
+const AUTH_PAGES = ['/login', '/register'];
+
 interface PlatformAdminGate {
   allowed: boolean;
   source: string;
@@ -101,6 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && AUTH_PAGES.includes(window.location.pathname)) {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return;
+    }
     authAudit('FETCH_USER_START', { trigger: 'mount' });
     fetchUser();
   }, [fetchUser]);
