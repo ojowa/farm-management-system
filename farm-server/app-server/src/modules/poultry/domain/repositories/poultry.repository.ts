@@ -25,12 +25,20 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+// Every org-scoped filter carries a required `organizationId`: the repository
+// uses it to constrain queries to the caller's organization, either directly
+// (Flock, EggProduction, PoultrySale) or through the owning chain
+// (House → Farm, Pen → House → Farm, records → Flock). `Breed` is a shared
+// catalog with no organization column, so BreedFilter intentionally has none.
+
 export interface PoultryHouseFilter {
+  organizationId: string;
   farmId?: string;
   name?: string;
 }
 
 export interface PenFilter {
+  organizationId: string;
   poultryHouseId?: string;
   name?: string;
 }
@@ -41,6 +49,7 @@ export interface BreedFilter {
 }
 
 export interface FlockFilter {
+  organizationId: string;
   farmId?: string;
   penId?: string;
   breedId?: string;
@@ -49,32 +58,38 @@ export interface FlockFilter {
 }
 
 export interface FeedingRecordFilter {
+  organizationId: string;
   flockId?: string;
   feedType?: string;
 }
 
 export interface VaccinationRecordFilter {
+  organizationId: string;
   flockId?: string;
   vaccine?: string;
 }
 
 export interface MortalityRecordFilter {
+  organizationId: string;
   flockId?: string;
 }
 
 export interface MedicationFilter {
+  organizationId: string;
   flockId?: string;
   status?: string;
   search?: string;
 }
 
 export interface EggProductionFilter {
+  organizationId: string;
   flockId?: string;
   startDate?: string;
   endDate?: string;
 }
 
 export interface PoultrySaleFilter {
+  organizationId: string;
   farmId?: string;
   flockId?: string;
   startDate?: string;
@@ -82,21 +97,25 @@ export interface PoultrySaleFilter {
 }
 
 export interface PoultryAggregateRepository {
+  // Ownership helper: the FK only proves a farm exists, not that it belongs
+  // to the caller's organization.
+  farmExistsInOrg(farmId: string, organizationId: string): Promise<boolean>;
+
   // PoultryHouse
-  findPoultryHouseById(id: string): Promise<PoultryHouse | null>;
+  findPoultryHouseById(id: string, organizationId: string): Promise<PoultryHouse | null>;
   findAllPoultryHouses(filter: PoultryHouseFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultryHouse>>;
   createPoultryHouse(data: Omit<PoultryHouse, 'id'>): Promise<PoultryHouse>;
   updatePoultryHouse(id: string, data: Partial<PoultryHouse>): Promise<PoultryHouse>;
   deletePoultryHouse(id: string): Promise<void>;
 
   // Pen
-  findPenById(id: string): Promise<Pen | null>;
+  findPenById(id: string, organizationId: string): Promise<Pen | null>;
   findAllPens(filter: PenFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Pen>>;
   createPen(data: Omit<Pen, 'id'>): Promise<Pen>;
   updatePen(id: string, data: Partial<Pen>): Promise<Pen>;
   deletePen(id: string): Promise<void>;
 
-  // Breed
+  // Breed (shared catalog — no organization scoping)
   findBreedById(id: string): Promise<Breed | null>;
   findAllBreeds(filter: BreedFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Breed>>;
   createBreed(data: Omit<Breed, 'id'>): Promise<Breed>;
@@ -104,49 +123,49 @@ export interface PoultryAggregateRepository {
   deleteBreed(id: string): Promise<void>;
 
   // Flock
-  findFlockById(id: string): Promise<Flock | null>;
+  findFlockById(id: string, organizationId: string): Promise<Flock | null>;
   findAllFlocks(filter: FlockFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Flock>>;
   createFlock(data: Omit<Flock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flock>;
   updateFlock(id: string, data: Partial<Flock>): Promise<Flock>;
   deleteFlock(id: string): Promise<void>;
 
   // FeedingRecord
-  findFeedingRecordById(id: string): Promise<FeedingRecord | null>;
+  findFeedingRecordById(id: string, organizationId: string): Promise<FeedingRecord | null>;
   findAllFeedingRecords(filter: FeedingRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<FeedingRecord>>;
   createFeedingRecord(data: Omit<FeedingRecord, 'id' | 'createdAt'>): Promise<FeedingRecord>;
   updateFeedingRecord(id: string, data: Partial<FeedingRecord>): Promise<FeedingRecord>;
   deleteFeedingRecord(id: string): Promise<void>;
 
   // VaccinationRecord
-  findVaccinationRecordById(id: string): Promise<VaccinationRecord | null>;
+  findVaccinationRecordById(id: string, organizationId: string): Promise<VaccinationRecord | null>;
   findAllVaccinationRecords(filter: VaccinationRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<VaccinationRecord>>;
   createVaccinationRecord(data: Omit<VaccinationRecord, 'id' | 'createdAt'>): Promise<VaccinationRecord>;
   updateVaccinationRecord(id: string, data: Partial<VaccinationRecord>): Promise<VaccinationRecord>;
   deleteVaccinationRecord(id: string): Promise<void>;
 
   // MortalityRecord
-  findMortalityRecordById(id: string): Promise<MortalityRecord | null>;
+  findMortalityRecordById(id: string, organizationId: string): Promise<MortalityRecord | null>;
   findAllMortalityRecords(filter: MortalityRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<MortalityRecord>>;
   createMortalityRecord(data: Omit<MortalityRecord, 'id' | 'createdAt'>): Promise<MortalityRecord>;
   updateMortalityRecord(id: string, data: Partial<MortalityRecord>): Promise<MortalityRecord>;
   deleteMortalityRecord(id: string): Promise<void>;
 
   // Medication
-  findMedicationById(id: string): Promise<Medication | null>;
+  findMedicationById(id: string, organizationId: string): Promise<Medication | null>;
   findAllMedications(filter: MedicationFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Medication>>;
   createMedication(data: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): Promise<Medication>;
   updateMedication(id: string, data: Partial<Medication>): Promise<Medication>;
   deleteMedication(id: string): Promise<void>;
 
   // EggProduction
-  findEggProductionById(id: string): Promise<EggProduction | null>;
+  findEggProductionById(id: string, organizationId: string): Promise<EggProduction | null>;
   findAllEggProductions(filter: EggProductionFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<EggProduction>>;
   createEggProduction(data: Omit<EggProduction, 'id' | 'createdAt' | 'updatedAt'>): Promise<EggProduction>;
   updateEggProduction(id: string, data: Partial<EggProduction>): Promise<EggProduction>;
   deleteEggProduction(id: string): Promise<void>;
 
   // PoultrySale
-  findPoultrySaleById(id: string): Promise<PoultrySale | null>;
+  findPoultrySaleById(id: string, organizationId: string): Promise<PoultrySale | null>;
   findAllPoultrySales(filter: PoultrySaleFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultrySale>>;
   createPoultrySale(data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>): Promise<PoultrySale>;
   updatePoultrySale(id: string, data: Partial<PoultrySale>): Promise<PoultrySale>;

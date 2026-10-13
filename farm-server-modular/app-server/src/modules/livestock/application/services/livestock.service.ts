@@ -1,4 +1,4 @@
-import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import {
   LivestockRepository,
   HealthRecordRepository,
@@ -16,7 +16,11 @@ export class LivestockApplicationService {
     private readonly eventService: LivestockEventService, 
   ) {}
 
-  async createLivestock(data: {
+  private requireOrg(organizationId: string): void {
+    if (!organizationId) throw new ForbiddenException('No organization context');
+  }
+
+  async createLivestock(organizationId: string, data: {
     farmId: string;
     species: string;
     breed?: string | null;
@@ -24,12 +28,15 @@ export class LivestockApplicationService {
     birthDate: Date | string;
     status: string;
   }): Promise<Livestock> {
-    const farm = await this.livestockRepo.getFarmById(data.farmId);
+    this.requireOrg(organizationId);
+    const farm = await this.livestockRepo.getFarmById(data.farmId, organizationId);
     if (!farm) throw new NotFoundException(`Farm with ID ${data.farmId} not found`);
 
     const birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate;
 
     const livestock = await this.livestockRepo.create({
+      // Tenancy always comes from the JWT, never from the request body.
+      organizationId,
       farmId: data.farmId,
       species: data.species,
       breed: data.breed ?? null,
@@ -41,23 +48,24 @@ export class LivestockApplicationService {
     return livestock;
   }
 
-  async getLivestockById(id: string): Promise<Livestock> {
-    const livestock = await this.livestockRepo.findById(id);
+  async getLivestockById(organizationId: string, id: string): Promise<Livestock> {
+    const livestock = await this.livestockRepo.findById(id, organizationId);
     if (!livestock) throw new NotFoundException(`Livestock with ID ${id} not found`);
     return livestock;
   }
 
   async getAllLivestock(
-    filter: LivestockFilter = {}, 
-    sortBy: string = 'createdAt', 
-    sortOrder: 'asc' | 'desc' = 'desc', 
-    page: number = 1, 
-    limit: number = 20, 
+    organizationId: string,
+    filter: Omit<LivestockFilter, 'organizationId'> = {},
+    sortBy: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+    page: number = 1,
+    limit: number = 20,
   ) {
-    return this.livestockRepo.findAll(filter, { sortBy, sortOrder, page, limit });
+    return this.livestockRepo.findAll({ ...filter, organizationId }, { sortBy, sortOrder, page, limit });
   }
 
-  async updateLivestock(id: string,  data: Partial<{
+  async updateLivestock(organizationId: string, id: string,  data: Partial<{
     farmId: string;
     species: string;
     breed: string | null;
@@ -65,14 +73,16 @@ export class LivestockApplicationService {
     birthDate: Date | string;
     status: string;
   }>): Promise<Livestock> {
-    await this.getLivestockById(id);
+    await this.getLivestockById(organizationId, id);
 
     if (data.farmId) {
-      const farm = await this.livestockRepo.getFarmById(data.farmId);
+      const farm = await this.livestockRepo.getFarmById(data.farmId, organizationId);
       if (!farm) throw new NotFoundException(`Farm with ID ${data.farmId} not found`);
     }
 
     const updateData: any = { ...data };
+    // An animal can never change tenancy.
+    delete updateData.organizationId;
     if (data.birthDate) {
       updateData.birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate;
     }
@@ -82,8 +92,8 @@ export class LivestockApplicationService {
     return livestock;
   }
 
-  async deleteLivestock(id: string) {
-    await this.getLivestockById(id);
+  async deleteLivestock(organizationId: string, id: string) {
+    await this.getLivestockById(organizationId, id);
     await this.livestockRepo.delete(id);
     await this.eventService.emitLivestockDeletedEvent(id);
     return { deleted: true };
@@ -106,6 +116,8 @@ export class LivestockApplicationService {
     createdById?: string;
     createdByName?: string;
   }): Promise<HealthRecord> {
+    // Only attach health records to animals inside the caller's org.
+    await this.getLivestockById(data.organizationId, data.livestockId);
     return this.healthRepo.create({
       ...data,
       date: typeof data.date === 'string' ? new Date(data.date) : data.date,
@@ -135,6 +147,7 @@ export class LivestockApplicationService {
     createdById?: string;
     createdByName?: string;
   }): Promise<VaccinationSchedule> {
+    await this.getLivestockById(data.organizationId, data.livestockId);
     return this.vaccinationRepo.create({
       ...data,
       scheduledDate: typeof data.scheduledDate === 'string' ? new Date(data.scheduledDate) : data.scheduledDate,
@@ -146,7 +159,9 @@ export class LivestockApplicationService {
     });
   }
 
-  async administerVaccination(id: string): Promise<VaccinationSchedule> {
+  async administerVaccination(organizationId: string, id: string): Promise<VaccinationSchedule> {
+    const schedule = await this.vaccinationRepo.findById(id, organizationId);
+    if (!schedule) throw new NotFoundException(`Vaccination schedule with ID ${id} not found`);
     return this.vaccinationRepo.update(id, {
       status: 'ADMINISTERD',
       administeredDate: new Date(),
@@ -173,6 +188,9 @@ export class LivestockApplicationService {
     createdById?: string;
     createdByName?: string;
   }): Promise<BreedingRecord> {
+    // Both parents must belong to the caller's organization.
+    await this.getLivestockById(data.organizationId, data.sireId);
+    await this.getLivestockById(data.organizationId, data.damId);
     return this.breedingRepo.create({
       ...data,
       sireName: data.sireName || null,
@@ -192,12 +210,14 @@ export class LivestockApplicationService {
     });
   }
 
-  async updateBreedingRecord(id: string, data: Partial<{
+  async updateBreedingRecord(organizationId: string, id: string, data: Partial<{
     status: string;
     actualBirthDate: Date | string | null;
     offspringCount: number;
     notes: string;
   }>): Promise<BreedingRecord> {
+    const existing = await this.breedingRepo.findById(id, organizationId);
+    if (!existing) throw new NotFoundException(`Breeding record with ID ${id} not found`);
     const updateData: any = {};
     if (data.status !== undefined) updateData.status = data.status;
     if (data.actualBirthDate !== undefined) {
@@ -229,6 +249,7 @@ export class LivestockApplicationService {
     notes?: string;
     createdById?: string;
   }): Promise<WeightRecord> {
+    await this.getLivestockById(data.organizationId, data.livestockId);
     return this.weightRepo.create({
       ...data,
       livestockId: data.livestockId,

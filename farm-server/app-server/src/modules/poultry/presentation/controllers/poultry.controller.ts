@@ -35,6 +35,15 @@ import {
   updateMedicationSchema,
 } from '@farm/validation-server';
 
+/**
+ * The organization always comes from the verified JWT (req.user), never from
+ * the request body or headers — every handler threads it into the service so
+ * reads, writes, and deletes are scoped to the caller's organization.
+ */
+function getOrgId(req: any): string {
+  return String(req.user?.organizationId || '');
+}
+
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('poultry-houses')
 export class PoultryHousesController {
@@ -44,13 +53,14 @@ export class PoultryHousesController {
   @Post()
   @UsePipes(new ZodValidationPipe(createPoultryHouseSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createPoultryHouse(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createPoultryHouse(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -61,7 +71,7 @@ export class PoultryHousesController {
     const filter: Record<string, unknown> = {};
     if (farmId) filter.farmId = farmId;
     if (name) filter.name = name;
-    return this.poultryService.getAllPoultryHouses(filter, {
+    return this.poultryService.getAllPoultryHouses(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'createdAt',
@@ -71,22 +81,22 @@ export class PoultryHousesController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getPoultryHouseById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getPoultryHouseById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updatePoultryHouseSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updatePoultryHouse(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updatePoultryHouse(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deletePoultryHouse(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deletePoultryHouse(getOrgId(req), id);
   }
 }
 
@@ -99,13 +109,14 @@ export class PensController {
   @Post()
   @UsePipes(new ZodValidationPipe(createPenSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createPen(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createPen(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -116,7 +127,7 @@ export class PensController {
     const filter: Record<string, unknown> = {};
     if (poultryHouseId) filter.poultryHouseId = poultryHouseId;
     if (name) filter.name = name;
-    return this.poultryService.getAllPens(filter, {
+    return this.poultryService.getAllPens(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'createdAt',
@@ -126,22 +137,22 @@ export class PensController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getPenById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getPenById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updatePenSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updatePen(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updatePen(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deletePen(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deletePen(getOrgId(req), id);
   }
 }
 
@@ -209,13 +220,14 @@ export class FlocksController {
   @Post()
   @UsePipes(new ZodValidationPipe(createFlockSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createFlock(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createFlock(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -232,7 +244,7 @@ export class FlocksController {
     if (breedId) filter.breedId = breedId;
     if (status) filter.status = status;
     if (search) filter.search = search;
-    return this.poultryService.getAllFlocks(filter, {
+    return this.poultryService.getAllFlocks(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'createdAt',
@@ -242,22 +254,22 @@ export class FlocksController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getFlockById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getFlockById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateFlockSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updateFlock(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updateFlock(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteFlock(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deleteFlock(getOrgId(req), id);
   }
 }
 
@@ -270,13 +282,14 @@ export class FeedingRecordsController {
   @Post()
   @UsePipes(new ZodValidationPipe(createFeedingRecordSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createFeedingRecord(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createFeedingRecord(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -287,7 +300,7 @@ export class FeedingRecordsController {
     const filter: Record<string, unknown> = {};
     if (flockId) filter.flockId = flockId;
     if (feedType) filter.feedType = feedType;
-    return this.poultryService.getAllFeedingRecords(filter, {
+    return this.poultryService.getAllFeedingRecords(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'date',
@@ -297,22 +310,22 @@ export class FeedingRecordsController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getFeedingRecordById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getFeedingRecordById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateFeedingRecordSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updateFeedingRecord(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updateFeedingRecord(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteFeedingRecord(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deleteFeedingRecord(getOrgId(req), id);
   }
 }
 
@@ -325,13 +338,14 @@ export class VaccinationRecordsController {
   @Post()
   @UsePipes(new ZodValidationPipe(createVaccinationRecordSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createVaccinationRecord(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createVaccinationRecord(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -342,7 +356,7 @@ export class VaccinationRecordsController {
     const filter: Record<string, unknown> = {};
     if (flockId) filter.flockId = flockId;
     if (vaccine) filter.vaccine = vaccine;
-    return this.poultryService.getAllVaccinationRecords(filter, {
+    return this.poultryService.getAllVaccinationRecords(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'date',
@@ -352,22 +366,22 @@ export class VaccinationRecordsController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getVaccinationRecordById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getVaccinationRecordById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateVaccinationRecordSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updateVaccinationRecord(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updateVaccinationRecord(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteVaccinationRecord(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deleteVaccinationRecord(getOrgId(req), id);
   }
 }
 
@@ -380,13 +394,14 @@ export class MortalityRecordsController {
   @Post()
   @UsePipes(new ZodValidationPipe(createMortalityRecordSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createMortalityRecord(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createMortalityRecord(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -395,7 +410,7 @@ export class MortalityRecordsController {
   ) {
     const filter: Record<string, unknown> = {};
     if (flockId) filter.flockId = flockId;
-    return this.poultryService.getAllMortalityRecords(filter, {
+    return this.poultryService.getAllMortalityRecords(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'date',
@@ -405,22 +420,22 @@ export class MortalityRecordsController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getMortalityRecordById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getMortalityRecordById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateMortalityRecordSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updateMortalityRecord(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updateMortalityRecord(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteMortalityRecord(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deleteMortalityRecord(getOrgId(req), id);
   }
 }
 
@@ -433,13 +448,14 @@ export class MedicationsController {
   @Post()
   @UsePipes(new ZodValidationPipe(createMedicationSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createMedication(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createMedication(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -452,7 +468,7 @@ export class MedicationsController {
     if (flockId) filter.flockId = flockId;
     if (status) filter.status = status;
     if (search) filter.search = search;
-    return this.poultryService.getAllMedications(filter, {
+    return this.poultryService.getAllMedications(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'createdAt',
@@ -462,22 +478,22 @@ export class MedicationsController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getMedicationById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getMedicationById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateMedicationSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updateMedication(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updateMedication(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteMedication(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deleteMedication(getOrgId(req), id);
   }
 }
 
@@ -490,9 +506,8 @@ export class EggProductionController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() data: any) {
-    return this.poultryService.createEggProduction({
+    return this.poultryService.createEggProduction(getOrgId(req), {
       ...data,
-      organizationId: req.user?.organizationId || '',
       createdById: req.user?.sub || null,
       createdByName: req.user?.email || null,
     });
@@ -501,6 +516,7 @@ export class EggProductionController {
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -513,7 +529,7 @@ export class EggProductionController {
     if (flockId) filter.flockId = flockId;
     if (startDate) filter.startDate = startDate;
     if (endDate) filter.endDate = endDate;
-    return this.poultryService.getAllEggProductions(filter, {
+    return this.poultryService.getAllEggProductions(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'date',
@@ -523,21 +539,21 @@ export class EggProductionController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getEggProductionById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getEggProductionById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updateEggProduction(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updateEggProduction(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteEggProduction(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deleteEggProduction(getOrgId(req), id);
   }
 }
 
@@ -550,15 +566,13 @@ export class PoultrySalesController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() data: any) {
-    return this.poultryService.createPoultrySale({
-      ...data,
-      organizationId: req.user?.organizationId || '',
-    });
+    return this.poultryService.createPoultrySale(getOrgId(req), data);
   }
 
   @Permission('poultry.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -573,7 +587,7 @@ export class PoultrySalesController {
     if (flockId) filter.flockId = flockId;
     if (startDate) filter.startDate = startDate;
     if (endDate) filter.endDate = endDate;
-    return this.poultryService.getAllPoultrySales(filter, {
+    return this.poultryService.getAllPoultrySales(getOrgId(req), filter, {
       page: parseInt(page || '1'),
       limit: parseInt(limit || '20'),
       sortBy: sortBy || 'date',
@@ -583,20 +597,20 @@ export class PoultrySalesController {
 
   @Permission('poultry.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.poultryService.getPoultrySaleById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.getPoultrySaleById(getOrgId(req), id);
   }
 
   @Permission('poultry.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.poultryService.updatePoultrySale(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.poultryService.updatePoultrySale(getOrgId(req), id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deletePoultrySale(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.poultryService.deletePoultrySale(getOrgId(req), id);
   }
 }

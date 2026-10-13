@@ -15,8 +15,9 @@ export interface CropRepository {
 }
 
 export interface CropCycleRepository {
-  findById(id: string): Promise<CropCycle | null>;
-  findAll(options?: {
+  // Scoped by organizationId: a foreign cycle reads as null (→ 404).
+  findById(id: string, organizationId: string): Promise<CropCycle | null>;
+  findAll(organizationId: string, options?: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -26,4 +27,7 @@ export interface CropCycleRepository {
   create(data: Omit<CropCycle, 'id' | 'createdAt' | 'updatedAt'>): Promise<CropCycle>;
   update(id: string, data: Partial<Pick<CropCycle, 'fieldId' | 'cropId' | 'plantingDate' | 'harvestDate' | 'status'>>): Promise<CropCycle>;
   delete(id: string): Promise<void>;
+  // Ownership helper: cycles may only be created/re-pointed onto fields of
+  // farms inside the caller's organization.
+  fieldExistsInOrg(fieldId: string, organizationId: string): Promise<boolean>;
 }

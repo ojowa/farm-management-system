@@ -31,13 +31,14 @@ export class LivestockController {
   @Post()
   @UsePipes(new ZodValidationPipe(createLivestockSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.livestockService.createLivestock(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.livestockService.createLivestock(getOrgIdFromRequest(req), data);
   }
 
   @Permission('livestock.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -54,6 +55,7 @@ export class LivestockController {
     if (search) filter.search = search;
 
     return this.livestockService.getAllLivestock(
+      getOrgIdFromRequest(req),
       filter,
       sortBy || 'createdAt',
       sortOrder || 'desc',
@@ -64,22 +66,22 @@ export class LivestockController {
 
   @Permission('livestock.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.livestockService.getLivestockById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.livestockService.getLivestockById(getOrgIdFromRequest(req), id);
   }
 
   @Permission('livestock.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateLivestockSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.livestockService.updateLivestock(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.livestockService.updateLivestock(getOrgIdFromRequest(req), id, data);
   }
 
   @Permission('livestock.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.livestockService.deleteLivestock(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.livestockService.deleteLivestock(getOrgIdFromRequest(req), id);
   }
 }
 
@@ -142,8 +144,8 @@ export class HealthController {
 
   @Permission('livestock.write')
   @Put('vaccinations/:id/administer')
-  async administerVaccination(@Param('id') id: string) {
-    return this.livestockService.administerVaccination(id);
+  async administerVaccination(@Param('id') id: string, @Req() req: any) {
+    return this.livestockService.administerVaccination(getOrgIdFromRequest(req), id);
   }
 
   @Permission('livestock.read')
@@ -178,8 +180,8 @@ export class BreedingController {
 
   @Permission('livestock.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.livestockService.updateBreedingRecord(id, body);
+  async update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.livestockService.updateBreedingRecord(getOrgIdFromRequest(req), id, body);
   }
 
   @Permission('livestock.read')

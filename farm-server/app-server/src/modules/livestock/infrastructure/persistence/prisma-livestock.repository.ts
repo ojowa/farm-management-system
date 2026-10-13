@@ -18,8 +18,8 @@ import {
 
 @Injectable()
 export class PrismaLivestockRepository implements LivestockRepository {
-  async findById(id: string): Promise<Livestock | null> {
-    return prisma.livestock.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Livestock | null> {
+    return prisma.livestock.findFirst({ where: { id, organizationId } });
   }
 
   async findAll(filter: LivestockFilter, options?: {
@@ -30,7 +30,7 @@ export class PrismaLivestockRepository implements LivestockRepository {
   }): Promise<{ data: Livestock[]; total: number }> {
     const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 20 } = options || {};
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: any = { organizationId: filter.organizationId };
 
     if (filter.farmId) where.farmId = filter.farmId;
     if (filter.species) where.species = filter.species;
@@ -67,8 +67,9 @@ export class PrismaLivestockRepository implements LivestockRepository {
     await prisma.livestock.delete({ where: { id } });
   }
 
-  async getFarmById(id: string) {
-    return prisma.farm.findUnique({ where: { id }, select: { id: true } });
+  async getFarmById(id: string, organizationId: string) {
+    if (!organizationId) return null;
+    return prisma.farm.findFirst({ where: { id, organizationId }, select: { id: true } });
   }
 }
 
@@ -92,6 +93,10 @@ export class PrismaHealthRecordRepository implements HealthRecordRepository {
 
 @Injectable()
 export class PrismaBreedingRecordRepository implements BreedingRecordRepository {
+  async findById(id: string, organizationId: string): Promise<BreedingRecord | null> {
+    return prisma.breedingRecord.findFirst({ where: { id, organizationId } });
+  }
+
   async findAll(organizationId: string, filter?: { status?: string }): Promise<BreedingRecord[]> {
     const where: any = { organizationId };
     if (filter?.status) where.status = filter.status;
@@ -141,6 +146,10 @@ export class PrismaWeightRecordRepository implements WeightRecordRepository {
 
 @Injectable()
 export class PrismaVaccinationScheduleRepository implements VaccinationScheduleRepository {
+  async findById(id: string, organizationId: string): Promise<VaccinationSchedule | null> {
+    return prisma.vaccinationSchedule.findFirst({ where: { id, organizationId } });
+  }
+
   async findByLivestockId(livestockId: string, organizationId: string): Promise<VaccinationSchedule[]> {
     return prisma.vaccinationSchedule.findMany({
       where: { livestockId, organizationId },

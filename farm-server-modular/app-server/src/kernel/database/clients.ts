@@ -39,6 +39,19 @@ export const prisma = basePrisma;
  * - Automatically filters rows by organizationId via PostgreSQL RLS (reads).
  * - Automatically injects organizationId from AsyncLocalStorage context (writes).
  */
+/**
+ * The create hooks below stamp organizationId from the RLS context so no
+ * insert can forget its tenant. Some models have no organizationId column at
+ * all (Field, PoultryHouse, Pen, Breed, FeedingRecord, …) — injecting the
+ * field would make Prisma reject the query, so on a validation error we
+ * retry once without the injected column. A validation error caused by
+ * something else in the payload fails again on the retry and still surfaces.
+ */
+function isValidationError(err: unknown): boolean {
+  const e = err as { name?: string; constructor?: { name?: string } } | null;
+  return e?.name === 'PrismaClientValidationError' || e?.constructor?.name === 'PrismaClientValidationError';
+}
+
 export const scopedPrisma = withRLS(basePrisma).$extends({
   query: {
     $allModels: {
@@ -47,6 +60,13 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
         const data = args.data as any;
         if (orgId && data && !data.organizationId) {
           data.organizationId = orgId;
+          try {
+            return await query(args);
+          } catch (err) {
+            if (!isValidationError(err)) throw err;
+            delete data.organizationId;
+            return query(args);
+          }
         }
         return query(args);
       },
@@ -54,9 +74,17 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
         const orgId = getOrganizationId();
         if (orgId && args.data) {
           const items = Array.isArray(args.data) ? args.data : [args.data];
+          const original = args.data;
           args.data = items.map((item: any) =>
             item.organizationId ? item : { ...item, organizationId: orgId }
           );
+          try {
+            return await query(args);
+          } catch (err) {
+            if (!isValidationError(err)) throw err;
+            args.data = original;
+            return query(args);
+          }
         }
         return query(args);
       },
@@ -66,6 +94,13 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
         if (orgId) {
           if (create && !create.organizationId) {
             create.organizationId = orgId;
+            try {
+              return await query(args);
+            } catch (err) {
+              if (!isValidationError(err)) throw err;
+              delete create.organizationId;
+              return query(args);
+            }
           }
         }
         return query(args);

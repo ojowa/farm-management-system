@@ -12,6 +12,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { CropApplicationService } from '../../application/services/crop.service';
@@ -89,19 +90,23 @@ export class CropCycleController {
   @Post()
   @UsePipes(new ZodValidationPipe(createCropCycleSchema))
   @HttpCode(HttpStatus.CREATED)
-  async createCropCycle(@Body() data: {
-    fieldId: string;
-    cropId: string;
-    plantingDate: Date | string;
-    harvestDate?: Date | string | null;
-    status?: string;
-  }) {
-    return this.cropService.createCropCycle(data);
+  async createCropCycle(
+    @Req() req: any,
+    @Body() data: {
+      fieldId: string;
+      cropId: string;
+      plantingDate: Date | string;
+      harvestDate?: Date | string | null;
+      status?: string;
+    },
+  ) {
+    return this.cropService.createCropCycle(getOrgId(req), data);
   }
 
   @Permission('crop.read')
   @Get()
   async getAllCropCycles(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -116,6 +121,7 @@ export class CropCycleController {
     if (status) filter.status = status;
 
     return this.cropService.getAllCropCycles({
+      organizationId: getOrgId(req),
       sortBy,
       sortOrder,
       page: page ? parseInt(page) : undefined,
@@ -126,28 +132,32 @@ export class CropCycleController {
 
   @Permission('crop.read')
   @Get(':id')
-  async getCropCycleById(@Param('id') id: string) {
-    return this.cropService.getCropCycleById(id);
+  async getCropCycleById(@Param('id') id: string, @Req() req: any) {
+    return this.cropService.getCropCycleById(getOrgId(req), id);
   }
 
   @Permission('crop.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateCropCycleSchema))
-  async updateCropCycle(@Param('id') id: string, @Body() data: Partial<{
-    fieldId: string;
-    cropId: string;
-    plantingDate: Date | string;
-    harvestDate: Date | string | null;
-    status: string;
-  }>) {
-    return this.cropService.updateCropCycle(id, data);
+  async updateCropCycle(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() data: Partial<{
+      fieldId: string;
+      cropId: string;
+      plantingDate: Date | string;
+      harvestDate: Date | string | null;
+      status: string;
+    }>,
+  ) {
+    return this.cropService.updateCropCycle(getOrgId(req), id, data);
   }
 
   @Permission('crop.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteCropCycle(@Param('id') id: string) {
-    return this.cropService.deleteCropCycle(id);
+  async deleteCropCycle(@Param('id') id: string, @Req() req: any) {
+    return this.cropService.deleteCropCycle(getOrgId(req), id);
   }
 }
 
@@ -168,15 +178,18 @@ export class CropLifecycleController {
     if (farmId) filter.farmId = farmId;
     if (startDate) filter.startDate = startDate;
     if (endDate) filter.endDate = endDate;
-    return this.cropService.getAllCropCycles({ filter: filter as any });
+    return this.cropService.getAllCropCycles({ organizationId: getOrgId(req), filter: filter as any });
   }
 
   @Permission('crop.read')
   @Get('crop-cycle/:cropCycleId/stages')
-  async getStagesByCycle(@Param('cropCycleId') cropCycleId: string) {
+  async getStagesByCycle(@Param('cropCycleId') cropCycleId: string, @Req() req: any) {
+    // 404s for a cycle outside the caller's organization, so its stages
+    // can't be read either.
+    await this.cropService.getCropCycleById(getOrgId(req), cropCycleId);
     const { prisma } = await import('@farm/database');
     return prisma.cropStage.findMany({
-      where: { cropCycleId },
+      where: { cropCycleId, organizationId: getOrgId(req) },
       orderBy: { startDate: 'asc' },
     });
   }
@@ -189,6 +202,8 @@ export class CropLifecycleController {
     @Req() req: any,
     @Body() body: { stage: string; startDate: Date | string; endDate?: Date | string | null; notes?: string },
   ) {
+    // Reject stages attached to a cycle that isn't the caller's.
+    await this.cropService.getCropCycleById(getOrgId(req), cropCycleId);
     const { prisma } = await import('@farm/database');
     return prisma.cropStage.create({
       data: {
@@ -208,9 +223,12 @@ export class CropLifecycleController {
   @Put('stages/:id')
   async updateStage(
     @Param('id') id: string,
+    @Req() req: any,
     @Body() body: { stage?: string; startDate?: Date | string; endDate?: Date | string | null; notes?: string },
   ) {
     const { prisma } = await import('@farm/database');
+    const existing = await prisma.cropStage.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!existing) throw new NotFoundException(`Crop stage with ID ${id} not found`);
     const data: Record<string, unknown> = {};
     if (body.stage) data.stage = body.stage;
     if (body.startDate) data.startDate = typeof body.startDate === 'string' ? new Date(body.startDate) : body.startDate;
@@ -222,8 +240,10 @@ export class CropLifecycleController {
   @Permission('crop.delete')
   @Delete('stages/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteStage(@Param('id') id: string) {
+  async deleteStage(@Param('id') id: string, @Req() req: any) {
     const { prisma } = await import('@farm/database');
+    const existing = await prisma.cropStage.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!existing) throw new NotFoundException(`Crop stage with ID ${id} not found`);
     await prisma.cropStage.delete({ where: { id } });
     return { deleted: true };
   }

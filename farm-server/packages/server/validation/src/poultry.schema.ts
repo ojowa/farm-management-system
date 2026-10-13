@@ -37,7 +37,8 @@ export const updateBreedSchema = z.object({
 });
 
 export const createFlockSchema = z.object({
-  organizationId: z.string().uuid(),
+  // organizationId is intentionally NOT accepted from the client — the server
+  // stamps it from the verified JWT (the old required field was spoofable).
   farmId: z.string().uuid(),
   penId: z.string().uuid(),
   breedId: z.string().uuid(),
@@ -50,7 +51,8 @@ export const createFlockSchema = z.object({
 });
 
 export const updateFlockSchema = z.object({
-  organizationId: z.string().uuid().optional(),
+  // organizationId is intentionally NOT accepted — a flock can never change
+  // tenancy; the service strips it regardless.
   farmId: z.string().uuid().optional(),
   penId: z.string().uuid().optional(),
   breedId: z.string().uuid().optional(),

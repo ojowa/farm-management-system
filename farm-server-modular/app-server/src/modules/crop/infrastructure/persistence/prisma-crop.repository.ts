@@ -59,14 +59,14 @@ export class PrismaCropRepository implements CropRepository {
 
 @Injectable()
 export class PrismaCropCycleRepository implements CropCycleRepository {
-  async findById(id: string): Promise<CropCycle | null> {
-    return prisma.cropCycle.findUnique({
-      where: { id },
+  async findById(id: string, organizationId: string): Promise<CropCycle | null> {
+    return prisma.cropCycle.findFirst({
+      where: { id, organizationId },
       include: { crop: true, field: true },
     });
   }
 
-  async findAll(options?: {
+  async findAll(organizationId: string, options?: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -76,7 +76,7 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
     const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 20, filter = {} } = options || {};
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: any = { organizationId };
     if (filter.fieldId) where.fieldId = filter.fieldId;
     if (filter.cropId) where.cropId = filter.cropId;
     if (filter.status) where.status = filter.status;
@@ -98,6 +98,7 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
   async create(data: Omit<CropCycle, 'id' | 'createdAt' | 'updatedAt'>): Promise<CropCycle> {
     return prisma.cropCycle.create({
       data: {
+        organizationId: data.organizationId,
         fieldId: data.fieldId,
         cropId: data.cropId,
         plantingDate: data.plantingDate,
@@ -118,5 +119,14 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
 
   async delete(id: string): Promise<void> {
     await prisma.cropCycle.delete({ where: { id } });
+  }
+
+  async fieldExistsInOrg(fieldId: string, organizationId: string): Promise<boolean> {
+    if (!fieldId || !organizationId) return false;
+    const field = await prisma.field.findFirst({
+      where: { id: fieldId, farm: { organizationId } },
+      select: { id: true },
+    });
+    return !!field;
   }
 }

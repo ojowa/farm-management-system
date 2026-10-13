@@ -34,16 +34,34 @@ import {
   PoultrySale,
 } from '../../domain/entities/poultry.entity';
 
+/**
+ * Org scoping:
+ * - House: through its farm (`farm.organizationId`)
+ * - Pen: through its house → farm
+ * - Flock / EggProduction / PoultrySale: direct `organizationId` column
+ * - Feeding/Vaccination/Mortality/Medication records: through their flock
+ * Reads use findFirst with the scope baked into the WHERE so a foreign record
+ * reads as "not found" (404) instead of leaking its existence.
+ * Writes go through the service, which performs the same scoped lookup first.
+ */
 @Injectable()
 export class PrismaPoultryRepository implements PoultryAggregateRepository {
+  async farmExistsInOrg(farmId: string, organizationId: string): Promise<boolean> {
+    if (!farmId || !organizationId) return false;
+    const farm = await prisma.farm.findFirst({ where: { id: farmId, organizationId }, select: { id: true } });
+    return !!farm;
+  }
+
   // ── PoultryHouse ──
-  async findPoultryHouseById(id: string): Promise<PoultryHouse | null> {
-    return prisma.poultryHouse.findUnique({ where: { id } }) as Promise<PoultryHouse | null>;
+  async findPoultryHouseById(id: string, organizationId: string): Promise<PoultryHouse | null> {
+    return prisma.poultryHouse.findFirst({
+      where: { id, farm: { organizationId } },
+    }) as Promise<PoultryHouse | null>;
   }
 
   async findAllPoultryHouses(filter: PoultryHouseFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultryHouse>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { farm: { organizationId: filter.organizationId } };
     if (filter.farmId) where.farmId = filter.farmId;
     if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' };
 
@@ -67,13 +85,15 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── Pen ──
-  async findPenById(id: string): Promise<Pen | null> {
-    return prisma.pen.findUnique({ where: { id } }) as Promise<Pen | null>;
+  async findPenById(id: string, organizationId: string): Promise<Pen | null> {
+    return prisma.pen.findFirst({
+      where: { id, poultryHouse: { farm: { organizationId } } },
+    }) as Promise<Pen | null>;
   }
 
   async findAllPens(filter: PenFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Pen>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { poultryHouse: { farm: { organizationId: filter.organizationId } } };
     if (filter.poultryHouseId) where.poultryHouseId = filter.poultryHouseId;
     if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' };
 
@@ -96,7 +116,7 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     await prisma.pen.delete({ where: { id } });
   }
 
-  // ── Breed ──
+  // ── Breed (shared catalog — no organization column) ──
   async findBreedById(id: string): Promise<Breed | null> {
     return prisma.breed.findUnique({ where: { id } }) as Promise<Breed | null>;
   }
@@ -127,13 +147,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── Flock ──
-  async findFlockById(id: string): Promise<Flock | null> {
-    return prisma.flock.findUnique({ where: { id } }) as Promise<Flock | null>;
+  async findFlockById(id: string, organizationId: string): Promise<Flock | null> {
+    return prisma.flock.findFirst({ where: { id, organizationId } }) as Promise<Flock | null>;
   }
 
   async findAllFlocks(filter: FlockFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Flock>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId: filter.organizationId };
     if (filter.farmId) where.farmId = filter.farmId;
     if (filter.penId) where.penId = filter.penId;
     if (filter.breedId) where.breedId = filter.breedId;
@@ -164,13 +184,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── FeedingRecord ──
-  async findFeedingRecordById(id: string): Promise<FeedingRecord | null> {
-    return prisma.feedingRecord.findUnique({ where: { id } }) as Promise<FeedingRecord | null>;
+  async findFeedingRecordById(id: string, organizationId: string): Promise<FeedingRecord | null> {
+    return prisma.feedingRecord.findFirst({ where: { id, flock: { organizationId } } }) as Promise<FeedingRecord | null>;
   }
 
   async findAllFeedingRecords(filter: FeedingRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<FeedingRecord>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { flock: { organizationId: filter.organizationId } };
     if (filter.flockId) where.flockId = filter.flockId;
     if (filter.feedType) where.feedType = { contains: filter.feedType, mode: 'insensitive' };
 
@@ -194,13 +214,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── VaccinationRecord ──
-  async findVaccinationRecordById(id: string): Promise<VaccinationRecord | null> {
-    return prisma.vaccinationRecord.findUnique({ where: { id } }) as Promise<VaccinationRecord | null>;
+  async findVaccinationRecordById(id: string, organizationId: string): Promise<VaccinationRecord | null> {
+    return prisma.vaccinationRecord.findFirst({ where: { id, flock: { organizationId } } }) as Promise<VaccinationRecord | null>;
   }
 
   async findAllVaccinationRecords(filter: VaccinationRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<VaccinationRecord>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { flock: { organizationId: filter.organizationId } };
     if (filter.flockId) where.flockId = filter.flockId;
     if (filter.vaccine) where.vaccine = { contains: filter.vaccine, mode: 'insensitive' };
 
@@ -224,13 +244,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── MortalityRecord ──
-  async findMortalityRecordById(id: string): Promise<MortalityRecord | null> {
-    return prisma.mortalityRecord.findUnique({ where: { id } }) as Promise<MortalityRecord | null>;
+  async findMortalityRecordById(id: string, organizationId: string): Promise<MortalityRecord | null> {
+    return prisma.mortalityRecord.findFirst({ where: { id, flock: { organizationId } } }) as Promise<MortalityRecord | null>;
   }
 
   async findAllMortalityRecords(filter: MortalityRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<MortalityRecord>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { flock: { organizationId: filter.organizationId } };
     if (filter.flockId) where.flockId = filter.flockId;
 
     const [data, total] = await Promise.all([
@@ -253,13 +273,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── Medication ──
-  async findMedicationById(id: string): Promise<Medication | null> {
-    return prisma.medication.findUnique({ where: { id } }) as Promise<Medication | null>;
+  async findMedicationById(id: string, organizationId: string): Promise<Medication | null> {
+    return prisma.medication.findFirst({ where: { id, flock: { organizationId } } }) as Promise<Medication | null>;
   }
 
   async findAllMedications(filter: MedicationFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Medication>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { flock: { organizationId: filter.organizationId } };
     if (filter.flockId) where.flockId = filter.flockId;
     if (filter.status) where.status = filter.status;
     if (filter.search) {
@@ -290,13 +310,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── EggProduction ──
-  async findEggProductionById(id: string): Promise<EggProduction | null> {
-    return prisma.eggProduction.findUnique({ where: { id } }) as Promise<EggProduction | null>;
+  async findEggProductionById(id: string, organizationId: string): Promise<EggProduction | null> {
+    return prisma.eggProduction.findFirst({ where: { id, organizationId } }) as Promise<EggProduction | null>;
   }
 
   async findAllEggProductions(filter: EggProductionFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<EggProduction>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId: filter.organizationId };
     if (filter.flockId) where.flockId = filter.flockId;
     if (filter.startDate || filter.endDate) {
       where.date = {};
@@ -324,13 +344,13 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   }
 
   // ── PoultrySale ──
-  async findPoultrySaleById(id: string): Promise<PoultrySale | null> {
-    return prisma.poultrySale.findUnique({ where: { id } }) as Promise<PoultrySale | null>;
+  async findPoultrySaleById(id: string, organizationId: string): Promise<PoultrySale | null> {
+    return prisma.poultrySale.findFirst({ where: { id, organizationId } }) as Promise<PoultrySale | null>;
   }
 
   async findAllPoultrySales(filter: PoultrySaleFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultrySale>> {
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { organizationId: filter.organizationId };
     if (filter.farmId) where.farmId = filter.farmId;
     if (filter.flockId) where.flockId = filter.flockId;
     if (filter.startDate || filter.endDate) {

@@ -1,4 +1,4 @@
-import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CropRepository, CropCycleRepository } from '../../domain/repositories/crop.repository';
 import { CropEventService } from '../../infrastructure/messaging/crop.event.service';
 
@@ -6,6 +6,10 @@ import { CropEventService } from '../../infrastructure/messaging/crop.event.serv
 export class CropApplicationService {
   constructor(@Inject('CropRepository') private readonly cropRepo: CropRepository, @Inject('CropCycleRepository') private readonly cropCycleRepo: CropCycleRepository, 
     private readonly eventService: CropEventService) {}
+
+  private requireOrg(organizationId: string): void {
+    if (!organizationId) throw new ForbiddenException('No organization context');
+  }
 
   async createCrop(data: { name: string }) {
     const crop = await this.cropRepo.create({ name: data.name });
@@ -42,14 +46,18 @@ export class CropApplicationService {
     return this.cropRepo.delete(id);
   }
 
-  async createCropCycle(data: {
+  async createCropCycle(organizationId: string, data: {
     fieldId: string;
     cropId: string;
     plantingDate: Date | string;
     harvestDate?: Date | string | null;
     status?: string;
   }) {
+    this.requireOrg(organizationId);
     await this.getCropById(data.cropId);
+    if (!(await this.cropCycleRepo.fieldExistsInOrg(data.fieldId, organizationId))) {
+      throw new BadRequestException('Unknown field');
+    }
 
     const plantingDate = typeof data.plantingDate === 'string' ? new Date(data.plantingDate) : data.plantingDate;
     const harvestDate = data.harvestDate
@@ -59,6 +67,7 @@ export class CropApplicationService {
       : null;
 
     const cycle = await this.cropCycleRepo.create({
+      organizationId,
       fieldId: data.fieldId,
       cropId: data.cropId,
       plantingDate,
@@ -70,33 +79,38 @@ export class CropApplicationService {
     return cycle;
   }
 
-  async getCropCycleById(id: string) {
-    const cycle = await this.cropCycleRepo.findById(id);
+  async getCropCycleById(organizationId: string, id: string) {
+    const cycle = await this.cropCycleRepo.findById(id, organizationId);
     if (!cycle) throw new NotFoundException(`Crop cycle with ID ${id} not found`);
     return cycle;
   }
 
   async getAllCropCycles(options: {
+    organizationId: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
     filter?: { fieldId?: string; cropId?: string; status?: string };
-  } = {}) {
-    return this.cropCycleRepo.findAll(options);
+  }) {
+    const { organizationId, ...rest } = options;
+    return this.cropCycleRepo.findAll(organizationId, rest);
   }
 
-  async updateCropCycle(id: string, data: Partial<{
+  async updateCropCycle(organizationId: string, id: string, data: Partial<{
     fieldId: string;
     cropId: string;
     plantingDate: Date | string;
     harvestDate: Date | string | null;
     status: string;
   }>) {
-    await this.getCropCycleById(id);
+    await this.getCropCycleById(organizationId, id);
 
     if (data.cropId) {
       await this.getCropById(data.cropId);
+    }
+    if (data.fieldId && !(await this.cropCycleRepo.fieldExistsInOrg(data.fieldId, organizationId))) {
+      throw new BadRequestException('Unknown field');
     }
 
     const updateData: any = {};
@@ -119,8 +133,8 @@ export class CropApplicationService {
     return updatedCycle;
   }
 
-  async deleteCropCycle(id: string) {
-    await this.getCropCycleById(id);
+  async deleteCropCycle(organizationId: string, id: string) {
+    await this.getCropCycleById(organizationId, id);
     await this.eventService.emitCropCycleDeletedEvent(id);
     return this.cropCycleRepo.delete(id);
   }

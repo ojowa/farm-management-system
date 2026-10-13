@@ -1,7 +1,8 @@
 import { Livestock, HealthRecord, BreedingRecord, WeightRecord, VaccinationSchedule } from '../entities/livestock.entity';
 
 export interface LivestockRepository {
-  findById(id: string): Promise<Livestock | null>;
+  // Scoped by organizationId — a foreign animal reads as null (→ 404).
+  findById(id: string, organizationId: string): Promise<Livestock | null>;
   findAll(filter: LivestockFilter, options?: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
@@ -11,7 +12,9 @@ export interface LivestockRepository {
   create(data: Omit<Livestock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Livestock>;
   update(id: string, data: Partial<Livestock>): Promise<Livestock>;
   delete(id: string): Promise<void>;
-  getFarmById(id: string): Promise<{ id: string } | null>;
+  // Ownership check: the FK only proves the farm exists, not that it is
+  // inside the caller's organization.
+  getFarmById(id: string, organizationId: string): Promise<{ id: string } | null>;
 }
 
 export interface HealthRecordRepository {
@@ -21,6 +24,7 @@ export interface HealthRecordRepository {
 }
 
 export interface BreedingRecordRepository {
+  findById(id: string, organizationId: string): Promise<BreedingRecord | null>;
   findAll(organizationId: string, filter?: { status?: string }): Promise<BreedingRecord[]>;
   findUpcoming(organizationId: string): Promise<BreedingRecord[]>;
   create(data: Omit<BreedingRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<BreedingRecord>;
@@ -34,6 +38,7 @@ export interface WeightRecordRepository {
 }
 
 export interface VaccinationScheduleRepository {
+  findById(id: string, organizationId: string): Promise<VaccinationSchedule | null>;
   findByLivestockId(livestockId: string, organizationId: string): Promise<VaccinationSchedule[]>;
   findOverdue(organizationId: string): Promise<VaccinationSchedule[]>;
   create(data: Omit<VaccinationSchedule, 'id' | 'createdAt' | 'updatedAt'>): Promise<VaccinationSchedule>;
@@ -41,6 +46,7 @@ export interface VaccinationScheduleRepository {
 }
 
 export interface LivestockFilter {
+  organizationId: string;
   farmId?: string;
   species?: string;
   status?: string;
