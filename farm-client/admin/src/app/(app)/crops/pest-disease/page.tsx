@@ -78,7 +78,7 @@ export default function PestDiseasePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Bug className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Pest & Disease Records</h1>
@@ -139,8 +139,8 @@ export default function PestDiseasePage() {
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-0">
-            <table className="w-full">
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="border-b text-left text-sm font-medium text-muted-foreground">
                   <th className="px-4 py-3">Type</th>

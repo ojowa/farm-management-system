@@ -3,7 +3,7 @@ let toastContainer: HTMLDivElement | null = null;
 function getContainer() {
   if (!toastContainer) {
     toastContainer = document.createElement('div');
-    toastContainer.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2';
+    toastContainer.className = 'fixed top-4 right-4 left-4 z-50 flex flex-col gap-2 sm:left-auto sm:max-w-[calc(100vw-2rem)]';
     document.body.appendChild(toastContainer);
   }
   return toastContainer;
@@ -17,7 +17,7 @@ function showToast(message: string, type: 'error' | 'success' | 'info' = 'error'
     success: 'bg-green-600 text-white',
     info: 'bg-blue-600 text-white',
   };
-  el.className = `px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${colors[type]} flex items-center gap-2 min-w-[280px] animate-slide-in`;
+  el.className = `px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${colors[type]} flex items-center gap-2 min-w-[280px] max-w-full animate-slide-in`;
   el.innerHTML = `
     <span class="flex-1">${message}</span>
     <button class="ml-2 opacity-80 hover:opacity-100" onclick="this.parentElement.remove()">

@@ -138,7 +138,7 @@ export default function RosterPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Duty Roster</h1>
           <p className="text-sm text-gray-500 mt-1">Manage shift schedules and worker assignments</p>
@@ -146,7 +146,7 @@ export default function RosterPage() {
         {canManage && <Button variant="ghost" onClick={() => openShiftForm()}>+ New Shift</Button>}
       </div>
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <button onClick={prevWeek} className="p-2 rounded-lg hover:bg-gray-100">←</button>
           <button onClick={goToday} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">Today</button>
@@ -178,7 +178,8 @@ export default function RosterPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="overflow-x-auto pb-2">
+            <div className="grid grid-cols-7 gap-2 min-w-[720px]">
             {weekDates.map((date, i) => {
               const dayAssignments = getAssignmentsForDate(date);
               const isToday = date.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
@@ -204,6 +205,7 @@ export default function RosterPage() {
                 </div>
               );
             })}
+            </div>
           </div>
         </>
       )}

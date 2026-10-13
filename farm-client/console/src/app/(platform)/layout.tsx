@@ -12,13 +12,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <Sidebar collapsed={sidebarCollapsed} />
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
-        <Header sidebarOpen={mobileOpen} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className="p-6">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        open={mobileOpen}
+        onNavigate={() => setMobileOpen(false)}
+      />
+      <div
+        className={`transition-all duration-300 ${
+          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+        }`}
+      >
+        <Header sidebarOpen={mobileOpen} onToggleSidebar={() => setMobileOpen(!mobileOpen)} />
+        <main className="p-4 lg:p-6">
           <ProtectedRoute>{children}</ProtectedRoute>
         </main>
       </div>
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }

@@ -103,7 +103,7 @@ export default function StoragePage() {
         <p className="text-sm text-gray-500">Loading…</p>
       ) : (
         <form onSubmit={handleSave} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-gray-400">
               Currently resolving from{' '}
               <span className="font-medium text-gray-600">

@@ -138,7 +138,7 @@ export default function ApiKeysPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900">All Keys</h2>
         </div>

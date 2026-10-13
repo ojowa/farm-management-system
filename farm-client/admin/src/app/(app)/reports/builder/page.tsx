@@ -263,7 +263,7 @@ export default function ReportBuilderPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link
             href="/reports"
@@ -299,7 +299,7 @@ export default function ReportBuilderPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Panel - Widget Types */}
         <div className="col-span-3">
           <Card>

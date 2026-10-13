@@ -48,7 +48,7 @@ export function NotificationCenter() {
         </Button>
       }
     >
-      <div className="w-80">
+      <div className="w-80 max-w-[calc(100vw-2rem)]">
         <div className="flex items-center justify-between p-3 border-b">
           <h3 className="font-semibold">Notifications</h3>
           {unreadCount > 0 && (

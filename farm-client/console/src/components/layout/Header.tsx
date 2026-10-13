@@ -18,11 +18,13 @@ export function Header({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolean;
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center justify-between px-6">
+    <header className="sticky top-0 z-30 h-16 bg-[var(--card)] border-b border-[var(--border)] flex items-center justify-between px-4 lg:px-6">
       <button
         onClick={onToggleSidebar}
         className="lg:hidden p-2 rounded-lg hover:bg-[var(--accent)] text-[var(--muted-foreground)]"
         aria-label="Toggle sidebar"
+        aria-expanded={sidebarOpen}
+        aria-controls="app-sidebar"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d={sidebarOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
@@ -30,7 +32,7 @@ export function Header({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolean;
       </button>
       <div className="flex-1" />
       <div className="flex items-center gap-3">
-        <form onSubmit={handleSearch} className="relative">
+        <form onSubmit={handleSearch} className="relative hidden md:block">
           <input
             type="text"
             value={searchValue}

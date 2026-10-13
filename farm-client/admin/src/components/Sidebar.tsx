@@ -69,7 +69,7 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings, module: null, permission: null },
 ];
 
-export function Sidebar() {
+export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const { hasPermission, permissions } = usePermission();
@@ -87,14 +87,18 @@ export function Sidebar() {
 
   return (
     <aside
+      id="app-sidebar"
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col',
-        collapsed ? 'w-16' : 'w-64'
+        // Off-canvas below lg: parked at -100% until `open`, always pinned in
+        // from the lg breakpoint where `AppLayout` pads content by w-64.
+        'fixed left-0 top-0 z-40 h-dvh bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col lg:translate-x-0',
+        collapsed ? 'w-16' : 'w-64',
+        open ? 'translate-x-0' : '-translate-x-full'
       )}
     >
       <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
         {!collapsed && (
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" onClick={onNavigate} className="flex items-center gap-2">
             <Tractor className="h-8 w-8 text-primary" />
             <span className="font-bold text-xl text-gray-900 dark:text-white">Farm Admin</span>
           </Link>
@@ -118,6 +122,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive

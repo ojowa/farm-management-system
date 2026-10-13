@@ -245,7 +245,7 @@ export default function OrganizationsPage() {
 
         {total > 0 && (
           <div className="px-6 py-4 border-t border-gray-100">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-gray-500">
                 Showing <span className="font-medium text-gray-900">{(page - 1) * 20 + 1}</span> to{' '}
                 <span className="font-medium text-gray-900">{Math.min(page * 20, total)}</span> of{' '}

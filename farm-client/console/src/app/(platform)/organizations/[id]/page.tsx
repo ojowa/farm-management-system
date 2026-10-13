@@ -149,7 +149,7 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
         </div>
 
         <div className="border-t border-gray-100">
-          <div className="flex">
+          <div className="flex overflow-x-auto">
             {(['details', 'users', 'subscription', 'modules'] as const).map((t) => (
               <button
                 key={t}
@@ -226,7 +226,7 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
       )}
 
       {tab === 'users' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900">Organization Users</h2>
             <p className="text-sm text-gray-500 mt-1">Manage user access and permissions</p>
@@ -428,9 +428,9 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
         </div>
       )}
       {tab === 'modules' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
           <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Module Access</h2>
                 <p className="text-sm text-gray-500 mt-1">Toggle which modules this organization can access. Overrides plan defaults.</p>
@@ -459,7 +459,7 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
                           : 'border-gray-200 bg-gray-50'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold text-gray-900">{mod.name}</p>

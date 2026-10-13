@@ -33,7 +33,7 @@ export default function FeaturesPage() {
   const categories = [...new Set(features.map((f) => f.category))];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -44,7 +44,7 @@ export default function FeaturesPage() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="block w-48 px-3 py-2 pr-8 border border-gray-300 rounded-lg shadow-sm bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] focus:border-[#16a34a]"
+              className="block w-full md:w-48 px-3 py-2 pr-8 border border-gray-300 rounded-lg shadow-sm bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] focus:border-[#16a34a]"
             >
               <option value="all">All Categories</option>
               {categories.map((c) => (
@@ -59,7 +59,7 @@ export default function FeaturesPage() {
           </div>
         </div>
 
-        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Viewport } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/lib/toasts';
 import { SocketProvider } from '@/lib/socket';
@@ -11,6 +12,11 @@ import { ReconnectingBanner } from '@/components/ReconnectingBanner';
 import { OfflineBanner } from '@/components/OfflineBanner';
 
 export const dynamic = 'force-dynamic';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata = {
   title: 'Farm Management Admin',

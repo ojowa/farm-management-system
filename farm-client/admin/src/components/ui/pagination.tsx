@@ -51,11 +51,11 @@ export function Pagination({
   }, [currentPage, totalPages, maxPageNumbers, showPageNumbers]);
 
   return (
-    <nav className={cn('flex items-center gap-1', className)} aria-label="Pagination">
+    <nav className={cn('flex flex-wrap items-center justify-center gap-1', className)} aria-label="Pagination">
       <button
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1}
-        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-9 w-9')}
+        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-10 w-10')}
         aria-label="First page"
       >
         <ChevronFirst className="h-4 w-4" />
@@ -63,14 +63,14 @@ export function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-9 w-9')}
+        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-10 w-10')}
         aria-label="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
 
       {showPageNumbers && (
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {pages.map((page, index) =>
             page === '...' ? (
               <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
@@ -81,7 +81,7 @@ export function Pagination({
                 key={page}
                 onClick={() => onPageChange(page as number)}
                 className={cn(
-                  'h-9 min-w-9 rounded-md text-sm font-medium transition-colors',
+                  'h-10 min-w-10 rounded-md text-sm font-medium transition-colors',
                   page === currentPage
                     ? 'bg-primary text-primary-foreground'
                     : 'hover:bg-accent hover:text-accent-foreground'
@@ -99,7 +99,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-9 w-9')}
+        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-10 w-10')}
         aria-label="Next page"
       >
         <ChevronRight className="h-4 w-4" />
@@ -107,7 +107,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(totalPages)}
         disabled={currentPage === totalPages}
-        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-9 w-9')}
+        className={cn('p-2 rounded-md hover:bg-accent disabled:opacity-50 disabled:pointer-events-none', 'h-10 w-10')}
         aria-label="Last page"
       >
         <ChevronLast className="h-4 w-4" />

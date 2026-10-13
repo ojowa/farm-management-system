@@ -62,7 +62,7 @@ export default function LoginPage() {
 
   if (mfaMode) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
         <div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Two-Factor Authentication</h2>
           <p className="text-sm text-gray-500 mb-6">Enter the 6-digit code from your authenticator app</p>
@@ -103,7 +103,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
       <div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-xl font-semibold text-gray-900 mb-1">FarmMS Console</h2>
         <p className="text-sm text-gray-500 mb-6">Sign in to Admin Console</p>

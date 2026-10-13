@@ -797,8 +797,8 @@ export default function SettingsPage() {
                               {apiKey.isActive ? 'Active' : 'Disabled'}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <code className="text-xs bg-muted px-2 py-1 rounded font-mono break-all">
                               {showApiKey === apiKey.id && apiKey.key
                                 ? apiKey.key
                                 : `${apiKey.keyPrefix}••••••••`}

@@ -6,11 +6,26 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { NAV_ITEMS } from './navItems';
 
-export function Sidebar({ collapsed }: { collapsed: boolean }) {
+export function Sidebar({
+  collapsed,
+  open = false,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  open?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
 
   return (
-    <aside className={`fixed left-0 top-0 z-40 h-screen bg-[#0f172a] flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
+    <aside
+      id="app-sidebar"
+      // Off-canvas below lg: parked at -100% until `open`, always pinned in
+      // from the lg breakpoint where the layout offsets content by ml-64.
+      className={`fixed left-0 top-0 z-40 h-dvh bg-[#0f172a] flex flex-col transition-all duration-300 lg:translate-x-0 ${
+        collapsed ? 'w-16' : 'w-64'
+      } ${open ? 'translate-x-0' : '-translate-x-full'}`}
+    >
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-white/10">
         <div className="flex items-center gap-3 min-w-0">
@@ -44,6 +59,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                       isActive
                         ? 'bg-[#16a34a] text-white shadow-lg shadow-green-500/20'

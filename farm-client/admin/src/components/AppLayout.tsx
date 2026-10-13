@@ -47,7 +47,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900" suppressHydrationWarning>
-      <Sidebar />
+      <Sidebar open={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
 
       <div
         className={cn(
@@ -62,6 +62,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 aria-label="Toggle sidebar"
+                aria-expanded={sidebarOpen}
+                aria-controls="app-sidebar"
               >
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
@@ -122,8 +124,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           aria-hidden="true"
         />
       )}

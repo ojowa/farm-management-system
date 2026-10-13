@@ -150,7 +150,7 @@ export default function ConfigPage() {
         return (
           <div key={cat} className="mb-6">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{cat}</h3>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
               <div className="divide-y divide-gray-100">
                 {catConfigs.map((config) => (
                   <div key={config.key} className="px-6 py-4">

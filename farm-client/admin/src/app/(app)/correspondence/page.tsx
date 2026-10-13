@@ -197,7 +197,7 @@ export default function CorrespondencePage() {
   if (selectedItem) {
     return (
       <div>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{selectedItem.title}</h1>
             <p className="text-sm text-gray-500 mt-1">{selectedItem.referenceNumber}</p>
@@ -242,7 +242,7 @@ export default function CorrespondencePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Correspondence</h1>
           <p className="text-sm text-gray-500 mt-1">Track and manage internal/external documents</p>
@@ -251,7 +251,7 @@ export default function CorrespondencePage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {[
             { label: 'Total', value: stats.total, color: 'text-gray-900' },
             { label: 'Draft', value: stats.draft, color: 'text-gray-500' },
@@ -319,7 +319,7 @@ export default function CorrespondencePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                 <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="Document title" />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                   <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">

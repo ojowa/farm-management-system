@@ -142,7 +142,7 @@ export default function TaskDetailPage() {
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Tasks
         </Link>
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{task.title}</h1>
             <div className="flex items-center gap-2 mt-1">
@@ -221,7 +221,7 @@ export default function TaskDetailPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
                 <User className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
@@ -234,7 +234,7 @@ export default function TaskDetailPage() {
         </Card>
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
                 <Sprout className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -247,7 +247,7 @@ export default function TaskDetailPage() {
         </Card>
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
                 <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
@@ -264,7 +264,7 @@ export default function TaskDetailPage() {
         </Card>
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
                 <Clock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>

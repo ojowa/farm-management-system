@@ -30,7 +30,7 @@ function StatCard({ stat }: { stat: { name: string; value: string; change: strin
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{stat.name}</p>
             <p className="text-3xl font-bold mt-1">{stat.value}</p>
@@ -188,7 +188,7 @@ function DashboardContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Overview of your farm operations</p>
@@ -215,7 +215,7 @@ function DashboardContent() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-600" />Today&apos;s Attendance</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
                   <p className="text-2xl font-bold text-green-600">{attendanceSummary.present}</p>
                   <p className="text-xs text-muted-foreground">Present</p>

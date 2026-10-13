@@ -66,10 +66,10 @@ export default function HealthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#16a34a] flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,9 +107,9 @@ export default function HealthPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Services</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{summary?.total ?? '--'}</p>
@@ -122,7 +122,7 @@ export default function HealthPage() {
             </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Healthy</p>
                 <p className="text-3xl font-bold text-[#16a34a] mt-1">{summary?.healthy ?? '--'}</p>
@@ -135,7 +135,7 @@ export default function HealthPage() {
             </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Unhealthy</p>
                 <p className="text-3xl font-bold text-red-600 mt-1">{summary?.unhealthy ?? '--'}</p>
@@ -148,7 +148,7 @@ export default function HealthPage() {
             </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Response Time</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{summary?.totalMs ? `${summary.totalMs}ms` : '--'}</p>

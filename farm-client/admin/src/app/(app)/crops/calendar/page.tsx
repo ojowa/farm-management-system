@@ -97,7 +97,7 @@ export default function CropCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Calendar className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Crop Calendar</h1>
@@ -115,23 +115,23 @@ export default function CropCalendarPage() {
             <ChevronRight className="h-5 w-5" />
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           {isLoading ? (
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2 min-w-[560px]">
               {Array.from({ length: 35 }).map((_, i) => (
                 <div key={i} className="h-20 animate-pulse rounded bg-muted" />
               ))}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-7 gap-1 mb-2">
+              <div className="grid grid-cols-7 gap-1 mb-2 min-w-[560px]">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
                   <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">
                     {d}
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-1 min-w-[560px]">
                 {Array.from({ length: firstDay }).map((_, i) => (
                   <div key={`empty-${i}`} className="h-20" />
                 ))}

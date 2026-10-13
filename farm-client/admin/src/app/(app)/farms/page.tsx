@@ -189,7 +189,7 @@ export default function FarmsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Farms</h1>
           <p className="text-muted-foreground">Manage your farm properties</p>

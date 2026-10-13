@@ -92,7 +92,7 @@ export default function LeavePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
           <p className="text-sm text-gray-500 mt-1">Request and manage time off</p>
@@ -143,7 +143,7 @@ export default function LeavePage() {
           {balance.length === 0 ? <Card><div className="text-center py-12 text-gray-500">No leave balance configured</div></Card> : (
             balance.map((b) => (
               <Card key={b.leaveTypeId}>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <span className="font-medium text-gray-900">{b.leaveTypeName}</span>
                     {b.isPaid ? <Badge color="green">Paid</Badge> : <Badge color="gray">Unpaid</Badge>}

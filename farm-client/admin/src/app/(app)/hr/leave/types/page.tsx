@@ -66,7 +66,7 @@ export default function LeaveTypesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leave Types</h1>
           <p className="text-sm text-gray-500 mt-1">Configure leave categories for your organization</p>
@@ -80,7 +80,7 @@ export default function LeaveTypesPage() {
         <div className="space-y-3">
           {types.map((type) => (
             <Card key={type.id}>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">{type.name}</span>

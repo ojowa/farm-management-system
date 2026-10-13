@@ -81,7 +81,7 @@ export default function FarmMapPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Farm Map</h1>
           <p className="text-muted-foreground">View all farm locations</p>
@@ -207,15 +207,15 @@ export default function FarmMapPage() {
               <CardTitle>Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-sm text-muted-foreground">Total Farms</span>
                 <span className="font-medium">{filtered.length}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-sm text-muted-foreground">With Coordinates</span>
                 <span className="font-medium">{farmsWithCoords.length}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-sm text-muted-foreground">Without Coordinates</span>
                 <span className="font-medium">{filtered.length - farmsWithCoords.length}</span>
               </div>

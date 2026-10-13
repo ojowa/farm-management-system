@@ -100,7 +100,7 @@ export default function RolesPage() {
       {tab === 'roles' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
               <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">Roles</h2>
                 <button
@@ -147,7 +147,7 @@ export default function RolesPage() {
                     onClick={() => setSelectedRole(role)}
                     className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${selectedRole?.id === role.id ? 'bg-[#16a34a]/5 border-l-2 border-[#16a34a]' : ''}`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-gray-900">{role.name}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{role.description || 'No description'}</p>
