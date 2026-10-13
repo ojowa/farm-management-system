@@ -1,4 +1,4 @@
-import { Inject,  Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Inject,  Injectable, UnauthorizedException, BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -35,6 +35,15 @@ async function uniqueOrganizationSlug(name: string): Promise<string> {
 }
 
 const BCRYPT_SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
+
+/** The authenticated caller as embedded in the JWT (see generateAccessToken). */
+interface AuthCaller {
+  id?: string;
+  sub?: string;
+  role?: string;
+  permissions?: string[];
+  organizationId?: string | null;
+}
 const ACCESS_TOKEN_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'];
 const REFRESH_TOKEN_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY || '7d') as jwt.SignOptions['expiresIn'];
 const REFRESH_TOKEN_DB_EXPIRY_MS = Number(process.env.REFRESH_TOKEN_DB_EXPIRY_MS) || 7 * 24 * 60 * 60 * 1000;
@@ -350,16 +359,25 @@ export class AuthService {
     return { user: updated, accessToken, refreshToken };
   }
 
-  async listAllUsers() {
+  /**
+   * User management is organization-scoped: an organization's managers see and
+   * manage only their own users. Platform admins (wildcard permission) see
+   * everyone, including accounts that are not attached to any organization —
+   * those stay invisible to every organization.
+   */
+  async listAllUsers(caller?: AuthCaller) {
     const { prisma } = await import('@farm/database');
     return prisma.user.findMany({
+      where: this.userManagementScope(caller),
       select: {
         id: true,
         firstName: true,
+        middleName: true,
         lastName: true,
         email: true,
         isActive: true,
         organizationId: true,
+        organization: { select: { id: true, name: true } },
         role: true,
         createdAt: true,
       },
@@ -367,7 +385,36 @@ export class AuthService {
     });
   }
 
-  async updateUser(userId: string, data: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }) {
+  /** Platform admins see every user; everyone else only their own organization. */
+  private isPlatformAdmin(caller?: AuthCaller): boolean {
+    return !!caller?.permissions?.includes('*');
+  }
+
+  private userManagementScope(caller?: AuthCaller) {
+    if (this.isPlatformAdmin(caller)) return undefined;
+    if (caller?.organizationId) return { organizationId: caller.organizationId };
+    // No organization and not platform-scoped: only the caller's own account.
+    return { id: caller?.id ?? caller?.sub ?? '__no-users__' };
+  }
+
+  /** Guards cross-tenant writes: non-platform callers may only touch users in their own organization. */
+  private async assertUserInScope(caller: AuthCaller | undefined, targetUserId: string) {
+    if (this.isPlatformAdmin(caller)) return;
+    const { prisma } = await import('@farm/database');
+    const target = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, organizationId: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (!caller?.organizationId || target.organizationId !== caller.organizationId) {
+      throw new ForbiddenException('You can only manage users in your own organization');
+    }
+  }
+
+  async updateUser(userId: string, data: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }, caller?: AuthCaller) {
+    await this.assertUserInScope(caller, userId);
+    // Moving a user between organizations is a platform-admin action.
+    if (!this.isPlatformAdmin(caller)) delete (data as any).organizationId;
     const { prisma } = await import('@farm/database');
     const user = await prisma.user.update({
       where: { id: userId },
@@ -379,13 +426,15 @@ export class AuthService {
         email: true,
         isActive: true,
         organizationId: true,
+        organization: { select: { id: true, name: true } },
         role: true,
       },
     });
     return user;
   }
 
-  async toggleUserActive(userId: string) {
+  async toggleUserActive(userId: string, caller?: AuthCaller) {
+    await this.assertUserInScope(caller, userId);
     const { prisma } = await import('@farm/database');
     const existing = await prisma.user.findUnique({
       where: { id: userId },

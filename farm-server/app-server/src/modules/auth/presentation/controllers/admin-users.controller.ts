@@ -21,19 +21,20 @@ export class AdminUsersController {
 
   @Get('users')
   @Permission('users.manage')
-  listUsers() {
-    return this.authService.listAllUsers();
+  listUsers(@Req() req: any) {
+    // Scoped to the caller's organization unless they are a platform admin.
+    return this.authService.listAllUsers(req?.user);
   }
 
   @Put('users/:userId')
   @Permission('users.manage')
-  updateUser(@Param('userId') userId: string, @Body() body: any) {
-    return this.authService.updateUser(userId, body || {});
+  updateUser(@Param('userId') userId: string, @Body() body: any, @Req() req: any) {
+    return this.authService.updateUser(userId, body || {}, req?.user);
   }
 
   @Put('users/:userId/toggle-active')
   @Permission('users.manage')
-  toggleActive(@Param('userId') userId: string, @Req() _req: any) {
-    return this.authService.toggleUserActive(userId);
+  toggleActive(@Param('userId') userId: string, @Req() req: any) {
+    return this.authService.toggleUserActive(userId, req?.user);
   }
 }

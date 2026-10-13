@@ -212,13 +212,15 @@ export class AuthController {
   @Get('users')
   @UseGuards(JwtAuthGuard)
   @SkipThrottle()
-  async listAllUsers() {
-    return this.authService.listAllUsers();
+  async listAllUsers(@Req() req: any) {
+    // Organization-scoped: callers only see users of their own organization
+    // (platform admins see everyone).
+    return this.authService.listAllUsers(req?.user);
   }
 
   @Put('users/:userId')
   @UseGuards(JwtAuthGuard)
-  async updateUser(@Param('userId') userId: string, @Body() body: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }) {
-    return this.authService.updateUser(userId, body);
+  async updateUser(@Param('userId') userId: string, @Body() body: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }, @Req() req: any) {
+    return this.authService.updateUser(userId, body, req?.user);
   }
 }

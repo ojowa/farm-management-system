@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { usePermission } from '@/lib/usePermission';
-import { useToast } from '@/lib/toasts';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { Card, CardContent, Badge, Input, Button, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function UsersPage() {
@@ -24,7 +24,7 @@ export default function UsersPage() {
       setUsers(data);
     } catch (err: any) {
       setUsers([]);
-      toast({ type: 'error', title: 'Failed to load users', message: err.response?.data?.message || 'An error occurred' });
+      toast({ type: 'error', title: 'Failed to load users', message: getErrorMessage(err) });
     }
     finally { setLoading(false); }
   }
@@ -34,7 +34,7 @@ export default function UsersPage() {
       await apiClient.put(`/admin/users/${userId}/toggle-active`);
       loadUsers();
     } catch (err: any) {
-      toast({ type: 'error', title: 'Failed to toggle user', message: err.response?.data?.message || 'An error occurred' });
+      toast({ type: 'error', title: 'Failed to toggle user', message: getErrorMessage(err) });
     }
   }
 
@@ -70,11 +70,12 @@ export default function UsersPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No users found</div>
           ) : (
-            <Table>
+            <Table className="min-w-[720px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Organization</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Login</TableHead>
@@ -89,6 +90,9 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="max-w-[220px] truncate">{user.email}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {user.organization?.name || <span className="text-gray-400">—</span>}
                     </TableCell>
                     <TableCell><Badge variant="secondary">{user.role?.name}</Badge></TableCell>
                     <TableCell>
