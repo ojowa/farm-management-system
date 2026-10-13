@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformClient } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
+import { Dialog } from '@/components/ui/dialog';
 import type { PlatformConfigItem } from '@/lib/types';
 
 export default function ConfigPage() {
@@ -77,10 +78,9 @@ export default function ConfigPage() {
         </button>
       </div>
 
-      {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">New Config Entry</h2>
-          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Create Form */}
+      <Dialog open={showForm} onOpenChange={setShowForm} title="New Config Entry">
+          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Key</label>
               <input
@@ -119,7 +119,7 @@ export default function ConfigPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]"
               />
             </div>
-            <div className="sm:col-span-2 lg:col-span-4">
+            <div className="sm:col-span-2">
               <button
                 type="submit"
                 disabled={saving}
@@ -129,8 +129,7 @@ export default function ConfigPage() {
               </button>
             </div>
           </form>
-        </div>
-      )}
+      </Dialog>
 
       <div className="mb-4 flex items-center gap-4">
         <div className="flex-1 relative">

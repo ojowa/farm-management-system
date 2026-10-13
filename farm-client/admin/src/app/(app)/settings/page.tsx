@@ -19,6 +19,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -404,7 +405,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   First Name
@@ -436,7 +437,7 @@ export default function SettingsPage() {
               <p className="text-sm text-destructive">{profileErrors.name}</p>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   Email Address <span className="text-destructive">*</span>
@@ -601,7 +602,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-destructive mt-1">{securityErrors.currentPassword}</p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-1 block">New Password</label>
                   <Input
@@ -723,10 +724,14 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="p-6">
               {/* New Key Form */}
-              {showNewKeyForm && (
-                <div className="mb-6 p-4 border rounded-lg bg-muted/50 space-y-4">
-                  <h4 className="font-medium">Create New API Key</h4>
-                  <div className="grid grid-cols-2 gap-4">
+              <Dialog
+                open={showNewKeyForm}
+                onOpenChange={setShowNewKeyForm}
+                title="Create New API Key"
+                description="Keys are shown once, right after they are created."
+              >
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium mb-1 block">Key Name</label>
                       <Input
@@ -759,7 +764,7 @@ export default function SettingsPage() {
                     <Button size="sm" variant="outline" onClick={() => setShowNewKeyForm(false)}>Cancel</Button>
                   </div>
                 </div>
-              )}
+              </Dialog>
 
               {/* Keys List */}
               {apiKeys.length === 0 ? (

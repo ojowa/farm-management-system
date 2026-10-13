@@ -85,7 +85,9 @@ export default function UsersPage() {
                     <TableCell className="font-medium">
                       {[user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ')}
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <div className="max-w-[220px] truncate">{user.email}</div>
+                    </TableCell>
                     <TableCell><Badge variant="secondary">{user.role?.name}</Badge></TableCell>
                     <TableCell>
                       <Badge variant={user.isActive ? 'success' : 'destructive'}>

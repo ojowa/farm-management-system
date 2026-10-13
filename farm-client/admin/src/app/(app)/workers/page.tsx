@@ -340,7 +340,7 @@ export default function WorkersPage() {
       {!readOnly && (
         <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Worker">
           <form onSubmit={handleAdd} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   First Name <span className="text-destructive">*</span>
@@ -376,7 +376,7 @@ export default function WorkersPage() {
                 <p className="text-sm text-destructive mt-1">{formErrors.lastName}</p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   Position <span className="text-destructive">*</span>
@@ -399,7 +399,7 @@ export default function WorkersPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">Email</label>
                 <Input

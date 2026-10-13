@@ -212,14 +212,14 @@ export default function RosterPage() {
 
       {showShiftForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">{editingShift ? 'Edit Shift' : 'New Shift'}</h2>
             <form onSubmit={handleSaveShift} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Shift Name</label>
                 <Input value={shiftForm.name} onChange={(e) => setShiftForm({ ...shiftForm, name: e.target.value })} required placeholder="e.g. Morning Shift" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
                   <Input type="time" value={shiftForm.startTime} onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })} required />
@@ -248,7 +248,7 @@ export default function RosterPage() {
 
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 max-h-[90dvh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">Assign Worker — {showAssignModal}</h2>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {workers.length === 0 ? <p className="text-sm text-gray-500">No workers available</p> : (

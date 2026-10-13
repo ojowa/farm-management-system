@@ -35,7 +35,7 @@ const Dialog = ({ open, onOpenChange, children, title, description }: DialogProp
         onClick={() => onOpenChange(false)}
         aria-hidden="true"
       />
-      <div className="relative z-50 mx-4 flex max-h-[90dvh] w-full max-w-lg flex-col rounded-lg bg-background p-6 shadow-lg">
+      <div className="relative z-50 flex h-[100dvh] w-full flex-col bg-background p-4 shadow-lg sm:mx-4 sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:rounded-lg sm:p-6">
         <button
           onClick={() => onOpenChange(false)}
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"

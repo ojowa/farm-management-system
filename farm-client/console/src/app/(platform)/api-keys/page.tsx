@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformApiKeysAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
+import { Dialog } from '@/components/ui/dialog';
 import type { PlatformApiKey } from '@/lib/types';
 
 export default function ApiKeysPage() {
@@ -86,10 +87,8 @@ export default function ApiKeysPage() {
         </button>
       </div>
 
-      {showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">New API Key</h2>
-          <form onSubmit={handleCreate} className="flex gap-4 items-end">
+      <Dialog open={showForm} onOpenChange={setShowForm} title="New API Key">
+          <form onSubmit={handleCreate} className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
               <input
@@ -118,8 +117,7 @@ export default function ApiKeysPage() {
               {saving ? 'Creating...' : 'Create'}
             </button>
           </form>
-        </div>
-      )}
+      </Dialog>
 
       {newKey && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">

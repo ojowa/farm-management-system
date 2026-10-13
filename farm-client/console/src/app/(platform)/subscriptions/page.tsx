@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformSubscriptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
+import { Dialog } from '@/components/ui/dialog';
 import type { PlatformSubscriptionPlan } from '@/lib/types';
 
 export default function SubscriptionsPage() {
@@ -72,9 +73,7 @@ export default function SubscriptionsPage() {
           </button>
         </div>
 
-        {showForm && (
-          <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New Plan</h2>
+        <Dialog open={showForm} onOpenChange={setShowForm} title="Create New Plan">
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -151,8 +150,7 @@ export default function SubscriptionsPage() {
                 </button>
               </div>
             </form>
-          </div>
-        )}
+        </Dialog>
 
         {loading ? (
           <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-12">

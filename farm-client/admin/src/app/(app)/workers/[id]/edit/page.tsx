@@ -139,7 +139,7 @@ export default function EditWorkerPage() {
       <Card>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   First Name <span className="text-destructive">*</span>
@@ -181,7 +181,7 @@ export default function EditWorkerPage() {
                 <p className="text-sm text-destructive mt-1">{errors.lastName}</p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   Position <span className="text-destructive">*</span>
@@ -207,7 +207,7 @@ export default function EditWorkerPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">Email</label>
                 <Input

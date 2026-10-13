@@ -103,7 +103,7 @@ export default function LeaveTypesPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">{editingType ? 'Edit Leave Type' : 'New Leave Type'}</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformBroadcastsAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
+import { Dialog } from '@/components/ui/dialog';
 import type { PlatformBroadcast, SelectOption } from '@/lib/types';
 
 export default function BroadcastsPage() {
@@ -101,16 +102,7 @@ export default function BroadcastsPage() {
         </div>
 
         {/* Create Form */}
-        {showForm && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-[#16a34a]/10 flex items-center justify-center">
-                <svg className="w-4 h-4 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900">Create New Broadcast</h2>
-            </div>
+        <Dialog open={showForm} onOpenChange={setShowForm} title="Create New Broadcast">
             <form onSubmit={handleCreate} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
@@ -156,8 +148,7 @@ export default function BroadcastsPage() {
                 </button>
               </div>
             </form>
-          </div>
-        )}
+        </Dialog>
 
         {/* Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">

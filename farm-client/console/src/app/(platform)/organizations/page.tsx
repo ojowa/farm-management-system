@@ -203,7 +203,9 @@ export default function OrganizationsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{o.email || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    <div className="max-w-[220px] truncate">{o.email || '—'}</div>
+                  </td>
                   <td className="px-6 py-4">
                     <PlanBadge plan={o.subscriptionPlan} />
                   </td>

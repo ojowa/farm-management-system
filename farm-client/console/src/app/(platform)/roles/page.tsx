@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformRolesAPI, platformPermissionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
+import { Dialog } from '@/components/ui/dialog';
 import type { PlatformAdminRole, PlatformPermission } from '@/lib/types';
 
 export default function RolesPage() {
@@ -110,8 +111,7 @@ export default function RolesPage() {
                   {showForm ? 'Cancel' : '+ New Role'}
                 </button>
               </div>
-              {showForm && (
-                <div className="p-4 border-b border-gray-100 bg-gray-50">
+              <Dialog open={showForm} onOpenChange={setShowForm} title="New Role">
                   <form onSubmit={handleCreateRole} className="space-y-3">
                     <input
                       value={form.name}
@@ -134,8 +134,7 @@ export default function RolesPage() {
                       {saving ? 'Creating...' : 'Create Role'}
                     </button>
                   </form>
-                </div>
-              )}
+              </Dialog>
               <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
                 {loading ? (
                   <div className="p-8 text-center text-sm text-gray-500">Loading...</div>

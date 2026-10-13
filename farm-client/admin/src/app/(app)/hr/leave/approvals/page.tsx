@@ -99,7 +99,7 @@ export default function LeaveApprovalsPage() {
 
       {rejectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">Reject Leave Request</h2>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>

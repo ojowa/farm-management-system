@@ -264,7 +264,7 @@ function DashboardContent() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><ArrowUpRight className="h-5 w-5" />Quick Actions</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {quickActions.filter(() => !readOnly).map((action) => <QuickActionCard key={action.name} action={action} />)}
               </div>
             </CardContent>

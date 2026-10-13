@@ -215,7 +215,7 @@ export default function CorrespondencePage() {
               <Badge color="blue">{TYPE_LABELS[selectedItem.type] || selectedItem.type}</Badge>
               <Badge color="gray">{CATEGORY_LABELS[selectedItem.category] || selectedItem.category}</Badge>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500">From:</span> <span className="font-medium">{selectedItem.from || '—'}</span></div>
               <div><span className="text-gray-500">To:</span> <span className="font-medium">{selectedItem.to || '—'}</span></div>
               <div><span className="text-gray-500">Created by:</span> <span>{selectedItem.createdByName}</span></div>

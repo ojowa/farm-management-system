@@ -366,7 +366,7 @@ export default function InventoryPage() {
                 <p className="text-sm text-destructive mt-1">{formErrors.category}</p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-1 block">
                   Quantity <span className="text-destructive">*</span>

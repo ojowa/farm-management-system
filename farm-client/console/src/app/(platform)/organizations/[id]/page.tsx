@@ -275,7 +275,9 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <div className="max-w-[220px] truncate">{user.email}</div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                         {user.role?.name}
