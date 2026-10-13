@@ -116,10 +116,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     if (!socket || !isConnected || !isAuthenticated || !user?.id) return;
 
     if (!joinedRef.current) {
-      socket.emit('join', { userId: user.id });
+      // Send the org so the socket joins the tenant's event room; the server
+      // verifies it against the JWT and rejects any other organization.
+      socket.emit('join', { userId: user.id, organizationId: user.organizationId ?? undefined });
       joinedRef.current = true;
     }
-  }, [isConnected, isAuthenticated, user?.id]);
+  }, [isConnected, isAuthenticated, user?.id, user?.organizationId]);
 
   // Track online/offline status
   useEffect(() => {

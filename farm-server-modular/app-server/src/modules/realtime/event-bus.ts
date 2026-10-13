@@ -27,9 +27,12 @@ export class EventBus {
    * 1. Broadcasts via WebSocket to connected clients
    * 2. Fires an in-process EventEmitter2 event for other modules to consume
    *
-   * Pass `organizationId` whenever the payload belongs to a tenant — the
-   * broadcast then goes only to that organization's socket room instead of
-   * every connected client.
+   * Pass `organizationId` whenever the payload belongs to a tenant. When it
+   * is omitted it is derived from the payload instead (full entity rows carry
+   * `organizationId`; HR-style events nest it under `data`), so tenant rows
+   * no longer fall back to a global broadcast. Payloads without any
+   * organization reference (crop/poultry rows scope by farmId) still go
+   * global — scoping those needs caller-side changes in those modules.
    */
   emitDomainEvent(entity: string, action: 'created' | 'updated' | 'deleted', data: any, organizationId?: string): void {
     const event: RealtimeEvent = {
@@ -39,8 +42,8 @@ export class EventBus {
       timestamp: new Date().toISOString(),
     };
 
-    // Broadcast via WebSocket (org-scoped when known)
-    this.realtime.broadcastRealtimeEvent(event, organizationId);
+    // Broadcast via WebSocket (org-scoped: explicit id, else payload-derived)
+    this.realtime.broadcastRealtimeEvent(event, organizationId ?? pickOrganizationId(data));
 
     // Also emit via EventEmitter2 so other modules can subscribe
     this.logger.debug(`Emitting event: ${entity}.${action}`);
@@ -62,4 +65,19 @@ export class EventBus {
       timestamp: new Date().toISOString(),
     });
   }
+}
+
+/** Best-effort tenant extraction from an event payload (top-level or nested). */
+function pickOrganizationId(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  if (typeof record.organizationId === 'string' && record.organizationId) {
+    return record.organizationId;
+  }
+  const nested = record.data;
+  if (nested && typeof nested === 'object') {
+    const org = (nested as Record<string, unknown>).organizationId;
+    if (typeof org === 'string' && org) return org;
+  }
+  return undefined;
 }

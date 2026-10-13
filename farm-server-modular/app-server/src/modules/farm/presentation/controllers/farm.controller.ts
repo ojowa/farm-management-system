@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, HttpCode, HttpStatus, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, HttpCode, HttpStatus, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
 import { prisma } from '../../../../kernel/database';
@@ -22,6 +22,16 @@ const EXPORTABLE_ENTITIES: Record<string, string> = {
   farms: 'farm',
   workers: 'worker',
 };
+
+/** Columns clients may sort the farm list by — anything else used to crash Prisma. */
+const FARM_SORT_COLUMNS = new Set(['name', 'farmType', 'size', 'status', 'createdAt', 'updatedAt']);
+
+/** Clamp pagination params — `parseInt('?page=abc')` is NaN and 500'd in Prisma. */
+function toPositiveInt(value: string | undefined, fallback: number, max: number): number {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('farms')
@@ -52,10 +62,10 @@ export class FarmController {
     @Query('limit') limit?: string,
   ) {
     const result = await this.farmService.getAllFarms(String(req.user?.organizationId || ''), {
-      sortBy,
-      sortOrder,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
+      sortBy: sortBy && FARM_SORT_COLUMNS.has(sortBy) ? sortBy : 'createdAt',
+      sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
+      page: toPositiveInt(page, 1, 100_000),
+      limit: toPositiveInt(limit, 10, 100),
     });
     // `farms` is the legacy key; `data` is what the web clients read.
     const farms = (result as any)?.farms ?? (Array.isArray(result) ? result : []);
@@ -94,13 +104,22 @@ export class FarmController {
     const organizationId = String(req.user?.organizationId || '');
     const farm = await prisma.farm.findFirst({ where: { id, organizationId } });
     if (!farm) throw new NotFoundException('Farm not found');
-    return prisma.farm.update({
-      where: { id },
-      data: {
-        ...(body?.latitude !== undefined ? { latitude: Number(body.latitude) } : {}),
-        ...(body?.longitude !== undefined ? { longitude: Number(body.longitude) } : {}),
-      },
-    });
+    const data: Record<string, number> = {};
+    if (body?.latitude !== undefined) {
+      const latitude = Number(body.latitude);
+      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+        throw new BadRequestException('latitude must be a number between -90 and 90');
+      }
+      data.latitude = latitude;
+    }
+    if (body?.longitude !== undefined) {
+      const longitude = Number(body.longitude);
+      if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        throw new BadRequestException('longitude must be a number between -180 and 180');
+      }
+      data.longitude = longitude;
+    }
+    return prisma.farm.update({ where: { id }, data });
   }
 
   @Permission('farm.read')
@@ -126,17 +145,10 @@ export class FarmController {
   @HttpCode(HttpStatus.CREATED)
   async importFarms(@Req() req: any, @Body() body: { data?: any[] }) {
     const rows = Array.isArray(body?.data) ? body.data : [];
-    const organizationId = String(req.user?.organizationId || '');
-    if (!organizationId) throw new ForbiddenException('No organization associated with caller');
-    const results = await Promise.all(
-      rows.map((row) =>
-        this.farmService.createFarm({
-          organizationId,
-          ...pickFarmWriteFields(row),
-        } as any),
-      ),
-    );
-    return { imported: results.length, data: results };
+    // Rows are validated up front (a 400 names the offending row) and created
+    // in one transaction, so a bad row can no longer half-import the batch.
+    const farms = await this.farmService.importFarms(rows, String(req.user?.organizationId || ''));
+    return { imported: farms.length, data: farms };
   }
 
   @Permission('farm.read')

@@ -47,6 +47,43 @@ async function assertFarmInOrg(farmId: string, organizationId: string): Promise<
   if (!farm) throw new BadRequestException('Unknown farm');
 }
 
+function requireString(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !value.trim()) throw new BadRequestException(`"${field}" is required`);
+  return value.trim();
+}
+
+function requireNumber(value: unknown, field: string): number {
+  const n = Number(value);
+  if (value === undefined || value === null || value === '' || !Number.isFinite(n)) {
+    throw new BadRequestException(`"${field}" must be a number`);
+  }
+  return n;
+}
+
+/** Columns clients may sort each list by — anything else used to crash Prisma. */
+const DOCUMENT_SORT = ['name', 'type', 'fileSize', 'createdAt', 'updatedAt'];
+const INVENTORY_SORT = ['name', 'category', 'quantity', 'minimumQuantity', 'createdAt', 'updatedAt'];
+const EQUIPMENT_SORT = ['name', 'type', 'status', 'serialNumber', 'purchaseDate', 'nextMaintenance', 'createdAt', 'updatedAt'];
+
+/**
+ * Clamp list params — `parseInt('?page=abc')` is NaN and 500'd in Prisma, and
+ * an arbitrary `sortBy` key was passed straight into orderBy.
+ */
+function listParams(
+  page: string | undefined,
+  limit: string | undefined,
+  sortBy: string | undefined,
+  sortOrder: string | undefined,
+  allowedSort: readonly string[],
+): { pageNum: number; limitNum: number; orderBy: Record<string, 'asc' | 'desc'> } {
+  const parsedPage = Number.parseInt(String(page ?? ''), 10);
+  const pageNum = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+  const parsedLimit = Number.parseInt(String(limit ?? ''), 10);
+  const limitNum = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 20;
+  const column = sortBy && allowedSort.includes(sortBy) ? sortBy : 'createdAt';
+  return { pageNum, limitNum, orderBy: { [column]: sortOrder === 'asc' ? 'asc' : 'desc' } };
+}
+
 // Legacy local-disk directory. New uploads go to the configured object store
 // (see StorageService); this remains only to serve pre-existing local files.
 const UPLOAD_DIR =
@@ -111,19 +148,21 @@ export class DocumentsController {
       ];
     }
 
-    const pageNum = parseInt(page || '1');
-    const limitNum = parseInt(limit || '20');
+    const { pageNum, limitNum, orderBy } = listParams(page, limit, sortBy, sortOrder, DOCUMENT_SORT);
     const skip = (pageNum - 1) * limitNum;
 
-    const [data, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       prisma.document.findMany({
         where,
-        orderBy: { [sortBy || 'createdAt']: sortOrder || 'desc' },
+        orderBy,
         skip,
         take: limitNum,
       }),
       prisma.document.count({ where }),
     ]);
+
+    // storageKey is an internal object key — not for client consumption.
+    const data = rows.map(({ storageKey, ...row }) => row);
 
     return { data, total, page: pageNum, totalPages: Math.ceil(total / limitNum) };
   }
@@ -219,7 +258,8 @@ export class DocumentsController {
   async findOne(@Req() req: any, @Param('id') id: string) {
     const doc = await prisma.document.findFirst({ where: { id, organizationId: getOrgId(req) } });
     if (!doc) throw new NotFoundException('Document not found');
-    return doc;
+    const { storageKey, ...rest } = doc; // internal object key — not for clients
+    return rest;
   }
 
   @Permission('farm.write')
@@ -308,14 +348,13 @@ export class InventoryController {
       ];
     }
 
-    const pageNum = parseInt(page || '1');
-    const limitNum = parseInt(limit || '20');
+    const { pageNum, limitNum, orderBy } = listParams(page, limit, sortBy, sortOrder, INVENTORY_SORT);
     const skip = (pageNum - 1) * limitNum;
 
     const [data, total] = await Promise.all([
       prisma.inventory.findMany({
         where,
-        orderBy: { [sortBy || 'createdAt']: sortOrder || 'desc' },
+        orderBy,
         skip,
         take: limitNum,
       }),
@@ -361,14 +400,13 @@ export class InventoryController {
       ];
     }
 
-    const pageNum = parseInt(page || '1');
-    const limitNum = parseInt(limit || '20');
+    const { pageNum, limitNum, orderBy } = listParams(page, limit, sortBy, sortOrder, EQUIPMENT_SORT);
     const skip = (pageNum - 1) * limitNum;
 
     const [data, total] = await Promise.all([
       prisma.equipment.findMany({
         where,
-        orderBy: { [sortBy || 'createdAt']: sortOrder || 'desc' },
+        orderBy,
         skip,
         take: limitNum,
       }),
@@ -406,15 +444,20 @@ export class InventoryController {
     const organizationId = getOrgId(req);
     if (!organizationId) throw new ForbiddenException('No organization associated with caller');
     await assertFarmInOrg(body.farmId, organizationId);
+    // Validate/coerce here: string numbers or missing fields used to reach
+    // Prisma and surface as 500s.
     return prisma.inventory.create({
       data: {
         organizationId,
         farmId: body.farmId,
-        name: body.name,
-        category: body.category,
-        quantity: body.quantity,
-        unit: body.unit,
-        minimumQuantity: body.minimumQuantity || 0,
+        name: requireString(body.name, 'name'),
+        category: requireString(body.category, 'category'),
+        quantity: requireNumber(body.quantity, 'quantity'),
+        unit: requireString(body.unit, 'unit'),
+        minimumQuantity:
+          body.minimumQuantity === undefined || body.minimumQuantity === null || body.minimumQuantity === ''
+            ? 0
+            : requireNumber(body.minimumQuantity, 'minimumQuantity'),
       },
     });
   }
@@ -424,16 +467,15 @@ export class InventoryController {
   async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
     const item = await prisma.inventory.findFirst({ where: { id, organizationId: getOrgId(req) } });
     if (!item) throw new NotFoundException('Inventory item not found');
-    return prisma.inventory.update({
-      where: { id },
-      data: {
-        name: body.name,
-        category: body.category,
-        quantity: body.quantity,
-        unit: body.unit,
-        minimumQuantity: body.minimumQuantity,
-      },
-    });
+    const data: Record<string, unknown> = {};
+    if (body.name !== undefined) data.name = requireString(body.name, 'name');
+    if (body.category !== undefined) data.category = requireString(body.category, 'category');
+    if (body.quantity !== undefined) data.quantity = requireNumber(body.quantity, 'quantity');
+    if (body.unit !== undefined) data.unit = requireString(body.unit, 'unit');
+    if (body.minimumQuantity !== undefined && body.minimumQuantity !== null) {
+      data.minimumQuantity = requireNumber(body.minimumQuantity, 'minimumQuantity');
+    }
+    return prisma.inventory.update({ where: { id }, data });
   }
 
   @Permission('farm.delete')
@@ -453,24 +495,34 @@ export class InventoryController {
     const orgId = getOrgId(req);
     if (!orgId) throw new ForbiddenException('No organization associated with caller');
     const rows = Array.isArray(body?.data) ? body.data : [];
-    // Every row must land on a farm the caller owns; guard the array shape
-    // (the old `body.data.map` crashed on a missing `data`).
-    await Promise.all(rows.map((item) => assertFarmInOrg(item?.farmId, orgId)));
-    const results = await Promise.all(
-      rows.map((item) =>
-        prisma.inventory.create({
-          data: {
+    // Validate every row up front (400s name the offending index) and create
+    // in ONE transaction — the old Promise.all left half an import behind when
+    // a later row failed, and bad rows crashed as Prisma 500s.
+    const clean = await Promise.all(
+      rows.map(async (item, index) => {
+        try {
+          await assertFarmInOrg(item?.farmId, orgId);
+          return {
             organizationId: orgId,
             farmId: item.farmId,
-            name: item.name,
-            category: item.category,
-            quantity: item.quantity,
-            unit: item.unit,
-            minimumQuantity: item.minimumQuantity || 0,
-          },
-        })
-      )
+            name: requireString(item?.name, 'name'),
+            category: requireString(item?.category, 'category'),
+            quantity: requireNumber(item?.quantity, 'quantity'),
+            unit: requireString(item?.unit, 'unit'),
+            minimumQuantity:
+              item?.minimumQuantity === undefined || item?.minimumQuantity === null || item?.minimumQuantity === ''
+                ? 0
+                : requireNumber(item.minimumQuantity, 'minimumQuantity'),
+          };
+        } catch (err) {
+          if (err instanceof BadRequestException) {
+            throw new BadRequestException(`Row ${index}: ${err.message}`);
+          }
+          throw err;
+        }
+      }),
     );
+    const results = await prisma.$transaction(clean.map((data) => prisma.inventory.create({ data })));
     return { imported: results.length };
   }
 }
@@ -503,14 +555,13 @@ export class EquipmentController {
       ];
     }
 
-    const pageNum = parseInt(page || '1');
-    const limitNum = parseInt(limit || '20');
+    const { pageNum, limitNum, orderBy } = listParams(page, limit, sortBy, sortOrder, EQUIPMENT_SORT);
     const skip = (pageNum - 1) * limitNum;
 
     const [data, total] = await Promise.all([
       prisma.equipment.findMany({
         where,
-        orderBy: { [sortBy || 'createdAt']: sortOrder || 'desc' },
+        orderBy,
         skip,
         take: limitNum,
         include: { maintenanceRecords: true },
@@ -543,12 +594,15 @@ export class EquipmentController {
       data: {
         organizationId,
         farmId: body.farmId || null,
-        name: body.name,
+        name: requireString(body.name, 'name'),
         type: body.type,
         model: body.model || null,
         serialNumber: body.serialNumber || null,
         purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
-        purchaseCost: body.purchaseCost || null,
+        purchaseCost:
+          body.purchaseCost === undefined || body.purchaseCost === null || body.purchaseCost === ''
+            ? null
+            : requireNumber(body.purchaseCost, 'purchaseCost'),
         status: body.status || 'ACTIVE',
         notes: body.notes || null,
       },
@@ -561,7 +615,7 @@ export class EquipmentController {
     const existing = await prisma.equipment.findFirst({ where: { id, organizationId: getOrgId(req) } });
     if (!existing) throw new NotFoundException('Equipment not found');
     const data: Record<string, unknown> = {};
-    if (body.name !== undefined) data.name = body.name;
+    if (body.name !== undefined) data.name = requireString(body.name, 'name');
     if (body.type !== undefined) data.type = body.type;
     if (body.model !== undefined) data.model = body.model;
     if (body.serialNumber !== undefined) data.serialNumber = body.serialNumber;

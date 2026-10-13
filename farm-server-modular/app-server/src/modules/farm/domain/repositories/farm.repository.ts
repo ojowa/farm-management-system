@@ -15,6 +15,8 @@ export interface FarmRepository {
     limit?: number;
   }): Promise<{ farms: Farm[]; total: number }>;
   create(data: Omit<Farm, 'id' | 'createdAt' | 'updatedAt'>): Promise<Farm>;
+  /** Atomic bulk create (single transaction) — used by import. */
+  createMany(data: Array<Omit<Farm, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Farm[]>;
   update(id: string, organizationId: string, data: Partial<Farm>): Promise<Farm>;
   delete(id: string, organizationId: string): Promise<void>;
 }

@@ -33,6 +33,10 @@ export class PrismaFarmRepository implements FarmRepository {
     return prisma.farm.create({ data });
   }
 
+  async createMany(data: Array<Omit<Farm, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Farm[]> {
+    return prisma.$transaction(data.map((row) => prisma.farm.create({ data: row as any })));
+  }
+
   async update(id: string, organizationId: string, data: Partial<Farm>): Promise<Farm> {
     return prisma.farm.update({ where: { id, organizationId }, data });
   }
