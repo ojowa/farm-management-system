@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { getErrorMessage } from '@/lib/toasts';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -28,7 +30,7 @@ export default function LoginPage() {
         setMfaMode(true);
         setError('');
       } else {
-        setError(err?.message || 'Invalid credentials');
+        setError(getErrorMessage(err, 'Invalid credentials'));
       }
     } finally {
       setLoading(false);
@@ -46,7 +48,7 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       window.location.href = params.get('redirect') || '/dashboard';
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Invalid MFA code');
+      setError(getErrorMessage(err, 'Invalid MFA code'));
     } finally {
       setLoading(false);
     }
@@ -150,6 +152,12 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Don't have an account?{' '}
+          <Link href="/register" className="text-green-600 hover:text-green-700 font-medium">
+            Create one
+          </Link>
+        </p>
       </div>
     </div>
   );

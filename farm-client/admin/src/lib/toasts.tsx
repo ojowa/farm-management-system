@@ -101,3 +101,56 @@ export const useToast = () => {
   if (!context) throw new Error('useToast must be used within a ToastProvider');
   return context;
 };
+
+/**
+ * Pull a human-readable message out of an API error.
+ *
+ * Failures arrive in a different envelope depending on which layer produced
+ * them: the auth service answers `{ data: { message } }`, Nest's default
+ * handler answers `{ message }`, and the gateway filter answers
+ * `{ error: { message } }`. Check each shape before falling back to axios's
+ * own `err.message`, which for a failed request is just "Request failed with
+ * status code 401" — never something to show a user.
+ */
+export function getErrorMessage(
+  err: any,
+  fallback = 'Something went wrong. Please try again.',
+): string {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+
+  const asText = (value: any): string | undefined => {
+    if (Array.isArray(value)) {
+      const joined = value.filter(Boolean).join('. ');
+      return joined || undefined;
+    }
+    return typeof value === 'string' && value.trim() ? value : undefined;
+  };
+
+  // The throttler's own message ("ThrottlerException: Too Many Requests") is
+  // developer-facing, so translate this one case ourselves.
+  if (status === 429) return 'Too many attempts. Please wait a minute and try again.';
+
+  const serverMessage =
+    asText(data?.data?.message) ||
+    asText(data?.message) ||
+    asText(data?.error?.message) ||
+    asText(typeof data?.error === 'string' ? data.error : undefined);
+
+  if (serverMessage) return serverMessage;
+
+  // The request never reached the server (offline, DNS, blocked by CORS…).
+  if (err?.request && !err?.response) {
+    return "Can't reach the server. Check your connection and try again.";
+  }
+
+  if (status && status >= 500) return 'The server had a problem. Please try again shortly.';
+
+  // Axios's own message for an HTTP failure is a technical string ("Request
+  // failed with status code 401") — never show that. Its network-level
+  // messages were handled above; genuine `throw new Error(...)` messages are
+  // worth keeping.
+  if (err?.isAxiosError) return fallback;
+
+  return asText(err?.message) || fallback;
+}

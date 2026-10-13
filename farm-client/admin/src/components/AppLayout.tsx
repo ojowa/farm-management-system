@@ -13,6 +13,11 @@ import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
 
+// The auth pages render bare (no shell, no sidebar) and must not be bounced
+// back to /login by the guard below — otherwise /register is unreachable and
+// its "Sign in" / "Create account" cross-links loop.
+const AUTH_PAGES = ['/login', '/register'];
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -20,13 +25,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
 
+  const isAuthPage = AUTH_PAGES.includes(pathname);
+
   React.useEffect(() => {
-    if (!isLoading && !isAuthenticated && pathname !== '/login') {
+    if (!isLoading && !isAuthenticated && !isAuthPage) {
       router.replace('/login');
     }
-  }, [isLoading, isAuthenticated, pathname, router]);
+  }, [isLoading, isAuthenticated, isAuthPage, router]);
 
-  if (pathname === '/login') {
+  if (isAuthPage) {
     return <>{children}</>;
   }
 
