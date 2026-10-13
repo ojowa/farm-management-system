@@ -375,19 +375,28 @@ export class PlatformUserService {
     ]);
 
     return {
-      users: users.map((u: any) => ({
-        id: u.id,
-        email: u.email,
-        firstName: u.firstName,
-        lastName: u.lastName,
-        role: u.role?.name || 'UNKNOWN',
-        organizationId: u.organizationId,
-        organizationName: u.organization?.name || null,
-        isActive: u.isActive,
-        lastLoginAt: u.lastLoginAt?.toISOString() || null,
-        createdAt: u.createdAt.toISOString(),
-      })),
+      users: users.map((u: any) => this.mapUser(u)),
       total,
+    };
+  }
+
+  /**
+   * Shapes a user for API responses. Every read and write in this service
+   * routes through here so a raw Prisma row (passwordHash, twoFactorSecret)
+   * never reaches the console.
+   */
+  private mapUser(u: any) {
+    return {
+      id: u.id,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      role: u.role?.name || 'UNKNOWN',
+      organizationId: u.organizationId ?? null,
+      organizationName: u.organization?.name || null,
+      isActive: u.isActive,
+      lastLoginAt: u.lastLoginAt ? new Date(u.lastLoginAt).toISOString() : null,
+      createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : null,
     };
   }
 
@@ -398,36 +407,66 @@ export class PlatformUserService {
       include: { role: true, organization: true },
     });
     if (!user) throw new NotFoundException('User not found');
-    return {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role?.name || 'UNKNOWN',
-      organizationId: user.organizationId,
-      organizationName: user.organization?.name || null,
-      isActive: user.isActive,
-      lastLoginAt: user.lastLoginAt?.toISOString() || null,
-      createdAt: user.createdAt.toISOString(),
-    };
+    return this.mapUser(user);
   }
 
+  /**
+   * Full user edit from the console: profile fields, active flag, role, and
+   * moving the user to another organization (`organizationId: null` detaches
+   * them so they are no longer under any organization).
+   */
   async updateUser(id: string, data: any, auditUserId: string) {
     const { prisma } = await import('@farm/database');
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 
+    const updateData: any = {
+      firstName: data.firstName?.trim() || undefined,
+      lastName: data.lastName?.trim() || undefined,
+      email: data.email?.trim() || undefined,
+      isActive: typeof data.isActive === 'boolean' ? data.isActive : undefined,
+    };
+
+    // Organization move: only written when the caller actually sent one, so a
+    // plain profile edit can never silently detach the user.
+    const targetOrgId: string | null = 'organizationId' in data ? (data.organizationId || null) : undefined;
+    const orgChanged = targetOrgId !== undefined && targetOrgId !== user.organizationId;
+    if (orgChanged) {
+      if (targetOrgId) {
+        const org = await prisma.organization.findUnique({ where: { id: targetOrgId }, select: { id: true } });
+        if (!org) throw new BadRequestException('Organization not found');
+      }
+      updateData.organizationId = targetOrgId;
+    }
+
+    const roleChanged = !!data.roleId && data.roleId !== user.roleId;
+    if (roleChanged) {
+      const role = await prisma.role.findUnique({ where: { id: data.roleId }, select: { id: true } });
+      if (!role) throw new BadRequestException('Role not found');
+      updateData.roleId = data.roleId;
+    }
+
+    if (updateData.email && updateData.email.toLowerCase() !== (user.email || '').toLowerCase()) {
+      const clash = await prisma.user.findFirst({ where: { email: updateData.email }, select: { id: true } });
+      if (clash) throw new ConflictException('Email already in use');
+    }
+
     const updated = await prisma.user.update({
       where: { id },
-      data: {
-        firstName: data.firstName?.trim() || undefined,
-        lastName: data.lastName?.trim() || undefined,
-        email: data.email?.trim() || undefined,
-        isActive: data.isActive ?? undefined,
-      },
+      data: updateData,
+      include: { role: true, organization: true },
     });
+
+    // The access token embeds role, permissions and organization — end live
+    // sessions on those changes so the user comes back with fresh claims
+    // instead of keeping the old org's access until the token expires.
+    if (orgChanged || roleChanged) {
+      await prisma.refreshToken.deleteMany({ where: { userId: id } });
+      await prisma.userSession.deleteMany({ where: { userId: id } });
+    }
+
     await this.auditLogRepo.create({ userId: auditUserId, action: 'user.update', entity: 'User', entityId: id });
-    return updated;
+    return this.mapUser(updated);
   }
 
   async deactivateUser(id: string, auditUserId: string) {
@@ -435,9 +474,13 @@ export class PlatformUserService {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 
-    const updated = await prisma.user.update({ where: { id }, data: { isActive: false } });
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+      include: { role: true, organization: true },
+    });
     await this.auditLogRepo.create({ userId: auditUserId, action: 'user.deactivate', entity: 'User', entityId: id });
-    return updated;
+    return this.mapUser(updated);
   }
 
   async toggleUserActive(id: string, auditUserId: string) {
@@ -445,9 +488,13 @@ export class PlatformUserService {
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 
-    const updated = await prisma.user.update({ where: { id }, data: { isActive: !user.isActive } });
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isActive: !user.isActive },
+      include: { role: true, organization: true },
+    });
     await this.auditLogRepo.create({ userId: auditUserId, action: 'user.toggle-active', entity: 'User', entityId: id });
-    return updated;
+    return this.mapUser(updated);
   }
 
   async impersonateUser(id: string, auditUserId: string) {

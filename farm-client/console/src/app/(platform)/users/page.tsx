@@ -1,9 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { platformUsersAPI } from '@/lib/api';
+import { platformUsersAPI, platformRolesAPI, platformOrgsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformAdminUser } from '@/lib/types';
+import { Dialog } from '@/components/ui/dialog';
+import type { PlatformAdminUser, PlatformAdminRole, PlatformOrganization } from '@/lib/types';
+
+const inputClass =
+  'w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a]/20 focus:border-[#16a34a]';
+
+interface EditForm {
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleId: string;
+  organizationId: string;
+  isActive: boolean;
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<PlatformAdminUser[]>([]);
@@ -11,6 +24,15 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Edit dialog state
+  const [editing, setEditing] = useState<PlatformAdminUser | null>(null);
+  const [form, setForm] = useState<EditForm>({ firstName: '', lastName: '', email: '', roleId: '', organizationId: '', isActive: true });
+  const [roles, setRoles] = useState<PlatformAdminRole[]>([]);
+  const [orgs, setOrgs] = useState<PlatformOrganization[]>([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -24,11 +46,100 @@ export default function UsersPage() {
 
   useEffect(() => { loadUsers(); }, [page, search]);
 
-  const handleDeactivate = async (id: string) => {
-    if (!confirm('Deactivate this user?')) return;
+  const loadOptions = async () => {
+    if (optionsLoaded || optionsLoading) return;
+    setOptionsLoading(true);
     try {
-      await platformUsersAPI.deactivate(id);
-      toastSuccess('User deactivated');
+      const [rolesRes, orgsRes] = await Promise.all([
+        platformRolesAPI.list(),
+        platformOrgsAPI.list({ limit: 200 }),
+      ]);
+      const roleList: PlatformAdminRole[] = Array.isArray(rolesRes.data) ? rolesRes.data : rolesRes.data?.roles ?? [];
+      const orgList: PlatformOrganization[] = orgsRes.data?.organizations ?? [];
+      setRoles(roleList);
+      setOrgs(orgList);
+      setOptionsLoaded(true);
+    } catch (err) {
+      toastError(getErrorMessage(err));
+    }
+    setOptionsLoading(false);
+  };
+
+  const openEdit = (u: PlatformAdminUser) => {
+    setEditing(u);
+    setForm({
+      firstName: u.firstName,
+      lastName: u.lastName,
+      email: u.email,
+      roleId: '',
+      organizationId: u.organizationId || '',
+      isActive: u.isActive,
+    });
+    loadOptions();
+  };
+
+  // Preselect the user's current role once the role list arrives. Guarded so
+  // a selection the admin already made is never overwritten.
+  useEffect(() => {
+    if (!editing) return;
+    const match = roles.find((r) => r.name === editing.role);
+    setForm((f) => (f.roleId ? f : { ...f, roleId: match?.id ?? '' }));
+  }, [roles, editing]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
+    const email = form.email.trim();
+    if (!firstName || !lastName) {
+      toastError('First and last name are required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const orgChanged = (form.organizationId || '') !== (editing.organizationId || '');
+      const chosenRole = roles.find((r) => r.id === form.roleId);
+      const roleChanged = !!chosenRole && chosenRole.name !== editing.role;
+
+      const payload: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        isActive: boolean;
+        organizationId: string | null;
+        roleId?: string;
+      } = {
+        firstName,
+        lastName,
+        email,
+        isActive: form.isActive,
+        organizationId: form.organizationId || null,
+      };
+      if (form.roleId) payload.roleId = form.roleId;
+
+      await platformUsersAPI.update(editing.id, payload);
+      toastSuccess(
+        orgChanged || roleChanged
+          ? 'User updated — sessions ended, they must sign in again'
+          : 'User updated',
+      );
+      setEditing(null);
+      loadUsers();
+    } catch (err) {
+      toastError(getErrorMessage(err));
+    }
+    setSaving(false);
+  };
+
+  const handleToggleActive = async (u: PlatformAdminUser) => {
+    const activating = !u.isActive;
+    if (!confirm(activating ? 'Reactivate this user?' : 'Deactivate this user?')) return;
+    try {
+      await platformUsersAPI.toggleActive(u.id);
+      toastSuccess(activating ? 'User activated' : 'User deactivated');
       loadUsers();
     } catch (err) { toastError(getErrorMessage(err)); }
   };
@@ -117,7 +228,7 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{u.organizationName}</div>
+                    <div className="text-sm text-gray-500">{u.organizationName || <span className="text-gray-400">No organization</span>}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -128,16 +239,24 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm space-x-3">
                     <button
+                      onClick={() => openEdit(u)}
+                      className="text-[#16a34a] hover:text-green-800 font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
                       onClick={() => handleForceLogout(u.id)}
                       className="text-orange-600 hover:text-orange-800 font-medium"
                     >
                       Force Logout
                     </button>
                     <button
-                      onClick={() => handleDeactivate(u.id)}
-                      className="text-red-600 hover:text-red-800 font-medium"
+                      onClick={() => handleToggleActive(u)}
+                      className={u.isActive
+                        ? 'text-red-600 hover:text-red-800 font-medium'
+                        : 'text-green-600 hover:text-green-800 font-medium'}
                     >
-                      Deactivate
+                      {u.isActive ? 'Deactivate' : 'Activate'}
                     </button>
                   </td>
                 </tr>
@@ -165,6 +284,127 @@ export default function UsersPage() {
             Next
           </button>
         </div>
+
+        <Dialog
+          open={!!editing}
+          onOpenChange={(open) => { if (!open) setEditing(null); }}
+          title="Edit user"
+          description={editing ? `${editing.firstName} ${editing.lastName} · ${editing.role}` : undefined}
+        >
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">First name</label>
+                <input
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  className={inputClass}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Last name</label>
+                <input
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  className={inputClass}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className={inputClass}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Organization</label>
+              <select
+                value={form.organizationId}
+                onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
+                className={inputClass}
+                disabled={optionsLoading}
+              >
+                {optionsLoading ? (
+                  <option value="">Loading organizations...</option>
+                ) : (
+                  <>
+                    <option value="">No organization</option>
+                    {editing?.organizationId && !orgs.some((o) => o.id === editing.organizationId) && (
+                      <option value={editing.organizationId}>{editing.organizationName || 'Current organization'}</option>
+                    )}
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Move the user to another organization, or pick &ldquo;No organization&rdquo; to detach them.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+              <select
+                value={form.roleId}
+                onChange={(e) => setForm({ ...form, roleId: e.target.value })}
+                className={inputClass}
+                disabled={optionsLoading}
+              >
+                {optionsLoading ? (
+                  <option value="">Loading roles...</option>
+                ) : (
+                  <>
+                    <option value="">{editing ? `Keep current role (${editing.role})` : 'Select role'}</option>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+              <select
+                value={form.isActive ? 'active' : 'inactive'}
+                onChange={(e) => setForm({ ...form, isActive: e.target.value === 'active' })}
+                className={inputClass}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Changing the organization or role ends the user&rsquo;s sessions &mdash; they must sign in again.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || optionsLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#16a34a] rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        </Dialog>
       </div>
     </div>
   );
