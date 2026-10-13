@@ -1,23 +1,13 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  ArrowLeft,
-  Plus,
-  Minus,
-  ArrowRightLeft,
-  Calendar,
-  Package,
-} from 'lucide-react';
-import { inventoryAPI, farmsAPI } from '@/lib/api';
+import { ArrowLeft, Plus, Minus } from 'lucide-react';
+import { inventoryAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
-import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -30,30 +20,18 @@ interface InventoryItem {
   unit?: string;
 }
 
-interface Adjustment {
-  id: string;
-  inventoryItemId: string;
-  inventoryItem?: InventoryItem;
-  type: 'in' | 'out' | 'transfer';
-  quantity: number;
-  notes?: string;
-  createdAt: string;
-}
-
 export default function StockAdjustmentsPage() {
-  const router = useRouter();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('farm');
   const { toast } = useToast();
-  const [type, setType] = useState<'in' | 'out' | 'transfer'>('in');
+  const [type, setType] = useState<'in' | 'out'>('in');
   const [inventoryItemId, setInventoryItemId] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
   const {
     data: inventoryData,
-    loading: loadingInventory,
+    refetch,
   } = useFetch<{ data: InventoryItem[] }>(
     'inventory-list',
     () => inventoryAPI.list({ limit: 200 }),
@@ -66,9 +44,10 @@ export default function StockAdjustmentsPage() {
     (event: { entity: string; action: string; data: any }) => {
       if (event.action === 'updated') {
         clearFetchCache('inventory');
+        refetch();
       }
     },
-    []
+    [refetch]
   );
   useRealtime('inventory', handleRealtimeEvent);
 
@@ -78,19 +57,35 @@ export default function StockAdjustmentsPage() {
       toast({ type: 'error', title: 'Please fill in all required fields' });
       return;
     }
+    const numQty = Number(quantity);
+    if (!Number.isFinite(numQty) || numQty <= 0) {
+      toast({ type: 'error', title: 'Quantity must be a positive number' });
+      return;
+    }
+    // PUT /inventory/:id sets an ABSOLUTE quantity, so apply the entered
+    // amount as a delta against the item's current stock. The old code sent
+    // ±numQty as the new total, wiping stock on "in" and going negative on
+    // "out".
+    const current = items.find((i) => i.id === inventoryItemId)?.quantity ?? 0;
+    const nextQuantity = type === 'in' ? current + numQty : current - numQty;
+    if (nextQuantity < 0) {
+      toast({
+        type: 'error',
+        title: 'Insufficient stock',
+        message: `Only ${current} in stock — cannot remove ${numQty}.`,
+      });
+      return;
+    }
     setSaving(true);
     try {
-      const numQty = Number(quantity);
-      await inventoryAPI.update(inventoryItemId, {
-        quantity: type === 'in' ? numQty : -numQty,
-      });
+      await inventoryAPI.update(inventoryItemId, { quantity: nextQuantity });
       toast({
         type: 'success',
-        title: `Stock ${type === 'in' ? 'added' : type === 'out' ? 'removed' : 'transferred'} successfully`,
+        title: `Stock ${type === 'in' ? 'added' : 'removed'} successfully`,
       });
       setQuantity('');
-      setNotes('');
       clearFetchCache('inventory');
+      refetch();
     } catch (err: any) {
       toast({
         type: 'error',
@@ -116,7 +111,7 @@ export default function StockAdjustmentsPage() {
           Back to Inventory
         </Link>
         <h1 className="text-3xl font-bold tracking-tight">Stock Adjustments</h1>
-        <p className="text-muted-foreground">Add, remove, or transfer inventory stock</p>
+        <p className="text-muted-foreground">Add or remove inventory stock</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -150,15 +145,6 @@ export default function StockAdjustmentsPage() {
                     >
                       <Minus className="mr-1 h-4 w-4" />
                       Stock Out
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={type === 'transfer' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setType('transfer')}
-                    >
-                      <ArrowRightLeft className="mr-1 h-4 w-4" />
-                      Transfer
                     </Button>
                   </div>
                 </div>
@@ -200,17 +186,8 @@ export default function StockAdjustmentsPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Notes</label>
-                  <Input
-                    placeholder="Optional reason for adjustment..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
-                </div>
-
                 <Button type="submit" loading={saving} className="w-full">
-                  {type === 'in' ? 'Add Stock' : type === 'out' ? 'Remove Stock' : 'Transfer Stock'}
+                  {type === 'in' ? 'Add Stock' : 'Remove Stock'}
                 </Button>
               </form>
             </CardContent>
@@ -242,17 +219,6 @@ export default function StockAdjustmentsPage() {
                 <p className="font-medium">Stock Out</p>
                 <p className="text-sm text-muted-foreground">
                   Remove items from stock. Used when items are consumed, sold, or disposed of.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg border">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <ArrowRightLeft className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="font-medium">Transfer</p>
-                <p className="text-sm text-muted-foreground">
-                  Move items between farms or locations. Adjust quantity accordingly.
                 </p>
               </div>
             </div>

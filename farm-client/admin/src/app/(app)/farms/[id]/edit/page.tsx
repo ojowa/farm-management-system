@@ -55,7 +55,6 @@ export default function EditFarmPage() {
     name: '',
     location: '',
     size: '',
-    description: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -66,7 +65,6 @@ export default function EditFarmPage() {
         name: farm.name || '',
         location: farm.location || '',
         size: farm.size?.toString() || '',
-        description: farm.description || '',
       });
     }
   }, [farm]);
@@ -89,7 +87,6 @@ export default function EditFarmPage() {
         name: form.name,
         location: form.location,
         size: form.size ? Number(form.size) : undefined,
-        description: form.description,
       });
       toast({ type: 'success', title: 'Farm updated successfully' });
       clearFetchCache('farms');
@@ -204,21 +201,6 @@ export default function EditFarmPage() {
                 step="0.1"
                 value={form.size}
                 onChange={(e) => setForm({ ...form, size: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Description
-              </label>
-              <textarea
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Brief description of your farm..."
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                rows={4}
               />
             </div>
 

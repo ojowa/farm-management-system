@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -9,7 +9,6 @@ import {
   Home,
   MapPin,
   Calendar,
-  MoreHorizontal,
   Pencil,
   Trash2,
   Eye,
@@ -58,8 +57,6 @@ interface Farm {
   farmType: string;
   location?: string;
   size?: number;
-  sizeUnit?: string;
-  description?: string;
   status?: string;
   createdAt: string;
 }
@@ -76,7 +73,7 @@ export default function FarmsPage() {
   const [farmTypeFilter, setFarmTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', farmType: '', location: '', size: '', description: '' });
+  const [form, setForm] = useState({ name: '', farmType: '', location: '', size: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -85,12 +82,22 @@ export default function FarmsPage() {
     loading,
     refetch,
   } = useFetch<{ data: Farm[]; total: number; page: number; totalPages: number }>(
-    'farms-list',
-    () => farmsAPI.list({ page, limit: PAGE_SIZE }),
+    // The key must vary with the query — with a constant key the hook's effect
+    // never re-ran, so page/search/filter changes never refetched. The filters
+    // are applied server-side so they span every page, not just the loaded one.
+    `farms-list-${page}-${search}-${statusFilter}-${farmTypeFilter}`,
+    () => farmsAPI.list({
+      page,
+      limit: PAGE_SIZE,
+      search: search || undefined,
+      status: statusFilter || undefined,
+      farmType: farmTypeFilter || undefined,
+    }),
     { cacheTime: 30_000 }
   );
 
   const farms = farmsData?.data || [];
+  const totalPages = farmsData?.totalPages || 1;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -102,27 +109,6 @@ export default function FarmsPage() {
     [refetch]
   );
   useRealtime('farm', handleRealtimeEvent);
-
-  const filtered = useMemo(() => {
-    let result = farms;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (f) =>
-          f.name.toLowerCase().includes(q) || f.location?.toLowerCase().includes(q)
-      );
-    }
-    if (statusFilter) {
-      result = result.filter((f) => f.status === statusFilter);
-    }
-    if (farmTypeFilter) {
-      result = result.filter((f) => f.farmType === farmTypeFilter);
-    }
-    return result;
-  }, [farms, search, statusFilter, farmTypeFilter]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,11 +129,10 @@ export default function FarmsPage() {
         farmType: form.farmType,
         location: form.location,
         size: form.size ? Number(form.size) : undefined,
-        description: form.description,
       });
       toast({ type: 'success', title: 'Farm created successfully' });
       setShowAdd(false);
-      setForm({ name: '', farmType: '', location: '', size: '', description: '' });
+      setForm({ name: '', farmType: '', location: '', size: '' });
       clearFetchCache('farms');
       refetch();
     } catch (err: any) {
@@ -264,7 +249,7 @@ export default function FarmsPage() {
           <CardContent className="p-8 flex items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </CardContent>
-        ) : paginated.length === 0 ? (
+        ) : farms.length === 0 ? (
           <CardContent className="p-12 text-center">
             <Home className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
@@ -295,7 +280,7 @@ export default function FarmsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((farm) => (
+                  {farms.map((farm) => (
                     <TableRow
                       key={farm.id}
                       className="cursor-pointer"
@@ -312,9 +297,7 @@ export default function FarmsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {farm.size
-                          ? `${farm.size} ${farm.sizeUnit || 'acres'}`
-                          : '—'}
+                        {farm.size ? `${farm.size} acres` : '—'}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -434,20 +417,6 @@ export default function FarmsPage() {
                 placeholder="100"
                 value={form.size}
                 onChange={(e) => setForm({ ...form, size: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Description
-              </label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Brief description of your farm..."
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                rows={3}
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">

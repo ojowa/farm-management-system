@@ -60,12 +60,18 @@ export class FarmController {
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('farmType') farmType?: string,
   ) {
     const result = await this.farmService.getAllFarms(String(req.user?.organizationId || ''), {
       sortBy: sortBy && FARM_SORT_COLUMNS.has(sortBy) ? sortBy : 'createdAt',
       sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
       page: toPositiveInt(page, 1, 100_000),
       limit: toPositiveInt(limit, 10, 100),
+      search: typeof search === 'string' && search.trim() ? search.trim().slice(0, 200) : undefined,
+      status: typeof status === 'string' && status ? status : undefined,
+      farmType: typeof farmType === 'string' && farmType ? farmType : undefined,
     });
     // `farms` is the legacy key; `data` is what the web clients read.
     const farms = (result as any)?.farms ?? (Array.isArray(result) ? result : []);

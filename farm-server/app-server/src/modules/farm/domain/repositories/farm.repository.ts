@@ -13,6 +13,9 @@ export interface FarmRepository {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
+    search?: string;
+    status?: string;
+    farmType?: string;
   }): Promise<{ farms: Farm[]; total: number }>;
   create(data: Omit<Farm, 'id' | 'createdAt' | 'updatedAt'>): Promise<Farm>;
   /** Atomic bulk create (single transaction) — used by import. */

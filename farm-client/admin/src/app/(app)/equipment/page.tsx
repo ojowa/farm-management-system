@@ -8,7 +8,6 @@ import {
   Wrench,
   Calendar,
   Trash2,
-  Pencil,
 } from 'lucide-react';
 import { equipmentAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ import {
 import { Select } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { LoadingSpinner } from '@/components/ui/loading';
+import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
 
@@ -38,22 +38,24 @@ interface Equipment {
   status: string;
   nextMaintenance?: string;
   purchaseDate?: string;
-  cost?: number;
+  purchaseCost?: number;
   farmId?: string;
   farm?: { id: string; name: string };
 }
 
+// The server stores status in SCREAMING_SNAKE_CASE (Equipment.status default
+// 'ACTIVE'); the old labels were sent as filter values and matched nothing.
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Under Maintenance', label: 'Under Maintenance' },
-  { value: 'Retired', label: 'Retired' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'UNDER_MAINTENANCE', label: 'Under Maintenance' },
+  { value: 'RETIRED', label: 'Retired' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: 'bg-green-100 text-green-800',
-  'Under Maintenance': 'bg-yellow-100 text-yellow-800',
-  Retired: 'bg-gray-100 text-gray-800',
+  ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  UNDER_MAINTENANCE: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  RETIRED: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 };
 
 const PAGE_SIZE = 10;
@@ -62,6 +64,7 @@ export default function EquipmentPage() {
   const router = useRouter();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('farm');
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -71,10 +74,12 @@ export default function EquipmentPage() {
     loading,
     refetch,
   } = useFetch<{ data: Equipment[]; total: number; totalPages: number }>(
-    'equipment-list',
+    // The key must vary with the query — with a constant key the hook's effect
+    // never re-ran, so search/status/page changes never refetched.
+    `equipment-list-${page}-${search}-${statusFilter}`,
     useCallback(async () => {
       return await equipmentAPI.list({
-        search,
+        search: search || undefined,
         status: statusFilter || undefined,
         page,
         limit: PAGE_SIZE,
@@ -88,10 +93,15 @@ export default function EquipmentPage() {
     if (!confirm(`Delete "${name}"? This action cannot be undone.`)) return;
     try {
       await equipmentAPI.delete(id);
+      toast({ type: 'success', title: 'Equipment deleted' });
       clearFetchCache('equipment');
       refetch();
-    } catch {
-      // error handled by toast
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to delete equipment',
+        message: err.response?.data?.message || 'An error occurred',
+      });
     }
   };
 
@@ -180,8 +190,6 @@ export default function EquipmentPage() {
                   {equipment.map((item) => (
                     <TableRow
                       key={item.id}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/equipment/${item.id}`)}
                     >
                       <TableCell>
                         <span className="font-medium">{item.name}</span>
@@ -216,28 +224,16 @@ export default function EquipmentPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {!readOnly && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  router.push(`/equipment/${item.id}/edit`)
-                                }
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() =>
-                                  handleDelete(item.id, item.name)
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() =>
+                                handleDelete(item.id, item.name)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>

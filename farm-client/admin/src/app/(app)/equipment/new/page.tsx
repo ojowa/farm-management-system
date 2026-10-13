@@ -71,7 +71,9 @@ export default function NewEquipmentPage() {
         serialNumber: form.serialNumber || undefined,
         farmId: form.farmId || undefined,
         purchaseDate: form.purchaseDate || undefined,
-        cost: form.cost ? Number(form.cost) : undefined,
+        // The schema column is purchaseCost — a `cost` key was silently
+        // dropped, so the price entered here never got saved.
+        purchaseCost: form.cost ? Number(form.cost) : undefined,
         notes: form.notes || undefined,
       });
       toast({ type: 'success', title: 'Equipment created successfully' });

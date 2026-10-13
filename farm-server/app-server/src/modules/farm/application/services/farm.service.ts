@@ -115,6 +115,9 @@ export class FarmApplicationService {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
+    search?: string;
+    status?: string;
+    farmType?: string;
   } = {}) {
     // A caller without an organization sees nothing — never fall through to
     // an unscoped (all-tenant) listing.

@@ -14,17 +14,29 @@ export class PrismaFarmRepository implements FarmRepository {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
+    search?: string;
+    status?: string;
+    farmType?: string;
   }): Promise<{ farms: Farm[]; total: number }> {
-    const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 10 } = options || {};
+    const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 10, search, status, farmType } = options || {};
     const skip = (page - 1) * limit;
+    const where: Record<string, unknown> = { organizationId };
+    if (status) where.status = status;
+    if (farmType) where.farmType = farmType;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { location: { contains: search, mode: 'insensitive' } },
+      ];
+    }
     const [farms, total] = await Promise.all([
       prisma.farm.findMany({
-        where: { organizationId },
+        where,
         orderBy: { [sortBy]: sortOrder },
         skip,
         take: limit,
       }),
-      prisma.farm.count({ where: { organizationId } }),
+      prisma.farm.count({ where }),
     ]);
     return { farms, total };
   }

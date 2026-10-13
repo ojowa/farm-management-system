@@ -66,19 +66,27 @@ export default function InventoryPage() {
     loading,
     refetch,
   } = useFetch<{ data: InventoryItem[]; total: number; page: number; totalPages: number }>(
-    'inventory-list',
-    () => inventoryAPI.list({ page, limit: PAGE_SIZE }),
+    // The key must vary with the query — with a constant key the hook's effect
+    // never re-ran, so page/search/category changes never refetched.
+    `inventory-list-${page}-${search}-${categoryFilter}`,
+    () => inventoryAPI.list({
+      page,
+      limit: PAGE_SIZE,
+      search: search || undefined,
+      category: categoryFilter || undefined,
+    }),
     { cacheTime: 30_000 }
   );
 
   const { data: farmsData } = useFetch<{ data: { id: string; name: string }[] }>(
-    'farms-list',
+    'farms-dropdown',
     () => farmsAPI.list({ limit: 100 }),
     { cacheTime: 60_000 }
   );
 
   const farms = farmsData?.data || [];
   const inventory = inventoryData?.data || [];
+  const totalPages = inventoryData?.totalPages || 1;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -90,21 +98,6 @@ export default function InventoryPage() {
     [refetch]
   );
   useRealtime('inventory', handleRealtimeEvent);
-
-  const filtered = useMemo(() => {
-    let result = inventory;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter((item) => item.name.toLowerCase().includes(q));
-    }
-    if (categoryFilter) {
-      result = result.filter((item) => item.category === categoryFilter);
-    }
-    return result;
-  }, [inventory, search, categoryFilter]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const categories = useMemo(() => {
     const cats = new Set(inventory.map((item) => item.category).filter(Boolean));
@@ -233,7 +226,7 @@ export default function InventoryPage() {
           <CardContent className="p-8 flex items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </CardContent>
-        ) : paginated.length === 0 ? (
+        ) : inventory.length === 0 ? (
           <CardContent className="p-12 text-center">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
@@ -263,7 +256,7 @@ export default function InventoryPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((item) => (
+                  {inventory.map((item) => (
                     <TableRow
                       key={item.id}
                       className="cursor-pointer"

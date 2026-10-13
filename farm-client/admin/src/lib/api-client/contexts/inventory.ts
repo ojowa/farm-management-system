@@ -40,18 +40,18 @@ export interface EquipmentAPI {
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
   delete: (id: string) => Promise<any>;
-  maintenanceHistory: (id: string) => Promise<any>;
-  addMaintenance: (id: string, data: any) => Promise<any>;
 }
 
 export function createEquipmentAPI(client: AxiosInstance): EquipmentAPI {
+  // Equipment lives under /equipment (EquipmentController). The old
+  // /inventory/equipment base only served the GET list — create/update/delete
+  // all 404'd. There are no maintenance endpoints on the server, so the
+  // previous maintenanceHistory/addMaintenance methods are gone.
   return {
-    list: (params) => client.get('/inventory/equipment', { params }),
-    get: (id) => client.get(`/inventory/equipment/${id}`),
-    create: (data) => client.post('/inventory/equipment', data),
-    update: (id, data) => client.put(`/inventory/equipment/${id}`, data),
-    delete: (id) => client.delete(`/inventory/equipment/${id}`),
-    maintenanceHistory: (id) => client.get(`/inventory/equipment/${id}/maintenance`),
-    addMaintenance: (id, data) => client.post(`/inventory/equipment/${id}/maintenance`, data),
+    list: (params) => client.get('/equipment', { params }),
+    get: (id) => client.get(`/equipment/${id}`),
+    create: (data) => client.post('/equipment', data),
+    update: (id, data) => client.put(`/equipment/${id}`, data),
+    delete: (id) => client.delete(`/equipment/${id}`),
   };
 }
