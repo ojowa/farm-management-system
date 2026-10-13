@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformSubscriptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformSubscriptionPlan } from '@farm/types';
+import type { PlatformSubscriptionPlan } from '@/lib/types';
 
 export default function SubscriptionsPage() {
   const [plans, setPlans] = useState<PlatformSubscriptionPlan[]>([]);

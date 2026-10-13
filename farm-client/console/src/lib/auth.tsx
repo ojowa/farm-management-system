@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { startInactivityTracker } from '@/lib/inactivity';
 import { authClient, platformClient } from '@/lib/api';
 import { authAudit } from '@/lib/auth-audit';
-import type { PlatformAdminUser } from '@farm/types';
+import type { PlatformAdminUser } from '@/lib/types';
 
 interface AuthState {
   user: PlatformAdminUser | null;

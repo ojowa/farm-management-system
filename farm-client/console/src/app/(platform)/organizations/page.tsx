@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { platformOrgsAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformOrganization, SelectOption } from '@farm/types';
+import type { PlatformOrganization, SelectOption } from '@/lib/types';
 
 export default function OrganizationsPage() {
   const [orgs, setOrgs] = useState<PlatformOrganization[]>([]);

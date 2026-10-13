@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformOrgsAPI, platformUsersAPI, platformHealthAPI } from '@/lib/api';
 import { toastError, getErrorMessage } from '@/lib/toast';
-import type { ConsoleDashboardStats, PlatformServiceHealth } from '@farm/types';
+import type { ConsoleDashboardStats, PlatformServiceHealth } from '@/lib/types';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<ConsoleDashboardStats>({ totalOrgs: 0, totalUsers: 0, activeOrgs: 0, suspendedOrgs: 0 });

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { platformOrgsAPI, platformFeaturesAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { SelectOption } from '@farm/types';
+import type { SelectOption } from '@/lib/types';
 
 const PLAN_BADGE: Record<string, string> = {
   default: 'bg-gray-100 text-gray-700',

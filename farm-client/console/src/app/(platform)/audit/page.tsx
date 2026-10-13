@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformAuditAPI } from '@/lib/api';
 import { toastError, getErrorMessage } from '@/lib/toast';
-import type { PlatformAuditLog } from '@farm/types';
+import type { PlatformAuditLog } from '@/lib/types';
 
 export default function AuditPage() {
   const [logs, setLogs] = useState<PlatformAuditLog[]>([]);

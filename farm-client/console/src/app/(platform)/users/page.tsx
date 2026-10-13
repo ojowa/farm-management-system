@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformUsersAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformAdminUser } from '@farm/types';
+import type { PlatformAdminUser } from '@/lib/types';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<PlatformAdminUser[]>([]);

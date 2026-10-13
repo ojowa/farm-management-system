@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformApiKeysAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformApiKey } from '@farm/types';
+import type { PlatformApiKey } from '@/lib/types';
 
 export default function ApiKeysPage() {
   const [keys, setKeys] = useState<PlatformApiKey[]>([]);

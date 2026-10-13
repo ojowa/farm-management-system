@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformClient } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformConfigItem } from '@farm/types';
+import type { PlatformConfigItem } from '@/lib/types';
 
 export default function ConfigPage() {
   const [configs, setConfigs] = useState<PlatformConfigItem[]>([]);

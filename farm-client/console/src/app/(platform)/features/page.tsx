@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformFeaturesAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformFeature } from '@farm/types';
+import type { PlatformFeature } from '@/lib/types';
 
 export default function FeaturesPage() {
   const [features, setFeatures] = useState<PlatformFeature[]>([]);

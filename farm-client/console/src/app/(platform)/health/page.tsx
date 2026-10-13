@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformHealthAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformServiceHealth, PlatformHealthSummary } from '@farm/types';
+import type { PlatformServiceHealth, PlatformHealthSummary } from '@/lib/types';
 
 export default function HealthPage() {
   const [services, setServices] = useState<PlatformServiceHealth[]>([]);

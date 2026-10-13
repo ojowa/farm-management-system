@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformBroadcastsAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformBroadcast, SelectOption } from '@farm/types';
+import type { PlatformBroadcast, SelectOption } from '@/lib/types';
 
 export default function BroadcastsPage() {
   const [broadcasts, setBroadcasts] = useState<PlatformBroadcast[]>([]);

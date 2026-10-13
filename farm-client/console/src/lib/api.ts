@@ -1,4 +1,4 @@
-import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@farm/api-client';
+import { createFarmManagementClient, FarmManagementClient, APIClientConfig } from '@/lib/api-client';
 import { authAudit } from '@/lib/auth-audit';
 
 const config: APIClientConfig = {

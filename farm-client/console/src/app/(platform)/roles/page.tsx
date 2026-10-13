@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { platformRolesAPI, platformPermissionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { PlatformAdminRole, PlatformPermission } from '@farm/types';
+import type { PlatformAdminRole, PlatformPermission } from '@/lib/types';
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<PlatformAdminRole[]>([]);
