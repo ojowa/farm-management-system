@@ -119,6 +119,14 @@ export default function FarmsScreen() {
   const dispatch = useAppDispatch();
   const filter = useAppSelector((s) => s.ui.filters.farms);
   const orgId = useAppSelector((state) => state.auth.user?.organizationId);
+  const user = useAppSelector((state) => state.auth.user);
+
+  // Farm actions mirror the server's permission checks: everyone with
+  // farm.read sees the list; only farm.write may add/edit, farm.delete may
+  // delete. Missing permissions default to hidden (same pattern as
+  // settings.tsx) — the API would 403 regardless.
+  const canWrite = user?.permissions?.includes('farm.write') ?? false;
+  const canDelete = user?.permissions?.includes('farm.delete') ?? false;
 
   const [page] = useState(1);
 
@@ -132,8 +140,10 @@ export default function FarmsScreen() {
 
   const farms = useMemo(() => {
     if (!data) return [];
-    const items = Array.isArray(data) ? data : data.farms || data.items || [];
-    return items;
+    // `farms` is the server's legacy key, `data` the current one; plain
+    // arrays pass through untouched.
+    const items = Array.isArray(data) ? data : data.farms || data.data || data.items || [];
+    return Array.isArray(items) ? items : [];
   }, [data]);
 
   const filteredFarms = useMemo(() => {
@@ -187,9 +197,11 @@ export default function FarmsScreen() {
       <Text style={styles.emptySubtext}>
         Create your first farm to get started managing your agricultural operations
       </Text>
-      <Button title="Add Farm" onPress={() => router.push('/farms/add')} accessibilityLabel="Add your first farm" />
+      {canWrite && (
+        <Button title="Add Farm" onPress={() => router.push('/farms/add')} accessibilityLabel="Add your first farm" />
+      )}
     </View>
-  ), [router]);
+  ), [router, canWrite]);
 
   const renderItem = useCallback(({ item: farm }: { item: any }) => (
     <Card style={styles.farmCard}>
@@ -216,12 +228,10 @@ export default function FarmsScreen() {
               <Text style={styles.farmStatValue}>{farm.size} ha</Text>
             </View>
             <View style={styles.farmStat}>
-              <Text style={styles.farmStatLabel}>Crops</Text>
-              <Text style={styles.farmStatValue}>{farm.crops}</Text>
-            </View>
-            <View style={styles.farmStat}>
-              <Text style={styles.farmStatLabel}>Animals</Text>
-              <Text style={styles.farmStatValue}>{farm.animals}</Text>
+              <Text style={styles.farmStatLabel}>Status</Text>
+              <Text style={styles.farmStatValue}>
+                {String(farm.status || '').toUpperCase() || '—'}
+              </Text>
             </View>
           </View>
         </View>
@@ -235,25 +245,29 @@ export default function FarmsScreen() {
         >
           <Text style={styles.actionButtonText}>View Details</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push(`/farms/${farm.id}/edit`)}
-          accessibilityRole="button"
-          accessibilityLabel={`Edit ${farm.name}`}
-        >
-          <Text style={styles.actionButtonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteBorderColor]}
-          onPress={() => handleDeleteFarm(farm.id, farm.name)}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${farm.name}`}
-        >
-          <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
-        </TouchableOpacity>
+        {canWrite && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push(`/farms/${farm.id}/edit`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${farm.name}`}
+          >
+            <Text style={styles.actionButtonText}>Edit</Text>
+          </TouchableOpacity>
+        )}
+        {canDelete && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteBorderColor]}
+            onPress={() => handleDeleteFarm(farm.id, farm.name)}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${farm.name}`}
+          >
+            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </Card>
-  ), [dispatch, router, handleDeleteFarm]);
+  ), [dispatch, router, handleDeleteFarm, canWrite, canDelete]);
 
   if (isLoading) {
     return (
@@ -287,14 +301,16 @@ export default function FarmsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Farms</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/farms/add')}
-          accessibilityRole="button"
-          accessibilityLabel="Add new farm"
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+        {canWrite && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push('/farms/add')}
+            accessibilityRole="button"
+            accessibilityLabel="Add new farm"
+          >
+            <Text style={styles.addButtonText}>+</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.content}>

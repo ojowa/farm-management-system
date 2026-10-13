@@ -14,7 +14,7 @@ import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
-import { useAppDispatch } from '../../../../src/modules/auth/hooks/useAuth';
+import { useAppDispatch, useAppSelector } from '../../../../src/modules/auth/hooks/useAuth';
 import { setSelectedFarmId } from '../../../../src/store/slices/uiSlice';
 
 const FARM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -138,10 +138,9 @@ interface FarmData {
   name: string;
   location: string;
   size: number;
-  crops: number;
-  animals: number;
   status: 'active' | 'inactive';
   farmType?: string;
+  createdAt?: string;
 }
 
 export default function FarmDetailScreen() {
@@ -149,6 +148,13 @@ export default function FarmDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const { success, error: showError } = useToasts();
+
+  // Mirror the server's permission checks: only farm.write may edit,
+  // farm.delete may delete. Missing permissions default to hidden.
+  const user = useAppSelector((state) => state.auth.user);
+  const canWrite = user?.permissions?.includes('farm.write') ?? false;
+  const canDelete = user?.permissions?.includes('farm.delete') ?? false;
+
   const [loading, setLoading] = useState(true);
   const [farm, setFarm] = useState<FarmData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -285,28 +291,34 @@ export default function FarmDetailScreen() {
               <Text style={styles.statValue}>{farm.size} ha</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Crops</Text>
-              <Text style={styles.statValue}>{farm.crops}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Animals</Text>
-              <Text style={styles.statValue}>{farm.animals}</Text>
+              <Text style={styles.statLabel}>Registered</Text>
+              <Text style={styles.statValue}>
+                {farm.createdAt
+                  ? new Date(farm.createdAt).toLocaleDateString()
+                  : '—'}
+              </Text>
             </View>
           </View>
         </Card>
 
-        <View style={styles.actionsContainer}>
-          <Button
-            title="Edit"
-            onPress={() => router.push(`/farms/${id}/edit`)}
-            style={styles.actionButton}
-          />
-          <Button
-            title="Delete"
-            onPress={handleDelete}
-            style={styles.deleteAction}
-          />
-        </View>
+        {(canWrite || canDelete) && (
+          <View style={styles.actionsContainer}>
+            {canWrite && (
+              <Button
+                title="Edit"
+                onPress={() => router.push(`/farms/${id}/edit`)}
+                style={styles.actionButton}
+              />
+            )}
+            {canDelete && (
+              <Button
+                title="Delete"
+                onPress={handleDelete}
+                style={styles.deleteAction}
+              />
+            )}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

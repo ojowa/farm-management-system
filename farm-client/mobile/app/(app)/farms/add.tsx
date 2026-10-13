@@ -81,8 +81,6 @@ interface FormData {
   farmType: string;
   location: string;
   size: string;
-  crops: string;
-  animals: string;
   status: 'active' | 'inactive';
 }
 
@@ -91,8 +89,6 @@ interface FormErrors {
   farmType?: string;
   location?: string;
   size?: string;
-  crops?: string;
-  animals?: string;
 }
 
 export default function AddFarmScreen() {
@@ -108,8 +104,6 @@ export default function AddFarmScreen() {
     farmType: '',
     location: '',
     size: '',
-    crops: '',
-    animals: '',
     status: 'active',
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -135,14 +129,6 @@ export default function AddFarmScreen() {
       newErrors.size = 'Size must be a positive number';
     }
 
-    if (formData.crops.trim() && (isNaN(Number(formData.crops)) || Number(formData.crops) < 0)) {
-      newErrors.crops = 'Crops must be a non-negative number';
-    }
-
-    if (formData.animals.trim() && (isNaN(Number(formData.animals)) || Number(formData.animals) < 0)) {
-      newErrors.animals = 'Animals must be a non-negative number';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -159,8 +145,6 @@ export default function AddFarmScreen() {
         farmType: formData.farmType,
         location: formData.location.trim(),
         size: Number(formData.size),
-        crops: formData.crops.trim() ? Number(formData.crops) : 0,
-        animals: formData.animals.trim() ? Number(formData.animals) : 0,
         status: formData.status,
         organizationId: user?.organizationId || '',
       };
@@ -265,28 +249,6 @@ export default function AddFarmScreen() {
               onChangeText={(value) => updateFormData('size', value)}
               keyboardType="numeric"
               error={errors.size}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <TextInputField
-              label="Number of Crops"
-              placeholder="Enter number of crops"
-              value={formData.crops}
-              onChangeText={(value) => updateFormData('crops', value)}
-              keyboardType="numeric"
-              error={errors.crops}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <TextInputField
-              label="Number of Animals"
-              placeholder="Enter number of animals"
-              value={formData.animals}
-              onChangeText={(value) => updateFormData('animals', value)}
-              keyboardType="numeric"
-              error={errors.animals}
             />
           </View>
 

@@ -1,9 +1,10 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { BaseQueryFn } from '@reduxjs/toolkit/query';
 import type { RootState } from './store';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
-const baseQuery = fetchBaseQuery({
+const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
   prepareHeaders: (headers, { getState }) => {
     const state = getState() as RootState;
@@ -15,6 +16,45 @@ const baseQuery = fetchBaseQuery({
   },
 });
 
+/**
+ * The API gateway wraps every response in { success, data, timestamp,
+ * requestId }. The axios client (services/api.ts) unwraps that envelope in
+ * its response interceptor, but RTK Query bypasses axios — without the same
+ * unwrap here, screens receive the envelope object and read `undefined`
+ * rows (the farm list always rendered empty because of this).
+ */
+const baseQuery: BaseQueryFn = async (args, api, extraOptions) => {
+  const result = await rawBaseQuery(args, api, extraOptions);
+  const body = result.data as Record<string, unknown> | undefined;
+  if (body && typeof body === 'object' && 'success' in body && 'data' in body) {
+    result.data = body.data;
+  }
+  return result;
+};
+
+/**
+ * Extract the rows from a list payload regardless of which list key the
+ * endpoint uses (`data`, `farms`, `crops`, …). Keeps `providesTags` from
+ * throwing (`result.map is not a function`) on object payloads.
+ */
+function rowsOf(result: unknown): any[] {
+  if (Array.isArray(result)) return result;
+  if (result && typeof result === 'object') {
+    const payload = result as Record<string, unknown>;
+    for (const key of ['data', 'farms', 'crops', 'items', 'livestock', 'expenses', 'sales', 'tasks']) {
+      if (Array.isArray(payload[key])) return payload[key] as any[];
+    }
+  }
+  return [];
+}
+
+function listTags(entity: string, result: unknown) {
+  return [
+    ...rowsOf(result).map(({ id }: { id: string }) => ({ type: entity as any, id })),
+    { type: entity as any, id: 'LIST' },
+  ];
+}
+
 // ─── Farms ─────────────────────────────────────────────────────────────────────
 
 export const farmsApi = createApi({
@@ -24,13 +64,7 @@ export const farmsApi = createApi({
   endpoints: (builder) => ({
     listFarms: builder.query({
       query: (params) => ({ url: '/farms', params }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }: { id: string }) => ({ type: 'Farm' as const, id })),
-              { type: 'Farm' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Farm' as const, id: 'LIST' }],
+      providesTags: (result) => listTags('Farm', result),
     }),
     getFarm: builder.query({
       query: (id: string) => `/farms/${id}`,
@@ -74,13 +108,7 @@ export const cropsApi = createApi({
   endpoints: (builder) => ({
     listCrops: builder.query({
       query: (params) => ({ url: '/crops', params }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }: { id: string }) => ({ type: 'Crop' as const, id })),
-              { type: 'Crop' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Crop' as const, id: 'LIST' }],
+      providesTags: (result) => listTags('Crop', result),
     }),
     getCrop: builder.query({
       query: (id: string) => `/crops/${id}`,
@@ -124,13 +152,7 @@ export const livestockApi = createApi({
   endpoints: (builder) => ({
     listLivestock: builder.query({
       query: (params) => ({ url: '/livestock', params }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }: { id: string }) => ({ type: 'Livestock' as const, id })),
-              { type: 'Livestock' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Livestock' as const, id: 'LIST' }],
+      providesTags: (result) => listTags('Livestock', result),
     }),
     getLivestock: builder.query({
       query: (id: string) => `/livestock/${id}`,
@@ -174,23 +196,11 @@ export const financeApi = createApi({
   endpoints: (builder) => ({
     listExpenses: builder.query({
       query: (params) => ({ url: '/expenses', params }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }: { id: string }) => ({ type: 'Expense' as const, id })),
-              { type: 'Expense' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Expense' as const, id: 'LIST' }],
+      providesTags: (result) => listTags('Expense', result),
     }),
     listSales: builder.query({
       query: (params) => ({ url: '/sales', params }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }: { id: string }) => ({ type: 'Sale' as const, id })),
-              { type: 'Sale' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Sale' as const, id: 'LIST' }],
+      providesTags: (result) => listTags('Sale', result),
     }),
     createExpense: builder.mutation({
       query: (data) => ({ url: '/expenses', method: 'POST', body: data }),
@@ -219,13 +229,7 @@ export const tasksApi = createApi({
   endpoints: (builder) => ({
     listTasks: builder.query({
       query: (params) => ({ url: '/tasks', params }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }: { id: string }) => ({ type: 'Task' as const, id })),
-              { type: 'Task' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Task' as const, id: 'LIST' }],
+      providesTags: (result) => listTags('Task', result),
     }),
     getTask: builder.query({
       query: (id: string) => `/tasks/${id}`,
