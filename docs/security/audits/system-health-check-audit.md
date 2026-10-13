@@ -98,6 +98,14 @@ POST /v1/api/platform-health/check
 2. **Runtime:** built and booted the merged domains service locally — `Mapped {/health, GET}` from the new controller, livestock's existing `HealthController {/health}` sub-routes still mapped (no route conflict), `GET /health` → `200 {"status":"ok","uptime":116,"memory":96026624}`, `GET /platform-health` → `401` (guards intact).
 3. **Logic:** `npm run test:health` exercises `checkAll()`/`getHealth()` against a stub repository and a local stub service — asserts 2xx-JSON→healthy, 2xx-non-JSON→healthy, 404→down, 500→degraded, refused→down with stale uptime/metadata reset, gateway entry at `/v1/health`, correct summary counts, surfaced `latencyMs`, and `lastUpdated` == newest `lastCheck`. All assertions pass.
 
+## Post-deploy incident (2026-10-13) — fixed
+
+The first UI run after deploying failed with `Unexpected token 'n', "null" is not valid JSON`.
+
+- **Cause:** the timeout fix passed `null` as the axios body — `post(url, null, { timeout })`. axios serialises that to the literal 4-byte body `null` with `Content-Type: application/json`, and the gateway's `express.json()` runs in **strict** mode (objects/arrays only), so `body-parser` rejects it with `400` and `SyntaxError: Unexpected token 'n', "null" is not valid JSON`, which `getErrorMessage()` surfaces verbatim in the toast. The original reproduction used a bodyless POST (201), which is why the regression was not caught before the deploy.
+- **Fix:** `post(url, undefined, { timeout })` — the endpoint takes no input, so the request is sent with no payload. Verified live against the deployed gateway: `null` body → **400**, no body → **201** with `9/9 healthy`.
+- **Also fixed:** the pre-fix `app-server` row stayed frozen at `down` with month-old metadata (it is no longer probed when `APP_SERVER_URL` is unset), so `getHealth()` now filters stored rows to the current probe-target set — dead entries no longer linger in the grid as a permanent red card.
+
 ## Follow-ups (not addressed)
 
 1. Record an `AuditLog` entry for health checks (needs the acting user id passed into `PlatformHealthService.checkAll()`).

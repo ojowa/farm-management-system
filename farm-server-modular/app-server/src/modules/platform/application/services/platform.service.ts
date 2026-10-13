@@ -200,7 +200,15 @@ export class PlatformHealthService {
   constructor(@Inject('SystemHealthRepository') private readonly healthRepo: SystemHealthRepository) {}
 
   async getHealth() {
-    const services = await this.healthRepo.findMany();
+    // Rows for services this deployment no longer probes (the gateway entry,
+    // skipped when APP_SERVER_URL is unset) would otherwise sit in the grid
+    // forever, frozen at their last real check with an old timestamp.
+    const currentTargets = new Set<string>([
+      ...HEALTH_TARGETS.map((t) => t.name),
+      ...(process.env.APP_SERVER_URL ? ['app-server'] : []),
+      'postgresql',
+    ]);
+    const services = (await this.healthRepo.findMany()).filter((s) => currentTargets.has(s.serviceName));
     const db = await this.probeDatabase();
 
     // "Last updated" has to mean "when a check last ran", not `new Date()` on

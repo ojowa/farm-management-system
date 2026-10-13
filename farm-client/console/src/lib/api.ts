@@ -164,7 +164,11 @@ export const platformHealthAPI = {
   status: () => apiClient.get('/api/platform-health'),
   // The check fans out to every service; give it more room than the client's
   // default 15s so a slow probe can't abort the request while it is running.
-  check: () => apiClient.post('/api/platform-health/check', null, { timeout: 60000 }),
+  // NOTE: no request payload — do NOT pass `null` here: axios would serialise
+  // it as the literal body `null` with Content-Type application/json, and the
+  // gateway's strict JSON parser rejects any non-object (400 "Unexpected token
+  // 'n', \"null\" is not valid JSON").
+  check: () => apiClient.post('/api/platform-health/check', undefined, { timeout: 60000 }),
 };
 
 export const platformAuditAPI = {
