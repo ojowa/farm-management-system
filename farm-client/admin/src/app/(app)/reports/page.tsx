@@ -33,6 +33,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useToast } from '@/lib/toasts';
+import { usePermission } from '@/lib/usePermission';
 import { useFetch } from '@/hooks/useFetch';
 
 interface ReportTemplate {
@@ -112,6 +113,7 @@ interface ReportRecord {
 
 export default function ReportsPage() {
   const { toast } = useToast();
+  const { canCreate } = usePermission();
   const [generating, setGenerating] = useState<string | null>(null);
 
   const { data: reportsData } = useFetch<{ data: { reports: any[] } }>(
@@ -166,12 +168,14 @@ export default function ReportsPage() {
             Generate, view, and download farm reports
           </p>
         </div>
-        <Link href="/reports/builder">
-          <Button>
-            <Wand2 className="mr-2 h-4 w-4" />
-            Create Custom Report
-          </Button>
-        </Link>
+        {canCreate('reporting') && (
+          <Link href="/reports/builder">
+            <Button>
+              <Wand2 className="mr-2 h-4 w-4" />
+              Create Custom Report
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Report Templates */}

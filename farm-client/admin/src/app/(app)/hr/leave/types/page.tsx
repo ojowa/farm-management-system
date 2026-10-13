@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/lib/toasts';
 
 interface LeaveType {
@@ -20,7 +21,7 @@ interface LeaveType {
 }
 
 export default function LeaveTypesPage() {
-  const { canDelete } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const { toast } = useToast();
   const [types, setTypes] = useState<LeaveType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,8 @@ export default function LeaveTypesPage() {
   const [form, setForm] = useState({ name: '', daysPerYear: '0', isPaid: true });
   const [saving, setSaving] = useState(false);
 
-  const isOrgOwner = true;
+  // Managing the leave-type catalogue is an HR-management action (hr.write).
+  const isOrgOwner = canCreate('hr');
 
   useEffect(() => { loadTypes(); }, []);
 
@@ -92,7 +94,7 @@ export default function LeaveTypesPage() {
                 {isOrgOwner && (
                   <div className="flex gap-2">
                     <button onClick={() => openForm(type)} className="text-xs text-green-600 hover:text-green-800">Edit</button>
-                    {canDelete('leave') && <button onClick={() => handleDelete(type.id)} className="text-xs text-red-600 hover:text-red-800">Delete</button>}
+                    {canDelete('hr') && <button onClick={() => handleDelete(type.id)} className="text-xs text-red-600 hover:text-red-800">Delete</button>}
                   </div>
                 )}
               </div>
@@ -101,11 +103,12 @@ export default function LeaveTypesPage() {
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">{editingType ? 'Edit Leave Type' : 'New Leave Type'}</h2>
-            <form onSubmit={handleSave} className="space-y-4">
+      <Dialog
+        open={showForm}
+        onOpenChange={setShowForm}
+        title={editingType ? 'Edit Leave Type' : 'New Leave Type'}
+      >
+        <form onSubmit={handleSave} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Annual Leave" />
@@ -123,9 +126,7 @@ export default function LeaveTypesPage() {
                 <Button type="submit" loading={saving}>{editingType ? 'Update' : 'Create'}</Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </div>
   );
 }

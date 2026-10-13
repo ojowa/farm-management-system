@@ -13,13 +13,14 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { livestockFormSchema } from '@/lib/validation';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 export default function EditLivestockPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('livestock');
 
   if (readOnly) {
     router.push('/livestock');

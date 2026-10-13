@@ -28,6 +28,7 @@ import {
 import { Dialog } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
+import { usePermission } from '@/lib/usePermission';
 import { useToast } from '@/lib/toasts';
 
 interface TodaySummary {
@@ -99,6 +100,8 @@ function formatDate(date: Date) {
 
 export default function AttendancePage() {
   const { toast } = useToast();
+  const { canCreate } = usePermission();
+  const canWrite = canCreate('hr');
   const today = useMemo(() => formatDate(new Date()), []);
 
   const [selectedDate, setSelectedDate] = useState(today);
@@ -234,10 +237,12 @@ export default function AttendancePage() {
           <h1 className="text-3xl font-bold tracking-tight">Worker Attendance</h1>
           <p className="text-muted-foreground">Track daily attendance for your workers</p>
         </div>
-        <Button onClick={() => setShowClockInDialog(true)}>
-          <LogIn className="mr-2 h-4 w-4" />
-          Clock In Worker
-        </Button>
+        {canWrite && (
+          <Button onClick={() => setShowClockInDialog(true)}>
+            <LogIn className="mr-2 h-4 w-4" />
+            Clock In Worker
+          </Button>
+        )}
       </div>
 
       {todayLoading ? (
@@ -413,7 +418,7 @@ export default function AttendancePage() {
                             In
                           </Button>
                         )}
-                        {row.clockIn && !row.clockOut && (
+                        {canWrite && row.clockIn && !row.clockOut && (
                           <Button
                             variant="ghost"
                             size="sm"

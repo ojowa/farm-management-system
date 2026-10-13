@@ -12,7 +12,7 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
 import { farmFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 const ALL_FARM_TYPES = [
   { value: 'CROP', label: 'Crop' },
@@ -25,7 +25,8 @@ const ALL_FARM_TYPES = [
 export default function NewFarmPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('farm');
   const allowedFarmTypes = undefined;
 
   if (readOnly) {

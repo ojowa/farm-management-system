@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { useToast } from '@/lib/toasts';
 import { Card, CardContent, Badge, Input, Button, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function UsersPage() {
-  const readOnly = useReadOnly();
+  // Admin user management is restricted to users.manage holders.
+  const { hasPermission } = usePermission();
+  const readOnly = !hasPermission('users.manage');
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

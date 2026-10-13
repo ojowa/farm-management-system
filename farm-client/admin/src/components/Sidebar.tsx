@@ -26,6 +26,7 @@ import {
   ListTodo,
   Clock,
   Calendar,
+  CalendarDays,
   Heart,
   Baby,
   Droplets,
@@ -34,55 +35,57 @@ import {
   MapPin,
   Wrench,
   FileText,
+  Mail,
   Store,
 } from 'lucide-react';
+import { requiredPermissionsForPath } from '@/lib/routePermissions';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, module: null, permission: null },
-  { name: 'Users', href: '/users', icon: UserCog, adminOnly: true, module: null, permission: 'users.manage' },
-  { name: 'Roles', href: '/roles', icon: Shield, adminOnly: true, module: null, permission: 'users.manage' },
-  { name: 'Permissions', href: '/permissions', icon: Shield, adminOnly: true, module: null, permission: 'users.manage' },
-  { name: 'Farms', href: '/farms', icon: Home, module: 'farm', permission: 'farm.read' },
-  { name: 'Farm Map', href: '/farms/map', icon: MapPin, module: 'farm', permission: 'farm.read' },
-  { name: 'Crops', href: '/crops', icon: Sprout, module: 'crop', permission: 'crop.read' },
-  { name: 'Crop Calendar', href: '/crops/calendar', icon: Calendar, module: 'crop', permission: 'crop.read' },
-  { name: 'Pest & Disease', href: '/crops/pest-disease', icon: Bug, module: 'crop', permission: 'crop.read' },
-  { name: 'Livestock', href: '/livestock', icon: Beef, module: 'livestock', permission: 'livestock.read' },
-  { name: 'Health', href: '/livestock/health', icon: Heart, module: 'livestock', permission: 'livestock.read' },
-  { name: 'Breeding', href: '/livestock/breeding', icon: Baby, module: 'livestock', permission: 'livestock.read' },
-  { name: 'Irrigation', href: '/irrigation', icon: Droplets, module: 'crop', permission: 'crop.read' },
-  { name: 'Poultry', href: '/poultry', icon: Egg, module: 'poultry', permission: 'poultry.read' },
-  { name: 'Inventory', href: '/inventory', icon: Package, module: 'inventory', permission: 'inventory.read' },
-  { name: 'Low Stock', href: '/inventory/low-stock', icon: Package, module: 'inventory', permission: 'inventory.read' },
-  { name: 'Equipment', href: '/equipment', icon: Wrench, module: 'inventory', permission: 'inventory.read' },
-  { name: 'Workers', href: '/workers', icon: Users, module: 'worker', permission: 'worker.read' },
-  { name: 'Tasks', href: '/tasks', icon: ListTodo, module: 'worker', permission: 'worker.read' },
-  { name: 'Attendance', href: '/workers/attendance', icon: Clock, module: 'worker', permission: 'worker.read' },
-  { name: 'Finance', href: '/finance', icon: DollarSign, module: 'finance', permission: 'finance.read' },
-  { name: 'Profitability', href: '/finance/profitability', icon: DollarSign, module: 'finance', permission: 'finance.read' },
-  { name: 'Contracts', href: '/contracts', icon: FileText, module: 'finance', permission: 'finance.read' },
-  { name: 'Marketplace', href: '/marketplace', icon: Store, module: 'finance', permission: 'finance.read' },
-  { name: 'Messages', href: '/messages', icon: FileText, module: 'communication', permission: 'communication.read' },
-  { name: 'Reports', href: '/reports', icon: BarChart3, module: 'reporting', permission: 'reporting.read' },
-  { name: 'Scheduled Reports', href: '/reports/scheduled', icon: BarChart3, module: 'reporting', permission: 'reporting.read' },
-  { name: 'Weather', href: '/weather', icon: CloudSun, module: null, permission: null },
-  { name: 'Settings', href: '/settings', icon: Settings, module: null, permission: null },
+  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Users', href: '/users', icon: UserCog },
+  { name: 'Roles', href: '/roles', icon: Shield },
+  { name: 'Permissions', href: '/permissions', icon: Shield },
+  { name: 'Farms', href: '/farms', icon: Home },
+  { name: 'Farm Map', href: '/farms/map', icon: MapPin },
+  { name: 'Crops', href: '/crops', icon: Sprout },
+  { name: 'Crop Calendar', href: '/crops/calendar', icon: Calendar },
+  { name: 'Pest & Disease', href: '/crops/pest-disease', icon: Bug },
+  { name: 'Livestock', href: '/livestock', icon: Beef },
+  { name: 'Health', href: '/livestock/health', icon: Heart },
+  { name: 'Breeding', href: '/livestock/breeding', icon: Baby },
+  { name: 'Irrigation', href: '/irrigation', icon: Droplets },
+  { name: 'Poultry', href: '/poultry', icon: Egg },
+  { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Low Stock', href: '/inventory/low-stock', icon: Package },
+  { name: 'Equipment', href: '/equipment', icon: Wrench },
+  { name: 'Workers', href: '/workers', icon: Users },
+  { name: 'Roster', href: '/roster', icon: CalendarDays },
+  { name: 'Tasks', href: '/tasks', icon: ListTodo },
+  { name: 'Attendance', href: '/workers/attendance', icon: Clock },
+  { name: 'Messages', href: '/messages', icon: FileText },
+  { name: 'Correspondence', href: '/correspondence', icon: Mail },
+  { name: 'Leave', href: '/hr/leave', icon: Calendar },
+  { name: 'Finance', href: '/finance', icon: DollarSign },
+  { name: 'Profitability', href: '/finance/profitability', icon: DollarSign },
+  { name: 'Contracts', href: '/contracts', icon: FileText },
+  { name: 'Marketplace', href: '/marketplace', icon: Store },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Scheduled Reports', href: '/reports/scheduled', icon: BarChart3 },
+  { name: 'Weather', href: '/weather', icon: CloudSun },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { hasPermission, permissions } = usePermission();
+  const { hasPermission } = usePermission();
   const [collapsed, setCollapsed] = useState(false);
 
+  // Visibility comes from the same map AppLayout gates routes with, so the
+  // nav can never offer a link the user would be denied on arrival.
   const filteredNav = navigation.filter((item) => {
-    if (item.adminOnly && item.permission && !hasPermission(item.permission)) return false;
-    if (item.module && permissions.length > 0) {
-      const modules = Array.from(new Set(permissions.map((p) => p.split('.')[0])));
-      if (!modules.includes(item.module)) return false;
-    }
-    if (item.permission && !hasPermission(item.permission)) return false;
-    return true;
+    const required = requiredPermissionsForPath(item.href);
+    return !required || required.length === 0 || required.some((p) => hasPermission(p));
   });
 
   return (

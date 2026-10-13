@@ -12,12 +12,13 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
 import { livestockFormSchema } from '@/lib/validation';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 export default function NewLivestockPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('livestock');
 
   if (readOnly) {
     router.push('/livestock');

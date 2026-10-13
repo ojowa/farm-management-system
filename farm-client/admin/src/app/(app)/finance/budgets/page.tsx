@@ -32,7 +32,7 @@ import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -57,7 +57,8 @@ interface Budget {
 }
 
 export default function BudgetsPage() {
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('finance');
   const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);

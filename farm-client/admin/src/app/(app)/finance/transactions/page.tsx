@@ -36,7 +36,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 
 interface Transaction {
@@ -59,7 +59,8 @@ const PAGE_SIZE = 10;
 export default function TransactionsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('finance');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);

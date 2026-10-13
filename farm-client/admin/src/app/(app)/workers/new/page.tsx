@@ -14,11 +14,12 @@ import { useToast } from '@/lib/toasts';
 import { useFetch } from '@/hooks/useFetch';
 import { workerFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 export default function NewWorkerPage() {
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('hr');
   const { toast } = useToast();
   const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});

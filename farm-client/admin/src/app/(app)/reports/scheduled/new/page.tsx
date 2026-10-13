@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/lib/toasts';
+import { usePermission } from '@/lib/usePermission';
 
 const TEMPLATES = [
   { value: 'FINANCIAL_SUMMARY', label: 'Financial Summary' },
@@ -30,6 +31,13 @@ const FREQUENCIES = [
 export default function NewScheduledReportPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { canCreate } = usePermission();
+
+  if (!canCreate('reporting')) {
+    router.push('/reports/scheduled');
+    return null;
+  }
+
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',

@@ -6,7 +6,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/lib/toasts';
+import { usePermission } from '@/lib/usePermission';
 
 interface LeaveRequest {
   id: string;
@@ -44,6 +46,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function LeavePage() {
   const { toast } = useToast();
+  const { hasAnyPermission } = usePermission();
+  // Submitting and cancelling your own requests is leave.write on the server.
+  const canRequest = hasAnyPermission('leave.write', 'hr.write');
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [balance, setBalance] = useState<BalanceItem[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -97,7 +102,7 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
           <p className="text-sm text-gray-500 mt-1">Request and manage time off</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>+ Request Leave</Button>
+        {canRequest && <Button onClick={() => setShowForm(true)}>+ Request Leave</Button>}
       </div>
 
       <div className="flex gap-4 border-b border-gray-200 mb-6">
@@ -160,11 +165,8 @@ export default function LeavePage() {
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Request Leave</h2>
-            <form onSubmit={handleRequest} className="space-y-4">
+      <Dialog open={showForm} onOpenChange={setShowForm} title="Request Leave">
+        <form onSubmit={handleRequest} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
                 <select value={form.leaveTypeId} onChange={(e) => setForm({ ...form, leaveTypeId: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
@@ -191,9 +193,7 @@ export default function LeavePage() {
                 <Button type="submit" loading={saving}>Submit Request</Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </div>
   );
 }

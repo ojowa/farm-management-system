@@ -33,7 +33,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface Transaction {
   id: string;
@@ -56,7 +56,8 @@ interface FinanceSummary {
 export default function FinancePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('finance');
 
   const {
     data: expensesData,

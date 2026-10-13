@@ -40,7 +40,8 @@ export default function MessagesPage() {
   const { canCreate } = usePermission();
   const { toast } = useToast();
   const { user } = useAuth();
-  const canSend = canCreate('communication');
+  // Messages are served by hr.controller, which requires hr.write to send.
+  const canSend = canCreate('hr');
 
   const [view, setView] = useState<View>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);

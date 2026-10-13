@@ -32,7 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { inventoryFormSchema } from '@/lib/validation';
 
 interface InventoryItem {
@@ -50,7 +50,8 @@ const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('farm');
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');

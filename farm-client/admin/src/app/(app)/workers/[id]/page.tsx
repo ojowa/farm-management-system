@@ -20,7 +20,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface Worker {
   id: string;
@@ -41,7 +41,8 @@ interface Worker {
 export default function WorkerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('hr');
   const { toast } = useToast();
 
   const {

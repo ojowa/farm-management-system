@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
+import { usePermission } from '@/lib/usePermission';
+import { requiredPermissionsForPath } from '@/lib/routePermissions';
+import { AccessDenied } from '@/components/AccessDenied';
 
 // The auth pages render bare (no shell, no sidebar) and must not be bounced
 // back to /login by the guard below — otherwise /register is unreachable and
@@ -24,8 +27,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  const { hasPermission } = usePermission();
 
   const isAuthPage = AUTH_PAGES.includes(pathname);
+
+  // View-level authorization: never render a view the user has no
+  // permission for, including routes the sidebar does not link to.
+  const requiredPermissions = requiredPermissionsForPath(pathname);
+  const isDenied =
+    !!requiredPermissions &&
+    requiredPermissions.length > 0 &&
+    !requiredPermissions.some((p) => hasPermission(p));
 
   React.useEffect(() => {
     if (!isLoading && !isAuthenticated && !isAuthPage) {
@@ -118,7 +130,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="p-4 lg:p-6">
-          {children}
+          {isDenied ? <AccessDenied permission={requiredPermissions?.[0]} /> : children}
         </main>
       </div>
 

@@ -25,7 +25,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 const FARM_TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   CROP: { label: 'Crop', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Tractor },
@@ -52,7 +52,8 @@ export default function FarmDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('farm');
 
   const {
     data: farmData,

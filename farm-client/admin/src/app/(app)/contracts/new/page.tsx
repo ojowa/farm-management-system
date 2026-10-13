@@ -11,12 +11,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
 import { clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 export default function NewContractPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('finance');
 
   if (readOnly) {
     router.push('/contracts');

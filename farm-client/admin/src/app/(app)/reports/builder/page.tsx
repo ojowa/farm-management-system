@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/toasts';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { exportToCSV, exportToJSON, exportToPDF } from '@/lib/export';
 
 type DataSource = 'farms' | 'crops' | 'livestock' | 'poultry' | 'inventory' | 'workers' | 'finance';
@@ -153,7 +153,8 @@ const aggregations = [
 export default function ReportBuilderPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('reporting');
   const [reportName, setReportName] = useState('');
   const [widgets, setWidgets] = useState<ReportWidget[]>([]);
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null);

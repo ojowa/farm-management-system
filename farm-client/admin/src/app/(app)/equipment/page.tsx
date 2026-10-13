@@ -27,7 +27,7 @@ import { Select } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface Equipment {
   id: string;
@@ -60,7 +60,8 @@ const PAGE_SIZE = 10;
 
 export default function EquipmentPage() {
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('farm');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);

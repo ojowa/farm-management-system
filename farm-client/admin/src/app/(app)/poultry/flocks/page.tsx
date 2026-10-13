@@ -32,7 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { flockFormSchema } from '@/lib/validation';
 
 interface Flock {
@@ -55,7 +55,8 @@ interface Farm {
 const PAGE_SIZE = 10;
 
 export default function FlocksPage() {
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('poultry');
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');

@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/toasts';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { settingsAPI } from '@/lib/api';
 
 type Tab = 'profile' | 'notifications' | 'security' | 'integrations';
@@ -47,7 +47,12 @@ interface ApiKey {
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { hasPermission } = usePermission();
+  // Profile, password, notification and 2FA settings only affect the signed-in
+  // user's own account, so they stay editable for everyone. API keys are org
+  // resources and are permission-gated (apikey.read to see, apikey.write to change).
+  const canManageKeys = hasPermission('apikey.read');
+  const canWriteKeys = hasPermission('apikey.write');
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -352,7 +357,9 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b overflow-x-auto">
-        {tabs.map((tab) => {
+        {tabs
+          .filter((tab) => tab.id !== 'integrations' || canManageKeys)
+          .map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -393,12 +400,10 @@ export default function SettingsPage() {
                 )}
               </div>
               <div>
-                {!readOnly && (
-                  <Button variant="outline" size="sm">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Photo
-                  </Button>
-                )}
+                <Button variant="outline" size="sm">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Photo
+                </Button>
                 <p className="text-xs text-muted-foreground mt-1">
                   JPG, PNG up to 2MB
                 </p>
@@ -467,12 +472,10 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              {!readOnly && (
-                <Button onClick={handleProfileSave} loading={saving}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Profile
-                </Button>
-              )}
+              <Button onClick={handleProfileSave} loading={saving}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Profile
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -508,7 +511,6 @@ export default function SettingsPage() {
                       <ToggleSwitch
                         enabled={notifications[item.key as keyof typeof notifications]}
                         onToggle={() => {
-                          if (readOnly) return;
                           setNotifications({
                             ...notifications,
                             [item.key]: !notifications[item.key as keyof typeof notifications],
@@ -539,7 +541,6 @@ export default function SettingsPage() {
                       <ToggleSwitch
                         enabled={notifications[item.key as keyof typeof notifications]}
                         onToggle={() => {
-                          if (readOnly) return;
                           setNotifications({
                             ...notifications,
                             [item.key]: !notifications[item.key as keyof typeof notifications],
@@ -552,12 +553,10 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              {!readOnly && (
-                <Button onClick={handleNotificationsSave} loading={saving}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Preferences
-                </Button>
-              )}
+              <Button onClick={handleNotificationsSave} loading={saving}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Preferences
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -637,12 +636,10 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="flex justify-end pt-2">
-                {!readOnly && (
-                  <Button onClick={handleSecuritySave} loading={saving}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Update Password
-                  </Button>
-                )}
+                <Button onClick={handleSecuritySave} loading={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Update Password
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -685,7 +682,7 @@ export default function SettingsPage() {
                   <Button
                     variant={twoFactorEnabled ? 'outline' : 'default'}
                     size="sm"
-                    disabled={readOnly || saving}
+                    disabled={saving}
                     onClick={handleTwoFactorToggle}
                   >
                     {saving ? (
@@ -715,7 +712,7 @@ export default function SettingsPage() {
                   Manage API keys for external service connections
                 </CardDescription>
               </div>
-              {!readOnly && (
+              {canWriteKeys && (
                 <Button size="sm" onClick={() => setShowNewKeyForm(!showNewKeyForm)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Key
@@ -836,11 +833,11 @@ export default function SettingsPage() {
                           <ToggleSwitch
                             enabled={apiKey.isActive}
                             onToggle={() => {
-                              if (readOnly) return;
+                              if (!canWriteKeys) return;
                               handleToggleApiKey(apiKey.id);
                             }}
                           />
-                          {!readOnly && (
+                          {canWriteKeys && (
                             <button
                               onClick={() => handleDeleteApiKey(apiKey.id)}
                               className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"

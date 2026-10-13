@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { breedingAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +43,8 @@ const statusOptions = [
 
 export default function BreedingListPage() {
   const router = useRouter();
-  const isReadOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const isReadOnly = !canCreate('livestock');
   const [statusFilter, setStatusFilter] = useState('');
 
   const fetchKey = `breeding-list-${statusFilter}`;

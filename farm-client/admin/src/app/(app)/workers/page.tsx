@@ -32,7 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { workerFormSchema } from '@/lib/validation';
 
 interface Worker {
@@ -51,7 +51,8 @@ const PAGE_SIZE = 10;
 
 export default function WorkersPage() {
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('hr');
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [positionFilter, setPositionFilter] = useState('');

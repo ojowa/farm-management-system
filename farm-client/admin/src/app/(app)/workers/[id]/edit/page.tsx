@@ -12,13 +12,14 @@ import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { workerFormSchema } from '@/lib/validation';
 
 export default function EditWorkerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('hr');
   const { toast } = useToast();
 
   const {

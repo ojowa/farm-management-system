@@ -21,7 +21,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface InventoryItem {
   id: string;
@@ -42,7 +42,8 @@ interface Adjustment {
 
 export default function StockAdjustmentsPage() {
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('farm');
   const { toast } = useToast();
   const [type, setType] = useState<'in' | 'out' | 'transfer'>('in');
   const [inventoryItemId, setInventoryItemId] = useState('');

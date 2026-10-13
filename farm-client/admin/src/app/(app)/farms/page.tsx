@@ -40,7 +40,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { farmFormSchema } from '@/lib/validation';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 const FARM_TYPES = [
   { value: 'CROP', label: 'Crop', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Tractor },
@@ -69,7 +69,8 @@ const PAGE_SIZE = 10;
 export default function FarmsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('farm');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [farmTypeFilter, setFarmTypeFilter] = useState('');

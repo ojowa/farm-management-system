@@ -20,7 +20,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface Flock {
   id: string;
@@ -37,7 +37,8 @@ interface Flock {
 }
 
 export default function FlockDetailPage() {
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('poultry');
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();

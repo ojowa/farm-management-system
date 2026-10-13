@@ -22,7 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ChartCard, FarmAreaChart, FarmBarChart, FarmPieChart } from '@/components/charts';
 import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI, profitabilityAPI } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 function StatCard({ stat }: { stat: { name: string; value: string; change: string; changeType: 'up' | 'down'; icon: any; color: string; href: string } }) {
   const Icon = stat.icon;
@@ -116,7 +116,8 @@ function AlertCard({ alert }: { alert: { title: string; description: string; sev
 }
 
 function DashboardContent() {
-  const readOnly = useReadOnly();
+  const { hasPermission, canCreate } = usePermission();
+  const canAddFarm = canCreate('farm');
 
   const { data: farmsData, loading: farmsLoading } = useFetch<any>('dashboard-farms', () => farmsAPI.list({ limit: 1 }));
   const { data: cropsData, loading: cropsLoading } = useFetch<any>('dashboard-crops', () => cropsAPI.list({ limit: 1 }));
@@ -172,18 +173,18 @@ function DashboardContent() {
   const attendanceSummary = attendanceData?.summary || { present: 0, absent: 0, late: 0 };
 
   const quickActions = [
-    { name: 'Add Farm', href: '/farms/new', icon: Home, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-    { name: 'New Crop', href: '/crops/new', icon: Sprout, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
-    { name: 'Add Livestock', href: '/livestock/new', icon: Beef, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
-    { name: 'New Task', href: '/tasks/new', icon: ListTodo, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
-    { name: 'Record Expense', href: '/finance/transactions/new', icon: Package, color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
-    { name: 'Add Worker', href: '/workers/new', icon: Users, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
-  ];
+    { name: 'Add Farm', href: '/farms/new', permission: 'farm.write', icon: Home, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+    { name: 'New Crop', href: '/crops/new', permission: 'crop.write', icon: Sprout, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+    { name: 'Add Livestock', href: '/livestock/new', permission: 'livestock.write', icon: Beef, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
+    { name: 'New Task', href: '/tasks/new', permission: 'hr.write', icon: ListTodo, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
+    { name: 'Record Expense', href: '/finance/transactions/new', permission: 'finance.write', icon: Package, color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
+    { name: 'Add Worker', href: '/workers/new', permission: 'hr.write', icon: Users, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
+  ].filter((action) => hasPermission(action.permission));
 
   const alerts = [
-    ...(attendanceSummary.absent > 0 ? [{ title: 'Workers Absent', description: `${attendanceSummary.absent} worker(s) absent today`, severity: 'warning', action: 'View Attendance', href: '/workers/attendance' }] : []),
-    ...(pendingTasks.length > 0 ? [{ title: 'Pending Tasks', description: `${pendingTasks.length} task(s) awaiting completion`, severity: 'warning', action: 'View Tasks', href: '/tasks' }] : []),
-    ...(displayExpenses > displayIncome && displayIncome > 0 ? [{ title: 'Expenses Exceed Income', description: 'Monthly expenses are higher than income', severity: 'destructive', action: 'View Finance', href: '/finance' }] : []),
+    ...(attendanceSummary.absent > 0 && hasPermission('hr.read') ? [{ title: 'Workers Absent', description: `${attendanceSummary.absent} worker(s) absent today`, severity: 'warning', action: 'View Attendance', href: '/workers/attendance' }] : []),
+    ...(pendingTasks.length > 0 && hasPermission('hr.read') ? [{ title: 'Pending Tasks', description: `${pendingTasks.length} task(s) awaiting completion`, severity: 'warning', action: 'View Tasks', href: '/tasks' }] : []),
+    ...(displayExpenses > displayIncome && displayIncome > 0 && hasPermission('finance.read') ? [{ title: 'Expenses Exceed Income', description: 'Monthly expenses are higher than income', severity: 'destructive', action: 'View Finance', href: '/finance' }] : []),
   ];
 
   return (
@@ -193,7 +194,7 @@ function DashboardContent() {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">Overview of your farm operations</p>
         </div>
-        {!readOnly && (
+        {canAddFarm && (
           <Link href="/farms/new" className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
             <Plus className="mr-2 h-4 w-4" />Add Farm
           </Link>
@@ -265,7 +266,7 @@ function DashboardContent() {
             <CardHeader><CardTitle className="flex items-center gap-2"><ArrowUpRight className="h-5 w-5" />Quick Actions</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {quickActions.filter(() => !readOnly).map((action) => <QuickActionCard key={action.name} action={action} />)}
+                {quickActions.map((action) => <QuickActionCard key={action.name} action={action} />)}
               </div>
             </CardContent>
           </Card>

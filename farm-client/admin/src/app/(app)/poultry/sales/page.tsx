@@ -32,7 +32,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface Sale {
   id: string;
@@ -49,7 +49,8 @@ interface Sale {
 const PAGE_SIZE = 10;
 
 export default function SalesPage() {
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('poultry');
   const router = useRouter();
   const { toast } = useToast();
   const [search, setSearch] = useState('');

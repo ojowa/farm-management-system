@@ -28,7 +28,7 @@ import { Select } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 import { Dialog } from '@/components/ui/dialog';
 
 interface Buyer {
@@ -74,7 +74,8 @@ type Tab = 'buyers' | 'listings';
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('finance');
   const [activeTab, setActiveTab] = useState<Tab>('buyers');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');

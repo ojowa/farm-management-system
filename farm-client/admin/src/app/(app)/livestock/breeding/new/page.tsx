@@ -10,10 +10,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Heart, ArrowLeft } from 'lucide-react';
+import { usePermission } from '@/lib/usePermission';
 
 export default function NewBreedingRecordPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { canCreate } = usePermission();
+
+  if (!canCreate('livestock')) {
+    router.push('/livestock/breeding');
+    return null;
+  }
+
   const [submitting, setSubmitting] = useState(false);
 
   const [sireId, setSireId] = useState('');

@@ -6,6 +6,7 @@ import { rosterAPI, orgAdminAPI } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/lib/toasts';
 
 interface Shift {
@@ -52,7 +53,8 @@ export default function RosterPage() {
   const { canCreate } = usePermission();
   const { toast } = useToast();
 
-  const canManage = canCreate('roster');
+  // Shift management lives under the HR module server-side (hr.write).
+  const canManage = canCreate('hr');
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [workers, setWorkers] = useState<any[]>([]);
@@ -210,11 +212,12 @@ export default function RosterPage() {
         </>
       )}
 
-      {showShiftForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">{editingShift ? 'Edit Shift' : 'New Shift'}</h2>
-            <form onSubmit={handleSaveShift} className="space-y-4">
+      <Dialog
+        open={showShiftForm}
+        onOpenChange={setShowShiftForm}
+        title={editingShift ? 'Edit Shift' : 'New Shift'}
+      >
+        <form onSubmit={handleSaveShift} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Shift Name</label>
                 <Input value={shiftForm.name} onChange={(e) => setShiftForm({ ...shiftForm, name: e.target.value })} required placeholder="e.g. Morning Shift" />
@@ -242,14 +245,13 @@ export default function RosterPage() {
                 <Button type="submit" loading={saving}>{editingShift ? 'Update' : 'Create'}</Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 p-6 max-h-[90dvh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Assign Worker — {showAssignModal}</h2>
+      <Dialog
+        open={!!showAssignModal}
+        onOpenChange={(open) => { if (!open) setShowAssignModal(null); }}
+        title={`Assign Worker — ${showAssignModal ?? ''}`}
+      >
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {workers.length === 0 ? <p className="text-sm text-gray-500">No workers available</p> : (
                 shifts.filter(s => s.isActive).map((shift) => (
@@ -257,7 +259,7 @@ export default function RosterPage() {
                     <p className="text-sm font-medium mb-2">{shift.name}</p>
                     <div className="flex flex-wrap gap-1">
                       {workers.map((w: any) => (
-                        <button key={w.id} onClick={() => handleAssign(shift.id, w.id, showAssignModal)} className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-green-100 text-gray-700">
+                        <button key={w.id} onClick={() => handleAssign(shift.id, w.id, showAssignModal ?? '')} className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-green-100 text-gray-700">
                           {w.firstName} {w.lastName}
                         </button>
                       ))}
@@ -267,9 +269,7 @@ export default function RosterPage() {
               )}
             </div>
             <div className="flex justify-end pt-4"><Button variant="ghost" onClick={() => setShowAssignModal(null)}>Close</Button></div>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </div>
   );
 }

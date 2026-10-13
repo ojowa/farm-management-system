@@ -1,13 +1,16 @@
 'use client';
 
-import { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { irrigationAPI } from '@/lib/api';
-import { useFetch } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import React, { useCallback, useState } from 'react';
+import { irrigationAPI, farmsAPI } from '@/lib/api';
+import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { usePermission } from '@/lib/usePermission';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Droplets, Plus, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 interface IrrigationSchedule {
@@ -39,10 +42,21 @@ const statusIcons: Record<string, React.ReactNode> = {
 };
 
 export default function IrrigationPage() {
-  const router = useRouter();
-  const isReadOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const { toast } = useToast();
+  const isReadOnly = !canCreate('crop');
+  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    farmId: '',
+    frequency: 'DAILY',
+    waterAmount: '',
+    startDate: '',
+    endDate: '',
+  });
 
-  const { data: schedulesData, loading: isLoadingSchedules } = useFetch<{ data: IrrigationSchedule[] }>(
+  const { data: schedulesData, loading: isLoadingSchedules, refetch: refetchSchedules } = useFetch<{ data: IrrigationSchedule[] }>(
     'irrigation-schedules',
     useCallback(async () => await irrigationAPI.listSchedules(), [])
   );
@@ -52,9 +66,46 @@ export default function IrrigationPage() {
     useCallback(async () => await irrigationAPI.listLogs({ limit: 20 }), [])
   );
 
+  const { data: farmsData } = useFetch<{ data: any[] }>(
+    'farms-for-irrigation',
+    useCallback(async () => await farmsAPI.list({ limit: 200 }), [])
+  );
+
   const schedules = schedulesData?.data || [];
   const logs = logsData?.data || [];
+  const farms = farmsData?.data || [];
   const activeSchedules = schedules.filter((s) => s.isActive);
+
+  const emptyForm = { name: '', farmId: '', frequency: 'DAILY', waterAmount: '', startDate: '', endDate: '' };
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.farmId || !form.name || !form.waterAmount || !form.startDate) {
+      toast({ type: 'warning', title: 'Please fill in all required fields' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await irrigationAPI.createSchedule({
+        name: form.name,
+        farmId: form.farmId,
+        frequency: form.frequency,
+        waterAmount: Number(form.waterAmount),
+        unit: 'liters',
+        startDate: new Date(form.startDate).toISOString(),
+        ...(form.endDate ? { endDate: new Date(form.endDate).toISOString() } : {}),
+      });
+      toast({ type: 'success', title: 'Schedule created' });
+      setShowCreate(false);
+      setForm(emptyForm);
+      clearFetchCache('irrigation');
+      refetchSchedules();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to create schedule', message: getErrorMessage(err) });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -64,7 +115,7 @@ export default function IrrigationPage() {
           <h1 className="text-2xl font-bold">Irrigation</h1>
         </div>
         {!isReadOnly && (
-          <Button onClick={() => router.push('/irrigation/new')}>
+          <Button onClick={() => setShowCreate(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Schedule
           </Button>
@@ -176,6 +227,55 @@ export default function IrrigationPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showCreate} onOpenChange={setShowCreate} title="New Irrigation Schedule">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Schedule Name *</label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Morning irrigation" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Farm *</label>
+            <Select
+              value={form.farmId}
+              onChange={(e) => setForm({ ...form, farmId: e.target.value })}
+              options={[{ value: '', label: 'Select farm...' }, ...farms.map((f: any) => ({ value: f.id, label: f.name }))]}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Frequency</label>
+              <Select
+                value={form.frequency}
+                onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+                options={[
+                  { value: 'DAILY', label: 'Daily' },
+                  { value: 'WEEKLY', label: 'Weekly' },
+                  { value: 'CUSTOM', label: 'Custom' },
+                ]}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Water Amount (liters) *</label>
+              <Input type="number" min="0" step="any" value={form.waterAmount} onChange={(e) => setForm({ ...form, waterAmount: e.target.value })} required placeholder="e.g. 500" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Start Date *</label>
+              <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">End Date (optional)</label>
+              <Input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button type="submit" loading={saving}>Create Schedule</Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

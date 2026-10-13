@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { pestDiseaseAPI } from '@/lib/api';
+import React, { useState, useCallback } from 'react';
+import { pestDiseaseAPI, farmsAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
+import { Dialog } from '@/components/ui/dialog';
 import { Plus, Bug, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -55,15 +56,27 @@ const severityOptions = [
 ];
 
 export default function PestDiseasePage() {
-  const router = useRouter();
-  const isReadOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const { toast } = useToast();
+  const isReadOnly = !canCreate('crop');
   const [typeFilter, setTypeFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    farmId: '',
+    type: 'PEST',
+    name: '',
+    severity: 'LOW',
+    identifiedDate: '',
+    treatment: '',
+    notes: '',
+  });
 
   const fetchKey = `pest-disease-list-${typeFilter}-${severityFilter}-${search}`;
 
-  const { data, loading: isLoading, error } = useFetch<{ data: PestDiseaseRecord[] }>(
+  const { data, loading: isLoading, error, refetch } = useFetch<{ data: PestDiseaseRecord[] }>(
     fetchKey,
     useCallback(async () => {
       return await pestDiseaseAPI.list({
@@ -74,7 +87,44 @@ export default function PestDiseasePage() {
     }, [typeFilter, severityFilter, search])
   );
 
+  const { data: farmsData } = useFetch<{ data: any[] }>(
+    'farms-for-pest-disease',
+    useCallback(async () => await farmsAPI.list({ limit: 200 }), [])
+  );
+
   const records = data?.data || [];
+  const farms = farmsData?.data || [];
+
+  const emptyForm = { farmId: '', type: 'PEST', name: '', severity: 'LOW', identifiedDate: '', treatment: '', notes: '' };
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.farmId || !form.name || !form.identifiedDate) {
+      toast({ type: 'warning', title: 'Please select a farm and fill in the name and date' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await pestDiseaseAPI.create({
+        farmId: form.farmId,
+        type: form.type,
+        name: form.name,
+        severity: form.severity,
+        identifiedDate: new Date(form.identifiedDate).toISOString(),
+        ...(form.treatment ? { treatment: form.treatment } : {}),
+        ...(form.notes ? { notes: form.notes } : {}),
+      });
+      toast({ type: 'success', title: 'Record created' });
+      setShowCreate(false);
+      setForm(emptyForm);
+      clearFetchCache('pest-disease');
+      refetch();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to create record', message: getErrorMessage(err) });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -84,7 +134,7 @@ export default function PestDiseasePage() {
           <h1 className="text-2xl font-bold">Pest & Disease Records</h1>
         </div>
         {!isReadOnly && (
-          <Button onClick={() => router.push('/crops/pest-disease/new')}>
+          <Button onClick={() => setShowCreate(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Record
           </Button>
@@ -181,6 +231,69 @@ export default function PestDiseasePage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showCreate} onOpenChange={setShowCreate} title="New Pest & Disease Record">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Farm *</label>
+              <Select
+                value={form.farmId}
+                onChange={(e) => setForm({ ...form, farmId: e.target.value })}
+                options={[{ value: '', label: 'Select farm...' }, ...farms.map((f: any) => ({ value: f.id, label: f.name }))]}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Type</label>
+              <Select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                options={[
+                  { value: 'PEST', label: 'Pest' },
+                  { value: 'DISEASE', label: 'Disease' },
+                  { value: 'WEED', label: 'Weed' },
+                  { value: 'OTHER', label: 'Other' },
+                ]}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Name *</label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Fall Armyworm" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Severity</label>
+              <Select
+                value={form.severity}
+                onChange={(e) => setForm({ ...form, severity: e.target.value })}
+                options={[
+                  { value: 'LOW', label: 'Low' },
+                  { value: 'MEDIUM', label: 'Medium' },
+                  { value: 'HIGH', label: 'High' },
+                  { value: 'CRITICAL', label: 'Critical' },
+                ]}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Date Identified *</label>
+              <Input type="date" value={form.identifiedDate} onChange={(e) => setForm({ ...form, identifiedDate: e.target.value })} required />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Treatment (optional)</label>
+            <textarea value={form.treatment} onChange={(e) => setForm({ ...form, treatment: e.target.value })} rows={2} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes (optional)</label>
+            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button type="submit" loading={saving}>Create Record</Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

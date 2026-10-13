@@ -24,6 +24,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useToast } from '@/lib/toasts';
+import { usePermission } from '@/lib/usePermission';
 
 interface ScheduledReport {
   id: string;
@@ -44,6 +45,7 @@ const frequencyLabels: Record<string, string> = {
 
 export default function ScheduledReportsPage() {
   const { toast } = useToast();
+  const { canCreate } = usePermission();
   const [reports, setReports] = useState<ScheduledReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -96,12 +98,14 @@ export default function ScheduledReportsPage() {
             Manage automated report delivery schedules
           </p>
         </div>
-        <Link href="/reports/scheduled/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Schedule
-          </Button>
-        </Link>
+        {canCreate('reporting') && (
+          <Link href="/reports/scheduled/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Schedule
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Card>
@@ -118,12 +122,14 @@ export default function ScheduledReportsPage() {
             <p className="text-sm text-muted-foreground mt-1 mb-4">
               Create a schedule to automatically send reports on a recurring basis.
             </p>
-            <Link href="/reports/scheduled/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Schedule
-              </Button>
-            </Link>
+            {canCreate('reporting') && (
+              <Link href="/reports/scheduled/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Schedule
+                </Button>
+              </Link>
+            )}
           </CardContent>
         ) : (
           <div className="overflow-x-auto">
@@ -167,19 +173,21 @@ export default function ScheduledReportsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(report.id, report.name)}
-                        disabled={deleting === report.id}
-                      >
-                        {deleting === report.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      {canCreate('reporting') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(report.id, report.name)}
+                          disabled={deleting === report.id}
+                        >
+                          {deleting === report.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

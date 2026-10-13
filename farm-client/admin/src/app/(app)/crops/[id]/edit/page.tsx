@@ -13,7 +13,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { cropFormSchema } from '@/lib/validation';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 interface Farm {
   id: string;
@@ -23,7 +23,8 @@ interface Farm {
 export default function EditCropPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('crop');
   const { toast } = useToast();
 
   if (readOnly) {

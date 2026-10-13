@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { matchesPermission, extractPermissions } from '@/lib/permissions';
+import { AccessDenied } from '@/components/AccessDenied';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -38,14 +39,14 @@ export default function PermissionGuard({
     : true;
 
   useEffect(() => {
-    if (!isLoading && !hasAccess) {
-      router.push('/');
+    if (isLoading && !hasAccess) {
+      // Keep the URL: the denial UI explains itself where the user asked to go.
     }
-  }, [isLoading, hasAccess, router]);
+  }, [isLoading, hasAccess]);
 
   if (isLoading) return null;
   if (!hasAccess) {
-    return fallback ? <>{fallback}</> : null;
+    return <>{fallback ?? <AccessDenied permission={permission ?? permissions?.[0]} />}</>;
   }
   return <>{children}</>;
 }

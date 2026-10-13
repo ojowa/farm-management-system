@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { usePermission } from '@/lib/usePermission';
 
 interface Farm {
   id: string;
@@ -28,6 +29,12 @@ export default function EditTaskPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
+  const { canCreate } = usePermission();
+
+  if (!canCreate('hr')) {
+    router.push('/tasks');
+    return null;
+  }
 
   const {
     data: taskData,

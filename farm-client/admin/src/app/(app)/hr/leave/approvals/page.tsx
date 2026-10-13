@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePermission } from '@/lib/usePermission';
 import { apiClient } from '@/lib/api';
 import { Card } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/toasts';
 
@@ -20,7 +21,7 @@ interface LeaveRequest {
 }
 
 export default function LeaveApprovalsPage() {
-  const { canApprove } = usePermission();
+  const { hasAnyPermission } = usePermission();
   const { toast } = useToast();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +51,8 @@ export default function LeaveApprovalsPage() {
     catch (err: any) { toast({ title: err.response?.data?.error || 'Failed to reject', type: 'error' }); }
   };
 
-  if (!canApprove('leave')) {
+  // The server approves leave with hr.write (the catalog's leave.approve is unused).
+  if (!hasAnyPermission('leave.approve', 'hr.write')) {
     return <div className="text-center py-12 text-gray-500">You don&apos;t have permission to approve leave requests</div>;
   }
 
@@ -97,21 +99,20 @@ export default function LeaveApprovalsPage() {
         </div>
       )}
 
-      {rejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Reject Leave Request</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
-              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Why is this being rejected?" />
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => { setRejectModal(null); setRejectReason(''); }} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
-              <button onClick={handleReject} className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700">Reject</button>
-            </div>
-          </div>
+      <Dialog
+        open={!!rejectModal}
+        onOpenChange={(open) => { if (!open) { setRejectModal(null); setRejectReason(''); } }}
+        title="Reject Leave Request"
+      >
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Why is this being rejected?" />
         </div>
-      )}
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={() => { setRejectModal(null); setRejectReason(''); }} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg">Cancel</button>
+          <button onClick={handleReject} className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700">Reject</button>
+        </div>
+      </Dialog>
     </div>
   );
 }

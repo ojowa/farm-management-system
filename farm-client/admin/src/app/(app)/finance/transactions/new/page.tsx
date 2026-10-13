@@ -16,12 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/lib/toasts';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
-import { useReadOnly } from '@/lib/useReadOnly';
+import { usePermission } from '@/lib/usePermission';
 
 export default function NewTransactionPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const readOnly = useReadOnly();
+  const { canCreate } = usePermission();
+  const readOnly = !canCreate('finance');
 
   React.useEffect(() => {
     if (readOnly) router.replace('/finance');

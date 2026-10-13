@@ -20,6 +20,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { useToast } from '@/lib/toasts';
+import { usePermission } from '@/lib/usePermission';
 
 interface LowStockItem {
   id: string;
@@ -33,6 +34,9 @@ interface LowStockItem {
 
 export default function LowStockPage() {
   const { toast } = useToast();
+  const { canCreate } = usePermission();
+  // Reordering goes through the inventory (asset) endpoints, which need farm.write.
+  const canReorder = canCreate('farm');
   const [items, setItems] = useState<LowStockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [reordering, setReordering] = useState<string | null>(null);
@@ -166,19 +170,21 @@ export default function LowStockPage() {
                       {item.farmName || '—'}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleReorder(item.id, item.name)}
-                        disabled={reordering === item.id}
-                      >
-                        {reordering === item.id ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        ) : (
-                          <ShoppingCart className="mr-1 h-3 w-3" />
-                        )}
-                        Reorder
-                      </Button>
+                      {canReorder && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReorder(item.id, item.name)}
+                          disabled={reordering === item.id}
+                        >
+                          {reordering === item.id ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <ShoppingCart className="mr-1 h-3 w-3" />
+                          )}
+                          Reorder
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

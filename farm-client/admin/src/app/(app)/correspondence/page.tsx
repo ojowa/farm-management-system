@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/lib/toasts';
 
 interface Correspondence {
@@ -68,8 +69,9 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function CorrespondencePage() {
   const { canCreate, canDelete } = usePermission();
   const { toast } = useToast();
-  const canWrite = canCreate('correspondence');
-  const canDeleteItem = canDelete('correspondence');
+  // Correspondence is served by hr.controller (hr.write / hr.delete).
+  const canWrite = canCreate('hr');
+  const canDeleteItem = canDelete('hr');
 
   const [items, setItems] = useState<Correspondence[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -310,11 +312,12 @@ export default function CorrespondencePage() {
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">{editingItem ? 'Edit Correspondence' : 'New Correspondence'}</h2>
-            <form onSubmit={handleSave} className="space-y-4">
+      <Dialog
+        open={showForm}
+        onOpenChange={setShowForm}
+        title={editingItem ? 'Edit Correspondence' : 'New Correspondence'}
+      >
+        <form onSubmit={handleSave} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                 <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required placeholder="Document title" />
@@ -353,9 +356,7 @@ export default function CorrespondencePage() {
                 <Button type="submit" loading={saving}>{editingItem ? 'Update' : 'Create'}</Button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Dialog>
     </div>
   );
 }
