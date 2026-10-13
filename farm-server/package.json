@@ -17,6 +17,7 @@
     "migrate:dev": "npm run migrate:dev --workspace=@farm/database",
     "seed": "npm run db:seed --workspace=@farm/database",
     "test": "npm run test --workspaces --if-present",
+  "test:health": "node scripts/verify-health-check.js",
     "lint": "npm run lint --workspaces --if-present"
   },
   "dependencies": {

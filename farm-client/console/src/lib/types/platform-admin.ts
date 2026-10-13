@@ -117,6 +117,8 @@ export interface PlatformServiceHealth {
   name: string;
   status: string;
   latencyMs?: number;
+  /** Resident set size in bytes, when the probed service reports it. */
+  memoryUsage?: number;
   uptime?: number;
   lastCheck?: string;
   metadata?: Record<string, unknown>;

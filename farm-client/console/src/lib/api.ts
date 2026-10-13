@@ -162,7 +162,9 @@ export const platformSubscriptionsAPI = {
 
 export const platformHealthAPI = {
   status: () => apiClient.get('/api/platform-health'),
-  check: () => apiClient.post('/api/platform-health/check'),
+  // The check fans out to every service; give it more room than the client's
+  // default 15s so a slow probe can't abort the request while it is running.
+  check: () => apiClient.post('/api/platform-health/check', null, { timeout: 60000 }),
 };
 
 export const platformAuditAPI = {

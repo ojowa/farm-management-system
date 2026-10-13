@@ -14,8 +14,8 @@ export default function HealthPage() {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
 
-  const loadHealth = async () => {
-    setLoading(true);
+  const loadHealth = async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) setLoading(true);
     try {
       const { data } = await platformHealthAPI.status();
       setServices(data.services || []);
@@ -33,12 +33,38 @@ export default function HealthPage() {
       setSummary(data.summary);
       setLastUpdated(data.checkedAt);
       toastSuccess('Health check completed');
-      await loadHealth();
+      // Silent: don't blank the grid back into a spinner right after a check.
+      await loadHealth({ silent: true });
     } catch (err) { toastError(getErrorMessage(err)); }
     setChecking(false);
   };
 
   useEffect(() => { loadHealth(); }, []);
+
+  // The summary only lives in component state after a "Run Health Check", so a
+  // reload used to reset every card to '--'. Derive it from the persisted
+  // statuses instead; totalMs stays unknown (0 -> '--') until a check runs.
+  const derivedSummary: PlatformHealthSummary | null =
+    services.length > 0
+      ? {
+          total: services.length + (dbStatus !== 'unknown' ? 1 : 0),
+          healthy: services.filter((s) => s.status === 'healthy').length + (dbStatus === 'healthy' ? 1 : 0),
+          unhealthy:
+            services.filter((s) => s.status !== 'healthy').length +
+            (dbStatus !== 'unknown' && dbStatus !== 'healthy' ? 1 : 0),
+          totalMs: 0,
+        }
+      : null;
+  const displaySummary = summary ?? derivedSummary;
+
+  // Latency is persisted inside `metadata` by the check; only some payloads
+  // carry it at the top level.
+  const serviceLatency = (s: PlatformServiceHealth): number | undefined =>
+    typeof s.latencyMs === 'number'
+      ? s.latencyMs
+      : typeof s.metadata?.latencyMs === 'number'
+        ? s.metadata.latencyMs
+        : undefined;
 
   const statusColor = (s: string) => {
     switch (s) {
@@ -112,7 +138,7 @@ export default function HealthPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Services</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{summary?.total ?? '--'}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{displaySummary?.total ?? '--'}</p>
               </div>
               <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,7 +151,7 @@ export default function HealthPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Healthy</p>
-                <p className="text-3xl font-bold text-[#16a34a] mt-1">{summary?.healthy ?? '--'}</p>
+                <p className="text-3xl font-bold text-[#16a34a] mt-1">{displaySummary?.healthy ?? '--'}</p>
               </div>
               <div className="w-11 h-11 rounded-lg bg-[#16a34a]/10 flex items-center justify-center">
                 <svg className="w-5 h-5 text-[#16a34a]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -138,7 +164,7 @@ export default function HealthPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Unhealthy</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{summary?.unhealthy ?? '--'}</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{displaySummary?.unhealthy ?? '--'}</p>
               </div>
               <div className="w-11 h-11 rounded-lg bg-red-50 flex items-center justify-center">
                 <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,7 +177,7 @@ export default function HealthPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-gray-500">Response Time</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{summary?.totalMs ? `${summary.totalMs}ms` : '--'}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{displaySummary?.totalMs ? `${displaySummary.totalMs}ms` : '--'}</p>
               </div>
               <div className="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center">
                 <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -199,7 +225,14 @@ export default function HealthPage() {
               <div className="w-8 h-8 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin mb-3" />
               <span className="text-sm text-gray-500">Loading services...</span>
             </div>
-          ) : services.map((s) => (
+          ) : services.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-sm font-medium text-gray-700">No health data yet</p>
+              <p className="text-sm text-gray-500 mt-1">Select “Run Health Check” to populate the service list.</p>
+            </div>
+          ) : services.map((s) => {
+            const latency = serviceLatency(s);
+            return (
             <div key={s.name} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -213,10 +246,16 @@ export default function HealthPage() {
                 </div>
               </div>
               <div className="border-t border-gray-100 pt-4 space-y-3">
-                {s.latencyMs !== undefined && s.latencyMs >= 0 && (
+                {latency !== undefined && latency >= 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Latency</span>
-                    <span className="font-medium text-gray-900">{s.latencyMs}ms</span>
+                    <span className="font-medium text-gray-900">{latency}ms</span>
+                  </div>
+                )}
+                {typeof s.memoryUsage === 'number' && s.memoryUsage > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Memory</span>
+                    <span className="font-medium text-gray-900">{Math.round(s.memoryUsage / 1024 / 1024)} MB</span>
                   </div>
                 )}
                 {s.uptime !== undefined && (
@@ -233,7 +272,8 @@ export default function HealthPage() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

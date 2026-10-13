@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import {
   FeatureFlagRepository,
   FeatureFlagOverrideRepository,
@@ -159,88 +159,188 @@ export class PlatformAuditService {
   }
 }
 
+type HealthStatus = 'healthy' | 'degraded' | 'down';
+
+interface HealthResult {
+  name: string;
+  status: HealthStatus;
+  latencyMs: number;
+}
+
+interface ProbeTargetSpec {
+  name: string;
+  /** Env var the gateway resolves this service from. */
+  env: string;
+  /** Port the gateway falls back to when the env var is unset. */
+  defaultPort: number;
+}
+
+/**
+ * Logical services probed by `checkAll()`, keyed by the same env vars and
+ * fallback ports `GatewayProxyService` routes real traffic through — the
+ * health check must watch the endpoints callers actually hit.
+ *
+ * Every service exposes `GET /health` through the shared `HealthModule`
+ * registered in `src/microservices/*.main.ts` (and merged into the domains
+ * app by `server.js`).
+ */
+const HEALTH_TARGETS: ProbeTargetSpec[] = [
+  { name: 'auth-service', env: 'AUTH_SERVICE_URL', defaultPort: 4010 },
+  { name: 'farm-service', env: 'FARM_SERVICE_URL', defaultPort: 4011 },
+  { name: 'notification-service', env: 'NOTIFICATION_SERVICE_URL', defaultPort: 4016 },
+  { name: 'finance-service', env: 'FINANCE_SERVICE_URL', defaultPort: 4014 },
+  { name: 'reporting-service', env: 'REPORTING_SERVICE_URL', defaultPort: 4019 },
+  { name: 'organization-service', env: 'ORGANIZATION_SERVICE_URL', defaultPort: 4017 },
+  { name: 'hr-service', env: 'HR_SERVICE_URL', defaultPort: 4015 },
+  { name: 'platform-service', env: 'PLATFORM_SERVICE_URL', defaultPort: 4018 },
+];
+
 @Injectable()
 export class PlatformHealthService {
+  private readonly logger = new Logger(PlatformHealthService.name);
+
   constructor(@Inject('SystemHealthRepository') private readonly healthRepo: SystemHealthRepository) {}
 
   async getHealth() {
     const services = await this.healthRepo.findMany();
-    let dbStatus = 'healthy';
-    let dbLatency = 0;
-    try {
-      const start = Date.now();
-      await this.healthRepo.queryRaw('SELECT 1');
-      dbLatency = Date.now() - start;
-    } catch {
-      dbStatus = 'down';
-    }
+    const db = await this.probeDatabase();
+
+    // "Last updated" has to mean "when a check last ran", not `new Date()` on
+    // every read — otherwise the console shows a fresh timestamp whenever the
+    // page loads, with or without a check having happened.
+    const lastCheck = services.reduce<Date | null>(
+      (latest, s) => (s.lastCheck && (!latest || s.lastCheck > latest) ? s.lastCheck : latest),
+      null,
+    );
+
     return {
       services: services.map((s) => ({
         name: s.serviceName,
         status: s.status,
         uptime: s.uptime,
         memoryUsage: s.memoryUsage,
+        // Per-service latency is persisted inside `metadata` by checkAll();
+        // surface it here so the console card can render it.
+        latencyMs: typeof s.metadata?.latencyMs === 'number' ? s.metadata.latencyMs : undefined,
         lastCheck: s.lastCheck,
         metadata: s.metadata,
       })),
-      database: { name: 'postgresql', status: dbStatus, latencyMs: dbLatency },
-      lastUpdated: new Date().toISOString(),
+      database: { name: 'postgresql', status: db.status, latencyMs: db.latencyMs },
+      lastUpdated: lastCheck ? lastCheck.toISOString() : null,
     };
   }
 
   async checkAll() {
-    const SERVICES = [
-      { name: 'auth-service', url: `${process.env.AUTH_SERVICE_URL}/health` },
-      { name: 'farm-service', url: `${process.env.FARM_SERVICE_URL}/health` },
-      { name: 'notification-service', url: `${process.env.NOTIFICATION_SERVICE_URL}/health` },
-      { name: 'finance-service', url: `${process.env.FINANCE_SERVICE_URL}/health` },
-      { name: 'reporting-service', url: `${process.env.REPORTING_SERVICE_URL}/health` },
-      { name: 'organization-service', url: `${process.env.ORGANIZATION_SERVICE_URL}/health` },
-      { name: 'hr-service', url: `${process.env.HR_SERVICE_URL}/health` },
-      { name: 'platform-service', url: `${process.env.PLATFORM_SERVICE_URL}/health-check` },
-      { name: 'app-server', url: `${process.env.APP_SERVER_URL || 'http://localhost:4000'}/health` },
-    ];
-
-    const results = [];
     const startTime = Date.now();
 
-    for (const service of SERVICES) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), Number(process.env.HEALTH_CHECK_TIMEOUT_MS) || 5000);
-        const start = Date.now();
-        const response = await fetch(service.url, { signal: controller.signal });
-        clearTimeout(timeout);
-        const latencyMs = Date.now() - start;
-        const data = await response.json();
-        const status = response.ok ? 'healthy' : 'degraded';
-        await this.healthRepo.upsert(service.name, { status, uptime: data.uptime || 0, memoryUsage: data.memory || null, lastCheck: new Date(), metadata: { ...data, latencyMs } });
-        results.push({ name: service.name, status, latencyMs });
-      } catch {
-        await this.healthRepo.upsert(service.name, { status: 'down', lastCheck: new Date() });
-        results.push({ name: service.name, status: 'down', latencyMs: -1 });
-      }
+    // Probed concurrently: the old sequential loop could hold the request for
+    // up to 9 x 5 s, far beyond the console client's 15 s timeout.
+    const [db, serviceResults] = await Promise.all([
+      this.probeDatabase(),
+      Promise.all(HEALTH_TARGETS.map((target) => this.probeService(target))),
+    ]);
+    const results: HealthResult[] = [...serviceResults];
+
+    // The gateway (app-server) is only probeable when it is explicitly
+    // addressable. Inside the Vercel function the gateway never binds a port,
+    // so guessing `localhost:4000/health` produced a permanent fake "down".
+    const gatewayBase = process.env.APP_SERVER_URL;
+    if (gatewayBase) {
+      results.push(await this.probe({ name: 'app-server', base: gatewayBase, path: '/v1/health' }));
     }
 
-    let dbStatus = 'healthy';
-    let dbLatency = 0;
+    results.push({ name: 'postgresql', status: db.status, latencyMs: db.latencyMs });
+
+    const healthyCount = results.filter((r) => r.status === 'healthy').length;
+    return {
+      results,
+      summary: {
+        total: results.length,
+        healthy: healthyCount,
+        unhealthy: results.length - healthyCount,
+        totalMs: Date.now() - startTime,
+      },
+      checkedAt: new Date().toISOString(),
+    };
+  }
+
+  private async probeDatabase(): Promise<{ status: HealthStatus; latencyMs: number }> {
     try {
       const start = Date.now();
       await this.healthRepo.queryRaw('SELECT 1');
-      dbLatency = Date.now() - start;
+      return { status: 'healthy', latencyMs: Date.now() - start };
     } catch {
-      dbStatus = 'down';
+      return { status: 'down', latencyMs: -1 };
     }
-    results.push({ name: 'postgresql', status: dbStatus, latencyMs: dbLatency });
+  }
 
-    const totalMs = Date.now() - startTime;
-    const healthyCount = results.filter((s) => s.status === 'healthy').length;
+  /** Resolve the base URL exactly the way GatewayProxyService does. */
+  private probeService(target: ProbeTargetSpec): Promise<HealthResult> {
+    const base = process.env[target.env] || `http://localhost:${target.defaultPort}`;
+    return this.probe({ name: target.name, base, path: '/health' });
+  }
 
-    return {
-      results,
-      summary: { total: results.length, healthy: healthyCount, unhealthy: results.length - healthyCount, totalMs },
-      checkedAt: new Date().toISOString(),
-    };
+  private async probe(target: { name: string; base: string; path: string }): Promise<HealthResult> {
+    const url = `${target.base.replace(/\/+$/, '')}${target.path}`;
+    const timeoutMs = Number(process.env.HEALTH_CHECK_TIMEOUT_MS) || 5000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const start = Date.now();
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      const latencyMs = Date.now() - start;
+
+      // A live service that answers with a non-JSON body must not be reported
+      // as "down": parsing sits in its own try/catch, not the transport's.
+      let payload: any = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      // 2xx = healthy; 404 = the service answers but has no health contract we
+      // can trust (the old code folded this into "degraded", which is how a
+      // broken probe URL hid behind nine yellow cards); anything else that
+      // answers = degraded.
+      const status: HealthStatus = response.ok ? 'healthy' : response.status === 404 ? 'down' : 'degraded';
+
+      await this.healthRepo.upsert(target.name, {
+        status,
+        uptime: typeof payload?.uptime === 'number' ? payload.uptime : 0,
+        memoryUsage: payload?.memory ?? null,
+        lastCheck: new Date(),
+        metadata: {
+          ...(payload && typeof payload === 'object' ? payload : {}),
+          httpStatus: response.status,
+          latencyMs,
+        },
+      });
+
+      if (status !== 'healthy') {
+        this.logger.warn(`health: ${target.name} -> ${status} (HTTP ${response.status}) ${url}`);
+      }
+      return { name: target.name, status, latencyMs };
+    } catch (err: any) {
+      const latencyMs = Date.now() - start;
+      const error = err?.name === 'AbortError' ? `timed out after ${timeoutMs}ms` : String(err?.message || err);
+      this.logger.warn(`health: ${target.name} -> down (${error}) ${url}`);
+
+      // Reset uptime/memory/metadata as well: the old write only set
+      // `status` + `lastCheck`, so a down service kept showing its last
+      // successful uptime and month-old timestamps beside a fresh lastCheck.
+      await this.healthRepo.upsert(target.name, {
+        status: 'down',
+        uptime: 0,
+        memoryUsage: null,
+        lastCheck: new Date(),
+        metadata: { error, url, latencyMs },
+      });
+      return { name: target.name, status: 'down', latencyMs: -1 };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 

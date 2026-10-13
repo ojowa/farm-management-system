@@ -1,5 +1,6 @@
 import { loadEnv } from '@farm/env';
 import { AllExceptionsFilter } from '../shared/filters/all-exceptions.filter';
+import { HealthModule } from '../shared/health/health.module';
 loadEnv();
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -13,6 +14,7 @@ import helmet from 'helmet';
 
 @Module({
   imports: [
+    HealthModule,
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '..', '..', '..', '.env') }),
     HrModule,
   ],
