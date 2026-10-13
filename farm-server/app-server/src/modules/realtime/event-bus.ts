@@ -26,8 +26,12 @@ export class EventBus {
    * Emit a domain event that:
    * 1. Broadcasts via WebSocket to connected clients
    * 2. Fires an in-process EventEmitter2 event for other modules to consume
+   *
+   * Pass `organizationId` whenever the payload belongs to a tenant — the
+   * broadcast then goes only to that organization's socket room instead of
+   * every connected client.
    */
-  emitDomainEvent(entity: string, action: 'created' | 'updated' | 'deleted', data: any): void {
+  emitDomainEvent(entity: string, action: 'created' | 'updated' | 'deleted', data: any, organizationId?: string): void {
     const event: RealtimeEvent = {
       entity,
       action,
@@ -35,8 +39,8 @@ export class EventBus {
       timestamp: new Date().toISOString(),
     };
 
-    // Broadcast via WebSocket
-    this.realtime.broadcastRealtimeEvent(event);
+    // Broadcast via WebSocket (org-scoped when known)
+    this.realtime.broadcastRealtimeEvent(event, organizationId);
 
     // Also emit via EventEmitter2 so other modules can subscribe
     this.logger.debug(`Emitting event: ${entity}.${action}`);

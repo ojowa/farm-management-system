@@ -71,6 +71,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       const user = verifyAccessToken(token);
       (client as any).userId = user.id;
       (client as any).userEmail = user.email;
+      (client as any).organizationId = user.organizationId ?? null;
       this.logger.log(`Client connected: ${client.id} (user: ${user.id})`);
     } catch {
       this.logger.warn(`Client rejected: invalid token (${client.id})`);
@@ -112,6 +113,14 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     client.join(roomName);
 
     if (organizationId) {
+      // An org room is a live feed of that tenant's events, so it must match
+      // the organization on the caller's verified token — otherwise any
+      // authenticated user could eavesdrop on any tenant.
+      const clientOrg = (client as any).organizationId as string | null | undefined;
+      if (!clientOrg || clientOrg !== organizationId) {
+        this.logger.warn(`User ${authenticatedUserId} attempted to join foreign org room ${organizationId}`);
+        return { event: 'error', data: { success: false, userId } };
+      }
       const orgRoom = `org:${organizationId}`;
       client.join(orgRoom);
     }

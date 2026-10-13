@@ -13,6 +13,7 @@ import {
   HttpStatus,
   UseGuards,
   BadRequestException,
+  ForbiddenException,
   Logger,
   NotFoundException,
   UploadedFile,
@@ -34,6 +35,16 @@ import {
 
 function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');
+}
+
+/**
+ * Reject writes that reference a farm outside the caller's organization —
+ * the FK only proves the farm exists, not that it belongs to the caller.
+ */
+async function assertFarmInOrg(farmId: string, organizationId: string): Promise<void> {
+  if (!farmId) throw new BadRequestException('farmId is required');
+  const farm = await prisma.farm.findFirst({ where: { id: farmId, organizationId } });
+  if (!farm) throw new BadRequestException('Unknown farm');
 }
 
 // Legacy local-disk directory. New uploads go to the configured object store
@@ -133,6 +144,7 @@ export class DocumentsController {
     if (!file) throw new BadRequestException('A "file" field is required');
 
     const orgId = getOrgId(req);
+    if (!orgId) throw new ForbiddenException('No organization associated with caller');
     const name = (req.body?.name as string) || file.originalname;
     const id = randomUUID();
     const storageKey = buildDocumentKey(orgId, file.originalname);
@@ -160,8 +172,14 @@ export class DocumentsController {
 
   @Permission('farm.read')
   @Get('content/:filename')
-  async download(@Param('filename') filename: string, @Res() res: Response) {
+  async download(@Req() req: any, @Param('filename') filename: string, @Res() res: Response) {
     const safe = filename.replace(/[/\\]/g, '');
+    // The legacy directory is flat and shared across tenants; only serve the
+    // file when a document row in the CALLER's organization references it.
+    const doc = await prisma.document.findFirst({
+      where: { organizationId: getOrgId(req), url: { contains: safe } },
+    });
+    if (!doc) throw new NotFoundException('File not found');
     const filePath = join(UPLOAD_DIR, safe);
     if (!existsSync(filePath)) throw new NotFoundException('File not found');
     res.setHeader('Content-Disposition', `attachment; filename="${safe}"`);
@@ -198,17 +216,23 @@ export class DocumentsController {
 
   @Permission('farm.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return prisma.document.findUnique({ where: { id } });
+  async findOne(@Req() req: any, @Param('id') id: string) {
+    const doc = await prisma.document.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!doc) throw new NotFoundException('Document not found');
+    return doc;
   }
 
   @Permission('farm.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() body: any) {
+    const organizationId = getOrgId(req);
+    if (!organizationId) throw new ForbiddenException('No organization associated with caller');
+    const id = randomUUID();
     return prisma.document.create({
       data: {
-        organizationId: getOrgId(req),
+        id,
+        organizationId,
         name: body.name,
         type: body.type || 'OTHER',
         entityId: body.entityId || null,
@@ -217,14 +241,18 @@ export class DocumentsController {
         uploadedByName: req.user?.email || null,
         fileSize: body.fileSize || null,
         mimeType: body.mimeType || null,
-        url: body.url,
+        // Document.url is required; default to the canonical content route
+        // instead of 500-ing when the client omits it.
+        url: body.url || `/v1/documents/${id}/content`,
       },
     });
   }
 
   @Permission('farm.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    const doc = await prisma.document.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!doc) throw new NotFoundException('Document not found');
     return prisma.document.update({
       where: { id },
       data: {
@@ -239,9 +267,12 @@ export class DocumentsController {
   @Permission('farm.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    const doc = await prisma.document.findUnique({ where: { id } });
-    if (doc?.storageKey) {
+  async delete(@Req() req: any, @Param('id') id: string) {
+    // Scoped lookup first: without it, any farm.delete holder could delete a
+    // foreign tenant's row AND its storage object.
+    const doc = await prisma.document.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!doc) throw new NotFoundException('Document not found');
+    if (doc.storageKey) {
       await this.storage.delete(doc.storageKey).catch((err) => {
         // Don't block metadata deletion if the object is already gone.
         this.logger.warn(`Failed to delete storage object ${doc.storageKey}: ${err?.message}`);
@@ -362,17 +393,22 @@ export class InventoryController {
 
   @Permission('farm.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return prisma.inventory.findUnique({ where: { id } });
+  async findOne(@Req() req: any, @Param('id') id: string) {
+    const item = await prisma.inventory.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!item) throw new NotFoundException('Inventory item not found');
+    return item;
   }
 
   @Permission('farm.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() body: any) {
+    const organizationId = getOrgId(req);
+    if (!organizationId) throw new ForbiddenException('No organization associated with caller');
+    await assertFarmInOrg(body.farmId, organizationId);
     return prisma.inventory.create({
       data: {
-        organizationId: getOrgId(req),
+        organizationId,
         farmId: body.farmId,
         name: body.name,
         category: body.category,
@@ -385,7 +421,9 @@ export class InventoryController {
 
   @Permission('farm.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    const item = await prisma.inventory.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!item) throw new NotFoundException('Inventory item not found');
     return prisma.inventory.update({
       where: { id },
       data: {
@@ -401,7 +439,9 @@ export class InventoryController {
   @Permission('farm.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
+  async delete(@Req() req: any, @Param('id') id: string) {
+    const item = await prisma.inventory.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!item) throw new NotFoundException('Inventory item not found');
     await prisma.inventory.delete({ where: { id } });
     return { deleted: true };
   }
@@ -409,10 +449,15 @@ export class InventoryController {
   @Permission('farm.write')
   @Post('import')
   @HttpCode(HttpStatus.CREATED)
-  async importInventory(@Req() req: any, @Body() body: { data: any[] }) {
+  async importInventory(@Req() req: any, @Body() body: { data?: any[] }) {
     const orgId = getOrgId(req);
+    if (!orgId) throw new ForbiddenException('No organization associated with caller');
+    const rows = Array.isArray(body?.data) ? body.data : [];
+    // Every row must land on a farm the caller owns; guard the array shape
+    // (the old `body.data.map` crashed on a missing `data`).
+    await Promise.all(rows.map((item) => assertFarmInOrg(item?.farmId, orgId)));
     const results = await Promise.all(
-      body.data.map((item) =>
+      rows.map((item) =>
         prisma.inventory.create({
           data: {
             organizationId: orgId,
@@ -478,20 +523,25 @@ export class EquipmentController {
 
   @Permission('farm.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return prisma.equipment.findUnique({
-      where: { id },
+  async findOne(@Req() req: any, @Param('id') id: string) {
+    const item = await prisma.equipment.findFirst({
+      where: { id, organizationId: getOrgId(req) },
       include: { maintenanceRecords: true },
     });
+    if (!item) throw new NotFoundException('Equipment not found');
+    return item;
   }
 
   @Permission('farm.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() body: any) {
+    const organizationId = getOrgId(req);
+    if (!organizationId) throw new ForbiddenException('No organization associated with caller');
+    if (body.farmId) await assertFarmInOrg(body.farmId, organizationId);
     return prisma.equipment.create({
       data: {
-        organizationId: getOrgId(req),
+        organizationId,
         farmId: body.farmId || null,
         name: body.name,
         type: body.type,
@@ -507,7 +557,9 @@ export class EquipmentController {
 
   @Permission('farm.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    const existing = await prisma.equipment.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!existing) throw new NotFoundException('Equipment not found');
     const data: Record<string, unknown> = {};
     if (body.name !== undefined) data.name = body.name;
     if (body.type !== undefined) data.type = body.type;
@@ -519,14 +571,19 @@ export class EquipmentController {
     if (body.notes !== undefined) data.notes = body.notes;
     if (body.lastMaintenance !== undefined) data.lastMaintenance = body.lastMaintenance ? new Date(body.lastMaintenance) : null;
     if (body.nextMaintenance !== undefined) data.nextMaintenance = body.nextMaintenance ? new Date(body.nextMaintenance) : null;
-    if (body.farmId !== undefined) data.farmId = body.farmId;
+    if (body.farmId !== undefined) {
+      if (body.farmId) await assertFarmInOrg(body.farmId, getOrgId(req));
+      data.farmId = body.farmId;
+    }
     return prisma.equipment.update({ where: { id }, data });
   }
 
   @Permission('farm.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
+  async delete(@Req() req: any, @Param('id') id: string) {
+    const item = await prisma.equipment.findFirst({ where: { id, organizationId: getOrgId(req) } });
+    if (!item) throw new NotFoundException('Equipment not found');
     await prisma.equipment.delete({ where: { id } });
     return { deleted: true };
   }

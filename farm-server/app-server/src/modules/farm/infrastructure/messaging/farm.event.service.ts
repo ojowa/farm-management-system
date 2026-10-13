@@ -7,14 +7,14 @@ export class FarmEventService {
   constructor(private readonly events: EventBus) {}
 
   emitFarmCreatedEvent(farm: Farm) {
-    this.events.emitDomainEvent('farm', 'created', farm);
+    this.events.emitDomainEvent('farm', 'created', farm, farm.organizationId);
   }
 
   emitFarmUpdatedEvent(farm: Farm) {
-    this.events.emitDomainEvent('farm', 'updated', farm);
+    this.events.emitDomainEvent('farm', 'updated', farm, farm.organizationId);
   }
 
-  emitFarmDeletedEvent(farmId: string) {
-    this.events.emitDomainEvent('farm', 'deleted', { id: farmId });
+  emitFarmDeletedEvent(farmId: string, organizationId?: string) {
+    this.events.emitDomainEvent('farm', 'deleted', { id: farmId }, organizationId);
   }
 }

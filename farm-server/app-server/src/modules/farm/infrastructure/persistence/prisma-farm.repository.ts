@@ -5,8 +5,8 @@ import { Farm, Field } from '../../domain/entities/farm.entity';
 
 @Injectable()
 export class PrismaFarmRepository implements FarmRepository {
-  async findById(id: string): Promise<Farm | null> {
-    return prisma.farm.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Farm | null> {
+    return prisma.farm.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string, options?: {
@@ -33,42 +33,23 @@ export class PrismaFarmRepository implements FarmRepository {
     return prisma.farm.create({ data });
   }
 
-  async update(id: string, data: Partial<Farm>): Promise<Farm> {
-    return prisma.farm.update({ where: { id }, data });
+  async update(id: string, organizationId: string, data: Partial<Farm>): Promise<Farm> {
+    return prisma.farm.update({ where: { id, organizationId }, data });
   }
 
-  async delete(id: string): Promise<void> {
-    await prisma.farm.delete({ where: { id } });
-  }
-
-  async findAll(options?: {
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-    page?: number;
-    limit?: number;
-  }): Promise<{ farms: Farm[]; total: number }> {
-    const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 10 } = options || {};
-    const skip = (page - 1) * limit;
-    const [farms, total] = await Promise.all([
-      prisma.farm.findMany({
-        orderBy: { [sortBy]: sortOrder },
-        skip,
-        take: limit,
-      }),
-      prisma.farm.count(),
-    ]);
-    return { farms, total };
+  async delete(id: string, organizationId: string): Promise<void> {
+    await prisma.farm.delete({ where: { id, organizationId } });
   }
 }
 
 @Injectable()
 export class PrismaFieldRepository implements FieldRepository {
-  async findById(id: string): Promise<Field | null> {
-    return prisma.field.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Field | null> {
+    return prisma.field.findFirst({ where: { id, farm: { organizationId } } });
   }
 
-  async findByFarmId(farmId: string): Promise<Field[]> {
-    return prisma.field.findMany({ where: { farmId } });
+  async findByFarmId(farmId: string, organizationId: string): Promise<Field[]> {
+    return prisma.field.findMany({ where: { farmId, farm: { organizationId } } });
   }
 
   async create(data: Omit<Field, 'id'>): Promise<Field> {

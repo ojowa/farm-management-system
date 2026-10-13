@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Req, HttpCode, HttpStatus, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { prisma } from '@farm/database';
@@ -16,9 +16,10 @@ function pickFarmWriteFields(body: any): Record<string, unknown> {
   return data;
 }
 
+// `crops` is deliberately absent: Crop has no organizationId, so a scoped
+// export is impossible — the old entry only produced a 500.
 const EXPORTABLE_ENTITIES: Record<string, string> = {
   farms: 'farm',
-  crops: 'crop',
   workers: 'worker',
 };
 
@@ -30,7 +31,11 @@ export class FarmController {
   @Permission('farm.write')
   @Post()
   create(@Req() req: any, @Body() body: any) {
-    const organizationId = body?.organizationId || String(req.user?.organizationId || '');
+    // Scope comes from the caller's JWT only — honouring a body-supplied
+    // organizationId would let any farm.write holder create farms in another
+    // tenant.
+    const organizationId = String(req.user?.organizationId || '');
+    if (!organizationId) throw new ForbiddenException('No organization associated with caller');
     return this.farmService.createFarm({
       organizationId,
       ...pickFarmWriteFields(body),
@@ -46,8 +51,7 @@ export class FarmController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const result = await this.farmService.getAllFarms({
-      organizationId: String(req.user?.organizationId || ''),
+    const result = await this.farmService.getAllFarms(String(req.user?.organizationId || ''), {
       sortBy,
       sortOrder,
       page: page ? parseInt(page) : undefined,
@@ -61,8 +65,10 @@ export class FarmController {
   @Permission('farm.read')
   @Get('map/all')
   async findAllForMap(@Req() req: any) {
+    const organizationId = String(req.user?.organizationId || '');
+    if (!organizationId) return { data: [] };
     const farms = await prisma.farm.findMany({
-      where: { organizationId: String(req.user?.organizationId || '') },
+      where: { organizationId },
       orderBy: { name: 'asc' },
       select: {
         id: true,
@@ -81,9 +87,13 @@ export class FarmController {
   @Permission('farm.write')
   @Put('map/:id/location')
   async updateLocation(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { latitude?: number; longitude?: number },
   ) {
+    const organizationId = String(req.user?.organizationId || '');
+    const farm = await prisma.farm.findFirst({ where: { id, organizationId } });
+    if (!farm) throw new NotFoundException('Farm not found');
     return prisma.farm.update({
       where: { id },
       data: {
@@ -102,7 +112,7 @@ export class FarmController {
   ) {
     const model = EXPORTABLE_ENTITIES[entity];
     if (!model) {
-      return { format: format || 'json', data: [] };
+      throw new NotFoundException(`Cannot export "${entity}"`);
     }
     const data = await (prisma as any)[model].findMany({
       where: { organizationId: String(req.user?.organizationId || '') },
@@ -117,6 +127,7 @@ export class FarmController {
   async importFarms(@Req() req: any, @Body() body: { data?: any[] }) {
     const rows = Array.isArray(body?.data) ? body.data : [];
     const organizationId = String(req.user?.organizationId || '');
+    if (!organizationId) throw new ForbiddenException('No organization associated with caller');
     const results = await Promise.all(
       rows.map((row) =>
         this.farmService.createFarm({
@@ -130,20 +141,20 @@ export class FarmController {
 
   @Permission('farm.read')
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.farmService.getFarmById(id);
+  findOne(@Req() req: any, @Param('id') id: string) {
+    return this.farmService.getFarmById(id, String(req.user?.organizationId || ''));
   }
 
   @Permission('farm.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.farmService.updateFarm(id, pickFarmWriteFields(body) as any);
+  update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.farmService.updateFarm(id, String(req.user?.organizationId || ''), pickFarmWriteFields(body) as any);
   }
 
   @Permission('farm.delete')
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.farmService.deleteFarm(id);
+  remove(@Req() req: any, @Param('id') id: string) {
+    return this.farmService.deleteFarm(id, String(req.user?.organizationId || ''));
   }
 }
 
@@ -154,31 +165,31 @@ export class FieldController {
 
   @Permission('farm.write')
   @Post()
-  create(@Body() body: { farmId: string; name: string; size: number }) {
-    return this.farmService.createField(body);
+  create(@Req() req: any, @Body() body: { farmId: string; name: string; size: number }) {
+    return this.farmService.createField(body, String(req.user?.organizationId || ''));
   }
 
   @Permission('farm.read')
   @Get()
-  findAll(@Query('farmId') farmId: string) {
-    return this.farmService.getAllFields(farmId);
+  findAll(@Req() req: any, @Query('farmId') farmId?: string) {
+    return this.farmService.getAllFields(farmId, String(req.user?.organizationId || ''));
   }
 
   @Permission('farm.read')
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.farmService.getFieldById(id);
+  findOne(@Req() req: any, @Param('id') id: string) {
+    return this.farmService.getFieldById(id, String(req.user?.organizationId || ''));
   }
 
   @Permission('farm.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: Partial<{ name: string; size: number }>) {
-    return this.farmService.updateField(id, body);
+  update(@Req() req: any, @Param('id') id: string, @Body() body: Partial<{ name: string; size: number }>) {
+    return this.farmService.updateField(id, String(req.user?.organizationId || ''), body);
   }
 
   @Permission('farm.delete')
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.farmService.deleteField(id);
+  remove(@Req() req: any, @Param('id') id: string) {
+    return this.farmService.deleteField(id, String(req.user?.organizationId || ''));
   }
 }
