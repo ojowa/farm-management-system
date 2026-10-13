@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { getErrorMessage } from '@/lib/toasts';
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('');
@@ -29,7 +30,7 @@ export default function RegisterPage() {
       });
       setSuccess(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Registration failed');
+      setError(getErrorMessage(err, 'Registration failed'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +62,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
       <div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-xl font-semibold text-gray-900 mb-1">FarmMS</h2>
-        <p className="text-sm text-gray-500 mb-6">Create your account</p>
+        <p className="text-sm text-gray-500 mb-6">Create your farm&apos;s organization account</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}
           <div className="grid grid-cols-2 gap-3">
@@ -98,6 +99,7 @@ export default function RegisterPage() {
               placeholder="My Farm"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">This creates your organization — you&apos;ll be its owner.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>

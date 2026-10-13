@@ -5,9 +5,33 @@ import crypto from 'crypto';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { RefreshTokenRepository } from '../../domain/repositories/refresh-token.repository';
 import { RoleRepository } from '../../domain/repositories/role.repository';
+import { prisma } from '@farm/database';
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/** URL-safe slug for a new organization's name, unique per the schema constraint. */
+function slugifyOrganizationName(name: string): string {
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'org';
+  // Slug must be at least 2 chars per the validation schema.
+  return base.length >= 2 ? base : `${base}-org`;
+}
+
+async function uniqueOrganizationSlug(name: string): Promise<string> {
+  const base = slugifyOrganizationName(name);
+  let slug = base;
+  for (let i = 2; i <= 10; i++) {
+    const existing = await prisma.organization.findUnique({ where: { slug }, select: { id: true } });
+    if (!existing) return slug;
+    slug = `${base}-${i}`.slice(0, 50);
+  }
+  return `${base}-${crypto.randomBytes(2).toString('hex')}`.slice(0, 50);
 }
 
 const BCRYPT_SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
@@ -71,23 +95,44 @@ export class AuthService {
     return { user: userWithoutPassword, accessToken, refreshToken };
   }
 
-  async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
+  async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string; organizationName?: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
     const email = data.email?.trim();
     const firstName = data.firstName?.trim();
     const lastName = data.lastName?.trim();
     if (!email || !firstName || !lastName) throw new BadRequestException('email, firstName and lastName are required');
     const existing = await this.userRepo.findByEmail(email);
     if (existing) throw new ConflictException('Email already registered');
-    const defaultRole = await this.roleRepo.findDefaultRole();
-    if (!defaultRole) throw new BadRequestException('No default role configured — run seed first');
+
+    const organizationName = data.organizationName?.trim();
+    let organizationId = data.organizationId?.trim() || undefined;
+    let roleId: string;
+
+    if (organizationName) {
+      // Self-service signup creates the farm's organization and makes the person
+      // signing up its ORGANIZATION_OWNER — not a read-only worker.
+      const ownerRole = await this.roleRepo.findByName('ORGANIZATION_OWNER', null);
+      if (!ownerRole) throw new BadRequestException('ORGANIZATION_OWNER role not found — run seed first');
+      const organization = await prisma.organization.create({
+        data: { name: organizationName, slug: await uniqueOrganizationSlug(organizationName) },
+      });
+      organizationId = organization.id;
+      roleId = ownerRole.id;
+    } else {
+      // Joining an existing organization (organizationId supplied by its owner)
+      // stays a worker; that is the only path that should use the default role.
+      const defaultRole = await this.roleRepo.findDefaultRole();
+      if (!defaultRole) throw new BadRequestException('No default role configured — run seed first');
+      roleId = defaultRole.id;
+    }
+
     const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
     const user = await this.userRepo.create({
       email,
       passwordHash,
       firstName,
       lastName,
-      roleId: defaultRole.id,
-      organizationId: data.organizationId,
+      roleId,
+      organizationId,
     });
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);

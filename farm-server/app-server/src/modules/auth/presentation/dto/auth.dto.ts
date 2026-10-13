@@ -37,6 +37,12 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   organizationId?: string;
+
+  /** Name of a new organization to create; the registrant becomes its ORGANIZATION_OWNER. */
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  organizationName?: string;
 }
 
 export class RegisterConsoleDto {
