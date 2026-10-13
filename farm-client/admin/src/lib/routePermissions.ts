@@ -8,8 +8,11 @@
  * The strings mirror what the API actually enforces (`@Permission(...)`
  * on the Nest controllers), which is deliberately *not* always the same as
  * the module name: inventory/equipment are served by the farm asset
- * controller (`farm.read`), and workers/tasks/attendance/roster/messages/
+ * controller (`farm.read`), and workers/tasks/attendance/roster/
  * correspondence/leave are served by the HR controller (`hr.read`).
+ * Messages are the exception — the HR controller accepts the worker-facing
+ * `communication.*` family there too, so workers on any client can read and
+ * reply.
  * Gating on anything else would either hide a view a user may open, or
  * show one that answers 403 and renders "No data found".
  */
@@ -46,7 +49,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { prefix: '/tasks', permissions: ['hr.read'] },
   { prefix: '/roster', permissions: ['hr.read'] },
   { prefix: '/correspondence', permissions: ['hr.read'] },
-  { prefix: '/messages', permissions: ['hr.read'] },
+  { prefix: '/messages', permissions: ['hr.read', 'communication.read'] },
   { prefix: '/hr', permissions: ['hr.read', 'leave.read'] },
 
   // Money & reporting

@@ -37,11 +37,12 @@ const PRIORITY_COLORS: Record<string, string> = {
 const EMPTY_COMPOSE = { subject: '', body: '', recipientIds: [] as string[], priority: 'NORMAL' };
 
 export default function MessagesPage() {
-  const { canCreate } = usePermission();
+  const { hasAnyPermission } = usePermission();
   const { toast } = useToast();
   const { user } = useAuth();
-  // Messages are served by hr.controller, which requires hr.write to send.
-  const canSend = canCreate('hr');
+  // Managers/supervisors send with hr.write; workers (WORKER role) hold
+  // communication.write instead — the server accepts either family.
+  const canSend = hasAnyPermission('hr.write', 'communication.write');
 
   const [view, setView] = useState<View>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);
