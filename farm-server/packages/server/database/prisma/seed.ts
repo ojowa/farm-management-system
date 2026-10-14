@@ -2,6 +2,16 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+/** Match a seeded permission name against a glob-ish pattern such as `*.read`. */
+function matchesPermissionPattern(name: string, pattern: string): boolean {
+  if (pattern === '*') return true
+  const escaped = pattern
+    .split('*')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*')
+  return new RegExp(`^${escaped}$`).test(name)
+}
+
 async function main() {
   console.log('Seeding database...')
 
@@ -175,13 +185,20 @@ async function main() {
       continue
     }
     for (const permissionName of perms) {
-      const permission = permissionByName[permissionName]
-      if (!permission) continue
-      await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
-        update: {},
-        create: { roleId: role.id, permissionId: permission.id },
-      })
+      // Patterns like `*.read` expand to every matching seeded permission;
+      // plain names resolve directly (unknown names stay skipped).
+      const matches = permissionName.includes('*')
+        ? createdPermissions.filter((p) => matchesPermissionPattern(p.name, permissionName))
+        : permissionByName[permissionName]
+          ? [permissionByName[permissionName]]
+          : []
+      for (const permission of matches) {
+        await prisma.rolePermission.upsert({
+          where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
+          update: {},
+          create: { roleId: role.id, permissionId: permission.id },
+        })
+      }
     }
   }
 
