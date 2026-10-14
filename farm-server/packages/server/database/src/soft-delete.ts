@@ -17,9 +17,10 @@
  * an organization must really remove rows.
  *
  * Tradeoffs worth knowing:
- *  - unique constraints still count soft-deleted rows, so re-creating an
- *    entity with a natural key (e.g. a Shift name) while a deleted copy
- *    exists conflicts until the old row is purged;
+ *  - natural-key uniqueness is enforced by partial unique indexes
+ *    (`WHERE "deletedAt" IS NULL`, see migration
+ *    20261014140000_soft_delete_partial_uniques), so soft-deleted rows no
+ *    longer block re-creating an entity with the same key;
  *  - nested relation reads via `include` are not filtered.
  */
 

@@ -241,7 +241,7 @@ model Flock {
   penId          String
   breedId        String
 
-  batchCode    String @unique
+  batchCode    String
   birdCount    Int
   currentCount Int
 
@@ -669,7 +669,6 @@ model LeaveType {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([name, organizationId])
   @@index([organizationId])
 }
 
@@ -713,7 +712,6 @@ model LeaveBalance {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([userId, leaveTypeId, year])
   @@index([organizationId])
   @@index([userId])
 }
@@ -735,7 +733,6 @@ model Shift {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([name, organizationId])
   @@index([organizationId])
 }
 
@@ -752,7 +749,6 @@ model ShiftAssignment {
   createdAt DateTime  @default(now())
   deletedAt DateTime?
 
-  @@unique([shiftId, userId, date])
   @@index([organizationId])
   @@index([userId])
   @@index([date])
@@ -776,7 +772,6 @@ model Attendance {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([workerId, date])
   @@index([organizationId])
   @@index([workerId])
   @@index([date])
@@ -819,7 +814,6 @@ model MessageRecipient {
   createdAt DateTime  @default(now())
   deletedAt DateTime?
 
-  @@unique([messageId, recipientId])
   @@index([recipientId])
   @@index([organizationId])
   @@index([isRead])
@@ -830,7 +824,7 @@ model MessageRecipient {
 model Correspondence {
   id              String    @id @default(uuid())
   organizationId  String
-  referenceNumber String    @unique
+  referenceNumber String
   title           String
   type            String // INCOMING, OUTGOING, INTERNAL
   category        String    @default("OTHER") // MEMO, LETTER, REPORT, NOTICE, OTHER

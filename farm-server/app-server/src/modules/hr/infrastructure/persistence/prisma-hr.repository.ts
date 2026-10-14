@@ -344,8 +344,8 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepository {
 @Injectable()
 export class PrismaLeaveBalanceRepository implements LeaveBalanceRepository {
   async findByUserAndTypeAndYear(userId: string, leaveTypeId: string, year: number): Promise<LeaveBalance | null> {
-    return prisma.leaveBalance.findUnique({
-      where: { userId_leaveTypeId_year: { userId, leaveTypeId, year } },
+    return prisma.leaveBalance.findFirst({
+      where: { userId, leaveTypeId, year },
     });
   }
 
@@ -364,25 +364,28 @@ export class PrismaLeaveBalanceRepository implements LeaveBalanceRepository {
     totalDays: number;
     usedDays?: number;
   }): Promise<LeaveBalance> {
-    return prisma.leaveBalance.upsert({
-      where: {
-        userId_leaveTypeId_year: {
-          userId: data.userId,
-          leaveTypeId: data.leaveTypeId,
-          year: data.year,
+    // Compound-key lookups became findFirst when the uniqueness moved to a
+    // partial unique index (soft-deleted rows no longer block re-creation).
+    const existing = await prisma.leaveBalance.findFirst({
+      where: { userId: data.userId, leaveTypeId: data.leaveTypeId, year: data.year },
+    });
+    if (existing) {
+      return prisma.leaveBalance.update({
+        where: { id: existing.id },
+        data: {
+          totalDays: data.totalDays,
+          ...(data.usedDays !== undefined ? { usedDays: { increment: data.usedDays } } : {}),
         },
-      },
-      create: {
+      });
+    }
+    return prisma.leaveBalance.create({
+      data: {
         organizationId: data.organizationId,
         userId: data.userId,
         leaveTypeId: data.leaveTypeId,
         year: data.year,
         totalDays: data.totalDays,
         usedDays: data.usedDays || 0,
-      },
-      update: {
-        totalDays: data.totalDays,
-        ...(data.usedDays !== undefined ? { usedDays: { increment: data.usedDays } } : {}),
       },
     });
   }
