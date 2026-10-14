@@ -119,6 +119,8 @@ apiClient.interceptors.response.use(
 export const platformUsersAPI = {
   list: (params?: any) => apiClient.get('/api/platform-users', { params }),
   get: (id: string) => apiClient.get(`/api/platform-users/${id}`),
+  create: (data: { email: string; firstName: string; lastName: string; middleName?: string; roleId: string; organizationId?: string | null }) =>
+    apiClient.post('/api/platform-users', data),
   update: (id: string, data: any) => apiClient.patch(`/api/platform-users/${id}`, data),
   deactivate: (id: string) => apiClient.delete(`/api/platform-users/${id}`),
   impersonate: (id: string) => apiClient.post(`/api/platform-users/${id}/impersonate`),

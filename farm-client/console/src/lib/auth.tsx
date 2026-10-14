@@ -26,7 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // is a guaranteed 401 in the API logs — and its only outcome (`isLoading: false`,
 // not authenticated) is already the state we settle into. `login()` and
 // `retryAuth()` still fetch whenever a session actually matters.
-const AUTH_PAGES = ['/login', '/register'];
+const AUTH_PAGES = ['/login'];
 
 interface PlatformAdminGate {
   allowed: boolean;

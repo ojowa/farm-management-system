@@ -21,9 +21,11 @@ import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.r
 import { PrismaRefreshTokenRepository } from './infrastructure/persistence/prisma-refresh-token.repository';
 import { PrismaRoleRepository } from './infrastructure/persistence/prisma-role.repository';
 import { PrismaOrganizationRepository } from './infrastructure/persistence/prisma-organization.repository';
+import { EmailModule } from '../notification/modules/email/email.module';
 
 @Module({
   imports: [
+    EmailModule,
     // Only the 'default' throttler is registered. Named throttlers declared
     // here (previously 'auth' and '2fa') apply to EVERY route unless a route
     // explicitly skips them by name, and bare @SkipThrottle() only skips

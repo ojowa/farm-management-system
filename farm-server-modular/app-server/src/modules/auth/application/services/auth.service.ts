@@ -104,32 +104,6 @@ export class AuthService {
     return { user: userWithoutPassword, accessToken, refreshToken };
   }
 
-  async registerConsole(data: { email: string; password: string; firstName: string; middleName?: string; lastName: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
-    const email = data.email?.trim();
-    const firstName = data.firstName?.trim();
-    const lastName = data.lastName?.trim();
-    if (!email || !firstName || !lastName) throw new BadRequestException('email, firstName and lastName are required');
-    const existing = await this.userRepo.findByEmail(email);
-    if (existing) throw new ConflictException('Email already registered');
-
-    const passwordHash = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
-
-    const superAdminRole = await this.roleRepo.findByName('SUPER_ADMIN', null);
-    if (!superAdminRole) throw new BadRequestException('SUPER_ADMIN role not found — run seed first');
-
-    const user = await this.userRepo.create({
-      email,
-      passwordHash,
-      firstName,
-      middleName: data.middleName,
-      lastName,
-      roleId: superAdminRole.id,
-    });
-
-    const { passwordHash: _, twoFactorSecret: __, ...userWithoutPassword } = user as any;
-    return { user: userWithoutPassword };
-  }
-
   async refreshToken(token: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
     if (!token) throw new UnauthorizedException('Refresh token is required');
     const tokenHash = hashToken(token);

@@ -46,7 +46,7 @@ Foundation       Core Modules     Advanced         Production       Scale
 | JWT access tokens (15 min) | Short-lived sessions | Backend |
 | Refresh token rotation (7 days) | Session management | Backend |
 | MFA/TOTP support | 2FA authentication | Backend |
-| Platform admin registration | `/auth/register-console` | Backend |
+| Platform admin invitations | `POST /platform-users` (authenticated, invite-only) | Backend |
 | Auth audit logging | `[AuthAudit]` structured logs | Backend |
 
 ### 2.3 Week 3–4: Organization & Platform

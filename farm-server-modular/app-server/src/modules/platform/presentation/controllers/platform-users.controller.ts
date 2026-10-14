@@ -8,6 +8,12 @@ import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel
 export class PlatformUsersController {
   constructor(private readonly userService: PlatformUserService) {}
 
+  @Post()
+  @Permission('platform.manage')
+  create(@Body() body: any, @Req() req: any) {
+    return this.userService.createUser(body, req.user.id);
+  }
+
   @Get()
   @Permission('platform.manage')
   findAll(@Query() query: { page?: number; limit?: number; search?: string }) {

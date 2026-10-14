@@ -8,6 +8,8 @@ import {
   BroadcastRepository,
   PlatformConfigRepository,
 } from '../../domain/repositories/platform.repository';
+import bcrypt from 'bcryptjs';
+import { EmailService } from '../../../notification/modules/email/email.service';
 
 @Injectable()
 export class PlatformFeatureFlagService {
@@ -354,7 +356,10 @@ export class PlatformHealthService {
 
 @Injectable()
 export class PlatformUserService {
-  constructor(@Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
+  constructor(
+    @Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository,
+    private readonly emailService: EmailService,
+  ) {}
 
   async findAllUsers(query: { page?: number; limit?: number; search?: string }) {
     const { prisma } = await import('@farm/database');
@@ -406,6 +411,68 @@ export class PlatformUserService {
       lastLoginAt: u.lastLoginAt ? new Date(u.lastLoginAt).toISOString() : null,
       createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : null,
     };
+  }
+
+  /**
+   * Create a console user from the platform console — the replacement for the
+   * removed open `/auth/register-console` route. Only an authenticated
+   * platform admin can do it; the caller receives the one-time temp password
+   * and the invitee gets the invitation email (logged only when SMTP is
+   * unconfigured).
+   */
+  async createUser(
+    data: { email: string; firstName: string; lastName: string; middleName?: string; roleId: string; organizationId?: string | null },
+    auditUserId: string,
+  ) {
+    const { prisma } = await import('@farm/database');
+    const email = data?.email?.trim();
+    const firstName = data?.firstName?.trim();
+    const lastName = data?.lastName?.trim();
+    if (!email || !firstName || !lastName) throw new BadRequestException('email, firstName and lastName are required');
+    if (!data?.roleId) throw new BadRequestException('roleId is required');
+
+    const role = await prisma.role.findUnique({ where: { id: data.roleId }, select: { id: true } });
+    if (!role) throw new BadRequestException('Role not found');
+    // `organizationId: null` creates a platform (console) user; a truthy value
+    // places them in that organization.
+    const organizationId = data.organizationId || null;
+    if (organizationId) {
+      const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true } });
+      if (!org) throw new BadRequestException('Organization not found');
+    }
+    const existing = await prisma.user.findFirst({ where: { email }, select: { id: true } });
+    if (existing) throw new ConflictException('Email already registered');
+
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    const created = await prisma.user.create({
+      data: {
+        email,
+        firstName,
+        lastName,
+        middleName: data.middleName?.trim() || null,
+        passwordHash,
+        roleId: data.roleId,
+        organizationId,
+      },
+      include: { role: true, organization: true },
+    });
+
+    // Invitation email — delivery failure never fails the invite: the caller
+    // still gets the temp password in the response and EmailService logs.
+    try {
+      await this.emailService.sendInvitationEmail(
+        email,
+        firstName,
+        tempPassword,
+        created.organization?.name || 'the Farm Management Console',
+      );
+    } catch {
+      /* email delivery must not block the invite */
+    }
+
+    await this.auditLogRepo.create({ userId: auditUserId, action: 'user.create', entity: 'User', entityId: created.id });
+    return { user: this.mapUser(created), tempPassword };
   }
 
   async findUser(id: string) {

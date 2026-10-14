@@ -9,7 +9,6 @@ export class AuthMiddleware implements NestMiddleware {
   private readonly publicPaths = new Set([
     '/auth/login',
     '/auth/register',
-    '/auth/register-console',
     '/auth/refresh',
     '/auth/verify-mfa',
     '/auth/otp/send',

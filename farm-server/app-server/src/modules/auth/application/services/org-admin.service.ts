@@ -1,9 +1,12 @@
 import { Injectable, NotFoundException, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
+import { EmailService } from '../../../notification/modules/email/email.service';
 
 @Injectable()
 export class OrgAdminService {
+  constructor(private readonly emailService: EmailService) {}
+
   /**
    * A role may only be assigned inside the caller's organization: system
    * roles (organizationId null) are global, everything else must match.
@@ -59,6 +62,15 @@ export class OrgAdminService {
       data: { email, firstName, lastName, roleId: data.roleId, passwordHash, organizationId },
       include: { role: true },
     });
+
+    // Invitation email — logged when SMTP is unconfigured; delivery failure
+    // never fails the invite (the caller still gets the temp password).
+    try {
+      const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+      await this.emailService.sendInvitationEmail(email, firstName, tempPassword, org?.name || 'your organization');
+    } catch {
+      /* email delivery must not block the invite */
+    }
     return { user, tempPassword };
   }
 

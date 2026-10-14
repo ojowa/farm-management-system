@@ -120,17 +120,21 @@ Content-Type: application/json
 }
 ```
 
-### 2.4 Register Console User
+### 2.4 Create Console User (invitation only)
+
+Console users can no longer self-register — the open `POST /auth/register-console` route was removed. An authenticated platform admin creates users instead; the response carries a one-time `tempPassword` and the invitee also receives the invitation email (logged when SMTP is unconfigured).
 
 ```http
-POST /auth/register-console
+POST /platform-users
+Authorization: Bearer <platform-admin access token>
 Content-Type: application/json
 
 {
   "email": "admin@fms.org",
-  "password": "password123",
   "firstName": "Admin",
-  "lastName": "User"
+  "lastName": "User",
+  "roleId": "<role id>",
+  "organizationId": null
 }
 ```
 

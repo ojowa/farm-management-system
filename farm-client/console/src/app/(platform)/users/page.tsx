@@ -34,6 +34,13 @@ export default function UsersPage() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Invite (create) dialog state
+  const [inviting, setInviting] = useState(false);
+  const [inviteForm, setInviteForm] = useState({ firstName: '', lastName: '', email: '', roleId: '', organizationId: '' });
+  const [inviteSaving, setInviteSaving] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -152,6 +159,52 @@ export default function UsersPage() {
     } catch (err) { toastError(getErrorMessage(err)); }
   };
 
+  const openInvite = () => {
+    setInviteForm({ firstName: '', lastName: '', email: '', roleId: '', organizationId: '' });
+    setInviteResult(null);
+    setInviting(true);
+    loadOptions();
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const firstName = inviteForm.firstName.trim();
+    const lastName = inviteForm.lastName.trim();
+    const email = inviteForm.email.trim();
+    if (!firstName || !lastName || !email) {
+      toastError('First name, last name and email are required');
+      return;
+    }
+    if (!inviteForm.roleId) {
+      toastError('Select a role for the new user');
+      return;
+    }
+
+    setInviteSaving(true);
+    try {
+      const { data } = await platformUsersAPI.create({
+        email,
+        firstName,
+        lastName,
+        roleId: inviteForm.roleId,
+        organizationId: inviteForm.organizationId || null,
+      });
+      setInviteResult({ name: `${firstName} ${lastName}`, email, tempPassword: data.tempPassword });
+      toastSuccess('User created — invitation email queued');
+      loadUsers();
+    } catch (err) {
+      toastError(getErrorMessage(err));
+    }
+    setInviteSaving(false);
+  };
+
+  const copyTempPassword = () => {
+    if (!inviteResult) return;
+    navigator.clipboard.writeText(inviteResult.tempPassword);
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2000);
+  };
+
   const totalPages = Math.ceil(total / 20);
 
   return (
@@ -162,7 +215,14 @@ export default function UsersPage() {
             <h1 className="text-2xl font-bold text-gray-900">Users</h1>
             <p className="text-sm text-gray-500 mt-1">{total} total users</p>
           </div>
-          <div className="relative">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={openInvite}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#16a34a] rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+            >
+              + Invite user
+            </button>
+            <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -175,6 +235,7 @@ export default function UsersPage() {
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="block w-full md:w-72 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#16a34a] focus:border-[#16a34a] sm:text-sm"
             />
+            </div>
           </div>
         </div>
 
@@ -404,6 +465,142 @@ export default function UsersPage() {
               </button>
             </div>
           </form>
+        </Dialog>
+
+        <Dialog
+          open={inviting}
+          onOpenChange={(open) => { if (!open) setInviting(false); }}
+          title={inviteResult ? 'User invited' : 'Invite a console user'}
+          description={inviteResult ? inviteResult.email : 'Create the account and hand over the one-time password — an invitation email is also sent.'}
+        >
+          {inviteResult ? (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-xs text-gray-500 mb-1">Email</p>
+                <p className="text-sm font-medium text-gray-900 mb-3">{inviteResult.email}</p>
+                <p className="text-xs text-gray-500 mb-1">One-time password</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono text-gray-900 flex-1 break-all">{inviteResult.tempPassword}</code>
+                  <button
+                    type="button"
+                    onClick={copyTempPassword}
+                    className="shrink-0 px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                  >
+                    {inviteCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg">
+                Save this now — the password is not shown again. It is also emailed to the invitee (logged instead when SMTP is not configured).
+              </p>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setInviting(false)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#16a34a] rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleInvite} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">First name</label>
+                  <input
+                    value={inviteForm.firstName}
+                    onChange={(e) => setInviteForm({ ...inviteForm, firstName: e.target.value })}
+                    className={inputClass}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Last name</label>
+                  <input
+                    value={inviteForm.lastName}
+                    onChange={(e) => setInviteForm({ ...inviteForm, lastName: e.target.value })}
+                    className={inputClass}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={inviteForm.email}
+                  onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  className={inputClass}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+                <select
+                  value={inviteForm.roleId}
+                  onChange={(e) => setInviteForm({ ...inviteForm, roleId: e.target.value })}
+                  className={inputClass}
+                  disabled={optionsLoading}
+                  required
+                >
+                  {optionsLoading ? (
+                    <option value="">Loading roles...</option>
+                  ) : (
+                    <>
+                      <option value="">Select role</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Organization</label>
+                <select
+                  value={inviteForm.organizationId}
+                  onChange={(e) => setInviteForm({ ...inviteForm, organizationId: e.target.value })}
+                  className={inputClass}
+                  disabled={optionsLoading}
+                >
+                  {optionsLoading ? (
+                    <option value="">Loading organizations...</option>
+                  ) : (
+                    <>
+                      <option value="">No organization (platform console user)</option>
+                      {orgs.map((o) => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </>
+                  )}
+                </select>
+                <p className="mt-1 text-xs text-gray-400">
+                  Leave empty for a platform console user (SUPER_ADMIN / SUPPORT_ADMIN).
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setInviting(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviteSaving || optionsLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-[#16a34a] rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                >
+                  {inviteSaving ? 'Creating...' : 'Send invitation'}
+                </button>
+              </div>
+            </form>
+          )}
         </Dialog>
       </div>
     </div>

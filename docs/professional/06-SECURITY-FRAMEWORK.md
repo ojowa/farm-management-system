@@ -237,7 +237,6 @@ Source: `services/auth-service/src/application/services/auth.service.ts:11`
 | `POST /auth/login` | 10 requests | 60 seconds | Brute force protection |
 | `POST /auth/verify-mfa` | 5 requests | 300 seconds | 2FA brute force protection |
 | `POST /auth/register` | 5 requests | 60 seconds | Spam prevention |
-| `POST /auth/register-console` | 5 requests | 60 seconds | Spam prevention |
 | `POST /auth/refresh` | 20 requests | 60 seconds | Token refresh abuse |
 | `GET /auth/me` | Unlimited | — | Session validation (no limit) |
 

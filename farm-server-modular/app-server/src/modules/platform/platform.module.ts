@@ -31,9 +31,10 @@ import {
 } from './infrastructure/persistence/prisma-platform.repository';
 import { PlatformAdminGuard, SuperAdminGuard } from './presentation/guards/platform-admin.guard';
 import { StorageModule } from '../../shared/storage';
+import { EmailModule } from '../notification/modules/email/email.module';
 
 @Module({
-  imports: [StorageModule],
+  imports: [StorageModule, EmailModule],
   controllers: [
     PlatformFeaturesController,
     PlatformSubscriptionsController,

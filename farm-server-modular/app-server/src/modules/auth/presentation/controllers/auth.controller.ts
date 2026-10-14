@@ -4,7 +4,7 @@ import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
 import { JwtAuthGuard, AuthorizationGuard } from '../../../../kernel/auth/nestjs';
-import { LoginDto, RegisterDto, RegisterConsoleDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
+import { LoginDto, RegisterDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax') as 'lax' | 'strict' | 'none';
@@ -62,13 +62,6 @@ export class AuthController {
     }
 
     return result;
-  }
-
-  @Post('register-console')
-  @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async registerConsole(@Body() body: RegisterConsoleDto, @Req() req: any): Promise<any> {
-    const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
-    return this.authService.registerConsole(body, ctx);
   }
 
   @Post('refresh')

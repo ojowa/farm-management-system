@@ -109,7 +109,6 @@ export function getRoutes(): ServiceRoute[] {
 export const PUBLIC_PATHS = new Set([
   '/auth/login',
   '/auth/register',
-  '/auth/register-console',
   '/auth/refresh',
   '/auth/verify-mfa',
   '/health',

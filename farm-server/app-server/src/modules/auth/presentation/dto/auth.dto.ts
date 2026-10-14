@@ -45,28 +45,6 @@ export class RegisterDto {
   organizationName?: string;
 }
 
-export class RegisterConsoleDto {
-  @IsEmail()
-  email!: string;
-
-  @IsString()
-  @MinLength(8)
-  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
-  password!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  firstName!: string;
-
-  @IsOptional()
-  @IsString()
-  middleName?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  lastName!: string;
-}
-
 export class RefreshTokenDto {
   // Optional: both frontends call /auth/refresh bodyless and rely on the
   // httpOnly refreshToken cookie (see auth.controller: req.cookies || body).

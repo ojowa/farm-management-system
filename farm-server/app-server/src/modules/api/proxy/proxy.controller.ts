@@ -7,7 +7,6 @@ export class GatewayProxyController {
   private readonly publicRoutes = new Set([
     'auth/login',
     'auth/register',
-    'auth/register-console',
     'auth/refresh',
     'auth/verify-mfa',
     'auth/otp/send',
