@@ -10,7 +10,7 @@ interface User {
   email: string | null;
   firstName: string;
   lastName: string;
-  role: { name: string; permissions: { permission: { name: string }[] }[] };
+  role: { name: string; isPlatformAdmin?: boolean; permissions: { permission: { name: string }[] }[] };
   organizationId: string | null;
   organization: any;
   twoFactorEnabled: boolean;

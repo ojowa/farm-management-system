@@ -186,6 +186,7 @@ export const settingsAPI = {
   getPreferences: () => apiClient.get('/auth/preferences'),
   updatePreferences: (data: any) => apiClient.put('/auth/preferences', data),
   getMyOrganizations: () => apiClient.get('/auth/my-organizations'),
+  listPlatformOrganizations: () => apiClient.get('/auth/platform-organizations'),
   switchOrganization: (organizationId: string) =>
     apiClient.post('/auth/switch-organization', { organizationId }),
   generate2FA: () => apiClient.post('/auth/2fa/generate'),

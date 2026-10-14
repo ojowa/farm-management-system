@@ -15,6 +15,7 @@ import { useAuth } from '@/lib/auth';
 import { usePermission } from '@/lib/usePermission';
 import { requiredPermissionsForPath } from '@/lib/routePermissions';
 import { AccessDenied } from '@/components/AccessDenied';
+import { OrganizationPicker } from '@/components/OrganizationPicker';
 
 // The auth pages render bare (no shell, no sidebar) and must not be bounced
 // back to /login by the guard below — otherwise /register is unreachable and
@@ -27,6 +28,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  // Platform admins pick their organization context on every app entry;
+  // the flag only survives client-side navigation within the session.
+  const [orgChosen, setOrgChosen] = React.useState(false);
   const { hasPermission } = usePermission();
 
   const isAuthPage = AUTH_PAGES.includes(pathname);
@@ -55,6 +59,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
       </div>
     );
+  }
+
+  // Platform admins (SUPER_ADMIN / SUPPORT_ADMIN) have no organization on
+  // their account, so the shell cannot render an org-scoped view until they
+  // choose one — the picker replaces the whole app for that decision.
+  // Organization staff and users belong to a single organization already and
+  // never pass through this gate.
+  if (user?.role?.isPlatformAdmin === true && !orgChosen) {
+    return <OrganizationPicker onChosen={() => setOrgChosen(true)} />;
   }
 
   return (

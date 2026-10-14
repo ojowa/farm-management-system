@@ -264,25 +264,64 @@ export class AuthService {
   }
 
   /**
+   * The role flag behind `PlatformAdminGuard`, read fresh from the DB so the
+   * organization popup never trusts whatever a JWT happened to carry.
+   */
+  private async isPlatformAdminRole(roleId?: string | null): Promise<boolean> {
+    if (!roleId) return false;
+    const { prisma } = await import('../../../../kernel/database');
+    const role = await prisma.role.findUnique({ where: { id: roleId }, select: { isPlatformAdmin: true } });
+    return !!role?.isPlatformAdmin;
+  }
+
+  /**
+   * Id+name list behind the admin app's organization popup. Platform admins
+   * only (DB role flag) — organization staff never see the popup and would
+   * never call this, and the payload deliberately carries nothing beyond the
+   * two fields the picker renders.
+   */
+  async listPlatformOrganizations(userId: string) {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundException('User not found');
+    if (!(await this.isPlatformAdminRole(user.roleId))) throw new ForbiddenException('Platform administrators only');
+
+    const { prisma } = await import('../../../../kernel/database');
+    return prisma.organization.findMany({
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  /**
    * Re-issues tokens for the caller's organization. Self-service switching to
    * a *different* organization is rejected on purpose: with one organization
-   * per account, moving someone is a platform-admin action (console Users
-   * page) — otherwise any signed-in user could join any organization simply
-   * by naming its id.
+   * per account, moving someone is a platform-admin action — otherwise any
+   * signed-in user could join any organization simply by naming its id.
+   * Platform admins are the exception: the admin app's organization popup
+   * lets them enter any existing organization, and the choice is persisted to
+   * their account row so org-scoped reads and stamped writes line up with the
+   * issued token.
    */
   async switchOrganization(userId: string, organizationId: string) {
     const user = await this.userRepo.findById(userId);
     if (!user) throw new NotFoundException('User not found');
+    if (!organizationId) throw new BadRequestException('organizationId is required');
 
     if (user.organizationId !== organizationId) {
-      throw new ForbiddenException('Your account belongs to a single organization. A platform administrator can move you.');
+      if (!(await this.isPlatformAdminRole(user.roleId))) {
+        throw new ForbiddenException('Your account belongs to a single organization. A platform administrator can move you.');
+      }
+      const { prisma } = await import('../../../../kernel/database');
+      const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
+      if (!org) throw new NotFoundException('Organization not found');
     }
 
     const updated = await this.userRepo.update(userId, { organizationId } as any);
     const accessToken = await this.generateAccessToken(updated);
     const refreshToken = await this.generateRefreshToken(userId);
 
-    return { user: updated, accessToken, refreshToken };
+    const { passwordHash, twoFactorSecret, ...userWithoutPassword } = updated as any;
+    return { user: userWithoutPassword, accessToken, refreshToken };
   }
 
   /**

@@ -189,6 +189,13 @@ export class AuthController {
     return this.authService.getMyOrganizations(req.user?.id);
   }
 
+  @Get('platform-organizations')
+  @UseGuards(JwtAuthGuard)
+  @SkipThrottle()
+  async listPlatformOrganizations(@Req() req: any) {
+    return this.authService.listPlatformOrganizations(req.user?.id);
+  }
+
   @Post('switch-organization')
   @UseGuards(JwtAuthGuard)
   async switchOrganization(@Req() req: any, @Body() body: { organizationId: string }, @Res({ passthrough: true }) res: Response) {
