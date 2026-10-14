@@ -145,14 +145,14 @@ export class ScheduledReportController {
 
   @Permission('reporting.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.reportService.updateScheduledReport(id, body);
+  async update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.reportService.updateScheduledReport(id, String(req.user?.organizationId || ''), body);
   }
 
   @Permission('reporting.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.reportService.deleteScheduledReport(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.reportService.deleteScheduledReport(id, String(req.user?.organizationId || ''));
   }
 }

@@ -22,8 +22,8 @@ export class HrApplicationService {
   ) {}
 
   // Worker operations
-  async getWorkerById(id: string) {
-    const worker = await this.workerRepo.findById(id);
+  async getWorkerById(id: string, organizationId: string) {
+    const worker = await this.workerRepo.findById(id, organizationId);
     if (!worker) throw new NotFoundException(`Worker with ID ${id} not found`);
     return worker;
   }
@@ -55,7 +55,7 @@ export class HrApplicationService {
     return worker;
   }
 
-  async updateWorker(id: string,  data: Partial<{
+  async updateWorker(id: string, organizationId: string, data: Partial<{
     firstName: string;
     lastName: string;
     email: string;
@@ -64,14 +64,14 @@ export class HrApplicationService {
     department: string;
     status: string;
   }>) {
-    await this.getWorkerById(id);
+    await this.getWorkerById(id, organizationId);
     const updated = await this.workerRepo.update(id, data);
     await this.eventService.emitHrEvent('updated', { entity: 'worker', data: updated });
     return updated;
   }
 
-  async deleteWorker(id: string) {
-    await this.getWorkerById(id);
+  async deleteWorker(id: string, organizationId: string) {
+    await this.getWorkerById(id, organizationId);
     await this.eventService.emitHrEvent('deleted', { entity: 'worker', id });
     return this.workerRepo.delete(id);
   }
@@ -239,14 +239,14 @@ export class HrApplicationService {
     return updated;
   }
 
-  async updateAttendance(id: string, data: Partial<{
+  async updateAttendance(id: string, organizationId: string, data: Partial<{
     status: string;
     clockIn: string;
     clockOut: string;
     hoursWorked: number;
     notes: string;
   }>) {
-    const existing = await this.attendanceRepo.findById(id);
+    const existing = await this.attendanceRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Attendance record not found');
 
     const updateData: any = {};
@@ -310,8 +310,8 @@ export class HrApplicationService {
     return { data: tasks, stats };
   }
 
-  async getTaskById(id: string) {
-    const task = await this.taskRepo.findById(id);
+  async getTaskById(id: string, organizationId: string) {
+    const task = await this.taskRepo.findById(id, organizationId);
     if (!task) throw new NotFoundException('Task not found');
     return task;
   }
@@ -347,7 +347,7 @@ export class HrApplicationService {
     return task;
   }
 
-  async updateTask(id: string, userPermissions: string[], userId: string, data: {
+  async updateTask(id: string, organizationId: string, userPermissions: string[], userId: string, data: {
     title?: string;
     description?: string;
     priority?: string;
@@ -357,7 +357,7 @@ export class HrApplicationService {
     farmId?: string;
     dueDate?: string;
   }) {
-    const existing = await this.taskRepo.findById(id);
+    const existing = await this.taskRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Task not found');
 
     if (!userPermissions.includes('hr.write')) {
@@ -393,15 +393,18 @@ export class HrApplicationService {
     return updated;
   }
 
-  async deleteTask(id: string) {
-    const existing = await this.taskRepo.findById(id);
+  async deleteTask(id: string, organizationId: string) {
+    const existing = await this.taskRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Task not found');
     await this.eventService.emitHrEvent('deleted', { entity: 'task', id });
     return this.taskRepo.delete(id);
   }
 
-  async updateTaskStatus(id: string, status: string) {
+  async updateTaskStatus(id: string, organizationId: string, status: string) {
     if (!status) throw new BadRequestException('Status is required');
+
+    const existing = await this.taskRepo.findById(id, organizationId);
+    if (!existing) throw new NotFoundException('Task not found');
 
     const updated = await this.taskRepo.update(id, {
       status,
@@ -442,14 +445,14 @@ export class HrApplicationService {
     return shift;
   }
 
-  async updateShift(id: string, data: Partial<{
+  async updateShift(id: string, organizationId: string, data: Partial<{
     name: string;
     startTime: string;
     endTime: string;
     color: string;
     isActive: boolean;
   }>) {
-    const existing = await this.shiftRepo.findById(id);
+    const existing = await this.shiftRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Shift not found');
 
     const updateData: any = {};
@@ -464,8 +467,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async deleteShift(id: string) {
-    const existing = await this.shiftRepo.findById(id);
+  async deleteShift(id: string, organizationId: string) {
+    const existing = await this.shiftRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Shift not found');
 
     const assignmentCount = await this.shiftRepo.countAssignments(id);
@@ -502,7 +505,7 @@ export class HrApplicationService {
       throw new BadRequestException('shiftId, userId, and date are required');
     }
 
-    const shift = await this.shiftRepo.findById(shiftId);
+    const shift = await this.shiftRepo.findById(shiftId, organizationId);
     if (!shift) throw new NotFoundException('Shift not found');
 
     const existing = await this.shiftAssignmentRepo.findByShiftAndUserAndDate(shiftId, assignUserId, new Date(date));
@@ -540,8 +543,8 @@ export class HrApplicationService {
     return { count };
   }
 
-  async deleteShiftAssignment(id: string) {
-    const existing = await this.shiftAssignmentRepo.findById(id);
+  async deleteShiftAssignment(id: string, organizationId: string) {
+    const existing = await this.shiftAssignmentRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Assignment not found');
     await this.eventService.emitHrEvent('deleted', { entity: 'shiftAssignment', id });
     return this.shiftAssignmentRepo.delete(id);
@@ -574,13 +577,13 @@ export class HrApplicationService {
     return leaveType;
   }
 
-  async updateLeaveType(id: string, data: Partial<{
+  async updateLeaveType(id: string, organizationId: string, data: Partial<{
     name: string;
     daysPerYear: number;
     isPaid: boolean;
     isActive: boolean;
   }>) {
-    const existing = await this.leaveTypeRepo.findById(id);
+    const existing = await this.leaveTypeRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave type not found');
 
     const updateData: any = {};
@@ -594,8 +597,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async deleteLeaveType(id: string) {
-    const existing = await this.leaveTypeRepo.findById(id);
+  async deleteLeaveType(id: string, organizationId: string) {
+    const existing = await this.leaveTypeRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave type not found');
 
     const requestCount = await this.leaveTypeRepo.countRequests(id);
@@ -671,8 +674,8 @@ export class HrApplicationService {
     return leaveRequest;
   }
 
-  async approveLeaveRequest(id: string, approverId: string) {
-    const existing = await this.leaveRequestRepo.findById(id);
+  async approveLeaveRequest(id: string, organizationId: string, approverId: string) {
+    const existing = await this.leaveRequestRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave request not found');
     if (existing.status !== 'PENDING') throw new ConflictException('Request is not pending');
 
@@ -696,8 +699,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async rejectLeaveRequest(id: string, approverId: string, rejectionReason?: string) {
-    const existing = await this.leaveRequestRepo.findById(id);
+  async rejectLeaveRequest(id: string, organizationId: string, approverId: string, rejectionReason?: string) {
+    const existing = await this.leaveRequestRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave request not found');
     if (existing.status !== 'PENDING') throw new ConflictException('Request is not pending');
 
@@ -712,8 +715,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async cancelLeaveRequest(id: string, userId: string) {
-    const existing = await this.leaveRequestRepo.findById(id);
+  async cancelLeaveRequest(id: string, organizationId: string, userId: string) {
+    const existing = await this.leaveRequestRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave request not found');
     if (existing.userId !== userId) throw new ForbiddenException('Cannot cancel requests from other users');
     if (existing.status !== 'PENDING') throw new ConflictException('Only pending requests can be cancelled');
@@ -891,8 +894,8 @@ export class HrApplicationService {
     return this.correspondenceRepo.getStats(organizationId);
   }
 
-  async getCorrespondenceById(id: string) {
-    const item = await this.correspondenceRepo.findById(id);
+  async getCorrespondenceById(id: string, organizationId: string) {
+    const item = await this.correspondenceRepo.findById(id, organizationId);
     if (!item) throw new NotFoundException('Correspondence not found');
     return item;
   }
@@ -936,7 +939,7 @@ export class HrApplicationService {
     return correspondence;
   }
 
-  async updateCorrespondence(id: string, data: Partial<{
+  async updateCorrespondence(id: string, organizationId: string, data: Partial<{
     title: string;
     type: string;
     category: string;
@@ -947,7 +950,7 @@ export class HrApplicationService {
     priority: string;
     receivedDate: string;
   }>) {
-    const existing = await this.correspondenceRepo.findById(id);
+    const existing = await this.correspondenceRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Correspondence not found');
 
     const updateData: any = {};
@@ -968,8 +971,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async archiveCorrespondence(id: string) {
-    const existing = await this.correspondenceRepo.findById(id);
+  async archiveCorrespondence(id: string, organizationId: string) {
+    const existing = await this.correspondenceRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Correspondence not found');
 
     const updated = await this.correspondenceRepo.update(id, {
@@ -980,8 +983,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async unarchiveCorrespondence(id: string) {
-    const existing = await this.correspondenceRepo.findById(id);
+  async unarchiveCorrespondence(id: string, organizationId: string) {
+    const existing = await this.correspondenceRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Correspondence not found');
 
     const updated = await this.correspondenceRepo.update(id, {
@@ -992,8 +995,8 @@ export class HrApplicationService {
     return updated;
   }
 
-  async deleteCorrespondence(id: string) {
-    const existing = await this.correspondenceRepo.findById(id);
+  async deleteCorrespondence(id: string, organizationId: string) {
+    const existing = await this.correspondenceRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Correspondence not found');
     await this.eventService.emitHrEvent('deleted', { entity: 'correspondence', id });
     return this.correspondenceRepo.delete(id);
@@ -1005,7 +1008,7 @@ export class HrApplicationService {
     fileUrl: string;
     fileType?: string;
   }) {
-    const existing = await this.correspondenceRepo.findById(correspondenceId);
+    const existing = await this.correspondenceRepo.findById(correspondenceId, organizationId);
     if (!existing) throw new NotFoundException('Correspondence not found');
 
     const { fileName, fileSize, fileUrl, fileType } = data;
@@ -1022,14 +1025,14 @@ export class HrApplicationService {
     });
   }
 
-  async getCorrespondenceAttachment(id: string) {
-    const attachment = await this.correspondenceAttachmentRepo.findById(id);
+  async getCorrespondenceAttachment(id: string, organizationId: string) {
+    const attachment = await this.correspondenceAttachmentRepo.findById(id, organizationId);
     if (!attachment) throw new NotFoundException('Attachment not found');
     return attachment;
   }
 
-  async deleteCorrespondenceAttachment(id: string) {
-    const existing = await this.correspondenceAttachmentRepo.findById(id);
+  async deleteCorrespondenceAttachment(id: string, organizationId: string) {
+    const existing = await this.correspondenceAttachmentRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Attachment not found');
     return this.correspondenceAttachmentRepo.delete(id);
   }

@@ -17,7 +17,7 @@ export class ReportApplicationService {
   }
 
   async getReportById(id: string,  organizationId: string) {
-    const report = await this.reportRepo.findById(id);
+    const report = await this.reportRepo.findById(id, organizationId);
     if (!report) throw new NotFoundException(`Report with ID ${id} not found`);
     return report;
   }
@@ -65,7 +65,9 @@ export class ReportApplicationService {
     });
   }
 
-  async updateScheduledReport(id: string, data: Partial<{ name: string; template: string; recipients: string[]; frequency: string; isActive: boolean }>) {
+  async updateScheduledReport(id: string, organizationId: string, data: Partial<{ name: string; template: string; recipients: string[]; frequency: string; isActive: boolean }>) {
+    const existing = await this.scheduledReportRepo.findById(id, organizationId);
+    if (!existing) throw new NotFoundException(`Scheduled report with ID ${id} not found`);
     const updateData: any = { ...data };
     if (data.frequency) {
       updateData.nextSend = this.calculateNextSend(data.frequency);
@@ -73,7 +75,9 @@ export class ReportApplicationService {
     return this.scheduledReportRepo.update(id, updateData);
   }
 
-  async deleteScheduledReport(id: string) {
+  async deleteScheduledReport(id: string, organizationId: string) {
+    const existing = await this.scheduledReportRepo.findById(id, organizationId);
+    if (!existing) throw new NotFoundException(`Scheduled report with ID ${id} not found`);
     return this.scheduledReportRepo.delete(id);
   }
 

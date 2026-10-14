@@ -47,8 +47,8 @@ export class WorkerController {
 
   @Permission('hr.read')
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.hrService.getWorkerById(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.getWorkerById(id, getOrgId(req));
   }
 
   @Permission('hr.write')
@@ -60,15 +60,15 @@ export class WorkerController {
 
   @Permission('hr.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.hrService.updateWorker(id, body);
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateWorker(id, getOrgId(req), body);
   }
 
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.hrService.deleteWorker(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteWorker(id, getOrgId(req));
   }
 }
 
@@ -134,8 +134,8 @@ export class AttendanceController {
 
   @Permission('hr.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.hrService.updateAttendance(id, body);
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateAttendance(id, getOrgId(req), body);
   }
 
   @Permission('hr.write')
@@ -174,8 +174,8 @@ export class TasksController {
 
   @Permission('hr.read')
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.hrService.getTaskById(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.getTaskById(id, getOrgId(req));
   }
 
   @Permission('hr.write')
@@ -188,20 +188,20 @@ export class TasksController {
   @Permission('hr.write')
   @Put(':id')
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
-    return this.hrService.updateTask(id, getUserPermissions(req), getUserId(req), body);
+    return this.hrService.updateTask(id, getOrgId(req), getUserPermissions(req), getUserId(req), body);
   }
 
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.hrService.deleteTask(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteTask(id, getOrgId(req));
   }
 
   @Permission('hr.write')
   @Put(':id/status')
-  updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
-    return this.hrService.updateTaskStatus(id, body.status);
+  updateStatus(@Param('id') id: string, @Req() req: any, @Body() body: { status: string }) {
+    return this.hrService.updateTaskStatus(id, getOrgId(req), body.status);
   }
 }
 
@@ -225,15 +225,15 @@ export class ShiftsController {
 
   @Permission('hr.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.hrService.updateShift(id, body);
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateShift(id, getOrgId(req), body);
   }
 
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.hrService.deleteShift(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteShift(id, getOrgId(req));
   }
 }
 
@@ -272,8 +272,8 @@ export class ShiftAssignmentsController {
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.hrService.deleteShiftAssignment(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteShiftAssignment(id, getOrgId(req));
   }
 }
 
@@ -297,15 +297,15 @@ export class LeaveTypesController {
 
   @Permission('hr.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.hrService.updateLeaveType(id, body);
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateLeaveType(id, getOrgId(req), body);
   }
 
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.hrService.deleteLeaveType(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteLeaveType(id, getOrgId(req));
   }
 }
 
@@ -337,19 +337,19 @@ export class LeaveRequestsController {
   @Permission('hr.write')
   @Put(':id/approve')
   approve(@Param('id') id: string, @Req() req: any) {
-    return this.hrService.approveLeaveRequest(id, getUserId(req));
+    return this.hrService.approveLeaveRequest(id, getOrgId(req), getUserId(req));
   }
 
   @Permission('hr.write')
   @Put(':id/reject')
   reject(@Param('id') id: string, @Req() req: any, @Body() body: { rejectionReason?: string }) {
-    return this.hrService.rejectLeaveRequest(id, getUserId(req), body.rejectionReason);
+    return this.hrService.rejectLeaveRequest(id, getOrgId(req), getUserId(req), body.rejectionReason);
   }
 
   @Permission('hr.write')
   @Put(':id/cancel')
   cancel(@Param('id') id: string, @Req() req: any) {
-    return this.hrService.cancelLeaveRequest(id, getUserId(req));
+    return this.hrService.cancelLeaveRequest(id, getOrgId(req), getUserId(req));
   }
 }
 
@@ -458,14 +458,14 @@ export class CorrespondenceController {
 
   @Permission('hr.read')
   @Get('attachments/:id')
-  findAttachment(@Param('id') id: string) {
-    return this.hrService.getCorrespondenceAttachment(id);
+  findAttachment(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.getCorrespondenceAttachment(id, getOrgId(req));
   }
 
   @Permission('hr.read')
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.hrService.getCorrespondenceById(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.getCorrespondenceById(id, getOrgId(req));
   }
 
   @Permission('hr.write')
@@ -477,27 +477,27 @@ export class CorrespondenceController {
 
   @Permission('hr.write')
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.hrService.updateCorrespondence(id, body);
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateCorrespondence(id, getOrgId(req), body);
   }
 
   @Permission('hr.write')
   @Put(':id/archive')
-  archive(@Param('id') id: string) {
-    return this.hrService.archiveCorrespondence(id);
+  archive(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.archiveCorrespondence(id, getOrgId(req));
   }
 
   @Permission('hr.write')
   @Put(':id/unarchive')
-  unarchive(@Param('id') id: string) {
-    return this.hrService.unarchiveCorrespondence(id);
+  unarchive(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.unarchiveCorrespondence(id, getOrgId(req));
   }
 
   @Permission('hr.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.hrService.deleteCorrespondence(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteCorrespondence(id, getOrgId(req));
   }
 
   @Permission('hr.write')
@@ -510,7 +510,7 @@ export class CorrespondenceController {
   @Permission('hr.delete')
   @Delete('attachments/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  removeAttachment(@Param('id') id: string) {
-    return this.hrService.deleteCorrespondenceAttachment(id);
+  removeAttachment(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteCorrespondenceAttachment(id, getOrgId(req));
   }
 }

@@ -15,8 +15,8 @@ export class FinanceApplicationService {
     private readonly eventService: FinanceEventService, 
   ) {}
 
-  private async assertFarmExists(farmId: string) {
-    const farm = await this.farmLookupRepo.findById(farmId);
+  private async assertFarmExists(farmId: string, organizationId: string) {
+    const farm = await this.farmLookupRepo.findById(farmId, organizationId);
     if (!farm) throw new NotFoundException(`Farm with ID ${farmId} not found`);
   }
 
@@ -27,7 +27,7 @@ export class FinanceApplicationService {
   // ── Expense CRUD ──────────────────────────────────────
 
   async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string },  organizationId: string) {
-    await this.assertFarmExists(data.farmId);
+    await this.assertFarmExists(data.farmId, organizationId);
     const expense = await this.expenseRepo.create({
       farmId: data.farmId,
       organizationId,
@@ -39,8 +39,8 @@ export class FinanceApplicationService {
     return expense;
   }
 
-  async getExpenseById(id: string) {
-    const expense = await this.expenseRepo.findById(id);
+  async getExpenseById(id: string, organizationId: string) {
+    const expense = await this.expenseRepo.findById(id, organizationId);
     if (!expense) throw new NotFoundException(`Expense with ID ${id} not found`);
     return expense;
   }
@@ -55,9 +55,9 @@ export class FinanceApplicationService {
     return this.expenseRepo.findAll({ filter, sortBy, sortOrder, page, limit });
   }
 
-  async updateExpense(id: string, data: { farmId?: string; title?: string; amount?: number; date?: Date | string }) {
-    await this.getExpenseById(id);
-    if (data.farmId) await this.assertFarmExists(data.farmId);
+  async updateExpense(id: string, organizationId: string, data: { farmId?: string; title?: string; amount?: number; date?: Date | string }) {
+    await this.getExpenseById(id, organizationId);
+    if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
     const updateData: any = { ...data };
     if (data.date) updateData.date = this.toDate(data.date);
     const expense = await this.expenseRepo.update(id, updateData);
@@ -65,8 +65,8 @@ export class FinanceApplicationService {
     return expense;
   }
 
-  async deleteExpense(id: string) {
-    await this.getExpenseById(id);
+  async deleteExpense(id: string, organizationId: string) {
+    await this.getExpenseById(id, organizationId);
     await this.expenseRepo.delete(id);
     await this.eventService.emitExpenseDeletedEvent(id);
     return { deleted: true };
@@ -75,7 +75,7 @@ export class FinanceApplicationService {
   // ── Sale CRUD ─────────────────────────────────────────
 
   async createSale(data: { farmId: string; item: string; quantity: number; price: number; total: number; date: Date | string }, organizationId: string) {
-    await this.assertFarmExists(data.farmId);
+    await this.assertFarmExists(data.farmId, organizationId);
     const sale = await this.saleRepo.create({
       farmId: data.farmId,
       organizationId,
@@ -89,8 +89,8 @@ export class FinanceApplicationService {
     return sale;
   }
 
-  async getSaleById(id: string) {
-    const sale = await this.saleRepo.findById(id);
+  async getSaleById(id: string, organizationId: string) {
+    const sale = await this.saleRepo.findById(id, organizationId);
     if (!sale) throw new NotFoundException(`Sale with ID ${id} not found`);
     return sale;
   }
@@ -105,9 +105,9 @@ export class FinanceApplicationService {
     return this.saleRepo.findAll({ filter, sortBy, sortOrder, page, limit });
   }
 
-  async updateSale(id: string, data: { farmId?: string; item?: string; quantity?: number; price?: number; total?: number; date?: Date | string }) {
-    await this.getSaleById(id);
-    if (data.farmId) await this.assertFarmExists(data.farmId);
+  async updateSale(id: string, organizationId: string, data: { farmId?: string; item?: string; quantity?: number; price?: number; total?: number; date?: Date | string }) {
+    await this.getSaleById(id, organizationId);
+    if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
     const updateData: any = { ...data };
     if (data.date) updateData.date = this.toDate(data.date);
     const sale = await this.saleRepo.update(id, updateData);
@@ -115,8 +115,8 @@ export class FinanceApplicationService {
     return sale;
   }
 
-  async deleteSale(id: string) {
-    await this.getSaleById(id);
+  async deleteSale(id: string, organizationId: string) {
+    await this.getSaleById(id, organizationId);
     await this.saleRepo.delete(id);
     await this.eventService.emitSaleDeletedEvent(id);
     return { deleted: true };
@@ -143,8 +143,8 @@ export class FinanceApplicationService {
     return contract;
   }
 
-  async getContractById(id: string) {
-    const contract = await this.contractRepo.findById(id);
+  async getContractById(id: string, organizationId: string) {
+    const contract = await this.contractRepo.findById(id, organizationId);
     if (!contract) throw new NotFoundException(`Contract with ID ${id} not found`);
     return contract;
   }
@@ -153,8 +153,8 @@ export class FinanceApplicationService {
     return this.contractRepo.findAll({ filter });
   }
 
-  async updateContract(id: string, data: { type?: string; buyerSellerName?: string; startDate?: Date | string; endDate?: Date | string | null; value?: number; status?: string; terms?: string }) {
-    await this.getContractById(id);
+  async updateContract(id: string, organizationId: string, data: { type?: string; buyerSellerName?: string; startDate?: Date | string; endDate?: Date | string | null; value?: number; status?: string; terms?: string }) {
+    await this.getContractById(id, organizationId);
     const updateData: any = { ...data };
     if (data.startDate) updateData.startDate = this.toDate(data.startDate);
     if (data.endDate !== undefined) updateData.endDate = data.endDate ? this.toDate(data.endDate) : null;
@@ -165,8 +165,8 @@ export class FinanceApplicationService {
     return contract;
   }
 
-  async deleteContract(id: string) {
-    await this.getContractById(id);
+  async deleteContract(id: string, organizationId: string) {
+    await this.getContractById(id, organizationId);
     await this.contractRepo.delete(id);
     await this.eventService.emitContractDeletedEvent(id);
     return { deleted: true };
@@ -189,8 +189,8 @@ export class FinanceApplicationService {
     return buyer;
   }
 
-  async getBuyerById(id: string) {
-    const buyer = await this.buyerRepo.findById(id);
+  async getBuyerById(id: string, organizationId: string) {
+    const buyer = await this.buyerRepo.findById(id, organizationId);
     if (!buyer) throw new NotFoundException(`Buyer with ID ${id} not found`);
     return buyer;
   }
@@ -199,8 +199,8 @@ export class FinanceApplicationService {
     return this.buyerRepo.findAll(organizationId);
   }
 
-  async updateBuyer(id: string, data: { name?: string; contactPerson?: string; email?: string; phone?: string; address?: string; type?: string; notes?: string }) {
-    await this.getBuyerById(id);
+  async updateBuyer(id: string, organizationId: string, data: { name?: string; contactPerson?: string; email?: string; phone?: string; address?: string; type?: string; notes?: string }) {
+    await this.getBuyerById(id, organizationId);
     const updateData: any = { ...data };
     if (data.notes !== undefined) updateData.notes = data.notes?.trim() || null;
     const buyer = await this.buyerRepo.update(id, updateData);
@@ -208,8 +208,8 @@ export class FinanceApplicationService {
     return buyer;
   }
 
-  async deleteBuyer(id: string) {
-    await this.getBuyerById(id);
+  async deleteBuyer(id: string, organizationId: string) {
+    await this.getBuyerById(id, organizationId);
     await this.buyerRepo.delete(id);
     await this.eventService.emitBuyerDeletedEvent(id);
     return { deleted: true };
@@ -235,8 +235,8 @@ export class FinanceApplicationService {
     return listing;
   }
 
-  async getMarketListingById(id: string) {
-    const listing = await this.marketListingRepo.findById(id);
+  async getMarketListingById(id: string, organizationId: string) {
+    const listing = await this.marketListingRepo.findById(id, organizationId);
     if (!listing) throw new NotFoundException(`Market listing with ID ${id} not found`);
     return listing;
   }
@@ -245,8 +245,8 @@ export class FinanceApplicationService {
     return this.marketListingRepo.findAll({ filter, include: { buyer: true } });
   }
 
-  async updateMarketListing(id: string, data: { status?: string; soldDate?: Date | string | null; price?: number; quantity?: number }) {
-    await this.getMarketListingById(id);
+  async updateMarketListing(id: string, organizationId: string, data: { status?: string; soldDate?: Date | string | null; price?: number; quantity?: number }) {
+    await this.getMarketListingById(id, organizationId);
     const updateData: any = { ...data };
     if (data.soldDate !== undefined) updateData.soldDate = data.soldDate ? this.toDate(data.soldDate) : null;
     if (data.price !== undefined) updateData.price = Number(data.price);
@@ -256,8 +256,8 @@ export class FinanceApplicationService {
     return listing;
   }
 
-  async deleteMarketListing(id: string) {
-    await this.getMarketListingById(id);
+  async deleteMarketListing(id: string, organizationId: string) {
+    await this.getMarketListingById(id, organizationId);
     await this.marketListingRepo.delete(id);
     await this.eventService.emitMarketListingDeletedEvent(id);
     return { deleted: true };
@@ -282,10 +282,10 @@ export class FinanceApplicationService {
     return budget;
   }
 
-  async getBudgetById(id: string) {
+  async getBudgetById(id: string, organizationId: string) {
     const { prisma } = await import('../../../../kernel/database');
-    const budget = await prisma.budget.findUnique({
-      where: { id },
+    const budget = await prisma.budget.findFirst({
+      where: { id, organizationId },
       include: { categories: true, farm: true },
     });
     if (!budget) throw new NotFoundException(`Budget with ID ${id} not found`);
@@ -305,9 +305,9 @@ export class FinanceApplicationService {
     });
   }
 
-  async updateBudget(id: string, data: { name?: string; description?: string; status?: string; farmId?: string }) {
+  async updateBudget(id: string, organizationId: string, data: { name?: string; description?: string; status?: string; farmId?: string }) {
     const { prisma } = await import('../../../../kernel/database');
-    await this.getBudgetById(id);
+    await this.getBudgetById(id, organizationId);
     const budget = await prisma.budget.update({
       where: { id },
       data,
@@ -317,9 +317,9 @@ export class FinanceApplicationService {
     return budget;
   }
 
-  async deleteBudget(id: string) {
+  async deleteBudget(id: string, organizationId: string) {
     const { prisma } = await import('../../../../kernel/database');
-    await this.getBudgetById(id);
+    await this.getBudgetById(id, organizationId);
     await prisma.budget.delete({ where: { id } });
     await this.eventService.emitBudgetDeletedEvent(id);
     return { deleted: true };
@@ -327,9 +327,9 @@ export class FinanceApplicationService {
 
   // ── Budget categories ────────────────────────────────
 
-  async addBudgetCategory(budgetId: string, data: { name: string; budgetAmount: number }) {
+  async addBudgetCategory(budgetId: string, organizationId: string, data: { name: string; budgetAmount: number }) {
     const { prisma } = await import('../../../../kernel/database');
-    await this.getBudgetById(budgetId);
+    await this.getBudgetById(budgetId, organizationId);
     return prisma.budgetCategory.create({
       data: {
         budgetId,
@@ -339,9 +339,11 @@ export class FinanceApplicationService {
     });
   }
 
-  async updateBudgetCategory(categoryId: string, data: { name?: string; budgetAmount?: number }) {
+  async updateBudgetCategory(categoryId: string, organizationId: string, data: { name?: string; budgetAmount?: number }) {
     const { prisma } = await import('../../../../kernel/database');
-    const existing = await prisma.budgetCategory.findUnique({ where: { id: categoryId } });
+    const existing = await prisma.budgetCategory.findFirst({
+      where: { id: categoryId, budget: { organizationId } },
+    });
     if (!existing) throw new NotFoundException(`Budget category with ID ${categoryId} not found`);
 
     return prisma.budgetCategory.update({
@@ -353,9 +355,11 @@ export class FinanceApplicationService {
     });
   }
 
-  async deleteBudgetCategory(categoryId: string) {
+  async deleteBudgetCategory(categoryId: string, organizationId: string) {
     const { prisma } = await import('../../../../kernel/database');
-    const existing = await prisma.budgetCategory.findUnique({ where: { id: categoryId } });
+    const existing = await prisma.budgetCategory.findFirst({
+      where: { id: categoryId, budget: { organizationId } },
+    });
     if (!existing) throw new NotFoundException(`Budget category with ID ${categoryId} not found`);
 
     await prisma.budgetCategory.delete({ where: { id: categoryId } });
@@ -371,9 +375,9 @@ export class FinanceApplicationService {
    * is distributed proportionally to each category's `budgetAmount` so the
    * category totals always add up to the real spend.
    */
-  async refreshBudget(budgetId: string) {
+  async refreshBudget(budgetId: string, organizationId: string) {
     const { prisma } = await import('../../../../kernel/database');
-    const budget = await this.getBudgetById(budgetId);
+    const budget = await this.getBudgetById(budgetId, organizationId);
     const categories: any[] = budget.categories || [];
     if (categories.length === 0) return budget;
 
@@ -437,6 +441,6 @@ export class FinanceApplicationService {
       ),
     );
 
-    return this.getBudgetById(budgetId);
+    return this.getBudgetById(budgetId, organizationId);
   }
 }

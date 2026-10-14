@@ -1,7 +1,7 @@
 import { Expense, Sale, Contract, Buyer, MarketListing } from '../entities/finance.entity';
 
 export interface ExpenseRepository {
-  findById(id: string): Promise<Expense | null>;
+  findById(id: string, organizationId: string): Promise<Expense | null>;
   findAll(options?: {
     filter?: { farmId?: string; search?: string };
     sortBy?: string;
@@ -16,7 +16,7 @@ export interface ExpenseRepository {
 }
 
 export interface SaleRepository {
-  findById(id: string): Promise<Sale | null>;
+  findById(id: string, organizationId: string): Promise<Sale | null>;
   findAll(options?: {
     filter?: { farmId?: string; search?: string };
     sortBy?: string;
@@ -31,7 +31,7 @@ export interface SaleRepository {
 }
 
 export interface ContractRepository {
-  findById(id: string): Promise<Contract | null>;
+  findById(id: string, organizationId: string): Promise<Contract | null>;
   findAll(options?: {
     filter?: { organizationId?: string; type?: string; status?: string };
     sortBy?: string;
@@ -43,7 +43,7 @@ export interface ContractRepository {
 }
 
 export interface BuyerRepository {
-  findById(id: string): Promise<Buyer | null>;
+  findById(id: string, organizationId: string): Promise<Buyer | null>;
   findAll(organizationId?: string): Promise<Buyer[]>;
   create(data: Omit<Buyer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Buyer>;
   update(id: string, data: Partial<Buyer>): Promise<Buyer>;
@@ -51,7 +51,7 @@ export interface BuyerRepository {
 }
 
 export interface MarketListingRepository {
-  findById(id: string): Promise<MarketListing | null>;
+  findById(id: string, organizationId: string): Promise<MarketListing | null>;
   findAll(options?: {
     filter?: { organizationId?: string; status?: string; entityType?: string };
     include?: { buyer?: boolean };
@@ -74,6 +74,6 @@ export interface MarketListingRepository {
 }
 
 export interface FarmLookupRepository {
-  findById(id: string): Promise<{ id: string } | null>;
+  findById(id: string, organizationId: string): Promise<{ id: string } | null>;
   findMany(options: { where: Record<string, any>; select?: Record<string, true> }): Promise<any[]>;
 }

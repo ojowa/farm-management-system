@@ -33,8 +33,8 @@ const prisma = scopedPrisma as any;
 
 @Injectable()
 export class PrismaWorkerRepository implements WorkerRepository {
-  async findById(id: string): Promise<Worker | null> {
-    return prisma.worker.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Worker | null> {
+    return prisma.worker.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string): Promise<Worker[]> {
@@ -59,8 +59,8 @@ export class PrismaWorkerRepository implements WorkerRepository {
 
 @Injectable()
 export class PrismaAttendanceRepository implements AttendanceRepository {
-  async findById(id: string): Promise<Attendance | null> {
-    return prisma.attendance.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Attendance | null> {
+    return prisma.attendance.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string, filters?: {
@@ -121,8 +121,8 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
 
 @Injectable()
 export class PrismaTaskRepository implements TaskRepository {
-  async findById(id: string): Promise<Task | null> {
-    return prisma.task.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Task | null> {
+    return prisma.task.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string, filters?: {
@@ -178,8 +178,8 @@ export class PrismaTaskRepository implements TaskRepository {
 
 @Injectable()
 export class PrismaShiftRepository implements ShiftRepository {
-  async findById(id: string): Promise<Shift | null> {
-    return prisma.shift.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Shift | null> {
+    return prisma.shift.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string): Promise<Shift[]> {
@@ -215,8 +215,8 @@ export class PrismaShiftRepository implements ShiftRepository {
 
 @Injectable()
 export class PrismaShiftAssignmentRepository implements ShiftAssignmentRepository {
-  async findById(id: string): Promise<ShiftAssignment | null> {
-    return prisma.shiftAssignment.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<ShiftAssignment | null> {
+    return prisma.shiftAssignment.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string, filters?: {
@@ -267,8 +267,8 @@ export class PrismaShiftAssignmentRepository implements ShiftAssignmentRepositor
 
 @Injectable()
 export class PrismaLeaveTypeRepository implements LeaveTypeRepository {
-  async findById(id: string): Promise<LeaveType | null> {
-    return prisma.leaveType.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<LeaveType | null> {
+    return prisma.leaveType.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string): Promise<LeaveType[]> {
@@ -304,8 +304,8 @@ export class PrismaLeaveTypeRepository implements LeaveTypeRepository {
 
 @Injectable()
 export class PrismaLeaveRequestRepository implements LeaveRequestRepository {
-  async findById(id: string): Promise<LeaveRequest | null> {
-    return prisma.leaveRequest.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<LeaveRequest | null> {
+    return prisma.leaveRequest.findFirst({ where: { id, organizationId } });
   }
 
   async findByOrganizationId(organizationId: string, filters?: {
@@ -467,9 +467,9 @@ export class PrismaMessageRecipientRepository implements MessageRecipientReposit
 
 @Injectable()
 export class PrismaCorrespondenceRepository implements CorrespondenceRepository {
-  async findById(id: string): Promise<Correspondence | null> {
+  async findById(id: string, organizationId: string): Promise<Correspondence | null> {
     return prisma.correspondence.findFirst({
-      where: { id },
+      where: { id, organizationId },
       include: { attachments: true },
     });
   }
@@ -535,8 +535,8 @@ export class PrismaCorrespondenceRepository implements CorrespondenceRepository 
 
 @Injectable()
 export class PrismaCorrespondenceAttachmentRepository implements CorrespondenceAttachmentRepository {
-  async findById(id: string): Promise<CorrespondenceAttachment | null> {
-    return prisma.correspondenceAttachment.findFirst({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<CorrespondenceAttachment | null> {
+    return prisma.correspondenceAttachment.findFirst({ where: { id, organizationId } });
   }
 
   async create(data: Omit<CorrespondenceAttachment, 'id' | 'createdAt' | 'updatedAt'>): Promise<CorrespondenceAttachment> {

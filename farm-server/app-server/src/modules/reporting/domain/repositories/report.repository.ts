@@ -1,7 +1,7 @@
 import { Report, ScheduledReport } from '../entities/report.entity';
 
 export interface ReportRepository {
-  findById(id: string): Promise<Report | null>;
+  findById(id: string, organizationId: string): Promise<Report | null>;
   findByOrganizationId(organizationId: string, options?: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
@@ -16,7 +16,7 @@ export interface ReportRepository {
 
 export interface ScheduledReportRepository {
   findByOrganizationId(organizationId: string): Promise<ScheduledReport[]>;
-  findById(id: string): Promise<ScheduledReport | null>;
+  findById(id: string, organizationId: string): Promise<ScheduledReport | null>;
   create(data: Omit<ScheduledReport, 'id' | 'createdAt' | 'updatedAt'>): Promise<ScheduledReport>;
   update(id: string, data: Partial<ScheduledReport>): Promise<ScheduledReport>;
   delete(id: string): Promise<void>;

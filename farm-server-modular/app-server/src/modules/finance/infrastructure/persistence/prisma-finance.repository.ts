@@ -12,8 +12,8 @@ import { Expense, Sale, Contract, Buyer, MarketListing } from '../../domain/enti
 
 @Injectable()
 export class PrismaExpenseRepository implements ExpenseRepository {
-  async findById(id: string): Promise<Expense | null> {
-    return scopedPrisma.expense.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Expense | null> {
+    return scopedPrisma.expense.findFirst({ where: { id, organizationId } });
   }
 
   async findAll(options?: {
@@ -54,8 +54,8 @@ export class PrismaExpenseRepository implements ExpenseRepository {
 
 @Injectable()
 export class PrismaSaleRepository implements SaleRepository {
-  async findById(id: string): Promise<Sale | null> {
-    return scopedPrisma.sale.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Sale | null> {
+    return scopedPrisma.sale.findFirst({ where: { id, organizationId } });
   }
 
   async findAll(options?: {
@@ -96,8 +96,8 @@ export class PrismaSaleRepository implements SaleRepository {
 
 @Injectable()
 export class PrismaContractRepository implements ContractRepository {
-  async findById(id: string): Promise<Contract | null> {
-    return scopedPrisma.contract.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Contract | null> {
+    return scopedPrisma.contract.findFirst({ where: { id, organizationId } });
   }
 
   async findAll(options?: {
@@ -126,8 +126,8 @@ export class PrismaContractRepository implements ContractRepository {
 
 @Injectable()
 export class PrismaBuyerRepository implements BuyerRepository {
-  async findById(id: string): Promise<Buyer | null> {
-    return scopedPrisma.buyer.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Buyer | null> {
+    return scopedPrisma.buyer.findFirst({ where: { id, organizationId } });
   }
 
   async findAll(organizationId?: string): Promise<Buyer[]> {
@@ -152,8 +152,8 @@ export class PrismaBuyerRepository implements BuyerRepository {
 
 @Injectable()
 export class PrismaMarketListingRepository implements MarketListingRepository {
-  async findById(id: string): Promise<MarketListing | null> {
-    return scopedPrisma.marketListing.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<MarketListing | null> {
+    return scopedPrisma.marketListing.findFirst({ where: { id, organizationId } });
   }
 
   async findAll(options?: {
@@ -199,8 +199,8 @@ export class PrismaMarketListingRepository implements MarketListingRepository {
 
 @Injectable()
 export class PrismaFarmLookupRepository implements FarmLookupRepository {
-  async findById(id: string): Promise<{ id: string } | null> {
-    return scopedPrisma.farm.findUnique({ where: { id }, select: { id: true } });
+  async findById(id: string, organizationId: string): Promise<{ id: string } | null> {
+    return scopedPrisma.farm.findFirst({ where: { id, organizationId }, select: { id: true } });
   }
 
   async findMany(options: { where: Record<string, any>; select?: Record<string, true> }): Promise<any[]> {

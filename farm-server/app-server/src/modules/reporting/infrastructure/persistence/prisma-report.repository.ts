@@ -5,8 +5,8 @@ import { Report, ScheduledReport } from '../../domain/entities/report.entity';
 
 @Injectable()
 export class PrismaReportRepository implements ReportRepository {
-  async findById(id: string): Promise<Report | null> {
-    const row = await prisma.report.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Report | null> {
+    const row = await prisma.report.findFirst({ where: { id, organizationId } });
     if (!row) return null;
     return {
       id: row.id,
@@ -74,7 +74,9 @@ export class PrismaReportRepository implements ReportRepository {
   }
 
   async update(id: string, data: Partial<Report>): Promise<Report> {
-    const existing = await this.findById(id);
+    // The service authorizes access (and org) via getReportById before calling
+    // update; this read only merges the partial payload onto the existing row.
+    const existing = await prisma.report.findFirst({ where: { id } });
     if (!existing) throw new NotFoundException('Report not found');
     const merged = { ...existing, ...data };
     const row = await prisma.report.update({
@@ -112,8 +114,8 @@ export class PrismaScheduledReportRepository implements ScheduledReportRepositor
     }) as Promise<ScheduledReport[]>;
   }
 
-  async findById(id: string): Promise<ScheduledReport | null> {
-    return prisma.scheduledReport.findUnique({ where: { id } }) as Promise<ScheduledReport | null>;
+  async findById(id: string, organizationId: string): Promise<ScheduledReport | null> {
+    return prisma.scheduledReport.findFirst({ where: { id, organizationId } }) as Promise<ScheduledReport | null>;
   }
 
   async create(data: Omit<ScheduledReport, 'id' | 'createdAt' | 'updatedAt'>): Promise<ScheduledReport> {

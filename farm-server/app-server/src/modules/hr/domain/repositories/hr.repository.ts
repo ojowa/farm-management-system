@@ -14,7 +14,7 @@ import {
 } from '../entities/hr.entity';
 
 export interface WorkerRepository {
-  findById(id: string): Promise<Worker | null>;
+  findById(id: string, organizationId: string): Promise<Worker | null>;
   findByOrganizationId(organizationId: string): Promise<Worker[]>;
   create(data: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>): Promise<Worker>;
   update(id: string, data: Partial<Worker>): Promise<Worker>;
@@ -22,7 +22,7 @@ export interface WorkerRepository {
 }
 
 export interface AttendanceRepository {
-  findById(id: string): Promise<Attendance | null>;
+  findById(id: string, organizationId: string): Promise<Attendance | null>;
   findByOrganizationId(organizationId: string, filters?: {
     workerId?: string;
     date?: Date;
@@ -37,7 +37,7 @@ export interface AttendanceRepository {
 }
 
 export interface TaskRepository {
-  findById(id: string): Promise<Task | null>;
+  findById(id: string, organizationId: string): Promise<Task | null>;
   findByOrganizationId(organizationId: string, filters?: {
     status?: string;
     priority?: string;
@@ -52,7 +52,7 @@ export interface TaskRepository {
 }
 
 export interface ShiftRepository {
-  findById(id: string): Promise<Shift | null>;
+  findById(id: string, organizationId: string): Promise<Shift | null>;
   findByOrganizationId(organizationId: string): Promise<Shift[]>;
   findByName(organizationId: string, name: string): Promise<Shift | null>;
   create(data: Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>): Promise<Shift>;
@@ -62,7 +62,7 @@ export interface ShiftRepository {
 }
 
 export interface ShiftAssignmentRepository {
-  findById(id: string): Promise<ShiftAssignment | null>;
+  findById(id: string, organizationId: string): Promise<ShiftAssignment | null>;
   findByOrganizationId(organizationId: string, filters?: {
     startDate?: Date;
     endDate?: Date;
@@ -75,7 +75,7 @@ export interface ShiftAssignmentRepository {
 }
 
 export interface LeaveTypeRepository {
-  findById(id: string): Promise<LeaveType | null>;
+  findById(id: string, organizationId: string): Promise<LeaveType | null>;
   findByOrganizationId(organizationId: string): Promise<LeaveType[]>;
   findByName(organizationId: string, name: string): Promise<LeaveType | null>;
   create(data: Omit<LeaveType, 'id' | 'createdAt' | 'updatedAt'>): Promise<LeaveType>;
@@ -85,7 +85,7 @@ export interface LeaveTypeRepository {
 }
 
 export interface LeaveRequestRepository {
-  findById(id: string): Promise<LeaveRequest | null>;
+  findById(id: string, organizationId: string): Promise<LeaveRequest | null>;
   findByOrganizationId(organizationId: string, filters?: {
     status?: string;
     userId?: string;
@@ -124,7 +124,7 @@ export interface MessageRecipientRepository {
 }
 
 export interface CorrespondenceRepository {
-  findById(id: string): Promise<Correspondence | null>;
+  findById(id: string, organizationId: string): Promise<Correspondence | null>;
   findByOrganizationId(organizationId: string, filters?: {
     status?: string;
     type?: string;
@@ -145,7 +145,7 @@ export interface CorrespondenceRepository {
 }
 
 export interface CorrespondenceAttachmentRepository {
-  findById(id: string): Promise<CorrespondenceAttachment | null>;
+  findById(id: string, organizationId: string): Promise<CorrespondenceAttachment | null>;
   create(data: Omit<CorrespondenceAttachment, 'id' | 'createdAt' | 'updatedAt'>): Promise<CorrespondenceAttachment>;
   delete(id: string): Promise<void>;
 }

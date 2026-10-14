@@ -64,22 +64,22 @@ export class ExpenseController {
 
   @Permission('finance.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.financeService.getExpenseById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.getExpenseById(id, getOrgId(req));
   }
 
   @Permission('finance.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateExpenseSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.financeService.updateExpense(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.financeService.updateExpense(id, getOrgId(req), data);
   }
 
   @Permission('finance.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.financeService.deleteExpense(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.deleteExpense(id, getOrgId(req));
   }
 }
 
@@ -120,22 +120,22 @@ export class SaleController {
 
   @Permission('finance.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.financeService.getSaleById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.getSaleById(id, getOrgId(req));
   }
 
   @Permission('finance.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateSaleSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
-    return this.financeService.updateSale(id, data);
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    return this.financeService.updateSale(id, getOrgId(req), data);
   }
 
   @Permission('finance.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.financeService.deleteSale(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.deleteSale(id, getOrgId(req));
   }
 }
 
@@ -163,15 +163,15 @@ export class ContractController {
 
   @Permission('finance.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.financeService.updateContract(id, body);
+  async update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.financeService.updateContract(id, getOrgId(req), body);
   }
 
   @Permission('finance.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.financeService.deleteContract(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.deleteContract(id, getOrgId(req));
   }
 }
 
@@ -195,15 +195,15 @@ export class MarketplaceController {
 
   @Permission('finance.write')
   @Put('buyers/:id')
-  async updateBuyer(@Param('id') id: string, @Body() body: any) {
-    return this.financeService.updateBuyer(id, body);
+  async updateBuyer(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.financeService.updateBuyer(id, getOrgId(req), body);
   }
 
   @Permission('finance.delete')
   @Delete('buyers/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteBuyer(@Param('id') id: string) {
-    return this.financeService.deleteBuyer(id);
+  async deleteBuyer(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.deleteBuyer(id, getOrgId(req));
   }
 
   @Permission('finance.read')
@@ -225,15 +225,15 @@ export class MarketplaceController {
 
   @Permission('finance.write')
   @Put('listings/:id')
-  async updateListing(@Param('id') id: string, @Body() body: any) {
-    return this.financeService.updateMarketListing(id, body);
+  async updateListing(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.financeService.updateMarketListing(id, getOrgId(req), body);
   }
 
   @Permission('finance.delete')
   @Delete('listings/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteListing(@Param('id') id: string) {
-    return this.financeService.deleteMarketListing(id);
+  async deleteListing(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.deleteMarketListing(id, getOrgId(req));
   }
 }
 
@@ -254,34 +254,34 @@ export class BudgetsController {
 
   @Permission('finance.write')
   @Put('categories/:categoryId')
-  async updateCategory(@Param('categoryId') categoryId: string, @Body() body: any) {
-    return this.financeService.updateBudgetCategory(categoryId, body);
+  async updateCategory(@Param('categoryId') categoryId: string, @Req() req: any, @Body() body: any) {
+    return this.financeService.updateBudgetCategory(categoryId, getOrgId(req), body);
   }
 
   @Permission('finance.delete')
   @Delete('categories/:categoryId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteCategory(@Param('categoryId') categoryId: string) {
-    return this.financeService.deleteBudgetCategory(categoryId);
+  async deleteCategory(@Param('categoryId') categoryId: string, @Req() req: any) {
+    return this.financeService.deleteBudgetCategory(categoryId, getOrgId(req));
   }
 
   @Permission('finance.write')
   @Post(':id/categories')
   @HttpCode(HttpStatus.CREATED)
-  async addCategory(@Param('id') id: string, @Body() body: any) {
-    return this.financeService.addBudgetCategory(id, body);
+  async addCategory(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.financeService.addBudgetCategory(id, getOrgId(req), body);
   }
 
   @Permission('finance.write')
   @Post(':id/refresh')
-  async refresh(@Param('id') id: string) {
-    return this.financeService.refreshBudget(id);
+  async refresh(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.refreshBudget(id, getOrgId(req));
   }
 
   @Permission('finance.read')
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.financeService.getBudgetById(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.getBudgetById(id, getOrgId(req));
   }
 
   @Permission('finance.write')
@@ -293,14 +293,14 @@ export class BudgetsController {
 
   @Permission('finance.write')
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.financeService.updateBudget(id, body);
+  async update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.financeService.updateBudget(id, getOrgId(req), body);
   }
 
   @Permission('finance.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.financeService.deleteBudget(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.deleteBudget(id, getOrgId(req));
   }
 }
