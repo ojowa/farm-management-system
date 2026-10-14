@@ -1,5 +1,5 @@
 import { runWithRlsContext, setOrganizationId, setSuperAdmin, clearOrganizationId } from './rls';
-import { verifyServiceToken } from '../auth';
+import { verifyServiceToken, verifyAccessToken, extractBearerToken } from '../auth';
 
 /**
  * Minimal request interface — works with Express, NestJS, or any HTTP framework.
@@ -16,21 +16,24 @@ interface RlsResponse {
 }
 
 /**
- * Middleware that extracts organizationId and role from the request
- * (set by the API gateway's proxy middleware) and configures the
- * RLS context for all subsequent Prisma queries in this request.
+ * Middleware that establishes the PostgreSQL RLS context for the request.
+ *
+ * The organization and role come ONLY from a verified credential:
+ *   1. the gateway-signed `x-service-token` (proves the request was routed
+ *      after JWT verification), or
+ *   2. the bearer access token itself.
+ *
+ * Raw `x-organization-id` / `x-user-role` headers are deliberately NOT
+ * trusted — they are spoofable by any client that can reach the service, and
+ * trusting them would let one organization's caller set another's tenant
+ * context. If neither credential is present the request runs without an org
+ * context (JwtAuthGuard remains the authoritative gate at the controller).
  *
  * Uses AsyncLocalStorage so each concurrent request gets its own
  * isolated org context — no cross-request contamination.
  *
  * - Regular users: scoped to their organization via RLS
  * - Super admins: bypass RLS, see all organizations
- *
- * **Service-to-service auth:** The middleware verifies the `x-service-token`
- * header signed by the API gateway. If the token is valid, it uses the
- * user context from it. If missing or invalid, the middleware still proceeds
- * but logs a warning — services with JwtAuthGuard will reject unauthenticated
- * requests at the controller level.
  *
  * Usage (Express):
  *   import { rlsMiddleware } from './index';
@@ -39,37 +42,44 @@ interface RlsResponse {
 export function rlsMiddleware(req: RlsRequest, res: RlsResponse, next: () => void) {
   runWithRlsContext(() => {
     const serviceToken = req.headers['x-service-token'] as string | undefined;
+    const bearer = extractBearerToken(req.headers.authorization as string | undefined);
+    let applied = false;
 
-    if (serviceToken) {
-      // Verify the service token to prevent header spoofing
-      try {
-        const verified = verifyServiceToken(serviceToken);
-        // Use the verified user context from the service token (not raw headers)
-        if (verified.role === 'SUPER_ADMIN') {
-          setSuperAdmin(true);
-        } else if (verified.organizationId) {
-          setOrganizationId(verified.organizationId);
-        }
-      } catch {
-        // Service token invalid — fall back to raw headers (will be rejected
-        // by JwtAuthGuard at controller level if the endpoint requires auth)
-        const orgId = req.headers['x-organization-id'] as string | undefined;
-        const role = req.headers['x-user-role'] as string | undefined;
-        if (role === 'SUPER_ADMIN') {
-          setSuperAdmin(true);
-        } else if (orgId) {
-          setOrganizationId(orgId);
-        }
-      }
-    } else {
-      // No service token — use raw headers (legacy path for direct service access)
-      const orgId = req.headers['x-organization-id'] as string | undefined;
-      const role = req.headers['x-user-role'] as string | undefined;
+    const apply = (orgId: string | null, role: string | undefined) => {
       if (role === 'SUPER_ADMIN') {
         setSuperAdmin(true);
       } else if (orgId) {
         setOrganizationId(orgId);
       }
+    };
+
+    if (serviceToken) {
+      // Verify the service token to prevent header spoofing.
+      try {
+        const verified = verifyServiceToken(serviceToken);
+        apply(verified.organizationId, verified.role);
+        applied = true;
+      } catch {
+        // Service token invalid — do NOT fall back to raw headers (they are
+        // spoofable); try the bearer token instead.
+      }
+    }
+
+    if (!applied && bearer) {
+      try {
+        const verified = verifyAccessToken(bearer);
+        apply(verified.organizationId, verified.role);
+        applied = true;
+      } catch {
+        // Invalid bearer token — leave org context unset; JwtAuthGuard
+        // rejects unauthenticated requests at the controller level.
+      }
+    }
+
+    if (!applied) {
+      console.warn(
+        '[RLS] No verified identity for this request; running without org context',
+      );
     }
 
     res.on('finish', () => {
