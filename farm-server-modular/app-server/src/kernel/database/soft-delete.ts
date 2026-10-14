@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'async_hooks';
+
 /**
  * Soft delete for tenant-content models.
  *
@@ -10,7 +12,9 @@
  *  - update / upsert lookups only match live rows, so touching a deleted row
  *    fails with the usual not-found (P2025) error;
  *  - delete / deleteMany stamp `deletedAt` instead of removing the row and
- *    keep the original result shapes (record / { count }).
+ *    keep the original result shapes (record / { count });
+ *  - runWithSoftDeleteBypass(fn) disables all of the above inside fn, so the
+ *    deleted-data admin endpoints can list, restore and purge soft-deleted rows.
  *
  * Models outside the set (auth plumbing, platform tables, shared catalogs,
  * Organization/User) keep hard-delete semantics — e.g. the platform purge of
@@ -84,6 +88,17 @@ export const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set([
   'Notification',
 ]);
 
+const softDeleteBypass = new AsyncLocalStorage<boolean>();
+
+/**
+ * Run `fn` with soft-delete semantics disabled: reads see soft-deleted rows
+ * and delete/deleteMany remove the row for real. Used by the deleted-data
+ * admin endpoints (list / restore / purge).
+ */
+export function runWithSoftDeleteBypass<T>(fn: () => T): T {
+  return softDeleteBypass.run(true, fn);
+}
+
 const LIVE_ROW_OPERATIONS = new Set([
   'findUnique',
   'findUniqueOrThrow',
@@ -116,7 +131,7 @@ export function makeSoftDeleteHook(rawClient: any) {
       args: any;
       query: (args: any) => Promise<any>;
     }) {
-      if (!SOFT_DELETE_MODELS.has(model)) return query(args);
+      if (!SOFT_DELETE_MODELS.has(model) || softDeleteBypass.getStore()) return query(args);
 
       if (operation === 'delete' || operation === 'deleteMany') {
         // Restrict the update to live rows so deleting an already-deleted
