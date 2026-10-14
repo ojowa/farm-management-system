@@ -17,7 +17,7 @@ export class PrismaExpenseRepository implements ExpenseRepository {
   }
 
   async findAll(options?: {
-    filter?: { farmId?: string; search?: string };
+    filter?: { organizationId?: string; farmId?: string; search?: string };
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -27,6 +27,9 @@ export class PrismaExpenseRepository implements ExpenseRepository {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (filter.farmId) where.farmId = filter.farmId;
+    // Tenancy is a plain equality filter, never a conditional: an empty org
+    // string must match zero rows instead of falling through to all tenants.
+    where.organizationId = filter.organizationId || '';
     if (filter.search) where.OR = [{ title: { contains: filter.search, mode: 'insensitive' as const } }];
     const [data, total] = await Promise.all([
       scopedPrisma.expense.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
@@ -59,7 +62,7 @@ export class PrismaSaleRepository implements SaleRepository {
   }
 
   async findAll(options?: {
-    filter?: { farmId?: string; search?: string };
+    filter?: { organizationId?: string; farmId?: string; search?: string };
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -69,6 +72,7 @@ export class PrismaSaleRepository implements SaleRepository {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (filter.farmId) where.farmId = filter.farmId;
+    where.organizationId = filter.organizationId || '';
     if (filter.search) where.OR = [{ item: { contains: filter.search, mode: 'insensitive' as const } }];
     const [data, total] = await Promise.all([
       scopedPrisma.sale.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
@@ -105,7 +109,7 @@ export class PrismaContractRepository implements ContractRepository {
   }): Promise<Contract[]> {
     const { filter = {} } = options || {};
     const where: any = {};
-    if (filter.organizationId) where.organizationId = filter.organizationId;
+    where.organizationId = filter.organizationId || '';
     if (filter.type) where.type = filter.type;
     if (filter.status) where.status = filter.status;
     return scopedPrisma.contract.findMany({ where, orderBy: { createdAt: 'desc' } });
@@ -162,7 +166,7 @@ export class PrismaMarketListingRepository implements MarketListingRepository {
   }): Promise<MarketListing[]> {
     const { filter = {}, include } = options || {};
     const where: any = {};
-    if (filter.organizationId) where.organizationId = filter.organizationId;
+    where.organizationId = filter.organizationId || '';
     if (filter.status) where.status = filter.status;
     if (filter.entityType) where.entityType = filter.entityType;
     return scopedPrisma.marketListing.findMany({

@@ -38,18 +38,28 @@ export class OrganizationApplicationService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, organizationId?: string) {
+    // Tenancy: this module is strictly self-service — the :id in the path must
+    // be the caller's own organization, so a foreign id reads as not-found.
+    if (!organizationId || id !== organizationId) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
     const org = await this.orgRepo.findById(id);
     if (!org) throw new NotFoundException(`Organization with ID ${id} not found`);
     return org;
   }
 
-  async findBySlug(slug: string) {
-    return this.orgRepo.findBySlug(slug);
+  async findBySlug(slug: string, organizationId?: string) {
+    if (!organizationId) throw new NotFoundException('Organization not found');
+    const org = await this.orgRepo.findBySlug(slug);
+    if (!org || org.id !== organizationId) {
+      throw new NotFoundException('Organization not found');
+    }
+    return org;
   }
 
-  async update(id: string, updateDto: Partial<{ name: string; slug: string; email: string; subscriptionPlan: string; subscriptionStatus: string; settings: Record<string, any> }>) {
-    await this.findOne(id);
+  async update(id: string, organizationId: string, updateDto: Partial<{ name: string; slug: string; email: string; subscriptionPlan: string; subscriptionStatus: string; settings: Record<string, any> }>) {
+    await this.findOne(id, organizationId);
 
     if (updateDto.subscriptionPlan) {
       const plan = await this.orgRepo.findSubscriptionPlanByName(updateDto.subscriptionPlan);
@@ -61,16 +71,19 @@ export class OrganizationApplicationService {
     return this.orgRepo.update(id, updateDto);
   }
 
-  async findAll() {
-    return this.orgRepo.findAll();
+  async findAll(organizationId?: string) {
+    // Never enumerate other tenants — a caller only ever sees their own row.
+    if (!organizationId) return [];
+    const org = await this.orgRepo.findById(organizationId);
+    return org ? [org] : [];
   }
 
   async getSubscriptionPlans() {
     return this.orgRepo.findActiveSubscriptionPlans();
   }
 
-  async delete(id: string) {
-    await this.findOne(id);
+  async delete(id: string, organizationId?: string) {
+    await this.findOne(id, organizationId);
     return this.orgRepo.delete(id);
   }
 }

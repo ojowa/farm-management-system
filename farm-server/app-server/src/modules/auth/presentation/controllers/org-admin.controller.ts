@@ -32,14 +32,14 @@ export class OrgAdminController {
 
   @Put('users/:id')
   @Permission('users.manage')
-  updateUser(@Param('id') id: string, @Body() body: { firstName?: string; lastName?: string; roleId?: string }) {
-    return this.orgAdminService.updateUser(id, body);
+  updateUser(@Param('id') id: string, @Req() req: any, @Body() body: { firstName?: string; lastName?: string; roleId?: string }) {
+    return this.orgAdminService.updateUser(String(req.user?.organizationId || ''), id, body);
   }
 
   @Delete('users/:id')
   @Permission('users.manage')
-  deleteUser(@Param('id') id: string) {
-    return this.orgAdminService.deleteUser(id);
+  deleteUser(@Param('id') id: string, @Req() req: any) {
+    return this.orgAdminService.deleteUser(String(req.user?.organizationId || ''), id);
   }
 
   @Get('roles')
@@ -56,13 +56,13 @@ export class OrgAdminController {
 
   @Put('roles/:id')
   @Permission('organization.manage')
-  updateRole(@Param('id') id: string, @Body() body: { name?: string; description?: string }) {
-    return this.orgAdminService.updateRole(id, body);
+  updateRole(@Param('id') id: string, @Req() req: any, @Body() body: { name?: string; description?: string }) {
+    return this.orgAdminService.updateRole(String(req.user?.organizationId || ''), id, body);
   }
 
   @Delete('roles/:id')
   @Permission('organization.manage')
-  deleteRole(@Param('id') id: string) {
-    return this.orgAdminService.deleteRole(id);
+  deleteRole(@Param('id') id: string, @Req() req: any) {
+    return this.orgAdminService.deleteRole(String(req.user?.organizationId || ''), id);
   }
 }

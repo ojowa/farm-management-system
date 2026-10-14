@@ -71,6 +71,11 @@ export class PrismaLivestockRepository implements LivestockRepository {
     if (!organizationId) return null;
     return prisma.farm.findFirst({ where: { id, organizationId }, select: { id: true } });
   }
+
+  async getFlockById(id: string, organizationId: string) {
+    if (!organizationId) return null;
+    return prisma.flock.findFirst({ where: { id, organizationId }, select: { id: true } });
+  }
 }
 
 @Injectable()

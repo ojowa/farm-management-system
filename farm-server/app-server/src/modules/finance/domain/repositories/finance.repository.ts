@@ -3,7 +3,7 @@ import { Expense, Sale, Contract, Buyer, MarketListing } from '../entities/finan
 export interface ExpenseRepository {
   findById(id: string, organizationId: string): Promise<Expense | null>;
   findAll(options?: {
-    filter?: { farmId?: string; search?: string };
+    filter?: { organizationId?: string; farmId?: string; search?: string };
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -18,7 +18,7 @@ export interface ExpenseRepository {
 export interface SaleRepository {
   findById(id: string, organizationId: string): Promise<Sale | null>;
   findAll(options?: {
-    filter?: { farmId?: string; search?: string };
+    filter?: { organizationId?: string; farmId?: string; search?: string };
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;

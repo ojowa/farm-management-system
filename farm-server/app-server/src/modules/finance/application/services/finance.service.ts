@@ -46,7 +46,7 @@ export class FinanceApplicationService {
   }
 
   async getAllExpenses(
-    filter: { farmId?: string; search?: string } = {},
+    filter: { organizationId?: string; farmId?: string; search?: string } = {},
     sortBy: string = 'date',
     sortOrder: 'asc' | 'desc' = 'desc',
     page: number = 1,
@@ -96,7 +96,7 @@ export class FinanceApplicationService {
   }
 
   async getAllSales(
-    filter: { farmId?: string; search?: string } = {},
+    filter: { organizationId?: string; farmId?: string; search?: string } = {},
     sortBy: string = 'date',
     sortOrder: 'asc' | 'desc' = 'desc',
     page: number = 1,
@@ -295,7 +295,7 @@ export class FinanceApplicationService {
   async getAllBudgets(filter: { organizationId?: string; farmId?: string; status?: string } = {}) {
     const { prisma } = await import('@farm/database');
     const where: Record<string, unknown> = {};
-    if (filter.organizationId) where.organizationId = filter.organizationId;
+    where.organizationId = filter.organizationId || '';
     if (filter.farmId) where.farmId = filter.farmId;
     if (filter.status) where.status = filter.status;
     return prisma.budget.findMany({

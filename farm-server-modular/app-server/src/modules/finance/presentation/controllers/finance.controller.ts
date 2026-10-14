@@ -43,6 +43,7 @@ export class ExpenseController {
   @Permission('finance.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -50,7 +51,7 @@ export class ExpenseController {
     @Query('farmId') farmId?: string,
     @Query('search') search?: string,
   ) {
-    const filter: any = {};
+    const filter: any = { organizationId: getOrgId(req) };
     if (farmId) filter.farmId = farmId;
     if (search) filter.search = search;
     return this.financeService.getAllExpenses(
@@ -99,6 +100,7 @@ export class SaleController {
   @Permission('finance.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -106,7 +108,7 @@ export class SaleController {
     @Query('farmId') farmId?: string,
     @Query('search') search?: string,
   ) {
-    const filter: any = {};
+    const filter: any = { organizationId: getOrgId(req) };
     if (farmId) filter.farmId = farmId;
     if (search) filter.search = search;
     return this.financeService.getAllSales(

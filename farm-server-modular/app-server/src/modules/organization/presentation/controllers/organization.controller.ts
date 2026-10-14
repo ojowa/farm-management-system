@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Req,
   UsePipes,
   UseGuards,
 } from '@nestjs/common';
@@ -35,14 +36,14 @@ export class OrganizationController {
 
   @Permission('organization.read')
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Organization> {
-    return this.organizationService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any): Promise<Organization> {
+    return this.organizationService.findOne(id, String(req.user?.organizationId || ''));
   }
 
   @Permission('organization.read')
   @Get('slug/:slug')
-  async findBySlug(@Param('slug') slug: string): Promise<Organization | null> {
-    return this.organizationService.findBySlug(slug);
+  async findBySlug(@Param('slug') slug: string, @Req() req: any): Promise<Organization | null> {
+    return this.organizationService.findBySlug(slug, String(req.user?.organizationId || ''));
   }
 
   @Permission('organization.write')
@@ -50,20 +51,21 @@ export class OrganizationController {
   @UsePipes(new ZodValidationPipe(updateOrganizationSchema))
   async update(
     @Param('id') id: string,
+    @Req() req: any,
     @Body() updateDto: Partial<Organization>
   ): Promise<Organization> {
-    return this.organizationService.update(id, updateDto);
+    return this.organizationService.update(id, String(req.user?.organizationId || ''), updateDto);
   }
 
   @Permission('organization.write')
   @Delete(':id')
-  async delete(@Param('id') id: string): Promise<void> {
-    return this.organizationService.delete(id);
+  async delete(@Param('id') id: string, @Req() req: any): Promise<void> {
+    return this.organizationService.delete(id, String(req.user?.organizationId || ''));
   }
 
   @Permission('organization.read')
   @Get()
-  async findAll(): Promise<Organization[]> {
-    return this.organizationService.findAll();
+  async findAll(@Req() req: any): Promise<Organization[]> {
+    return this.organizationService.findAll(String(req.user?.organizationId || ''));
   }
 }

@@ -12,9 +12,10 @@ export interface LivestockRepository {
   create(data: Omit<Livestock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Livestock>;
   update(id: string, data: Partial<Livestock>): Promise<Livestock>;
   delete(id: string): Promise<void>;
-  // Ownership check: the FK only proves the farm exists, not that it is
+  // Ownership checks: the FKs only prove the parent exists, not that it is
   // inside the caller's organization.
   getFarmById(id: string, organizationId: string): Promise<{ id: string } | null>;
+  getFlockById(id: string, organizationId: string): Promise<{ id: string } | null>;
 }
 
 export interface HealthRecordRepository {

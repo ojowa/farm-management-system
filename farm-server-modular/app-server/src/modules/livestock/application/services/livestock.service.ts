@@ -275,6 +275,10 @@ export class LivestockApplicationService {
     notes?: string;
     createdById?: string;
   }): Promise<WeightRecord> {
+    // Only attach flock weights to flocks inside the caller's org — the FK
+    // alone would let any tenant record data against a foreign flock.
+    const flock = await this.livestockRepo.getFlockById(data.flockId, data.organizationId);
+    if (!flock) throw new NotFoundException(`Flock with ID ${data.flockId} not found`);
     return this.weightRepo.create({
       ...data,
       livestockId: null,
