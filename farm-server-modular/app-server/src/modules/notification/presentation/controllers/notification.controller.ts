@@ -11,6 +11,7 @@ import {
   UsePipes,
   UseGuards,
   Inject,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
 import { NotificationApplicationService } from '../../application/services/notification.service';
@@ -20,6 +21,23 @@ import { ZodValidationPipe } from '../../../../kernel/utils';
 import { createNotificationSchema, updateNotificationSchema } from '../../../../kernel/validation';
 import { DeviceTokenRepository } from '../../domain/repositories/notification.repository';
 
+function getCallerUserId(req: any): string {
+  return String(req.user?.sub || '');
+}
+
+/**
+ * Notification rows belong to their receiving user (the table has no
+ * organizationId), so the `user/:userId` routes are strictly self-service —
+ * any other user's id reads as not-found.
+ */
+function requireSelfUserId(userId: string, req: any): string {
+  const me = getCallerUserId(req);
+  if (!me || userId !== me) {
+    throw new NotFoundException('Notifications not found');
+  }
+  return me;
+}
+
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('notifications')
 export class NotificationController {
@@ -28,32 +46,33 @@ export class NotificationController {
   @Permission('notification.write')
   @Post()
   @UsePipes(new ZodValidationPipe(createNotificationSchema))
-  async create(@Body() createDto: CreateNotificationRequest): Promise<Notification> {
-    return this.notificationService.create(createDto);
+  async create(@Req() req: any, @Body() createDto: CreateNotificationRequest): Promise<Notification> {
+    return this.notificationService.create(createDto, String(req.user?.organizationId || ''));
   }
 
   @Permission('notification.write')
   @Post('bulk')
   @UsePipes(new ZodValidationPipe(createNotificationSchema))
-  async createBulk(@Body() notifications: CreateNotificationRequest[]): Promise<Notification[]> {
-    return this.notificationService.createBulk(notifications);
+  async createBulk(@Req() req: any, @Body() notifications: CreateNotificationRequest[]): Promise<Notification[]> {
+    return this.notificationService.createBulk(notifications, String(req.user?.organizationId || ''));
   }
 
   @Permission('notification.read')
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Notification> {
-    return this.notificationService.findById(id);
+  async findOne(@Param('id') id: string, @Req() req: any): Promise<Notification> {
+    return this.notificationService.findById(id, getCallerUserId(req));
   }
 
   @Permission('notification.read')
   @Get('user/:userId')
   async findByUser(
     @Param('userId') userId: string,
+    @Req() req: any,
     @Query('unreadOnly') unreadOnly?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string
   ): Promise<Notification[]> {
-    return this.notificationService.findByUserId(userId, {
+    return this.notificationService.findByUserId(requireSelfUserId(userId, req), {
       unreadOnly: unreadOnly === 'true',
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
@@ -62,8 +81,8 @@ export class NotificationController {
 
   @Permission('notification.read')
   @Get('user/:userId/unread-count')
-  async getUnreadCount(@Param('userId') userId: string): Promise<{ count: number }> {
-    const count = await this.notificationService.getUnreadCount(userId);
+  async getUnreadCount(@Param('userId') userId: string, @Req() req: any): Promise<{ count: number }> {
+    const count = await this.notificationService.getUnreadCount(requireSelfUserId(userId, req));
     return { count };
   }
 
@@ -72,37 +91,39 @@ export class NotificationController {
   @UsePipes(new ZodValidationPipe(updateNotificationSchema))
   async update(
     @Param('id') id: string,
+    @Req() req: any,
     @Body() updateDto: Partial<Notification>
   ): Promise<Notification> {
-    return this.notificationService.update(id, updateDto);
+    return this.notificationService.update(id, getCallerUserId(req), updateDto);
   }
 
   @Permission('notification.write')
   @Put(':id/read')
-  async markAsRead(@Param('id') id: string): Promise<Notification> {
-    return this.notificationService.markAsRead(id);
+  async markAsRead(@Param('id') id: string, @Req() req: any): Promise<Notification> {
+    return this.notificationService.markAsRead(id, getCallerUserId(req));
   }
 
   @Permission('notification.write')
   @Put('user/:userId/read-all')
-  async markAllAsRead(@Param('userId') userId: string): Promise<{ count: number }> {
-    const count = await this.notificationService.markAllAsRead(userId);
+  async markAllAsRead(@Param('userId') userId: string, @Req() req: any): Promise<{ count: number }> {
+    const count = await this.notificationService.markAllAsRead(requireSelfUserId(userId, req));
     return { count };
   }
 
   @Permission('notification.write')
   @Delete(':id')
-  async delete(@Param('id') id: string): Promise<void> {
-    return this.notificationService.delete(id);
+  async delete(@Param('id') id: string, @Req() req: any): Promise<void> {
+    return this.notificationService.delete(id, getCallerUserId(req));
   }
 
   @Permission('notification.read')
   @Get()
   async findAll(
+    @Req() req: any,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string
   ): Promise<Notification[]> {
-    return this.notificationService.findAll({
+    return this.notificationService.findAll(getCallerUserId(req), {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
     });
@@ -120,7 +141,9 @@ export class DeviceController {
     @Req() req: any,
     @Body() body: { token: string; platform: 'web' | 'ios' | 'android' }
   ): Promise<{ success: boolean; message: string }> {
-    const userId = req.user?.sub || req.headers['x-user-id'];
+    // Identity comes from the verified JWT only — a spoofable `x-user-id`
+    // header must never decide which user's devices get push tokens.
+    const userId = getCallerUserId(req);
     const { token, platform } = body;
 
     if (!token || !platform) {
@@ -141,7 +164,7 @@ export class DeviceController {
     @Req() req: any,
     @Body() body: { token: string }
   ): Promise<{ success: boolean; message: string }> {
-    const userId = req.user?.sub || req.headers['x-user-id'];
+    const userId = getCallerUserId(req);
     const { token } = body;
 
     if (!token) {

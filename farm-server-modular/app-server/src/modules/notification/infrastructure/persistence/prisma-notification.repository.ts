@@ -21,8 +21,8 @@ function mapNotification(row: any): Notification {
 
 @Injectable()
 export class PrismaNotificationRepository implements NotificationRepository {
-  async findById(id: string): Promise<Notification | null> {
-    const row = await prisma.notification.findUnique({ where: { id } });
+  async findById(id: string, userId: string): Promise<Notification | null> {
+    const row = await prisma.notification.findFirst({ where: { id, userId } });
     return row ? mapNotification(row) : null;
   }
 
@@ -44,8 +44,9 @@ export class PrismaNotificationRepository implements NotificationRepository {
     return rows.map(mapNotification);
   }
 
-  async findAll(options?: { limit?: number; offset?: number }): Promise<Notification[]> {
+  async findAll(userId: string, options?: { limit?: number; offset?: number }): Promise<Notification[]> {
     const rows = await prisma.notification.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       take: options?.limit,
       skip: options?.offset,
@@ -104,6 +105,15 @@ export class PrismaNotificationRepository implements NotificationRepository {
 
   async delete(id: string): Promise<void> {
     await prisma.notification.delete({ where: { id } });
+  }
+
+  async filterUserIdsInOrg(userIds: string[], organizationId: string): Promise<string[]> {
+    if (!organizationId || !userIds.length) return [];
+    const rows = await prisma.user.findMany({
+      where: { id: { in: userIds }, organizationId },
+      select: { id: true },
+    });
+    return rows.map((row: { id: string }) => row.id);
   }
 }
 

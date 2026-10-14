@@ -1,4 +1,4 @@
-import { Inject,  Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { Notification } from '../../domain/entities/notification.entity';
 import { CreateNotificationRequest } from '../../presentation/dto/notification.dto';
 import { NotificationRepository } from '../../domain/repositories/notification.repository';
@@ -17,7 +17,20 @@ export class NotificationApplicationService {
     private readonly pushService: PushService, 
   ) {}
 
-  async create(createDto: CreateNotificationRequest): Promise<Notification> {
+  /** A tenant may only deliver notifications to users inside its own org. */
+  private async assertTargetsInOrg(userIds: string[], organizationId: string): Promise<void> {
+    const unique = [...new Set(userIds)];
+    const allowed = new Set(await this.repository.filterUserIdsInOrg(unique, organizationId));
+    const blocked = unique.filter((id) => !allowed.has(id));
+    if (blocked.length) {
+      throw new ForbiddenException(
+        `Cannot create notifications for users outside your organization: ${blocked.join(', ')}`
+      );
+    }
+  }
+
+  async create(createDto: CreateNotificationRequest, organizationId: string): Promise<Notification> {
+    await this.assertTargetsInOrg([createDto.userId], organizationId);
     const notification = await this.repository.create(createDto);
     this.gateway.sendToUser(createDto.userId, 'notification:new', notification);
 
@@ -96,8 +109,8 @@ export class NotificationApplicationService {
     }
   }
 
-  async findById(id: string): Promise<Notification> {
-    const notification = await this.repository.findById(id);
+  async findById(id: string, userId: string): Promise<Notification> {
+    const notification = await this.repository.findById(id, userId);
     if (!notification) {
       throw new NotFoundException(`Notification with ID ${id} not found`);
     }
@@ -111,12 +124,12 @@ export class NotificationApplicationService {
     return this.repository.findByUserId(userId, options);
   }
 
-  async findAll(options?: { limit?: number; offset?: number }): Promise<Notification[]> {
-    return this.repository.findAll(options);
+  async findAll(userId: string, options?: { limit?: number; offset?: number }): Promise<Notification[]> {
+    return this.repository.findAll(userId, options);
   }
 
-  async markAsRead(id: string): Promise<Notification> {
-    const notification = await this.findById(id);
+  async markAsRead(id: string, userId: string): Promise<Notification> {
+    const notification = await this.findById(id, userId);
     const updated = await this.repository.markAsRead(id);
     this.gateway.sendToUser(notification.userId, 'notification:read', updated);
     return updated;
@@ -128,8 +141,8 @@ export class NotificationApplicationService {
     return count;
   }
 
-  async delete(id: string): Promise<void> {
-    await this.findById(id);
+  async delete(id: string, userId: string): Promise<void> {
+    await this.findById(id, userId);
     await this.repository.delete(id);
   }
 
@@ -137,7 +150,8 @@ export class NotificationApplicationService {
     return this.repository.countUnread(userId);
   }
 
-  async createBulk(notifications: CreateNotificationRequest[]): Promise<Notification[]> {
+  async createBulk(notifications: CreateNotificationRequest[], organizationId: string): Promise<Notification[]> {
+    await this.assertTargetsInOrg(notifications.map((dto) => dto.userId), organizationId);
     const created: Notification[] = [];
     for (const dto of notifications) {
       const notification = await this.repository.create(dto);
@@ -147,8 +161,8 @@ export class NotificationApplicationService {
     return created;
   }
 
-  async update(id: string, data: Partial<Notification>): Promise<Notification> {
-    await this.findById(id);
+  async update(id: string, userId: string, data: Partial<Notification>): Promise<Notification> {
+    await this.findById(id, userId);
     return this.repository.update(id, data);
   }
 }
