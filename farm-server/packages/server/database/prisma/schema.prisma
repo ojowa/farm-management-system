@@ -3,91 +3,91 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   // uncomment next line if you use Prisma <5.10
   // directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Organization {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  email     String?  @unique
-  phone     String?
-  logo      String?
-  website   String?
-  industry  String?
+  id       String  @id @default(uuid())
+  name     String
+  slug     String  @unique
+  email    String? @unique
+  phone    String?
+  logo     String?
+  website  String?
+  industry String?
 
-  subscriptionPlan     String   @default("FREE")
-  subscriptionStatus   String   @default("TRIAL")
-  subscriptionPlanId   String?
-  settings             Json     @default("{}")
+  subscriptionPlan   String  @default("FREE")
+  subscriptionStatus String  @default("TRIAL")
+  subscriptionPlanId String?
+  settings           Json    @default("{}")
 
-  users     User[]
-  farms     Farm[]
-  workers   Worker[]
-  inventory Inventory[]
-  expenses  Expense[]
-  sales     Sale[]
-  livestock Livestock[]
-  budgets   Budget[]
-  memberships UserOrganization[]
-  roles      Role[]
-  featureOverrides FeatureFlagOverride[]
-  subscriptionPlanRef SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+  users               User[]
+  farms               Farm[]
+  workers             Worker[]
+  inventory           Inventory[]
+  expenses            Expense[]
+  sales               Sale[]
+  livestock           Livestock[]
+  budgets             Budget[]
+  memberships         UserOrganization[]
+  roles               Role[]
+  featureOverrides    FeatureFlagOverride[]
+  subscriptionPlanRef SubscriptionPlan?     @relation(fields: [subscriptionPlanId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model User {
-  id              String   @id @default(uuid())
-  organizationId  String?
+  id             String  @id @default(uuid())
+  organizationId String?
 
-  firstName       String
-  lastName        String
-  middleName      String?
-  email           String?  @unique
-  phone           String?  @unique
+  firstName  String
+  lastName   String
+  middleName String?
+  email      String? @unique
+  phone      String? @unique
 
-  passwordHash    String
-  roleId          String
-  avatar          String?
+  passwordHash String
+  roleId       String
+  avatar       String?
 
-  isActive        Boolean  @default(true)
-  lastLoginAt     DateTime?
-  twoFactorEnabled Boolean @default(false)
-  twoFactorSecret String?
+  isActive                Boolean   @default(true)
+  lastLoginAt             DateTime?
+  twoFactorEnabled        Boolean   @default(false)
+  twoFactorSecret         String?
   notificationPreferences Json?
 
-  organization    Organization? @relation(fields: [organizationId], references: [id])
-  role            Role         @relation(fields: [roleId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  role         Role          @relation(fields: [roleId], references: [id])
 
-  refreshTokens   RefreshToken[]
-  auditLogs       AuditLog[]
-  memberships     UserOrganization[]
-  sessions        UserSession[]
-  apiKeys         ApiKey[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+  memberships   UserOrganization[]
+  sessions      UserSession[]
+  apiKeys       ApiKey[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([organizationId])
 }
 
 model UserOrganization {
-  id              String   @id @default(uuid())
-  userId          String
-  organizationId  String
-  roleInOrg       String   @default("WORKER")
-  isDefault       Boolean  @default(false)
-  isActive        Boolean  @default(true)
+  id             String  @id @default(uuid())
+  userId         String
+  organizationId String
+  roleInOrg      String  @default("WORKER")
+  isDefault      Boolean @default(false)
+  isActive       Boolean @default(true)
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([userId, organizationId])
   @@index([userId])
@@ -95,41 +95,41 @@ model UserOrganization {
 }
 
 model Role {
-  id               String @id @default(uuid())
-  name             String
-  description      String?
-  isSystem         Boolean @default(false)
-  isPlatformAdmin  Boolean @default(false)
-  organizationId   String?
+  id              String  @id @default(uuid())
+  name            String
+  description     String?
+  isSystem        Boolean @default(false)
+  isPlatformAdmin Boolean @default(false)
+  organizationId  String?
 
-  permissions      RolePermission[]
-  users            User[]
-  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions  RolePermission[]
+  users        User[]
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([name, organizationId])
   @@index([organizationId])
 }
 
 model Permission {
-  id          String @id @default(uuid())
-  name        String @unique
+  id          String  @id @default(uuid())
+  name        String  @unique
   description String?
   category    String?
 
-  roles       RolePermission[]
+  roles RolePermission[]
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model RolePermission {
-  roleId        String
-  permissionId  String
+  roleId       String
+  permissionId String
 
-  role          Role       @relation(fields: [roleId], references: [id])
-  permission    Permission @relation(fields: [permissionId], references: [id])
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
@@ -144,9 +144,9 @@ model RefreshToken {
   deviceInfo      String?
   ipAddress       String?
 
-  user            User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([tokenHash])
@@ -154,168 +154,177 @@ model RefreshToken {
 }
 
 model Farm {
-  id              String   @id @default(uuid())
-  organizationId  String
+  id             String @id @default(uuid())
+  organizationId String
 
-  name            String
-  farmType        String   // CROP, LIVESTOCK, POULTRY, DAIRY, AQUACULTURE
-  location        String?
-  latitude        Float?
-  longitude       Float?
-  size            Float    @default(0)
-  status          String   @default("active")
+  name      String
+  farmType  String // CROP, LIVESTOCK, POULTRY, DAIRY, AQUACULTURE
+  location  String?
+  latitude  Float?
+  longitude Float?
+  size      Float   @default(0)
+  status    String  @default("active")
 
-  organization    Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  fields          Field[]
-  poultryHouses   PoultryHouse[]
-  flocks          Flock[]
-  workers         Worker[]
-  inventory       Inventory[]
-  expenses        Expense[]
-  sales           Sale[]
-  livestock       Livestock[]
-  budgets         Budget[]
+  fields        Field[]
+  poultryHouses PoultryHouse[]
+  flocks        Flock[]
+  workers       Worker[]
+  inventory     Inventory[]
+  expenses      Expense[]
+  sales         Sale[]
+  livestock     Livestock[]
+  budgets       Budget[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmType])
 }
 
 model Field {
-  id        String @id @default(uuid())
-  farmId    String
-  name      String
-  size      Float
+  id     String @id @default(uuid())
+  farmId String
+  name   String
+  size   Float
 
-  farm      Farm @relation(fields: [farmId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
   cropCycles CropCycle[]
+  deletedAt  DateTime?
 
   @@index([farmId])
 }
 
 model PoultryHouse {
-  id        String @id @default(uuid())
-  farmId    String
-  name      String
-  capacity  Int
+  id       String @id @default(uuid())
+  farmId   String
+  name     String
+  capacity Int
 
-  farm      Farm @relation(fields: [farmId], references: [id])
+  farm      Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
   pens      Pen[]
+  deletedAt DateTime?
 
   @@index([farmId])
 }
 
 model Pen {
-  id              String @id @default(uuid())
-  poultryHouseId  String
-  name            String
-  capacity        Int
+  id             String @id @default(uuid())
+  poultryHouseId String
+  name           String
+  capacity       Int
 
-  poultryHouse    PoultryHouse @relation(fields: [poultryHouseId], references: [id])
+  poultryHouse PoultryHouse @relation(fields: [poultryHouseId], references: [id], onDelete: Cascade)
 
-  flocks          Flock[]
+  flocks    Flock[]
+  deletedAt DateTime?
 
   @@index([poultryHouseId])
 }
 
 model Breed {
-  id        String @id @default(uuid())
-  name      String
-  birdType  String // Enum-like string (BROILER, LAYER, etc)
+  id       String @id @default(uuid())
+  name     String
+  birdType String // Enum-like string (BROILER, LAYER, etc)
 
-  flocks    Flock[]
+  flocks Flock[]
 }
 
 model Flock {
-  id              String @id @default(uuid())
-  organizationId  String
-  farmId          String
-  penId           String
-  breedId         String
+  id             String @id @default(uuid())
+  organizationId String
+  farmId         String
+  penId          String
+  breedId        String
 
-  batchCode       String @unique
-  birdCount       Int
-  currentCount    Int
+  batchCode    String @unique
+  birdCount    Int
+  currentCount Int
 
-  arrivalDate     DateTime
-  currentAgeDays  Int
+  arrivalDate    DateTime
+  currentAgeDays Int
 
-  status          String // Enum-like string (ACTIVE, SOLD, etc)
+  status String // Enum-like string (ACTIVE, SOLD, etc)
 
-  farm            Farm @relation(fields: [farmId], references: [id])
-  pen             Pen @relation(fields: [penId], references: [id])
-  breed           Breed @relation(fields: [breedId], references: [id])
+  farm  Farm  @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  pen   Pen   @relation(fields: [penId], references: [id], onDelete: Cascade)
+  breed Breed @relation(fields: [breedId], references: [id])
 
-  feedingRecords   FeedingRecord[]
+  feedingRecords     FeedingRecord[]
   vaccinationRecords VaccinationRecord[]
-  mortalityRecords MortalityRecord[]
-  medications     Medication[]
-  eggProductions  EggProduction[]
-  poultrySales    PoultrySale[]
+  mortalityRecords   MortalityRecord[]
+  medications        Medication[]
+  eggProductions     EggProduction[]
+  poultrySales       PoultrySale[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
 }
 
 model FeedingRecord {
-  id        String @id @default(uuid())
-  flockId   String
+  id      String @id @default(uuid())
+  flockId String
 
-  feedType  String
+  feedType   String
   quantityKg Float
-  date      DateTime
+  date       DateTime
 
-  flock     Flock @relation(fields: [flockId], references: [id])
+  flock Flock @relation(fields: [flockId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 }
 
 model VaccinationRecord {
-  id        String @id @default(uuid())
-  flockId   String
+  id      String @id @default(uuid())
+  flockId String
 
-  vaccine   String
-  dosage    String?
-  date      DateTime
+  vaccine String
+  dosage  String?
+  date    DateTime
 
-  flock     Flock @relation(fields: [flockId], references: [id])
+  flock Flock @relation(fields: [flockId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 }
 
 model MortalityRecord {
-  id        String @id @default(uuid())
-  flockId   String
+  id      String @id @default(uuid())
+  flockId String
 
-  count     Int
-  cause     String?
-  date      DateTime
+  count Int
+  cause String?
+  date  DateTime
 
-  flock     Flock @relation(fields: [flockId], references: [id])
+  flock Flock @relation(fields: [flockId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 }
 
 model Medication {
-  id          String    @id @default(uuid())
-  flockId     String
-  name        String
-  dosage      String
-  frequency   String
-  startDate   DateTime
-  endDate     DateTime?
-  notes       String?
-  status      String    @default("ACTIVE")
-  flock       Flock     @relation(fields: [flockId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String    @id @default(uuid())
+  flockId   String
+  name      String
+  dosage    String
+  frequency String
+  startDate DateTime
+  endDate   DateTime?
+  notes     String?
+  status    String    @default("ACTIVE")
+  flock     Flock     @relation(fields: [flockId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([flockId])
   @@index([status])
@@ -333,10 +342,11 @@ model EggProduction {
   createdById    String?
   createdByName  String?
 
-  flock          Flock    @relation(fields: [flockId], references: [id])
+  flock Flock @relation(fields: [flockId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([flockId])
   @@index([organizationId])
@@ -358,10 +368,11 @@ model PoultrySale {
   paymentMethod  String?
   notes          String?
 
-  flock          Flock?   @relation(fields: [flockId], references: [id])
+  flock Flock? @relation(fields: [flockId], references: [id])
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -370,28 +381,29 @@ model PoultrySale {
 }
 
 model Crop {
-  id    String @id @default(uuid())
-  name  String
+  id   String @id @default(uuid())
+  name String
 
   cropCycles CropCycle[]
 }
 
 model CropCycle {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   fieldId        String
   cropId         String
 
-  plantingDate   DateTime
-  harvestDate    DateTime?
-  health         Int      @default(100)
-  status         String   @default("growing")
+  plantingDate DateTime
+  harvestDate  DateTime?
+  health       Int       @default(100)
+  status       String    @default("growing")
 
-  field          Field    @relation(fields: [fieldId], references: [id])
-  crop           Crop     @relation(fields: [cropId], references: [id])
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  crop  Crop  @relation(fields: [cropId], references: [id])
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([fieldId])
@@ -399,60 +411,63 @@ model CropCycle {
 }
 
 model Inventory {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   farmId         String
 
-  name             String
-  category         String
-  quantity         Float
-  unit             String
-  minimumQuantity  Float @default(0)
+  name            String
+  category        String
+  quantity        Float
+  unit            String
+  minimumQuantity Float  @default(0)
 
-  organization     Organization @relation(fields: [organizationId], references: [id])
-  farm             Farm         @relation(fields: [farmId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
 }
 
 model Expense {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   farmId         String
 
-  title     String
-  amount    Float
-  date      DateTime
+  title  String
+  amount Float
+  date   DateTime
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  farm         Farm         @relation(fields: [farmId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
 }
 
 model Sale {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   farmId         String
 
-  item      String
-  quantity  Float
-  price     Float
-  total     Float
+  item     String
+  quantity Float
+  price    Float
+  total    Float
 
-  date      DateTime
+  date DateTime
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  farm         Farm         @relation(fields: [farmId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -468,13 +483,14 @@ model Budget {
   endDate        DateTime
   status         String   @default("ACTIVE")
 
-  categories     BudgetCategory[]
+  categories BudgetCategory[]
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  farm           Farm?        @relation(fields: [farmId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm         Farm?        @relation(fields: [farmId], references: [id])
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -482,41 +498,43 @@ model Budget {
 }
 
 model BudgetCategory {
-  id             String   @id @default(uuid())
-  budgetId       String
-  name           String
-  budgetAmount   Float
-  spentAmount    Float   @default(0)
+  id           String @id @default(uuid())
+  budgetId     String
+  name         String
+  budgetAmount Float
+  spentAmount  Float  @default(0)
 
-  budget         Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([budgetId])
 }
 
 model Worker {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   farmId         String
 
-  userId         String?
-  firstName      String
-  middleName     String?
-  lastName       String
-  email          String?
-  phone          String?
-  position       String
-  department     String?
-  hireDate       DateTime?
-  status         String   @default("ACTIVE")
+  userId     String?
+  firstName  String
+  middleName String?
+  lastName   String
+  email      String?
+  phone      String?
+  position   String
+  department String?
+  hireDate   DateTime?
+  status     String    @default("ACTIVE")
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  farm           Farm         @relation(fields: [farmId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -525,7 +543,7 @@ model Worker {
 }
 
 model AuditLog {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   userId         String?
   organizationId String?
   action         String
@@ -535,9 +553,9 @@ model AuditLog {
   ipAddress      String?
   userAgent      String?
 
-  user           User?    @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([organizationId])
@@ -547,14 +565,14 @@ model AuditLog {
 }
 
 model SyncQueue {
-  id        String @id @default(uuid())
+  id String @id @default(uuid())
 
   entity    String
   entityId  String
   operation String
   payload   String
 
-  synced    Boolean  @default(false)
+  synced Boolean @default(false)
 
   createdAt DateTime @default(now())
 }
@@ -571,24 +589,26 @@ model Livestock {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  farm           Farm         @relation(fields: [farmId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  deletedAt    DateTime?
 
   @@index([organizationId])
   @@index([farmId])
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  title     String
-  message   String
-  type      String   @default("INFO")
-  link      String?
+  id         String    @id @default(uuid())
+  userId     String
+  title      String
+  message    String
+  type       String    @default("INFO")
+  link       String?
   entityType String?
   entityId   String?
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  read       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
 
   @@index([userId])
 }
@@ -597,7 +617,7 @@ model DeviceToken {
   id        String   @id @default(uuid())
   userId    String
   token     String
-  platform  String   // "web", "ios", "android"
+  platform  String // "web", "ios", "android"
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -609,24 +629,25 @@ model DeviceToken {
 }
 
 model Task {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   farmId         String?
   title          String
   description    String?
-  priority       String   @default("MEDIUM")
-  status         String   @default("PENDING")
+  priority       String  @default("MEDIUM")
+  status         String  @default("PENDING")
 
   assignedToId   String?
   assignedToName String?
   createdById    String?
   createdByName  String?
 
-  dueDate        DateTime?
-  completedAt    DateTime?
+  dueDate     DateTime?
+  completedAt DateTime?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([assignedToId])
@@ -634,41 +655,43 @@ model Task {
 }
 
 model LeaveType {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   name           String
-  daysPerYear    Int      @default(0)
-  isPaid         Boolean  @default(true)
-  isActive       Boolean  @default(true)
+  daysPerYear    Int     @default(0)
+  isPaid         Boolean @default(true)
+  isActive       Boolean @default(true)
 
-  leaveRequests  LeaveRequest[]
-  leaveBalances  LeaveBalance[]
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@unique([name, organizationId])
   @@index([organizationId])
 }
 
 model LeaveRequest {
-  id             String   @id @default(uuid())
-  organizationId String
-  userId         String
-  leaveTypeId    String
-  startDate      DateTime
-  endDate        DateTime
-  days           Int
-  reason         String?
-  status         String   @default("PENDING")
-  approvedById   String?
-  approvedAt     DateTime?
+  id              String    @id @default(uuid())
+  organizationId  String
+  userId          String
+  leaveTypeId     String
+  startDate       DateTime
+  endDate         DateTime
+  days            Int
+  reason          String?
+  status          String    @default("PENDING")
+  approvedById    String?
+  approvedAt      DateTime?
   rejectionReason String?
 
-  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([userId])
@@ -676,18 +699,19 @@ model LeaveRequest {
 }
 
 model LeaveBalance {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   userId         String
   leaveTypeId    String
   year           Int
-  totalDays      Int      @default(0)
-  usedDays       Int      @default(0)
+  totalDays      Int    @default(0)
+  usedDays       Int    @default(0)
 
-  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@unique([userId, leaveTypeId, year])
   @@index([organizationId])
@@ -697,18 +721,19 @@ model LeaveBalance {
 // ── Phase 2: Duty Roster ──────────────────────────────────
 
 model Shift {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   name           String
-  startTime      String   // "08:00"
-  endTime        String   // "16:00"
-  color          String?  @default("#3B82F6")
-  isActive       Boolean  @default(true)
+  startTime      String // "08:00"
+  endTime        String // "16:00"
+  color          String? @default("#3B82F6")
+  isActive       Boolean @default(true)
 
-  assignments    ShiftAssignment[]
+  assignments ShiftAssignment[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -722,9 +747,10 @@ model ShiftAssignment {
   date           DateTime // date only (no time)
   notes          String?
 
-  shift          Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@unique([shiftId, userId, date])
   @@index([organizationId])
@@ -740,14 +766,15 @@ model Attendance {
   workerId       String
   workerName     String
   date           DateTime
-  status         String   // PRESENT, ABSENT, LATE, HALF_DAY, ON_LEAVE
-  clockIn        String?  // "HH:MM"
-  clockOut       String?  // "HH:MM"
+  status         String // PRESENT, ABSENT, LATE, HALF_DAY, ON_LEAVE
+  clockIn        String? // "HH:MM"
+  clockOut       String? // "HH:MM"
   hoursWorked    Float?
   notes          String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@unique([workerId, date])
   @@index([organizationId])
@@ -759,18 +786,19 @@ model Attendance {
 // ── Phase 3: Internal Messaging ───────────────────────────
 
 model Message {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   organizationId String
   senderId       String
   senderName     String
   subject        String
   body           String
-  priority       String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  priority       String @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
 
-  recipients     MessageRecipient[]
+  recipients MessageRecipient[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([senderId])
@@ -778,17 +806,18 @@ model Message {
 }
 
 model MessageRecipient {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   messageId      String
   recipientId    String
   recipientName  String
   organizationId String
-  isRead         Boolean  @default(false)
+  isRead         Boolean   @default(false)
   readAt         DateTime?
 
-  message        Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@unique([messageId, recipientId])
   @@index([recipientId])
@@ -799,26 +828,27 @@ model MessageRecipient {
 // ── Phase 4: Correspondence ───────────────────────────────
 
 model Correspondence {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   organizationId  String
-  referenceNumber String   @unique
+  referenceNumber String    @unique
   title           String
-  type            String   // INCOMING, OUTGOING, INTERNAL
-  category        String   @default("OTHER") // MEMO, LETTER, REPORT, NOTICE, OTHER
-  from            String?  // sender/originator
-  to              String?  // recipient/destination
+  type            String // INCOMING, OUTGOING, INTERNAL
+  category        String    @default("OTHER") // MEMO, LETTER, REPORT, NOTICE, OTHER
+  from            String? // sender/originator
+  to              String? // recipient/destination
   content         String?
-  status          String   @default("DRAFT") // DRAFT, SENT, RECEIVED, ARCHIVED
-  priority        String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  status          String    @default("DRAFT") // DRAFT, SENT, RECEIVED, ARCHIVED
+  priority        String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
   receivedDate    DateTime?
   createdById     String
   createdByName   String
   archivedAt      DateTime?
 
-  attachments     CorrespondenceAttachment[]
+  attachments CorrespondenceAttachment[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([status])
@@ -827,18 +857,19 @@ model Correspondence {
 }
 
 model CorrespondenceAttachment {
-  id              String   @id @default(uuid())
+  id               String  @id @default(uuid())
   correspondenceId String
-  fileName        String
-  fileSize        Int
-  fileUrl         String
-  fileType        String?
-  uploadedById    String
-  organizationId  String
+  fileName         String
+  fileSize         Int
+  fileUrl          String
+  fileType         String?
+  uploadedById     String
+  organizationId   String
 
-  correspondence  Correspondence @relation(fields: [correspondenceId], references: [id], onDelete: Cascade)
+  correspondence Correspondence @relation(fields: [correspondenceId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([correspondenceId])
   @@index([organizationId])
@@ -847,29 +878,29 @@ model CorrespondenceAttachment {
 // ── Platform Console: Feature Flags ───────────────────────
 
 model FeatureFlag {
-  id            String   @id @default(uuid())
-  key           String   @unique
-  name          String
-  description   String?
-  category      String   @default("core")
-  defaultValue  Boolean  @default(true)
-  isEnabled     Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(uuid())
+  key          String   @unique
+  name         String
+  description  String?
+  category     String   @default("core")
+  defaultValue Boolean  @default(true)
+  isEnabled    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  orgOverrides  FeatureFlagOverride[]
+  orgOverrides FeatureFlagOverride[]
 }
 
 model FeatureFlagOverride {
-  id              String      @id @default(uuid())
-  featureFlagId   String
-  organizationId  String
-  isEnabled       Boolean
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String   @id @default(uuid())
+  featureFlagId  String
+  organizationId String
+  isEnabled      Boolean
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  featureFlag     FeatureFlag  @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  featureFlag  FeatureFlag  @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([featureFlagId, organizationId])
   @@index([organizationId])
@@ -878,21 +909,21 @@ model FeatureFlagOverride {
 // ── Platform Console: Subscriptions ───────────────────────
 
 model SubscriptionPlan {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  displayName   String
-  description   String?
-  price         Decimal  @default(0)
-  currency      String   @default("USD")
-  billingCycle  String   @default("MONTHLY")
-  maxUsers      Int      @default(5)
-  maxFarms      Int      @default(1)
-  maxStorage    Int      @default(100)
-  features      Json     @default("[]")
-  isActive      Boolean  @default(true)
-  sortOrder     Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String   @unique
+  displayName  String
+  description  String?
+  price        Decimal  @default(0)
+  currency     String   @default("USD")
+  billingCycle String   @default("MONTHLY")
+  maxUsers     Int      @default(5)
+  maxFarms     Int      @default(1)
+  maxStorage   Int      @default(100)
+  features     Json     @default("[]")
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   organizations Organization[]
 }
@@ -900,17 +931,17 @@ model SubscriptionPlan {
 // ── Platform Console: User Sessions ───────────────────────
 
 model UserSession {
-  id          String   @id @default(uuid())
-  userId      String
-  app         String
-  deviceInfo  Json?
-  ipAddress   String?
-  isActive    Boolean  @default(true)
-  loginAt     DateTime @default(now())
-  lastActive  DateTime @default(now())
-  logoutAt    DateTime?
+  id         String    @id @default(uuid())
+  userId     String
+  app        String
+  deviceInfo Json?
+  ipAddress  String?
+  isActive   Boolean   @default(true)
+  loginAt    DateTime  @default(now())
+  lastActive DateTime  @default(now())
+  logoutAt   DateTime?
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([app])
@@ -936,17 +967,17 @@ model SystemHealth {
 // ── Platform Console: Broadcasts ──────────────────────────
 
 model Broadcast {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   message     String
-  type        String   @default("INFO")
-  targetOrgs  String[] @default([])
-  isActive    Boolean  @default(true)
-  startsAt    DateTime @default(now())
+  type        String    @default("INFO")
+  targetOrgs  String[]  @default([])
+  isActive    Boolean   @default(true)
+  startsAt    DateTime  @default(now())
   expiresAt   DateTime?
   createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([isActive])
   @@index([startsAt])
@@ -967,18 +998,19 @@ model PlatformConfig {
 // ── Priority 2: Crop Calendar & Lifecycle ────────────────
 
 model CropStage {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   organizationId String
   cropCycleId    String
-  stage          String   // PREPARATION, PLANTING, GERMINATION, GROWING, FLOWERING, FRUITING, HARVESTING, POST_HARVEST
+  stage          String // PREPARATION, PLANTING, GERMINATION, GROWING, FLOWERING, FRUITING, HARVESTING, POST_HARVEST
   startDate      DateTime
   endDate        DateTime?
   notes          String?
   createdById    String?
   createdByName  String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([cropCycleId])
   @@index([organizationId])
@@ -989,10 +1021,10 @@ model CropStage {
 // ── Priority 2: Livestock Health Records ─────────────────
 
 model HealthRecord {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   organizationId  String
   livestockId     String
-  type            String   // VACCINATION, TREATMENT, CHECKUP, SURGERY, DEWORMING, OTHER
+  type            String // VACCINATION, TREATMENT, CHECKUP, SURGERY, DEWORMING, OTHER
   date            DateTime
   description     String
   veterinarian    String?
@@ -1002,8 +1034,9 @@ model HealthRecord {
   createdById     String?
   createdByName   String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([livestockId])
   @@index([organizationId])
@@ -1012,19 +1045,20 @@ model HealthRecord {
 }
 
 model VaccinationSchedule {
-  id              String   @id @default(uuid())
-  organizationId  String
-  livestockId     String
-  vaccineName     String
-  scheduledDate   DateTime
+  id               String    @id @default(uuid())
+  organizationId   String
+  livestockId      String
+  vaccineName      String
+  scheduledDate    DateTime
   administeredDate DateTime?
-  status          String   @default("SCHEDULED") // SCHEDULED, ADMINISTERD, MISSED, CANCELLED
-  notes           String?
-  createdById     String?
-  createdByName   String?
+  status           String    @default("SCHEDULED") // SCHEDULED, ADMINISTERD, MISSED, CANCELLED
+  notes            String?
+  createdById      String?
+  createdByName    String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([livestockId])
   @@index([organizationId])
@@ -1035,7 +1069,7 @@ model VaccinationSchedule {
 // ── Priority 2: Livestock Breeding Records ───────────────
 
 model BreedingRecord {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   organizationId  String
   sireId          String
   sireName        String?
@@ -1045,13 +1079,14 @@ model BreedingRecord {
   expectedDueDate DateTime?
   actualBirthDate DateTime?
   offspringCount  Int?
-  status          String   @default("PLANNED") // PLANNED, BRED, CONFIRMED, BORN, FAILED
+  status          String    @default("PLANNED") // PLANNED, BRED, CONFIRMED, BORN, FAILED
   notes           String?
   createdById     String?
   createdByName   String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([sireId])
@@ -1062,17 +1097,18 @@ model BreedingRecord {
 // ── Priority 2: Weight/Growth Tracking ───────────────────
 
 model WeightRecord {
-  id              String   @id @default(uuid())
-  organizationId  String
-  livestockId     String?
-  flockId         String?
-  weight          Float
-  unit            String   @default("kg")
-  recordedDate    DateTime
-  notes           String?
-  createdById     String?
+  id             String   @id @default(uuid())
+  organizationId String
+  livestockId    String?
+  flockId        String?
+  weight         Float
+  unit           String   @default("kg")
+  recordedDate   DateTime
+  notes          String?
+  createdById    String?
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([livestockId])
   @@index([flockId])
@@ -1083,25 +1119,26 @@ model WeightRecord {
 // ── Priority 2: Irrigation Scheduling ────────────────────
 
 model IrrigationSchedule {
-  id              String   @id @default(uuid())
-  organizationId  String
-  farmId          String
-  cropCycleId     String?
-  name            String
-  frequency       String   // DAILY, WEEKLY, CUSTOM
-  waterAmount     Float
-  unit            String   @default("liters")
-  startDate       DateTime
-  endDate         DateTime?
-  isActive        Boolean  @default(true)
-  lastRun         DateTime?
-  nextRun         DateTime?
-  createdById     String?
+  id             String    @id @default(uuid())
+  organizationId String
+  farmId         String
+  cropCycleId    String?
+  name           String
+  frequency      String // DAILY, WEEKLY, CUSTOM
+  waterAmount    Float
+  unit           String    @default("liters")
+  startDate      DateTime
+  endDate        DateTime?
+  isActive       Boolean   @default(true)
+  lastRun        DateTime?
+  nextRun        DateTime?
+  createdById    String?
 
-  logs            IrrigationLog[]
+  logs IrrigationLog[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -1109,21 +1146,22 @@ model IrrigationSchedule {
 }
 
 model IrrigationLog {
-  id              String   @id @default(uuid())
-  organizationId  String
-  scheduleId      String
-  farmId          String
-  date            DateTime
-  duration        Float?   // minutes
-  waterAmount     Float
-  unit            String   @default("liters")
-  notes           String?
-  recordedById    String?
-  recordedByName  String?
+  id             String   @id @default(uuid())
+  organizationId String
+  scheduleId     String
+  farmId         String
+  date           DateTime
+  duration       Float? // minutes
+  waterAmount    Float
+  unit           String   @default("liters")
+  notes          String?
+  recordedById   String?
+  recordedByName String?
 
-  schedule        IrrigationSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  schedule IrrigationSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([scheduleId])
   @@index([organizationId])
@@ -1134,23 +1172,24 @@ model IrrigationLog {
 // ── Priority 2: Pest & Disease Management ────────────────
 
 model PestDiseaseRecord {
-  id              String   @id @default(uuid())
-  organizationId  String
-  cropCycleId     String?
-  farmId          String
-  type            String   // PEST, DISEASE, WEED, OTHER
-  name            String
-  severity        String   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
-  identifiedDate  DateTime
-  treatment       String?
-  treatedDate     DateTime?
-  outcome         String?
-  notes           String?
-  createdById     String?
-  createdByName   String?
+  id             String    @id @default(uuid())
+  organizationId String
+  cropCycleId    String?
+  farmId         String
+  type           String // PEST, DISEASE, WEED, OTHER
+  name           String
+  severity       String    @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  identifiedDate DateTime
+  treatment      String?
+  treatedDate    DateTime?
+  outcome        String?
+  notes          String?
+  createdById    String?
+  createdByName  String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -1163,19 +1202,20 @@ model PestDiseaseRecord {
 // ── Priority 3: Yield Tracking ──────────────────────────
 
 model YieldRecord {
-  id              String   @id @default(uuid())
-  organizationId  String
-  cropId          String
-  cropCycleId     String?
-  quantity        Float
-  unit            String   @default("kg")
-  quality         String?  // GRADE_A, GRADE_B, GRADE_C, PREMIUM
-  harvestedDate   DateTime
-  notes           String?
-  createdById     String?
-  createdByName   String?
+  id             String   @id @default(uuid())
+  organizationId String
+  cropId         String
+  cropCycleId    String?
+  quantity       Float
+  unit           String   @default("kg")
+  quality        String? // GRADE_A, GRADE_B, GRADE_C, PREMIUM
+  harvestedDate  DateTime
+  notes          String?
+  createdById    String?
+  createdByName  String?
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([cropId])
   @@index([cropCycleId])
@@ -1186,15 +1226,16 @@ model YieldRecord {
 // ── Priority 3: Automated/Scheduled Reports ─────────────
 
 model Report {
-  id              String   @id @default(uuid())
-  organizationId  String
-  farmId          String?
-  title           String
-  status          String   @default("pending")
-  parameters      Json     @default("{}")
+  id             String  @id @default(uuid())
+  organizationId String
+  farmId         String?
+  title          String
+  status         String  @default("pending")
+  parameters     Json    @default("{}")
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -1202,20 +1243,21 @@ model Report {
 }
 
 model ScheduledReport {
-  id              String   @id @default(uuid())
-  organizationId  String
-  name            String
-  template        String   // FINANCIAL_SUMMARY, CROP_PRODUCTION, LIVESTOCK_HEALTH, INVENTORY, CUSTOM
-  recipients      String[] @default([])
-  frequency       String   // DAILY, WEEKLY, MONTHLY, QUARTERLY
-  lastSent        DateTime?
-  nextSend        DateTime?
-  isActive        Boolean  @default(true)
-  createdById     String?
-  createdByName   String?
+  id             String    @id @default(uuid())
+  organizationId String
+  name           String
+  template       String // FINANCIAL_SUMMARY, CROP_PRODUCTION, LIVESTOCK_HEALTH, INVENTORY, CUSTOM
+  recipients     String[]  @default([])
+  frequency      String // DAILY, WEEKLY, MONTHLY, QUARTERLY
+  lastSent       DateTime?
+  nextSend       DateTime?
+  isActive       Boolean   @default(true)
+  createdById    String?
+  createdByName  String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([isActive])
@@ -1225,24 +1267,25 @@ model ScheduledReport {
 // ── Priority 4: Equipment & Machinery Tracking ──────────
 
 model Equipment {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   organizationId  String
   farmId          String?
   name            String
-  type            String   // TRACTOR, HARVESTER, IRRIGATION, VEHICLE, TOOL, OTHER
+  type            String // TRACTOR, HARVESTER, IRRIGATION, VEHICLE, TOOL, OTHER
   model           String?
   serialNumber    String?
   purchaseDate    DateTime?
   purchaseCost    Float?
-  status          String   @default("ACTIVE") // ACTIVE, UNDER_MAINTENANCE, RETIRED
+  status          String    @default("ACTIVE") // ACTIVE, UNDER_MAINTENANCE, RETIRED
   lastMaintenance DateTime?
   nextMaintenance DateTime?
   notes           String?
 
   maintenanceRecords MaintenanceRecord[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([farmId])
@@ -1250,18 +1293,19 @@ model Equipment {
 }
 
 model MaintenanceRecord {
-  id              String   @id @default(uuid())
-  organizationId  String
-  equipmentId     String
-  type            String   // SCHEDULED, REPAIR, INSPECTION, OTHER
-  date            DateTime
-  cost            Float?
-  description     String
-  performedBy     String?
+  id             String   @id @default(uuid())
+  organizationId String
+  equipmentId    String
+  type           String // SCHEDULED, REPAIR, INSPECTION, OTHER
+  date           DateTime
+  cost           Float?
+  description    String
+  performedBy    String?
 
-  equipment       Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([equipmentId])
   @@index([organizationId])
@@ -1271,22 +1315,23 @@ model MaintenanceRecord {
 // ── Priority 4: Contract Management ─────────────────────
 
 model Contract {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   organizationId  String
-  type            String   // BUY, SELL
+  type            String // BUY, SELL
   buyerSellerName String
   entityId        String?
-  entityType      String?  // farm, crop, livestock
+  entityType      String? // farm, crop, livestock
   startDate       DateTime
   endDate         DateTime?
   value           Float
-  status          String   @default("DRAFT") // DRAFT, ACTIVE, COMPLETED, CANCELLED
+  status          String    @default("DRAFT") // DRAFT, ACTIVE, COMPLETED, CANCELLED
   terms           String?
   createdById     String?
   createdByName   String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([type])
@@ -1296,23 +1341,24 @@ model Contract {
 // ── Priority 4: Document/File Management ────────────────
 
 model Document {
-  id              String   @id @default(uuid())
-  organizationId  String
-  name            String
-  type            String   // IMAGE, PDF, SPREADSHEET, DOCUMENT, OTHER
-  entityId        String?
-  entityType      String?  // farm, crop, livestock, worker, contract, invoice
-  uploadedById    String?
-  uploadedByName  String?
-  fileSize        Int?
-  mimeType        String?
-  url             String
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  type           String // IMAGE, PDF, SPREADSHEET, DOCUMENT, OTHER
+  entityId       String?
+  entityType     String? // farm, crop, livestock, worker, contract, invoice
+  uploadedById   String?
+  uploadedByName String?
+  fileSize       Int?
+  mimeType       String?
+  url            String
   // Object-storage key (S3-compatible / local). Nullable for rows created
   // before object storage was introduced or via the metadata-only endpoint.
-  storageKey      String?
-  storageDriver   String?
+  storageKey     String?
+  storageDriver  String?
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([entityId, entityType])
@@ -1322,43 +1368,45 @@ model Document {
 // ── Priority 4: Marketplace / Buyer Management ──────────
 
 model Buyer {
-  id              String   @id @default(uuid())
-  organizationId  String
-  name            String
-  contactPerson   String?
-  email           String?
-  phone           String?
-  address         String?
-  type            String   @default("INDIVIDUAL") // INDIVIDUAL, COMPANY, COOPERATIVE
-  notes           String?
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        String?
+  type           String  @default("INDIVIDUAL") // INDIVIDUAL, COMPANY, COOPERATIVE
+  notes          String?
 
-  listings        MarketListing[]
+  listings MarketListing[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([type])
 }
 
 model MarketListing {
-  id              String   @id @default(uuid())
-  organizationId  String
-  buyerId         String?
-  entityType      String   // crop, livestock, poultry
-  entityId        String?
-  title           String
-  price           Float
-  unit            String   @default("kg")
-  quantity        Float
-  status          String   @default("ACTIVE") // ACTIVE, SOLD, CANCELLED
-  listedDate      DateTime
-  soldDate        DateTime?
+  id             String    @id @default(uuid())
+  organizationId String
+  buyerId        String?
+  entityType     String // crop, livestock, poultry
+  entityId       String?
+  title          String
+  price          Float
+  unit           String    @default("kg")
+  quantity       Float
+  status         String    @default("ACTIVE") // ACTIVE, SOLD, CANCELLED
+  listedDate     DateTime
+  soldDate       DateTime?
 
-  buyer           Buyer? @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  buyer Buyer? @relation(fields: [buyerId], references: [id], onDelete: SetNull)
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([organizationId])
   @@index([buyerId])
@@ -1367,17 +1415,17 @@ model MarketListing {
 }
 
 model ApiKey {
-  id             String   @id @default(uuid())
-  userId         String
-  name           String
-  keyPrefix      String
-  keyHash        String
-  service        String
-  isActive       Boolean  @default(true)
-  lastUsedAt     DateTime?
-  createdAt      DateTime @default(now())
+  id         String    @id @default(uuid())
+  userId     String
+  name       String
+  keyPrefix  String
+  keyHash    String
+  service    String
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
 
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([keyPrefix])
@@ -1389,7 +1437,7 @@ model EmailVerification {
   id        String   @id @default(uuid())
   userId    String
   token     String   @unique
-  type      String   // EMAIL_VERIFICATION, PASSWORD_RESET
+  type      String // EMAIL_VERIFICATION, PASSWORD_RESET
   expiresAt DateTime
   used      Boolean  @default(false)
 

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { withRLS, getOrganizationId } from './rls';
+import { makeSoftDeleteHook } from './soft-delete';
 import * as dotenv from 'dotenv';
 import { join } from 'path';
 import { loadEnv } from '@farm/env';
@@ -29,9 +30,14 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 /**
- * Base PrismaClient — use for system-level queries (seed, migrations).
+ * Base PrismaClient with soft delete applied to tenant-content models —
+ * use for system-level queries (seed, migrations). Rows of models outside
+ * SOFT_DELETE_MODELS (auth plumbing, platform tables, shared catalogs)
+ * are deleted for real.
  */
-export const prisma = basePrisma;
+export const prisma = basePrisma.$extends({
+  query: { $allModels: makeSoftDeleteHook(basePrisma) },
+});
 
 /**
  * RLS-aware PrismaClient — use for tenant-scoped queries.
@@ -52,7 +58,7 @@ function isValidationError(err: unknown): boolean {
   return e?.name === 'PrismaClientValidationError' || e?.constructor?.name === 'PrismaClientValidationError';
 }
 
-export const scopedPrisma = withRLS(basePrisma).$extends({
+const stampedPrisma = withRLS(basePrisma).$extends({
   query: {
     $allModels: {
       async create({ args, query }: { args: any; query: (args: any) => Promise<any> }) {
@@ -107,6 +113,15 @@ export const scopedPrisma = withRLS(basePrisma).$extends({
       },
     },
   },
+});
+
+/**
+ * RLS-aware PrismaClient with soft delete applied on top — the workhorse
+ * exported for tenant-facing modules. Soft delete runs outermost so that
+ * delete/deleteMany are converted before any other hook sees them.
+ */
+export const scopedPrisma = stampedPrisma.$extends({
+  query: { $allModels: makeSoftDeleteHook(basePrisma) },
 });
 
 export {
