@@ -25,13 +25,22 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null = null;
   private readonly fromEmail: string;
+  private readonly resendApiKey: string | null;
 
   constructor(private readonly configService: ConfigService) {
     this.fromEmail = this.configService.get('EMAIL_FROM') || '';
+    this.resendApiKey = this.configService.get('RESEND_API_KEY') || null;
+    if (this.resendApiKey && !this.fromEmail) {
+      this.logger.warn('RESEND_API_KEY is set but EMAIL_FROM is empty - Resend needs a From address');
+    }
     this.initializeTransporter();
   }
 
   private initializeTransporter(): void {
+    if (this.resendApiKey) {
+      this.logger.log('Email transport initialized: Resend API');
+      return;
+    }
     const host = this.configService.get('SMTP_HOST');
     const port = this.configService.get('SMTP_PORT', '587');
     const user = this.configService.get('SMTP_USER');
@@ -52,7 +61,11 @@ export class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      if (this.transporter) {
+      if (this.resendApiKey) {
+        await this.sendViaResend(options);
+        this.logger.log(`Email sent to ${options.to}: ${options.subject}`);
+        return true;
+      } else if (this.transporter) {
         await this.transporter.sendMail({
           from: this.fromEmail,
           to: options.to,
@@ -69,6 +82,32 @@ export class EmailService {
     } catch (error) {
       this.logger.error(`Failed to send email to ${options.to}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Resend HTTP API — the preferred transport when RESEND_API_KEY is set.
+   * Uses the global fetch (Node >= 18), so no extra SDK is pulled in; the
+   * From address must be a domain verified in Resend.
+   */
+  private async sendViaResend(options: EmailOptions): Promise<void> {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.fromEmail,
+        to: [options.to],
+        subject: options.subject,
+        html: options.html,
+        ...(options.text ? { text: options.text } : {}),
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`Resend API ${res.status}: ${detail}`);
     }
   }
 

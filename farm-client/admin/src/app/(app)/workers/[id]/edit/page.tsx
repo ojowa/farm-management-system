@@ -13,7 +13,11 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
-import { workerFormSchema } from '@/lib/validation';
+import {
+  workerFormSchema,
+  WORKER_POSITION_OPTIONS,
+  WORKER_DEPARTMENT_OPTIONS,
+} from '@/lib/validation';
 
 export default function EditWorkerPage() {
   const { id } = useParams<{ id: string }>();
@@ -189,12 +193,18 @@ export default function EditWorkerPage() {
                 </label>
                 <Input
                   placeholder="e.g. Farm Manager"
+                  list="worker-positions"
                   value={form.position}
                   onChange={(e) => {
                     setForm({ ...form, position: e.target.value });
                     if (errors.position) setErrors({ ...errors, position: '' });
                   }}
                 />
+                <datalist id="worker-positions">
+                  {WORKER_POSITION_OPTIONS.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
                 {errors.position && (
                   <p className="text-sm text-destructive mt-1">{errors.position}</p>
                 )}
@@ -203,14 +213,22 @@ export default function EditWorkerPage() {
                 <label className="text-sm font-medium mb-1 block">Department</label>
                 <Input
                   placeholder="e.g. Operations"
+                  list="worker-departments"
                   value={form.department}
                   onChange={(e) => setForm({ ...form, department: e.target.value })}
                 />
+                <datalist id="worker-departments">
+                  {WORKER_DEPARTMENT_OPTIONS.map((d) => (
+                    <option key={d} value={d} />
+                  ))}
+                </datalist>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium mb-1 block">Email</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Email <span className="text-destructive">*</span>
+                </label>
                 <Input
                   placeholder="e.g. john@example.com"
                   value={form.email}
@@ -219,6 +237,10 @@ export default function EditWorkerPage() {
                     if (errors.email) setErrors({ ...errors, email: '' });
                   }}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Login email — credentials are created for it and the
+                  invitation is sent here.
+                </p>
                 {errors.email && (
                   <p className="text-sm text-destructive mt-1">{errors.email}</p>
                 )}

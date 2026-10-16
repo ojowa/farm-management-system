@@ -156,14 +156,49 @@ export const workerFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   middleName: z.string().optional(),
   lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  email: z
+    .string()
+    .min(1, 'Email is required — it becomes the worker login')
+    .email('Invalid email'),
   phone: z.string().optional(),
   position: z.string().min(1, 'Position is required'),
   department: z.string().optional(),
   farmId: z.string().min(1, 'Farm is required'),
+  // The add forms send it (defaulting to the WORKER role); the edit form has
+  // no role field, so it stays optional and the backend defaults when absent.
+  roleId: z.string().optional(),
 });
 
 export type WorkerFormInput = z.infer<typeof workerFormSchema>;
+
+// Suggestions for the worker form dropdowns — free text stays allowed, so
+// records with custom values keep editing cleanly.
+export const WORKER_POSITION_OPTIONS = [
+  'Farm Manager',
+  'Supervisor',
+  'Veterinarian',
+  'Accountant',
+  'Field Worker',
+  'Livestock Handler',
+  'Poultry Handler',
+  'Equipment Operator',
+  'Irrigation Technician',
+  'Harvest Worker',
+  'General Worker',
+];
+
+export const WORKER_DEPARTMENT_OPTIONS = [
+  'Operations',
+  'Agronomy',
+  'Livestock',
+  'Poultry',
+  'Finance',
+  'Administration',
+  'Maintenance',
+  'Logistics',
+  'Storage',
+  'Quality Assurance',
+];
 
 export const expenseFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),

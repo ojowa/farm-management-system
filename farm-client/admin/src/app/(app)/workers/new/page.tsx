@@ -1,29 +1,41 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
-import { workersAPI, farmsAPI } from '@/lib/api';
+import { ArrowLeft, Copy, Save } from 'lucide-react';
+import { workersAPI, farmsAPI, rolesAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch } from '@/hooks/useFetch';
-import { workerFormSchema } from '@/lib/validation';
+import {
+  workerFormSchema,
+  WORKER_POSITION_OPTIONS,
+  WORKER_DEPARTMENT_OPTIONS,
+} from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+
+interface RoleOption {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 export default function NewWorkerPage() {
   const router = useRouter();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('hr');
   const { toast } = useToast();
-  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '' });
+  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '', roleId: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
 
   const { data: farmsData, loading: loadingFarms } = useFetch<{ data: { id: string; name: string }[] }>(
     'farms-list',
@@ -31,7 +43,22 @@ export default function NewWorkerPage() {
     { cacheTime: 60_000 }
   );
 
+  const { data: rolesData, loading: loadingRoles } = useFetch<RoleOption[]>(
+    'roles-list',
+    () => rolesAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
   const farms = farmsData?.data || [];
+  const roles = rolesData || [];
+
+  // Default the login role to the system WORKER role once roles arrive; an
+  // empty value still works — the backend falls back to WORKER as well.
+  useEffect(() => {
+    if (!roles.length || form.roleId) return;
+    const preferred = roles.find((r) => r.name === 'WORKER') || roles[0];
+    if (preferred) setForm((f) => (f.roleId ? f : { ...f, roleId: preferred.id }));
+  }, [roles, form.roleId]);
 
   if (readOnly) {
     router.push('/workers');
@@ -52,19 +79,24 @@ export default function NewWorkerPage() {
     setErrors({});
     setSaving(true);
     try {
-      await workersAPI.create({
+      const { data } = await workersAPI.create({
         firstName: form.firstName,
         middleName: form.middleName || undefined,
         lastName: form.lastName,
-        email: form.email || undefined,
+        email: form.email,
         phone: form.phone || undefined,
         position: form.position,
         department: form.department || undefined,
         farmId: form.farmId,
+        roleId: form.roleId || undefined,
       });
-      toast({ type: 'success', title: 'Worker created successfully' });
       clearFetchCache('workers');
-      router.push('/workers');
+      if (data?.tempPassword) {
+        setCreated({ email: data.email || form.email, tempPassword: data.tempPassword });
+      } else {
+        toast({ type: 'success', title: 'Worker created successfully' });
+        router.push('/workers');
+      }
     } catch (err: any) {
       toast({
         type: 'error',
@@ -76,7 +108,12 @@ export default function NewWorkerPage() {
     }
   };
 
-  if (loadingFarms) {
+  const closeCreated = () => {
+    setCreated(null);
+    router.push('/workers');
+  };
+
+  if (loadingFarms || loadingRoles) {
     return (
       <div className="flex items-center justify-center py-16">
         <LoadingSpinner className="h-8 w-8" />
@@ -90,13 +127,13 @@ export default function NewWorkerPage() {
       <div>
         <Link
           href="/workers"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-2"
+          className="inline-flex text-sm text-muted-foreground hover:text-foreground mb-2"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Workers
         </Link>
         <h1 className="text-3xl font-bold tracking-tight">Add Worker</h1>
-        <p className="text-muted-foreground">Register a new farm worker</p>
+        <p className="text-muted-foreground">Register a new farm worker — their login is created automatically</p>
       </div>
 
       {/* Form */}
@@ -154,12 +191,18 @@ export default function NewWorkerPage() {
                 </label>
                 <Input
                   placeholder="e.g. Farm Manager"
+                  list="worker-positions"
                   value={form.position}
                   onChange={(e) => {
                     setForm({ ...form, position: e.target.value });
                     if (errors.position) setErrors({ ...errors, position: '' });
                   }}
                 />
+                <datalist id="worker-positions">
+                  {WORKER_POSITION_OPTIONS.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
                 {errors.position && (
                   <p className="text-sm text-destructive mt-1">{errors.position}</p>
                 )}
@@ -168,16 +211,25 @@ export default function NewWorkerPage() {
                 <label className="text-sm font-medium mb-1 block">Department</label>
                 <Input
                   placeholder="e.g. Operations"
+                  list="worker-departments"
                   value={form.department}
                   onChange={(e) => setForm({ ...form, department: e.target.value })}
                 />
+                <datalist id="worker-departments">
+                  {WORKER_DEPARTMENT_OPTIONS.map((d) => (
+                    <option key={d} value={d} />
+                  ))}
+                </datalist>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium mb-1 block">Email</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Email <span className="text-destructive">*</span>
+                </label>
                 <Input
+                  type="email"
                   placeholder="e.g. john@example.com"
                   value={form.email}
                   onChange={(e) => {
@@ -185,6 +237,9 @@ export default function NewWorkerPage() {
                     if (errors.email) setErrors({ ...errors, email: '' });
                   }}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Login email — credentials are created for it and the invitation is sent here.
+                </p>
                 {errors.email && (
                   <p className="text-sm text-destructive mt-1">{errors.email}</p>
                 )}
@@ -217,6 +272,27 @@ export default function NewWorkerPage() {
               )}
             </div>
 
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Login Role <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select a role"
+                options={roles.map((r) => ({ value: r.id, label: r.name }))}
+                value={form.roleId}
+                onChange={(e) => {
+                  setForm({ ...form, roleId: e.target.value });
+                  if (errors.roleId) setErrors({ ...errors, roleId: '' });
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Permissions the worker's login gets — defaults to the WORKER role.
+              </p>
+              {errors.roleId && (
+                <p className="text-sm text-destructive mt-1">{errors.roleId}</p>
+              )}
+            </div>
+
             <div className="flex justify-end gap-3 pt-2">
               <Button
                 type="button"
@@ -233,6 +309,56 @@ export default function NewWorkerPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Credentials dialog — shown once the login has been created */}
+      {created && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeCreated();
+          }}
+          title="Worker created — login credentials"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {created.email} can now log in to the admin app with this
+              temporary password{''}
+              {created.tempPassword && ' (it was also emailed if delivery is configured)'}. Ask them to change it after first login.
+            </p>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Email</label>
+              <code className="block rounded bg-muted px-3 py-2 text-sm font-mono break-all">
+                {created.email}
+              </code>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Temporary password</label>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded bg-muted px-3 py-2 text-sm font-mono break-all">
+                  {created.tempPassword}
+                </code>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(created.tempPassword);
+                    toast({ type: 'success', title: 'Password copied' });
+                  }}
+                >
+                  <Copy className="mr-1 h-4 w-4" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={closeCreated}>
+                Done
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 }

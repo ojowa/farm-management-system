@@ -1,4 +1,7 @@
 import { Inject,  Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { prisma } from '../../../../kernel/database';
+import bcrypt from 'bcryptjs';
+import { EmailService } from '../../../notification/modules/email/email.service';
 import {
   WorkerRepository,
   AttendanceRepository,
@@ -18,7 +21,8 @@ import { HrEventService } from '../../infrastructure/messaging/hr.event.service'
 @Injectable()
 export class HrApplicationService {
   constructor(@Inject('WorkerRepository') private readonly workerRepo: WorkerRepository, @Inject('AttendanceRepository') private readonly attendanceRepo: AttendanceRepository, @Inject('TaskRepository') private readonly taskRepo: TaskRepository, @Inject('ShiftRepository') private readonly shiftRepo: ShiftRepository, @Inject('ShiftAssignmentRepository') private readonly shiftAssignmentRepo: ShiftAssignmentRepository, @Inject('LeaveTypeRepository') private readonly leaveTypeRepo: LeaveTypeRepository, @Inject('LeaveRequestRepository') private readonly leaveRequestRepo: LeaveRequestRepository, @Inject('LeaveBalanceRepository') private readonly leaveBalanceRepo: LeaveBalanceRepository, @Inject('MessageRepository') private readonly messageRepo: MessageRepository, @Inject('MessageRecipientRepository') private readonly messageRecipientRepo: MessageRecipientRepository, @Inject('CorrespondenceRepository') private readonly correspondenceRepo: CorrespondenceRepository, @Inject('CorrespondenceAttachmentRepository') private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository, 
-    private readonly eventService: HrEventService, 
+    private readonly eventService: HrEventService,
+    private readonly emailService: EmailService,
   ) {}
 
   // Worker operations
@@ -44,15 +48,90 @@ export class HrApplicationService {
     position: string;
     department?: string;
     hireDate?: Date;
+    roleId?: string;
   }) {
+    const organizationId = data.organizationId;
+    const email = data.email?.trim() || '';
+    if (!email) throw new BadRequestException('Email is required — it is the worker login');
+
+    // Login role: an explicit pick must be org-applicable (own custom role or
+    // a non-platform system role) — the same rules org-admin uses, so a
+    // platform role can never be assigned here. Without one we default to the
+    // system WORKER role, which every seeded organization already has.
+    let roleId = data.roleId;
+    if (roleId) {
+      const role = await prisma.role.findFirst({
+        where: {
+          id: roleId,
+          OR: [{ organizationId }, { organizationId: null, isPlatformAdmin: false }],
+        },
+      });
+      if (!role) throw new BadRequestException('Unknown role');
+    } else {
+      const fallback = await prisma.role.findFirst({
+        where: { name: 'WORKER', organizationId: null, isPlatformAdmin: false },
+      });
+      if (!fallback) throw new BadRequestException('Unknown role');
+      roleId = fallback.id;
+    }
+
+    // Login account: link an existing user of this organization, otherwise
+    // create one with a temporary password — the pattern every invite uses
+    // (org-admin/platform users). An email registered to another organization
+    // must never be claimed here.
+    const existing = await prisma.user.findUnique({ where: { email } });
+    let userId: string;
+    let tempPassword: string | null = null;
+    if (existing) {
+      if (existing.organizationId !== organizationId) throw new ConflictException('Email already registered');
+      userId = existing.id;
+    } else {
+      tempPassword = Math.random().toString(36).slice(-8);
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
+      const user = await prisma.user.create({
+        data: {
+          email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          middleName: data.middleName || null,
+          passwordHash,
+          roleId,
+          organizationId,
+        },
+      });
+      userId = user.id;
+    }
+
+    // The Worker row mirrors the profile and points at the account; roleId
+    // and userId from the raw body never reach it directly.
     const worker = await this.workerRepo.create({
-      ...data,
+      organizationId,
+      farmId: data.farmId,
+      userId,
+      firstName: data.firstName,
+      middleName: data.middleName || null,
+      lastName: data.lastName,
+      email,
       phone: data.phone || null,
+      position: data.position,
       department: data.department || null,
+      hireDate: data.hireDate,
       status: 'ACTIVE',
     });
+
+    // Invitation email — logged when unconfigured; delivery failure never
+    // fails the worker creation (the caller still gets the temp password).
+    if (tempPassword) {
+      try {
+        const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });
+        await this.emailService.sendInvitationEmail(email, data.firstName, tempPassword, org?.name || 'your organization');
+      } catch {
+        /* email delivery must not block creating the worker */
+      }
+    }
+
     await this.eventService.emitHrEvent('created', { entity: 'worker', data: worker });
-    return worker;
+    return { ...worker, tempPassword };
   }
 
   async updateWorker(id: string, organizationId: string, data: Partial<{
@@ -64,7 +143,25 @@ export class HrApplicationService {
     department: string;
     status: string;
   }>) {
-    await this.getWorkerById(id, organizationId);
+    const worker = await this.getWorkerById(id, organizationId);
+    // Login is by the linked account's email: keep the account in step with
+    // the worker profile, failing loudly on a duplicate before touching rows.
+    if (worker.userId && (data.email !== undefined || data.firstName !== undefined || data.lastName !== undefined)) {
+      if (data.email !== undefined) {
+        const email = data.email.trim();
+        if (!email) throw new BadRequestException('Email is required — it is the worker login');
+        const clash = await prisma.user.findUnique({ where: { email } });
+        if (clash && clash.id !== worker.userId) throw new ConflictException('Email already registered');
+      }
+      await prisma.user.update({
+        where: { id: worker.userId },
+        data: {
+          ...(data.email !== undefined ? { email: data.email.trim() } : {}),
+          ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
+          ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
+        },
+      });
+    }
     const updated = await this.workerRepo.update(id, data);
     await this.eventService.emitHrEvent('updated', { entity: 'worker', data: updated });
     return updated;
