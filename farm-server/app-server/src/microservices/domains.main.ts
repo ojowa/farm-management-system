@@ -10,6 +10,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../modules/auth/auth.module';
 import { FarmModule } from '../modules/farm/farm.module';
 import { LivestockModule } from '../modules/livestock/livestock.module';
+import { AquacultureModule } from '../modules/aquaculture/aquaculture.module';
 import { PoultryModule } from '../modules/poultry/poultry.module';
 import { FinanceModule } from '../modules/finance/finance.module';
 import { HrModule } from '../modules/hr/hr.module';
@@ -29,6 +30,7 @@ import helmet from 'helmet';
     AuthModule,
     FarmModule,
     LivestockModule,
+    AquacultureModule,
     PoultryModule,
     FinanceModule,
     HrModule,

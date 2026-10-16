@@ -39,6 +39,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { prefix: '/crops', permissions: ['crop.read'] },
   { prefix: '/irrigation', permissions: ['crop.read'] },
   { prefix: '/livestock', permissions: ['livestock.read'] },
+  { prefix: '/aquaculture', permissions: ['aquaculture.read'] },
   { prefix: '/poultry', permissions: ['poultry.read'] },
   // Served by asset.controller (`farm.*`), not an inventory controller.
   { prefix: '/inventory', permissions: ['farm.read', 'inventory.read'] },

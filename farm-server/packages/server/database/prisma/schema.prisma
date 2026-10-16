@@ -31,6 +31,11 @@ model Organization {
   expenses            Expense[]
   sales               Sale[]
   livestock           Livestock[]
+  ponds               Pond[]
+  pondStockings       PondStocking[]
+  pondFeedings        PondFeeding[]
+  pondWaterQuality    PondWaterQuality[]
+  pondHarvests        PondHarvest[]
   budgets             Budget[]
   memberships         UserOrganization[]
   roles               Role[]
@@ -175,6 +180,7 @@ model Farm {
   expenses      Expense[]
   sales         Sale[]
   livestock     Livestock[]
+  ponds         Pond[]
   budgets       Budget[]
 
   createdAt DateTime  @default(now())
@@ -595,6 +601,137 @@ model Livestock {
 
   @@index([organizationId])
   @@index([farmId])
+}
+
+model Pond {
+  id             String   @id @default(uuid())
+  organizationId String
+  farmId         String
+
+  name        String
+  pondType    String   @default("FISH") // FISH, SHRIMP, CRAB, MIXED
+  area        Float? // hectares
+  waterSource String?
+  capacity    Int? // estimated stock capacity
+  status      String   @default("active") // active, draining, maintenance, retired
+  notes       String?
+
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  farm           Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  stockings      PondStocking[]
+  feedingRecords PondFeeding[]
+  waterQuality   PondWaterQuality[]
+  harvests       PondHarvest[]
+  deletedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([farmId])
+}
+
+model PondStocking {
+  id                String    @id @default(uuid())
+  organizationId    String
+  pondId            String
+
+  species           String
+  strain            String?
+  count             Int
+  source            String?
+  totalCost         Float?
+  stockedAt         DateTime
+  expectedHarvestAt DateTime?
+  status            String    @default("ongoing") // ongoing, completed, failed
+  notes             String?
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pond         Pond             @relation(fields: [pondId], references: [id], onDelete: Cascade)
+  feedings     PondFeeding[]
+  harvests     PondHarvest[]
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([pondId])
+}
+
+model PondFeeding {
+  id             String   @id @default(uuid())
+  organizationId String
+  pondId         String
+  stockingId     String?
+
+  feedType   String
+  quantityKg Float
+  cost       Float?
+  fedAt      DateTime
+  notes      String?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pond         Pond              @relation(fields: [pondId], references: [id], onDelete: Cascade)
+  stocking     PondStocking?     @relation(fields: [stockingId], references: [id], onDelete: SetNull)
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([pondId])
+  @@index([stockingId])
+}
+
+model PondWaterQuality {
+  id              String   @id @default(uuid())
+  organizationId  String
+  pondId          String
+
+  ph              Float?
+  temperatureC    Float?
+  dissolvedOxygen Float?
+  ammonia         Float?
+  turbidity       Float?
+  recordedAt      DateTime
+  notes           String?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pond         Pond         @relation(fields: [pondId], references: [id], onDelete: Cascade)
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([pondId])
+}
+
+model PondHarvest {
+  id             String   @id @default(uuid())
+  organizationId String
+  pondId         String
+  stockingId     String?
+
+  quantityKg  Float
+  count       Int?
+  unitPrice   Float?
+  revenue     Float?
+  harvestedAt DateTime
+  notes       String?
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pond         Pond              @relation(fields: [pondId], references: [id], onDelete: Cascade)
+  stocking     PondStocking?     @relation(fields: [stockingId], references: [id], onDelete: SetNull)
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([pondId])
+  @@index([stockingId])
 }
 
 model Notification {

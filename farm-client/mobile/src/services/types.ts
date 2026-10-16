@@ -368,6 +368,160 @@ export interface Medication {
   updatedAt: string;
 }
 
+// ─── Aquaculture ──────────────────────────────────────────────────────────────
+
+export type PondType = 'FISH' | 'SHRIMP' | 'CRAB' | 'MIXED';
+export type PondStatus = 'active' | 'draining' | 'maintenance' | 'retired';
+export type PondStockingStatus = 'ongoing' | 'completed' | 'failed';
+
+export interface Pond {
+  id: string;
+  organizationId: string;
+  farmId: string;
+  farm?: Farm;
+  name: string;
+  pondType: PondType;
+  area: number | null;
+  waterSource: string | null;
+  capacity: number | null;
+  status: PondStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePondRequest {
+  name: string;
+  farmId: string;
+  pondType?: PondType;
+  area?: number;
+  waterSource?: string;
+  capacity?: number;
+  status?: PondStatus;
+  notes?: string;
+}
+
+export interface UpdatePondRequest {
+  name?: string;
+  farmId?: string;
+  pondType?: PondType;
+  area?: number;
+  waterSource?: string;
+  capacity?: number;
+  status?: PondStatus;
+  notes?: string;
+}
+
+export interface PondStocking {
+  id: string;
+  pondId: string;
+  species: string;
+  strain: string | null;
+  count: number;
+  source: string | null;
+  totalCost: number | null;
+  stockedAt: string;
+  expectedHarvestAt: string | null;
+  status: PondStockingStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePondStockingRequest {
+  species: string;
+  strain?: string;
+  count: number;
+  source?: string;
+  totalCost?: number;
+  stockedAt: string;
+  expectedHarvestAt?: string;
+  status?: PondStockingStatus;
+  notes?: string;
+}
+
+export interface UpdatePondStockingRequest {
+  species?: string;
+  strain?: string;
+  count?: number;
+  source?: string;
+  totalCost?: number;
+  stockedAt?: string;
+  expectedHarvestAt?: string;
+  status?: PondStockingStatus;
+  notes?: string;
+}
+
+export interface PondFeeding {
+  id: string;
+  pondId: string;
+  stockingId: string | null;
+  feedType: string;
+  quantityKg: number;
+  cost: number | null;
+  fedAt: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePondFeedingRequest {
+  feedType: string;
+  quantityKg: number;
+  cost?: number;
+  fedAt: string;
+  notes?: string;
+  stockingId?: string;
+}
+
+export interface PondWaterQuality {
+  id: string;
+  pondId: string;
+  ph: number | null;
+  temperatureC: number | null;
+  dissolvedOxygen: number | null;
+  ammonia: number | null;
+  turbidity: number | null;
+  recordedAt: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePondWaterQualityRequest {
+  ph?: number;
+  temperatureC?: number;
+  dissolvedOxygen?: number;
+  ammonia?: number;
+  turbidity?: number;
+  recordedAt: string;
+  notes?: string;
+}
+
+export interface PondHarvest {
+  id: string;
+  pondId: string;
+  stockingId: string | null;
+  quantityKg: number;
+  count: number | null;
+  unitPrice: number | null;
+  revenue: number | null;
+  harvestedAt: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePondHarvestRequest {
+  quantityKg: number;
+  count?: number;
+  unitPrice?: number;
+  revenue?: number;
+  harvestedAt: string;
+  notes?: string;
+  stockingId?: string;
+}
+
 // ─── Finance ───────────────────────────────────────────────────────────────────
 
 export interface Expense {

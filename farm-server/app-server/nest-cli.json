@@ -36,6 +36,15 @@
         "tsConfigPath": "tsconfig.json"
       }
     },
+    "aquaculture-service": {
+      "type": "application",
+      "root": "src/microservices",
+      "entryFile": "aquaculture.main",
+      "sourceRoot": "src/microservices",
+      "compilerOptions": {
+        "tsConfigPath": "tsconfig.json"
+      }
+    },
     "poultry-service": {
       "type": "application",
       "root": "src/microservices",

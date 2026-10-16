@@ -5,10 +5,11 @@
   "description": "Microservices - each domain module runs as an independent NestJS HTTP server",
   "main": "dist/microservices/api.main.js",
   "scripts": {
-    "build": "nest build auth-service farm-service livestock-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service api-service domains-service",
+    "build": "nest build auth-service farm-service livestock-service aquaculture-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service api-service domains-service",
     "build:auth": "nest build auth-service",
     "build:farm": "nest build farm-service",
     "build:livestock": "nest build livestock-service",
+    "build:aquaculture": "nest build aquaculture-service",
     "build:poultry": "nest build poultry-service",
     "build:finance": "nest build finance-service",
     "build:hr": "nest build hr-service",
@@ -22,6 +23,7 @@
     "start:auth": "node dist/microservices/auth.main",
     "start:farm": "node dist/microservices/farm.main",
     "start:livestock": "node dist/microservices/livestock.main",
+    "start:aquaculture": "node dist/microservices/aquaculture.main",
     "start:poultry": "node dist/microservices/poultry.main",
     "start:finance": "node dist/microservices/finance.main",
     "start:hr": "node dist/microservices/hr.main",
@@ -34,9 +36,9 @@
     "start:api": "node dist/microservices/api.main",
     "start:domains": "node dist/microservices/domains.main",
     "start:prod": "node ../scripts/start-prod.js",
-    "start:all": "concurrently --names auth,farm,livestock,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"npm run start:auth\" \"npm run start:farm\" \"npm run start:livestock\" \"npm run start:poultry\" \"npm run start:finance\" \"npm run start:hr\" \"npm run start:notification\" \"npm run start:organization\" \"npm run start:platform\" \"npm run start:reporting\" \"npm run start:crop\" \"npm run start:realtime\" \"npm run start:api\"",
+    "start:all": "concurrently --names auth,farm,livestock,aquaculture,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"npm run start:auth\" \"npm run start:farm\" \"npm run start:livestock\" \"npm run start:aquaculture\" \"npm run start:poultry\" \"npm run start:finance\" \"npm run start:hr\" \"npm run start:notification\" \"npm run start:organization\" \"npm run start:platform\" \"npm run start:reporting\" \"npm run start:crop\" \"npm run start:realtime\" \"npm run start:api\"",
     "dev": "nest start --watch",
-    "dev:all": "concurrently --names auth,farm,livestock,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"nest start --watch auth-service\" \"nest start --watch farm-service\" \"nest start --watch livestock-service\" \"nest start --watch poultry-service\" \"nest start --watch finance-service\" \"nest start --watch hr-service\" \"nest start --watch notification-service\" \"nest start --watch organization-service\" \"nest start --watch platform-service\" \"nest start --watch reporting-service\" \"nest start --watch crop-service\" \"nest start --watch realtime-service\" \"nest start --watch api-service\"",
+    "dev:all": "concurrently --names auth,farm,livestock,aquaculture,poultry,finance,hr,notif,org,platform,reporting,crop,realtime,api --kill-others \"nest start --watch auth-service\" \"nest start --watch farm-service\" \"nest start --watch livestock-service\" \"nest start --watch aquaculture-service\" \"nest start --watch poultry-service\" \"nest start --watch finance-service\" \"nest start --watch hr-service\" \"nest start --watch notification-service\" \"nest start --watch organization-service\" \"nest start --watch platform-service\" \"nest start --watch reporting-service\" \"nest start --watch crop-service\" \"nest start --watch realtime-service\" \"nest start --watch api-service\"",
     "start:debug": "nest start --debug --watch"
   },
   "dependencies": {

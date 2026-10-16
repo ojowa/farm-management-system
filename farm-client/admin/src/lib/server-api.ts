@@ -24,6 +24,7 @@ export async function getServerApiClient() {
     farms: client.farms,
     crops: client.crops,
     livestock: client.livestock,
+    aquaculture: client.aquaculture,
     finance: client.finance,
     tasks: client.tasks,
     attendance: client.attendance,

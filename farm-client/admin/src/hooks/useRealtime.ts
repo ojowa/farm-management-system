@@ -7,6 +7,7 @@ type Entity =
   | 'farm'
   | 'crop'
   | 'livestock'
+  | 'aquaculture'
   | 'poultry'
   | 'inventory'
   | 'worker'

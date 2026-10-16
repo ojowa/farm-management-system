@@ -8,8 +8,8 @@
  *
  * - `farmTypes` is DERIVED from `modules` via the same type→module map the
  *   server uses (crop→CROP; livestock→LIVESTOCK + DAIRY; poultry→POULTRY;
- *   AQUACULTURE has no module and rides core `farm`), so the two lists can
- *   never contradict each other.
+ *   aquaculture→AQUACULTURE), so the two lists can never contradict each
+ *   other.
  * - `notification` and `hr` are added (shipped modules no plan listed).
  * - api_access / priority_support move out of `modules` into `perks` — they
  *   are plan benefits, not navigable modules.
@@ -27,15 +27,15 @@ const { PrismaClient } = require('@prisma/client');
 // Keep in lockstep with farmTypesForModules in the database features module
 // and the planData in prisma/seed.ts.
 const FARM_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'];
-const FARM_TYPE_MODULE = { CROP: 'crop', LIVESTOCK: 'livestock', POULTRY: 'poultry', DAIRY: 'livestock', AQUACULTURE: null };
+const FARM_TYPE_MODULE = { CROP: 'crop', LIVESTOCK: 'livestock', POULTRY: 'poultry', DAIRY: 'livestock', AQUACULTURE: 'aquaculture' };
 const PERKS = ['api_access', 'priority_support'];
 
 // Module lists copied from prisma/seed.ts (the aligned source of truth).
 const PLAN_MODULES = {
-  FREE: ['farm', 'crop', 'worker', 'communication', 'reporting', 'notification', 'hr'],
-  BASIC: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting', 'notification', 'hr'],
-  PRO: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr'],
-  ENTERPRISE: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr'],
+  FREE: ['farm', 'crop', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'],
+  BASIC: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'],
+  PRO: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'],
+  ENTERPRISE: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'],
 };
 
 function farmTypesForModules(modules) {

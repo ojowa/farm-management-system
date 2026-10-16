@@ -13,6 +13,9 @@ import { createCropsAPI, createCropStagesAPI, createYieldAPI, createIrrigationAP
 // ── Livestock Management Context ─────────────────────────────────
 import { createLivestockAPI, createLivestockHealthAPI, createBreedingAPI, createWeightAPI, LivestockAPI, LivestockHealthAPI, BreedingAPI, WeightAPI } from './contexts/livestock';
 
+// ── Aquaculture Context ─────────────────────────────────────────
+import { createAquacultureAPI, AquacultureAPI } from './contexts/aquaculture';
+
 // ── Poultry Management Context ───────────────────────────────────
 import { createPoultryAPI, createPoultryHousesAPI, createFeedingRecordsAPI, createVaccinationRecordsAPI, createMortalityRecordsAPI, createEggProductionAPI, createMedicationAPI, createPoultrySalesAPI, PoultryAPI, PoultryHousesAPI, FeedingRecordsAPI, VaccinationRecordsAPI, MortalityRecordsAPI, EggProductionAPI, MedicationAPI, PoultrySalesAPI } from './contexts/poultry';
 
@@ -36,6 +39,7 @@ export type {
   FarmsAPI,
   CropsAPI, CropStagesAPI, YieldAPI, IrrigationAPI, PestDiseaseAPI,
   LivestockAPI, LivestockHealthAPI, BreedingAPI, WeightAPI,
+  AquacultureAPI,
   PoultryAPI, PoultryHousesAPI, FeedingRecordsAPI, VaccinationRecordsAPI, MortalityRecordsAPI, EggProductionAPI, MedicationAPI, PoultrySalesAPI,
   FinanceAPI, ProfitabilityAPI, ContractsAPI, MarketplaceAPI,
   WorkersAPI, TasksAPI, AttendanceAPI, RosterAPI, MessagesAPI, CorrespondenceAPI, LeaveAPI,
@@ -61,6 +65,7 @@ export interface FarmManagementClient {
   livestockHealth: LivestockHealthAPI;
   breeding: BreedingAPI;
   weight: WeightAPI;
+  aquaculture: AquacultureAPI;
   poultry: PoultryAPI;
   poultryHouses: PoultryHousesAPI;
   feedingRecords: FeedingRecordsAPI;
@@ -108,6 +113,7 @@ export function createFarmManagementClient(config: APIClientConfig = {}): FarmMa
     livestockHealth: createLivestockHealthAPI(client),
     breeding: createBreedingAPI(client),
     weight: createWeightAPI(client),
+    aquaculture: createAquacultureAPI(client),
     poultry: createPoultryAPI(client),
     poultryHouses: createPoultryHousesAPI(client),
     feedingRecords: createFeedingRecordsAPI(client),

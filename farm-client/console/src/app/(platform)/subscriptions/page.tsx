@@ -9,12 +9,13 @@ import type { PlatformSubscriptionPlan } from '@/lib/types';
 // Plan modules the platform can sell. Keep in lockstep with the planData in
 // the server's prisma/seed.ts — farmTypes are DERIVED from this selection
 // server-side (crop→CROP, livestock→LIVESTOCK + DAIRY, poultry→POULTRY,
-// AQUACULTURE rides core `farm`), so the two lists can never contradict.
+// aquaculture→AQUACULTURE), so the two lists can never contradict.
 const MODULE_OPTIONS = [
   { key: 'farm', label: 'Farm' },
   { key: 'crop', label: 'Crop' },
   { key: 'livestock', label: 'Livestock' },
   { key: 'poultry', label: 'Poultry' },
+  { key: 'aquaculture', label: 'Aquaculture' },
   { key: 'inventory', label: 'Inventory' },
   { key: 'finance', label: 'Finance' },
   { key: 'worker', label: 'Workers' },

@@ -7,11 +7,10 @@ import { Tractor, Beef, Egg, Droplets, Fish } from 'lucide-react';
  * FARM_TYPES in the server's database features module and the mobile app's
  * src/core/farmTypes.ts.
  *
- * All five types are first-class catalog entries (a type doesn't need its own
- * module to exist). Which of them a plan may CREATE is decided server-side
- * from the plan's modules — DAIRY rides the livestock module, AQUACULTURE
- * rides core `farm` — and arrives as `user.planFeatures.farmTypes`; filter
- * pickers with `farmTypesForPlan`.
+ * All five types are first-class catalog entries. Which of them a plan may
+ * CREATE is decided server-side from the plan's modules — DAIRY rides the
+ * livestock module, AQUACULTURE rides aquaculture — and arrives as
+ * `user.planFeatures.farmTypes`; filter pickers with `farmTypesForPlan`.
  */
 export const FARM_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] as const;
 
@@ -32,7 +31,7 @@ export const FARM_TYPE_META: Record<FarmType, FarmTypeMeta> = {
   LIVESTOCK: { value: 'LIVESTOCK', label: 'Livestock', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Beef, module: 'livestock' },
   POULTRY: { value: 'POULTRY', label: 'Poultry', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Egg, module: 'poultry' },
   DAIRY: { value: 'DAIRY', label: 'Dairy', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Droplets, module: 'livestock' },
-  AQUACULTURE: { value: 'AQUACULTURE', label: 'Aquaculture', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Fish, module: null },
+  AQUACULTURE: { value: 'AQUACULTURE', label: 'Aquaculture', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Fish, module: 'aquaculture' },
 };
 
 /** Rows over every canonical type — for maps, filters, and badge lookups. */

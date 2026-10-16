@@ -75,6 +75,7 @@ export const apiClient = client.client;
 export const farmsAPI = client.farms;
 export const cropsAPI = client.crops;
 export const livestockAPI = client.livestock;
+export const aquacultureAPI = client.aquaculture;
 export const poultryAPI = client.poultry;
 export const inventoryAPI = client.inventory;
 export const workersAPI = client.workers;

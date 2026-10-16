@@ -52,6 +52,9 @@ function buildRoutes(): ServiceRoute[] {
     { path: '/breeding', service: 'livestock-service', port: resolvePort('livestock-service', 4012), baseUrl: resolveBaseUrl('livestock-service', 4012) },
     { path: '/weight', service: 'livestock-service', port: resolvePort('livestock-service', 4012), baseUrl: resolveBaseUrl('livestock-service', 4012) },
 
+    // Aquaculture Context
+    { path: '/aquaculture', service: 'aquaculture-service', port: resolvePort('aquaculture-service', 4021), baseUrl: resolveBaseUrl('aquaculture-service', 4021) },
+
     // Poultry Context
     { path: '/poultry', service: 'poultry-service', port: resolvePort('poultry-service', 4013), baseUrl: resolveBaseUrl('poultry-service', 4013) },
     { path: '/medications', service: 'poultry-service', port: resolvePort('poultry-service', 4013), baseUrl: resolveBaseUrl('poultry-service', 4013) },

@@ -2,11 +2,11 @@ import { PrismaClient } from '@prisma/client';
 
 /**
  * Canonical farm types — the single server-side source of truth for what a
- * farm can be. All five are first-class catalog entries, including types
- * with no module of their own: a type needs a backing module to be
- * NAVIGABLE, not to EXIST. Plan `features.farmTypes` is derived from
- * `features.modules` through FARM_TYPE_MODULE, so the two lists can never
- * contradict each other.
+ * farm can be. All five are first-class catalog entries: a type needs a
+ * backing module to be NAVIGABLE, not to EXIST (a null entry would mean it
+ * rides the core `farm` module; today every type has a module of its own).
+ * Plan `features.farmTypes` is derived from `features.modules` through
+ * FARM_TYPE_MODULE, so the two lists can never contradict each other.
  *
  * Kept in lockstep with: the plan `features` in prisma/seed.ts, the zod
  * `farmTypeEnum` in kernel/validation/farm.schema.ts, and the admin/mobile
@@ -25,16 +25,15 @@ export type FarmType = (typeof FARM_TYPES)[number];
  * - POULTRY → poultry (houses, pens, flocks)
  * - DAIRY → livestock — dairy cattle are livestock; there is no separate
  *   dairy module, so the type ships on the livestock module
- * - AQUACULTURE → null — no dedicated module exists and none is required:
- *   the type ships on the core `farm` module (fields, tasks, inventory,
- *   reporting), so it is available on any plan that includes `farm`
+ * - AQUACULTURE → aquaculture (ponds, stocking, feeding, water quality,
+ *   harvest)
  */
 export const FARM_TYPE_MODULE: Record<FarmType, string | null> = {
   CROP: 'crop',
   LIVESTOCK: 'livestock',
   POULTRY: 'poultry',
   DAIRY: 'livestock',
-  AQUACULTURE: null,
+  AQUACULTURE: 'aquaculture',
 };
 
 /**

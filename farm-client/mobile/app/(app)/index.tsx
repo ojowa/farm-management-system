@@ -332,6 +332,22 @@ export default function DashboardScreen() {
 
             <Card
               style={[styles.quickActionCard, dynamicStyles.cardBackground]}
+              onPress={() => router.push('/aquaculture')}
+              accessibilityLabel="Navigate to Aquaculture"
+            >
+              <View style={styles.quickActionRow}>
+                <View style={styles.quickActionText}>
+                  <Text style={[styles.quickActionTitle, dynamicStyles.actionTitle]}>Aquaculture</Text>
+                  <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>
+                    Manage ponds, stocking and harvests
+                  </Text>
+                </View>
+                <Text style={styles.quickActionIcon}>🐟</Text>
+              </View>
+            </Card>
+
+            <Card
+              style={[styles.quickActionCard, dynamicStyles.cardBackground]}
               onPress={() => router.push('/finance')}
               accessibilityLabel="Navigate to Finance"
             >

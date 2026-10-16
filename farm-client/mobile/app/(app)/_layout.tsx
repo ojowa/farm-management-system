@@ -78,6 +78,7 @@ export default function AppLayout() {
       {/* Hide sub-screens from tab bar */}
       <Tabs.Screen name="crops" options={{ href: null }} />
       <Tabs.Screen name="livestock" options={{ href: null }} />
+      <Tabs.Screen name="aquaculture" options={{ href: null }} />
       <Tabs.Screen name="irrigation" options={{ href: null }} />
       <Tabs.Screen name="roster" options={{ href: null }} />
       <Tabs.Screen name="attendance" options={{ href: null }} />

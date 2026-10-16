@@ -4,10 +4,10 @@
  * in the server's database features module and the admin app's
  * farm-client/admin/src/lib/farmTypes.ts.
  *
- * All five types are first-class catalog entries (a type doesn't need its own
- * module to exist). Which of them a plan may CREATE is decided server-side
- * from the plan's modules — DAIRY rides the livestock module, AQUACULTURE
- * rides core `farm` — and arrives as `user.planFeatures.farmTypes`.
+ * All five types are first-class catalog entries. Which of them a plan may
+ * CREATE is decided server-side from the plan's modules — DAIRY rides the
+ * livestock module, AQUACULTURE rides aquaculture — and arrives as
+ * `user.planFeatures.farmTypes`.
  */
 export const FARM_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] as const;
 

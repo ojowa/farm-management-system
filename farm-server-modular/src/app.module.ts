@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth';
 import { FarmModule } from './modules/farm';
 import { CropModule } from './modules/crop';
 import { LivestockModule } from './modules/livestock';
+import { AquacultureModule } from './modules/aquaculture';
 import { PoultryModule } from './modules/poultry';
 import { FinanceModule } from './modules/finance';
 import { HrModule } from './modules/hr';
@@ -46,6 +47,7 @@ import { ApiExceptionFilter } from './core/http/filters/api-exception.filter';
     FarmModule,
     CropModule,
     LivestockModule,
+    AquacultureModule,
     PoultryModule,
     FinanceModule,
     HrModule,

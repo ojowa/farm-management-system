@@ -74,6 +74,66 @@ export const livestockFormSchema = z.object({
 
 export type LivestockFormInput = z.infer<typeof livestockFormSchema>;
 
+export const pondFormSchema = z.object({
+  name: z.string().min(1, 'Pond name is required'),
+  farmId: z.string().min(1, 'Farm is required'),
+  pondType: z.string().optional(),
+  area: z.string().optional(),
+  waterSource: z.string().optional(),
+  capacity: z.string().optional(),
+  status: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type PondFormInput = z.infer<typeof pondFormSchema>;
+
+export const pondStockingFormSchema = z.object({
+  species: z.string().min(1, 'Species is required'),
+  strain: z.string().optional(),
+  count: z.string().min(1, 'Count is required'),
+  source: z.string().optional(),
+  totalCost: z.string().optional(),
+  stockedAt: z.string().min(1, 'Stocked date is required'),
+  expectedHarvestAt: z.string().optional(),
+  status: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type PondStockingFormInput = z.infer<typeof pondStockingFormSchema>;
+
+export const pondFeedingFormSchema = z.object({
+  feedType: z.string().min(1, 'Feed type is required'),
+  quantityKg: z.string().min(1, 'Quantity is required'),
+  cost: z.string().optional(),
+  fedAt: z.string().min(1, 'Feed date is required'),
+  notes: z.string().optional(),
+});
+
+export type PondFeedingFormInput = z.infer<typeof pondFeedingFormSchema>;
+
+export const pondWaterQualityFormSchema = z.object({
+  recordedAt: z.string().min(1, 'Recorded date is required'),
+  ph: z.string().optional(),
+  temperatureC: z.string().optional(),
+  dissolvedOxygen: z.string().optional(),
+  ammonia: z.string().optional(),
+  turbidity: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type PondWaterQualityFormInput = z.infer<typeof pondWaterQualityFormSchema>;
+
+export const pondHarvestFormSchema = z.object({
+  harvestedAt: z.string().min(1, 'Harvest date is required'),
+  quantityKg: z.string().min(1, 'Quantity is required'),
+  count: z.string().optional(),
+  unitPrice: z.string().optional(),
+  revenue: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type PondHarvestFormInput = z.infer<typeof pondHarvestFormSchema>;
+
 export const poultryHouseFormSchema = z.object({
   name: z.string().min(1, 'House name is required'),
   farmId: z.string().min(1, 'Farm is required'),

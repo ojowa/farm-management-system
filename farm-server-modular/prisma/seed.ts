@@ -81,6 +81,9 @@ async function main() {
     { name: 'poultry.read', description: 'View poultry flocks and records', category: 'Poultry' },
     { name: 'poultry.write', description: 'Create and edit poultry data', category: 'Poultry' },
     { name: 'poultry.delete', description: 'Delete poultry records', category: 'Poultry' },
+    { name: 'aquaculture.read', description: 'View ponds and aquaculture records', category: 'Aquaculture' },
+    { name: 'aquaculture.write', description: 'Create and edit aquaculture records', category: 'Aquaculture' },
+    { name: 'aquaculture.delete', description: 'Delete aquaculture records', category: 'Aquaculture' },
     { name: 'inventory.read', description: 'View inventory items', category: 'Inventory' },
     { name: 'inventory.write', description: 'Create and edit inventory', category: 'Inventory' },
     { name: 'inventory.delete', description: 'Delete inventory items', category: 'Inventory' },
@@ -139,6 +142,7 @@ async function main() {
       'crop.read', 'crop.write', 'crop.delete',
       'livestock.read', 'livestock.write', 'livestock.delete',
       'poultry.read', 'poultry.write', 'poultry.delete',
+      'aquaculture.read', 'aquaculture.write', 'aquaculture.delete',
       'inventory.read', 'inventory.write', 'inventory.delete',
       'finance.read', 'finance.write', 'finance.delete',
       'worker.read', 'worker.write', 'worker.delete',
@@ -154,6 +158,7 @@ async function main() {
       'crop.read', 'crop.write', 'crop.delete',
       'livestock.read', 'livestock.write', 'livestock.delete',
       'poultry.read', 'poultry.write', 'poultry.delete',
+      'aquaculture.read', 'aquaculture.write', 'aquaculture.delete',
       'inventory.read', 'inventory.write',
       'finance.read', 'finance.write',
       'worker.read', 'worker.write',
@@ -167,13 +172,14 @@ async function main() {
       'farm.read', 'crop.read', 'crop.write',
       'livestock.read', 'livestock.write',
       'poultry.read', 'poultry.write',
+      'aquaculture.read', 'aquaculture.write',
       'worker.read', 'worker.write',
       'communication.read', 'reporting.read',
       'notification.read',
       'hr.read', 'leave.read', 'leave.write',
     ],
-    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'farm.read', 'hr.read'],
-    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'inventory.read', 'worker.read', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
+    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'aquaculture.read', 'aquaculture.write', 'farm.read', 'hr.read'],
+    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'aquaculture.read', 'inventory.read', 'worker.read', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
   }
 
   for (const [roleName, perms] of Object.entries(rolePermissions)) {
@@ -205,7 +211,7 @@ async function main() {
   // 4. Create Subscription Plans
   // `features.farmTypes` is DERIVED from `features.modules` via
   // farmTypesForModules (crop→CROP; livestock→LIVESTOCK + DAIRY;
-  // poultry→POULTRY; AQUACULTURE has no module and rides core `farm`), so
+  // poultry→POULTRY; aquaculture→AQUACULTURE), so
   // the two lists can never contradict each other. api_access and
   // priority_support are plan perks, not modules, so they live under
   // `features.perks`. notification and hr ship on every plan (org creation
@@ -215,25 +221,25 @@ async function main() {
     {
       name: 'FREE', displayName: 'Free Plan', description: 'Basic features for small farms',
       price: 0, currency: 'USD', billingCycle: 'NONE', maxUsers: 3, maxFarms: 1, maxStorage: 100,
-      features: { modules: ['farm', 'crop', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'AQUACULTURE'] },
+      features: { modules: ['farm', 'crop', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'], farmTypes: ['CROP', 'AQUACULTURE'] },
       sortOrder: 0,
     },
     {
       name: 'BASIC', displayName: 'Basic Plan', description: 'Essential features for growing farms',
       price: 29.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 10, maxFarms: 3, maxStorage: 500,
-      features: { modules: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'LIVESTOCK', 'DAIRY', 'AQUACULTURE'] },
+      features: { modules: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'], farmTypes: ['CROP', 'LIVESTOCK', 'DAIRY', 'AQUACULTURE'] },
       sortOrder: 1,
     },
     {
       name: 'PRO', displayName: 'Professional Plan', description: 'Advanced features for professional farm management',
       price: 79.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 50, maxFarms: 20, maxStorage: 5120,
-      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] },
+      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] },
       sortOrder: 2,
     },
     {
       name: 'ENTERPRISE', displayName: 'Enterprise Plan', description: 'Unlimited features for large organizations',
       price: 199.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 999999, maxFarms: 999999, maxStorage: 51200,
-      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'], perks: ['api_access', 'priority_support'] },
+      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr', 'aquaculture'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'], perks: ['api_access', 'priority_support'] },
       sortOrder: 3,
     },
   ]
@@ -252,6 +258,7 @@ async function main() {
     { key: 'crop.enabled', name: 'Crop Management', category: 'module', description: 'Crops, crop cycles, irrigation, pest & disease, yield' },
     { key: 'livestock.enabled', name: 'Livestock Management', category: 'module', description: 'Livestock, health, breeding, weight tracking' },
     { key: 'poultry.enabled', name: 'Poultry Management', category: 'module', description: 'Flocks, feeding, vaccination, mortality' },
+    { key: 'aquaculture.enabled', name: 'Aquaculture Management', category: 'module', description: 'Ponds, stocking, feeding, water quality, harvest' },
     { key: 'inventory.enabled', name: 'Inventory Management', category: 'module', description: 'Stock, equipment, low stock alerts' },
     { key: 'finance.enabled', name: 'Finance Management', category: 'module', description: 'Expenses, sales, profitability, contracts, marketplace' },
     { key: 'worker.enabled', name: 'Worker Management', category: 'module', description: 'Workers, tasks, attendance, leave, roster, shifts' },

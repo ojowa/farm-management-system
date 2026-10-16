@@ -62,6 +62,18 @@ import type {
   Medication,
   Organization,
   ListParams,
+  Pond,
+  CreatePondRequest,
+  UpdatePondRequest,
+  PondStocking,
+  CreatePondStockingRequest,
+  UpdatePondStockingRequest,
+  PondFeeding,
+  CreatePondFeedingRequest,
+  PondWaterQuality,
+  CreatePondWaterQualityRequest,
+  PondHarvest,
+  CreatePondHarvestRequest,
 } from './types';
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -331,6 +343,47 @@ export const livestockHealthAPI = {
     http.put(`/health/vaccinations/${id}/administer`),
   overdueVaccinations: () =>
     http.get<VaccinationSchedule[]>('/health/overdue'),
+};
+
+// ─── Aquaculture ──────────────────────────────────────────────────────────────
+
+export const aquacultureAPI = {
+  listPonds: (params?: ListParams & { farmId?: string; status?: string }) =>
+    http.get<{ data: Pond[]; total: number }>('/aquaculture/ponds', { params }),
+  getPond: (id: string) =>
+    http.get<Pond>(`/aquaculture/ponds/${id}`),
+  createPond: (data: CreatePondRequest) =>
+    http.post<Pond>('/aquaculture/ponds', data),
+  updatePond: (id: string, data: UpdatePondRequest) =>
+    http.put<Pond>(`/aquaculture/ponds/${id}`, data),
+  deletePond: (id: string) =>
+    http.delete(`/aquaculture/ponds/${id}`),
+  listStockings: (pondId: string) =>
+    http.get<PondStocking[]>(`/aquaculture/ponds/${pondId}/stockings`),
+  createStocking: (pondId: string, data: CreatePondStockingRequest) =>
+    http.post<PondStocking>(`/aquaculture/ponds/${pondId}/stockings`, data),
+  updateStocking: (id: string, data: UpdatePondStockingRequest) =>
+    http.put<PondStocking>(`/aquaculture/stockings/${id}`, data),
+  deleteStocking: (id: string) =>
+    http.delete(`/aquaculture/stockings/${id}`),
+  listFeedings: (pondId: string) =>
+    http.get<PondFeeding[]>(`/aquaculture/ponds/${pondId}/feedings`),
+  createFeeding: (pondId: string, data: CreatePondFeedingRequest) =>
+    http.post<PondFeeding>(`/aquaculture/ponds/${pondId}/feedings`, data),
+  deleteFeeding: (id: string) =>
+    http.delete(`/aquaculture/feedings/${id}`),
+  listWaterQuality: (pondId: string) =>
+    http.get<PondWaterQuality[]>(`/aquaculture/ponds/${pondId}/water-quality`),
+  createWaterQuality: (pondId: string, data: CreatePondWaterQualityRequest) =>
+    http.post<PondWaterQuality>(`/aquaculture/ponds/${pondId}/water-quality`, data),
+  deleteWaterQuality: (id: string) =>
+    http.delete(`/aquaculture/water-quality/${id}`),
+  listHarvests: (pondId: string) =>
+    http.get<PondHarvest[]>(`/aquaculture/ponds/${pondId}/harvests`),
+  createHarvest: (pondId: string, data: CreatePondHarvestRequest) =>
+    http.post<PondHarvest>(`/aquaculture/ponds/${pondId}/harvests`, data),
+  deleteHarvest: (id: string) =>
+    http.delete(`/aquaculture/harvests/${id}`),
 };
 
 // ─── Breeding ──────────────────────────────────────────────────────────────────

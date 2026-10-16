@@ -45,6 +45,11 @@ export class GatewayProxyService {
       routes: ['livestock', 'health', 'breeding', 'weight'],
     },
     {
+      name: 'aquaculture',
+      baseUrl: process.env.AQUACULTURE_SERVICE_URL || 'http://localhost:4021',
+      routes: ['aquaculture'],
+    },
+    {
       name: 'poultry',
       baseUrl: process.env.POULTRY_SERVICE_URL || 'http://localhost:4013',
       routes: ['poultry', 'pens', 'breeds', 'flocks', 'poultry-houses', 'feeding-records', 'vaccination-records', 'mortality-records', 'medications', 'egg-production', 'poultry-sales'],
