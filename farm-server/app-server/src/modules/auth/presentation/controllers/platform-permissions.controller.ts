@@ -1,8 +1,11 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { PermissionsService } from '../../application/services/permissions.service';
+import { PlatformAdminGuard } from '../../../platform/presentation/guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+// Platform console only (PlatformAdminGuard): the full permission catalog
+// incl. platform permissions — org staff never reach it.
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PlatformAdminGuard)
 @Controller('platform-permissions')
 export class PlatformPermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}

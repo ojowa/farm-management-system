@@ -1,8 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { RolesService } from '../../application/services/roles.service';
+import { PlatformAdminGuard } from '../../../platform/presentation/guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+// Platform console only (PlatformAdminGuard): platform-wide roles incl.
+// platform roles and every organization's roles — org staff never reach it.
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PlatformAdminGuard)
 @Controller('platform-roles')
 export class PlatformRolesController {
   constructor(private readonly rolesService: RolesService) {}

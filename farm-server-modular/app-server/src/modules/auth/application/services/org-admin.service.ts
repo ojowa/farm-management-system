@@ -14,7 +14,9 @@ export class OrgAdminService {
   private async assertRoleUsable(organizationId: string, roleId: string): Promise<void> {
     if (!organizationId || !roleId) throw new BadRequestException('Unknown role');
     const role = await prisma.role.findUnique({ where: { id: roleId } });
-    if (!role || (role.organizationId && role.organizationId !== organizationId)) {
+    // Platform roles are never assignable inside an organization — they
+    // answer with the same 'Unknown role' as anything invisible to the org.
+    if (!role || role.isPlatformAdmin || (role.organizationId && role.organizationId !== organizationId)) {
       throw new BadRequestException('Unknown role');
     }
   }
@@ -105,8 +107,14 @@ export class OrgAdminService {
   }
 
   async listRoles(organizationId: string) {
+    const orgId = organizationId || null;
     return prisma.role.findMany({
-      where: { OR: [{ organizationId: null }, { organizationId }] },
+      where: {
+        // Platform roles (SUPER_ADMIN/SUPPORT_ADMIN) belong to the platform
+        // console — an organization only ever sees org-applicable roles.
+        NOT: { isPlatformAdmin: true },
+        OR: [{ organizationId: null }, ...(orgId ? [{ organizationId: orgId }] : [])],
+      },
       include: { _count: { select: { users: true } } },
     });
   }
@@ -119,9 +127,10 @@ export class OrgAdminService {
   async updateRole(organizationId: string, roleId: string, data: { name?: string; description?: string }) {
     const role = await prisma.role.findUnique({ where: { id: roleId } });
     if (!role) throw new NotFoundException('Role not found');
-    // Ownership: custom roles of other organizations read as not-found.
-    // Global roles (organizationId null) fall through to the isSystem guard.
-    if (!organizationId || (role.organizationId && role.organizationId !== organizationId)) {
+    // Ownership: platform roles and other organizations' custom roles read
+    // as not-found. Org-applicable system roles fall through to the isSystem
+    // guard below.
+    if (!organizationId || role.isPlatformAdmin || (role.organizationId && role.organizationId !== organizationId)) {
       throw new NotFoundException('Role not found');
     }
     if (role.isSystem) throw new BadRequestException('System roles cannot be modified');
@@ -137,7 +146,7 @@ export class OrgAdminService {
       include: { _count: { select: { users: true } } },
     });
     if (!role) throw new NotFoundException('Role not found');
-    if (!organizationId || (role.organizationId && role.organizationId !== organizationId)) {
+    if (!organizationId || role.isPlatformAdmin || (role.organizationId && role.organizationId !== organizationId)) {
       throw new NotFoundException('Role not found');
     }
     if (role.isSystem) throw new BadRequestException('System roles cannot be deleted');

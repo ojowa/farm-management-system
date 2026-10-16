@@ -17,8 +17,17 @@ export default function PermissionsPage() {
   async function loadPermissions() {
     try {
       const { data } = await permissionsAPI.list();
-      setGrouped(data.grouped || {});
-      setExpandedCategories(new Set(Object.keys(data.grouped || {})));
+      // The endpoint returns a flat array of permissions (an older shape used
+      // `{ grouped }`); group by category here so the org's permissions render.
+      const rows: any[] = Array.isArray(data) ? data : Object.values((data as any)?.grouped || {}).flat();
+      const byCategory: Record<string, any[]> = {};
+      for (const perm of rows) {
+        const category = perm.category || 'General';
+        if (!byCategory[category]) byCategory[category] = [];
+        byCategory[category].push(perm);
+      }
+      setGrouped(byCategory);
+      setExpandedCategories(new Set(Object.keys(byCategory)));
     } catch (err: any) {
       toast({ type: 'error', title: 'Failed to load permissions', message: err.response?.data?.message || 'An error occurred' });
     }
