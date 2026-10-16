@@ -17,38 +17,40 @@ module — so you can compare, migrate, or A/B the two backends.
 
 ```
 farm-server-modular/
-├── package.json                  # workspaces: app-server + packages/server/*
+├── package.json                  # single package: all deps + scripts (no workspaces)
+├── nest-cli.json                 # single project, entryFile "main"
+├── tsconfig.json                 # extends ../tsconfig.base.json
+├── prisma.config.ts              # schema + seed under prisma/
 ├── render.yaml                   # single-process Render blueprint
 ├── server.js                     # Vercel entry (wraps the one Nest app)
 ├── scripts/start-prod.js         # spawns exactly one child: dist/main.js
-├── app-server/
-│   ├── nest-cli.json             # single project, entryFile "main"
-│   └── src/
-│       ├── main.ts               # bootstrap: CORS, helmet, /v1 prefix, Swagger
-│       ├── app.module.ts         # composition root: wires everything below
-│       ├── core/                 # application kernel (shared by all modules)
-│       │   ├── common/sort.ts    #   safeOrderBy query helper
-│       │   └── http/
-│       │       ├── health.controller.ts
-│       │       ├── middleware/   #   api-alias, request-id, device-info,
-│       │       │                 #   auth (JWT → req.verifiedUser), rls-context
-│       │       ├── interceptors/ #   envelope.interceptor ({success,data,…})
-│       │       └── filters/      #   api-exception.filter (single error shape)
-│       ├── shared/
-│       │   └── storage/          # S3/local object storage (StorageModule)
-│       └── modules/              # ← bounded contexts (the "modular" part)
-│           ├── auth/ crop/ farm/ finance/ hr/ livestock/
-│           ├── notification/ organization/ platform/ poultry/
-│           ├── reporting/ weather/
-│           └── realtime/         #   in-process EventBus + WebSocket gateway
-└── packages/server/              # shared libraries (unchanged from farm-server)
-    ├── auth/          # @farm/auth-server      — JWT + Nest guards
-    ├── database/      # @farm/database        — Prisma client + RLS middleware
-    ├── domain-core/   # @farm/domain-core     — DDD building blocks
-    ├── env/           # @farm/env             — .env loader
-    ├── types/         # @farm/types-server
-    ├── utils/         # @farm/utils           — handleError, ZodValidationPipe
-    └── validation/    # @farm/validation-server — zod schemas
+├── prisma/                       # schema.prisma, migrations/, seed.ts
+├── uploads/                      # local-disk uploads (STORAGE_DRIVER=local)
+└── src/
+    ├── main.ts               # bootstrap: CORS, helmet, /v1 prefix, Swagger
+    ├── app.module.ts         # composition root: wires everything below
+    ├── kernel/               # inlined shared libs (was packages/server/*)
+    │   ├── auth/             #   JWT + Nest guards
+    │   ├── database/         #   Prisma client + RLS middleware
+    │   ├── env/              #   .env loader
+    │   ├── types/            #   shared server types
+    │   ├── utils/            #   handleError, ZodValidationPipe
+    │   └── validation/       #   zod schemas
+    ├── core/                 # application kernel (shared by all modules)
+    │   ├── common/sort.ts    #   safeOrderBy query helper
+    │   └── http/
+    │       ├── health.controller.ts
+    │       ├── middleware/   #   api-alias, request-id, device-info,
+    │       │                 #   auth (JWT → req.verifiedUser), rls-context
+    │       ├── interceptors/ #   envelope.interceptor ({success,data,…})
+    │       └── filters/      #   api-exception.filter (single error shape)
+    ├── shared/
+    │   └── storage/          # S3/local object storage (StorageModule)
+    └── modules/              # ← bounded contexts (the "modular" part)
+        ├── auth/ crop/ farm/ finance/ hr/ livestock/
+        ├── notification/ organization/ platform/ poultry/
+        ├── reporting/ weather/
+        └── realtime/         #   in-process EventBus + WebSocket gateway
 ```
 
 ## Module rules (what makes it a modular monolith)
@@ -87,8 +89,8 @@ farm-server-modular/
 ## Commands
 
 ```bash
-npm ci                 # install workspaces
-npm run build          # build shared packages + app (dist/main.js)
+npm ci                 # install (single package)
+npm run build          # prisma generate + nest build → dist/main.js
 npm run start:dev      # nest start --watch (port API_SERVICE_PORT || 4022)
 npm run start          # node dist/main.js
 npm run migrate        # prisma migrate deploy

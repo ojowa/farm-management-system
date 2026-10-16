@@ -3,8 +3,7 @@ import { defineConfig } from 'prisma/config';
 
 /**
  * Prisma config for the modular monolith — the schema, migrations and seed
- * all live in `app-server/prisma` (previously a separate @farm/database
- * workspace).
+ * all live in `prisma/` (previously a separate @farm/database workspace).
  */
 export default defineConfig({
   schema: path.join(__dirname, 'prisma', 'schema.prisma'),

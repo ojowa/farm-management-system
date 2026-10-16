@@ -9,7 +9,7 @@
 #   → Deploy Blueprint
 #
 # Topology note: this is a MODULAR MONOLITH — one Node process
-# (scripts/start-prod.js → app-server/dist/main.js) serves every bounded
+# (scripts/start-prod.js → dist/main.js) serves every bounded
 # context behind a single /v1 surface. There is no gateway and no
 # *_SERVICE_URL routing; do not copy those variables from the old
 # farm-server blueprint.
@@ -30,8 +30,8 @@ services:
     runtime: node
     plan: free
     # Working directory is farm-server-modular; the repo root is still checked
-    # out, so app-server/tsconfig.json (../../) and packages/server/*/tsconfig
-    # files (../../../../) reach the shared tsconfig.base.json at the repo root.
+    # out, so tsconfig.json (../) reaches the shared tsconfig.base.json at the
+    # repo root.
     rootDir: farm-server-modular
     # --include=dev is REQUIRED: NODE_ENV=production (env var below) is visible
     # at build time, and npm then skips devDependencies — which removes

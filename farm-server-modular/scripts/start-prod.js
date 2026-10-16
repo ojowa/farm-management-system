@@ -4,7 +4,7 @@ const path = require('path');
 // Modular monolith: one process, one HTTP surface.
 const target = {
   name: 'app',
-  script: path.join(__dirname, '..', 'app-server', 'dist', 'main.js'),
+  script: path.join(__dirname, '..', 'dist', 'main.js'),
   heap: process.env.APP_HEAP_MB || '512',
 };
 

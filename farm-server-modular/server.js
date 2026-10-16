@@ -12,12 +12,12 @@
  * The first request after a cold start pays for the Nest/Prisma startup;
  * later requests reuse the warm process (Fluid compute keeps it alive).
  */
-const { loadEnv } = require('./app-server/dist/kernel/env');
+const { loadEnv } = require('./dist/kernel/env');
 loadEnv();
 
 const http = require('http');
 const { Server: SocketIOServer } = require('socket.io');
-const { verifyAccessToken } = require('./app-server/dist/kernel/auth');
+const { verifyAccessToken } = require('./dist/kernel/auth');
 
 let readyPromise = null;
 
@@ -25,7 +25,7 @@ function bootstrap() {
   if (!readyPromise) {
     readyPromise = (async () => {
       console.log('[server.js] booting modular monolith (require + Nest init)...');
-      const { createApp } = require('./app-server/dist/main.js');
+      const { createApp } = require('./dist/main.js');
       const app = await createApp();
       console.log('[server.js] monolith initialized');
       // The underlying Express instance is a (req, res) handler once Nest
