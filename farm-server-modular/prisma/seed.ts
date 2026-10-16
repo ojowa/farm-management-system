@@ -203,29 +203,37 @@ async function main() {
   }
 
   // 4. Create Subscription Plans
+  // `features.farmTypes` is DERIVED from `features.modules` via
+  // farmTypesForModules (crop→CROP; livestock→LIVESTOCK + DAIRY;
+  // poultry→POULTRY; AQUACULTURE has no module and rides core `farm`), so
+  // the two lists can never contradict each other. api_access and
+  // priority_support are plan perks, not modules, so they live under
+  // `features.perks`. notification and hr ship on every plan (org creation
+  // seeds leave types for everyone; every user has notification access).
+  // Keep in lockstep with scripts/align-plan-features.js.
   const planData = [
     {
       name: 'FREE', displayName: 'Free Plan', description: 'Basic features for small farms',
       price: 0, currency: 'USD', billingCycle: 'NONE', maxUsers: 3, maxFarms: 1, maxStorage: 100,
-      features: { modules: ['farm', 'crop', 'worker', 'communication', 'reporting'], farmTypes: ['CROP'] },
+      features: { modules: ['farm', 'crop', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'AQUACULTURE'] },
       sortOrder: 0,
     },
     {
       name: 'BASIC', displayName: 'Basic Plan', description: 'Essential features for growing farms',
       price: 29.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 10, maxFarms: 3, maxStorage: 500,
-      features: { modules: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting'], farmTypes: ['CROP', 'LIVESTOCK'] },
+      features: { modules: ['farm', 'crop', 'livestock', 'inventory', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'LIVESTOCK', 'DAIRY', 'AQUACULTURE'] },
       sortOrder: 1,
     },
     {
       name: 'PRO', displayName: 'Professional Plan', description: 'Advanced features for professional farm management',
       price: 79.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 50, maxFarms: 20, maxStorage: 5120,
-      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY'] },
+      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] },
       sortOrder: 2,
     },
     {
       name: 'ENTERPRISE', displayName: 'Enterprise Plan', description: 'Unlimited features for large organizations',
       price: 199.99, currency: 'USD', billingCycle: 'MONTHLY', maxUsers: 999999, maxFarms: 999999, maxStorage: 51200,
-      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'api_access', 'priority_support'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] },
+      features: { modules: ['farm', 'crop', 'livestock', 'poultry', 'inventory', 'finance', 'worker', 'communication', 'reporting', 'notification', 'hr'], farmTypes: ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'], perks: ['api_access', 'priority_support'] },
       sortOrder: 3,
     },
   ]

@@ -16,6 +16,7 @@ import { Card, Button, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { setSelectedFarmId, setFarmsFilter } from '@/store/slices/uiSlice';
+import { FARM_TYPE_COLORS, FARM_TYPE_LABELS } from '@/core/farmTypes';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -95,22 +96,6 @@ const styles = StyleSheet.create({
 });
 
 type FarmFilter = 'all' | 'active' | 'inactive';
-
-const FARM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  CROP: { bg: '#DCFCE7', text: '#166534' },
-  LIVESTOCK: { bg: '#FEF3C7', text: '#92400E' },
-  POULTRY: { bg: '#FFEDD5', text: '#9A3412' },
-  DAIRY: { bg: '#DBEAFE', text: '#1E40AF' },
-  AQUACULTURE: { bg: '#CFFAFE', text: '#155E75' },
-};
-
-const FARM_TYPE_LABELS: Record<string, string> = {
-  CROP: 'Crop',
-  LIVESTOCK: 'Livestock',
-  POULTRY: 'Poultry',
-  DAIRY: 'Dairy',
-  AQUACULTURE: 'Aquaculture',
-};
 
 const keyExtractor = (item: any) => item.id;
 

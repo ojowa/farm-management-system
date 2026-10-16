@@ -13,21 +13,19 @@ import { useToast } from '@/lib/toasts';
 import { farmFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
-
-const ALL_FARM_TYPES = [
-  { value: 'CROP', label: 'Crop' },
-  { value: 'LIVESTOCK', label: 'Livestock' },
-  { value: 'POULTRY', label: 'Poultry' },
-  { value: 'DAIRY', label: 'Dairy' },
-  { value: 'AQUACULTURE', label: 'Aquaculture' },
-];
+import { useAuth } from '@/lib/auth';
+import { FARM_TYPE_OPTIONS, farmTypesForPlan } from '@/lib/farmTypes';
 
 export default function NewFarmPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { canCreate } = usePermission();
+  const { user } = useAuth();
   const readOnly = !canCreate('farm');
-  const allowedFarmTypes = undefined;
+  // Plan-filtered picker: only farm types the org's plan includes are
+  // offered (undefined = no filtering, e.g. plan features not yet received).
+  // The server re-checks the plan on create.
+  const allowedFarmTypes = farmTypesForPlan(user?.planFeatures);
 
   if (readOnly) {
     router.push('/farms');
@@ -120,7 +118,7 @@ export default function NewFarmPage() {
               </label>
               <Select
                 placeholder="Select farm type"
-                options={ALL_FARM_TYPES}
+                options={FARM_TYPE_OPTIONS.filter((t) => !allowedFarmTypes || allowedFarmTypes.includes(t.value))}
                 value={form.farmType}
                 onChange={(e) => {
                   setForm({ ...form, farmType: e.target.value });

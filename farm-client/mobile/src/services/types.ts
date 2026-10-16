@@ -72,8 +72,11 @@ export interface User {
   isPlatformAdmin?: boolean;
   planFeatures?: {
     modules: string[];
+    farmTypes?: string[];
     maxFarms?: number;
     maxWorkers?: number;
+    maxUsers?: number;
+    maxStorage?: number;
   };
   permissions?: string[];
 }

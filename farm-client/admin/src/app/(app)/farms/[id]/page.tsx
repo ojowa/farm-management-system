@@ -27,13 +27,7 @@ import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
 
-const FARM_TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  CROP: { label: 'Crop', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Tractor },
-  LIVESTOCK: { label: 'Livestock', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Beef },
-  POULTRY: { label: 'Poultry', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Egg },
-  DAIRY: { label: 'Dairy', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Droplets },
-  AQUACULTURE: { label: 'Aquaculture', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Fish },
-};
+import { FARM_TYPE_MAP as FARM_TYPE_CONFIG } from '@/lib/farmTypes';
 
 interface Farm {
   id: string;

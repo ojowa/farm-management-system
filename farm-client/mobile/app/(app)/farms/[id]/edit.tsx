@@ -16,6 +16,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { FARM_TYPE_COLORS, FARM_TYPE_LABELS } from '@/core/farmTypes';
 
 const styles = StyleSheet.create({
   container: {
@@ -96,22 +97,6 @@ interface FarmData {
   size: number;
   status: 'active' | 'inactive';
 }
-
-const FARM_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  CROP: { bg: '#DCFCE7', text: '#166534' },
-  LIVESTOCK: { bg: '#FEF3C7', text: '#92400E' },
-  POULTRY: { bg: '#FFEDD5', text: '#9A3412' },
-  DAIRY: { bg: '#DBEAFE', text: '#1E40AF' },
-  AQUACULTURE: { bg: '#CFFAFE', text: '#155E75' },
-};
-
-const FARM_TYPE_LABELS: Record<string, string> = {
-  CROP: 'Crop',
-  LIVESTOCK: 'Livestock',
-  POULTRY: 'Poultry',
-  DAIRY: 'Dairy',
-  AQUACULTURE: 'Aquaculture',
-};
 
 export default function EditFarmScreen() {
   const router = useRouter();

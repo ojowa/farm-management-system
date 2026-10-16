@@ -6,11 +6,53 @@ import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 import { Dialog } from '@/components/ui/dialog';
 import type { PlatformSubscriptionPlan } from '@/lib/types';
 
+// Plan modules the platform can sell. Keep in lockstep with the planData in
+// the server's prisma/seed.ts — farmTypes are DERIVED from this selection
+// server-side (crop→CROP, livestock→LIVESTOCK + DAIRY, poultry→POULTRY,
+// AQUACULTURE rides core `farm`), so the two lists can never contradict.
+const MODULE_OPTIONS = [
+  { key: 'farm', label: 'Farm' },
+  { key: 'crop', label: 'Crop' },
+  { key: 'livestock', label: 'Livestock' },
+  { key: 'poultry', label: 'Poultry' },
+  { key: 'inventory', label: 'Inventory' },
+  { key: 'finance', label: 'Finance' },
+  { key: 'worker', label: 'Workers' },
+  { key: 'communication', label: 'Communication' },
+  { key: 'reporting', label: 'Reporting' },
+  { key: 'notification', label: 'Notifications' },
+  { key: 'hr', label: 'HR / Leave' },
+];
+
+const PERK_OPTIONS = [
+  { key: 'api_access', label: 'API access' },
+  { key: 'priority_support', label: 'Priority support' },
+];
+
+// Mirror of farmTypesForModules in the server's database features module.
+const FARM_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'];
+const FARM_TYPE_MODULE: Record<string, string | null> = {
+  CROP: 'crop',
+  LIVESTOCK: 'livestock',
+  POULTRY: 'poultry',
+  DAIRY: 'livestock',
+  AQUACULTURE: null,
+};
+
+function farmTypesForModules(modules: string[]): string[] {
+  return FARM_TYPES.filter((type) => {
+    const backing = FARM_TYPE_MODULE[type];
+    return backing === null ? modules.includes('farm') : modules.includes(backing);
+  });
+}
+
+const DEFAULT_MODULES = ['farm', 'crop', 'worker', 'communication', 'reporting', 'notification', 'hr'];
+
 export default function SubscriptionsPage() {
   const [plans, setPlans] = useState<PlatformSubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100 });
+  const [form, setForm] = useState({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100, modules: [...DEFAULT_MODULES] as string[], perks: [] as string[] });
 
   const loadPlans = async () => {
     setLoading(true);
@@ -26,9 +68,19 @@ export default function SubscriptionsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await platformSubscriptionsAPI.createPlan(form);
+      // farmTypes are derived from modules — mirrors the server's
+      // normalizePlanFeatures, which re-derives server-side regardless.
+      const modules = form.modules.length > 0 ? form.modules : ['farm'];
+      await platformSubscriptionsAPI.createPlan({
+        ...form,
+        features: {
+          modules,
+          farmTypes: farmTypesForModules(modules),
+          ...(form.perks.length > 0 ? { perks: form.perks } : {}),
+        },
+      });
       setShowForm(false);
-      setForm({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100 });
+      setForm({ name: '', displayName: '', description: '', price: 0, maxUsers: 5, maxFarms: 1, maxStorage: 100, modules: [...DEFAULT_MODULES], perks: [] });
       toastSuccess('Plan created');
       loadPlans();
     } catch (err) { toastError(getErrorMessage(err)); }
@@ -139,6 +191,55 @@ export default function SubscriptionsPage() {
                     onChange={(e) => setForm({ ...form, maxStorage: Number(e.target.value) })}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#16a34a] focus:border-[#16a34a] sm:text-sm"
                   />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modules</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {MODULE_OPTIONS.map((m) => (
+                    <label key={m.key} className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={form.modules.includes(m.key)}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            modules: e.target.checked ? [...f.modules, m.key] : f.modules.filter((k) => k !== m.key),
+                          }))
+                        }
+                        className="rounded border-gray-300 text-[#16a34a] focus:ring-[#16a34a]"
+                      />
+                      {m.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Allowed farm types (derived from modules):{' '}
+                  {(() => {
+                    const types = farmTypesForModules(form.modules);
+                    return types.length > 0 ? types.join(', ') : 'none yet — select modules that back farm types';
+                  })()}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Perks</label>
+                <div className="flex gap-4">
+                  {PERK_OPTIONS.map((p) => (
+                    <label key={p.key} className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={form.perks.includes(p.key)}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            perks: e.target.checked ? [...f.perks, p.key] : f.perks.filter((k) => k !== p.key),
+                          }))
+                        }
+                        className="rounded border-gray-300 text-[#16a34a] focus:ring-[#16a34a]"
+                      />
+                      {p.label}
+                    </label>
+                  ))}
                 </div>
               </div>
               <div className="flex justify-end">

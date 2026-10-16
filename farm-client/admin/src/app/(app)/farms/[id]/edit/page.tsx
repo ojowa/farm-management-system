@@ -16,21 +16,7 @@ import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { farmFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
 
-const FARM_TYPES = [
-  { value: 'CROP', label: 'Crop' },
-  { value: 'LIVESTOCK', label: 'Livestock' },
-  { value: 'POULTRY', label: 'Poultry' },
-  { value: 'DAIRY', label: 'Dairy' },
-  { value: 'AQUACULTURE', label: 'Aquaculture' },
-];
-
-const FARM_TYPE_BADGES: Record<string, string> = {
-  CROP: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  LIVESTOCK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  POULTRY: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-  DAIRY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  AQUACULTURE: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
-};
+import { FARM_TYPE_OPTIONS as FARM_TYPES, FARM_TYPE_BADGES } from '@/lib/farmTypes';
 
 export default function EditFarmPage() {
   const { id } = useParams<{ id: string }>();

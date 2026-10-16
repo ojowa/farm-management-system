@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FARM_TYPES } from './farmTypes';
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -42,7 +43,7 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const farmFormSchema = z.object({
   name: z.string().min(1, 'Farm name is required'),
-  farmType: z.enum(['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'], {
+  farmType: z.enum(FARM_TYPES, {
     required_error: 'Farm type is required',
   }),
   location: z.string().optional(),

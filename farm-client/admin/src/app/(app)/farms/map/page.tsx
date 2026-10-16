@@ -30,13 +30,7 @@ interface FarmLocation {
   status?: string;
 }
 
-const FARM_TYPE_COLORS: Record<string, string> = {
-  CROP: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  LIVESTOCK: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  POULTRY: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-  DAIRY: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  AQUACULTURE: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400',
-};
+import { FARM_TYPE_BADGES as FARM_TYPE_COLORS } from '@/lib/farmTypes';
 
 export default function FarmMapPage() {
   const router = useRouter();

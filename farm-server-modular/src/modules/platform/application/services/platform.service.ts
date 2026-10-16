@@ -92,6 +92,11 @@ export class PlatformSubscriptionService {
     const existingPlan = await this.planRepo.findByName(data.name);
     if (existingPlan) throw new ConflictException('Plan with this name already exists');
 
+    // farmTypes are DERIVED from modules (never trusted from input) and
+    // non-module perks are kept out of `modules`, so a plan can't advertise
+    // farm types its module list doesn't back — the contradiction the old
+    // `features: data.features || []` write allowed.
+    const { normalizePlanFeatures } = await import('../../../../kernel/database');
     const plan = await this.planRepo.create({
       name: data.name,
       displayName: data.displayName,
@@ -102,7 +107,7 @@ export class PlatformSubscriptionService {
       maxUsers: data.maxUsers || 5,
       maxFarms: data.maxFarms || 1,
       maxStorage: data.maxStorage || 100,
-      features: data.features || [],
+      features: normalizePlanFeatures(data.features),
       isActive: true,
       sortOrder: data.sortOrder || 0,
     });
@@ -125,7 +130,10 @@ export class PlatformSubscriptionService {
     sortOrder: number;
   }>,  auditUserId: string) {
     await this.findOnePlan(id);
-    const updated = await this.planRepo.update(id, data);
+    // Re-derive farmTypes whenever features are supplied — plan edits must
+    // not be able to reintroduce module/farmType mismatches.
+    const { normalizePlanFeatures } = await import('../../../../kernel/database');
+    const updated = await this.planRepo.update(id, data.features !== undefined ? { ...data, features: normalizePlanFeatures(data.features) } : data);
     await this.auditLogRepo.create({ userId: auditUserId, action: 'subscription.plan.update', entity: 'SubscriptionPlan', entityId: id });
     return updated;
   }

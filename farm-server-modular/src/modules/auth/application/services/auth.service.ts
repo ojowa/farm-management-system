@@ -46,6 +46,39 @@ function getMfaSecret(): string {
   return secret;
 }
 
+/**
+ * Attach the caller's plan entitlements (modules, farmTypes, plan caps) to a
+ * user payload. Login, MFA verification, and GET /auth/me all return the
+ * enriched shape, so web and mobile clients can filter farm-type pickers and
+ * gate module navigation the same way. A plan lookup failure never blocks
+ * authentication.
+ */
+async function withPlanFeatures(user: any, organizationId?: string | null) {
+  try {
+    const orgId = organizationId ?? user?.organizationId;
+    if (!orgId) return user;
+    const { prisma } = await import('../../../../kernel/database');
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { subscriptionPlanRef: { select: { features: true, maxFarms: true, maxUsers: true, maxStorage: true } } },
+    });
+    const plan = org?.subscriptionPlanRef as any;
+    const features = plan?.features && typeof plan.features === 'object' && !Array.isArray(plan.features) ? plan.features : {};
+    return {
+      ...user,
+      planFeatures: {
+        modules: Array.isArray(features.modules) ? features.modules : [],
+        farmTypes: Array.isArray(features.farmTypes) ? features.farmTypes : [],
+        maxFarms: plan?.maxFarms ?? null,
+        maxUsers: plan?.maxUsers ?? null,
+        maxStorage: plan?.maxStorage ?? null,
+      },
+    };
+  } catch {
+    return user;
+  }
+}
+
 @Injectable()
 export class AuthService {
   constructor(@Inject('UserRepository') private readonly userRepo: UserRepository, @Inject('RefreshTokenRepository') private readonly refreshTokenRepo: RefreshTokenRepository, @Inject('RoleRepository') private readonly roleRepo: RoleRepository, 
@@ -63,7 +96,7 @@ export class AuthService {
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
-    return { requiresMFA: false, user: userWithoutPassword, accessToken, refreshToken };
+    return { requiresMFA: false, user: await withPlanFeatures(userWithoutPassword), accessToken, refreshToken };
   }
 
   async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
@@ -77,7 +110,7 @@ export class AuthService {
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
-    return { user: userWithoutPassword, accessToken, refreshToken };
+    return { user: await withPlanFeatures(userWithoutPassword), accessToken, refreshToken };
   }
 
   async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
@@ -216,7 +249,7 @@ export class AuthService {
       if (tokenOrganizationId !== undefined) {
         userWithoutPassword.organizationId = tokenOrganizationId ?? user.organizationId;
       }
-      return userWithoutPassword;
+      return withPlanFeatures(userWithoutPassword);
     } catch (err) {
       throw err;
     }

@@ -57,7 +57,14 @@ export interface PlatformSubscriptionPlan {
   maxFarms?: number;
   maxWorkers?: number;
   maxStorage?: number;
-  features: string[];
+  features: {
+    /** Modules the plan includes (farm, crop, livestock, poultry, ...). */
+    modules: string[];
+    /** Farm types allowed — derived from `modules` server-side. */
+    farmTypes: string[];
+    /** Plan benefits that are NOT modules (api_access, priority_support). */
+    perks?: string[];
+  };
   organizationCount?: number;
   isActive: boolean;
 }

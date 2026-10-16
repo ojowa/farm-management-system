@@ -17,6 +17,7 @@ import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponent
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../src/core/utils/apiError';
 import { useAppSelector } from '../../../src/modules/auth/hooks/useAuth';
+import { FARM_TYPES } from '../../../src/core/farmTypes';
 
 const styles = StyleSheet.create({
   container: {
@@ -95,9 +96,13 @@ export default function AddFarmScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const user = useAppSelector((s) => s.auth.user);
+  // Plan-filtered picker: only farm types the org's plan includes are offered
+  // (undefined/empty = no filtering). The server re-checks the plan on create.
   const allowedFarmTypes = user?.planFeatures?.farmTypes;
-  const ALL_TYPES = ['CROP', 'LIVESTOCK', 'POULTRY', 'DAIRY', 'AQUACULTURE'] as const;
-  const farmTypes = allowedFarmTypes ? ALL_TYPES.filter((t) => allowedFarmTypes.includes(t)) : ALL_TYPES;
+  const farmTypes =
+    allowedFarmTypes && allowedFarmTypes.length > 0
+      ? FARM_TYPES.filter((t) => allowedFarmTypes.includes(t))
+      : FARM_TYPES;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     name: '',

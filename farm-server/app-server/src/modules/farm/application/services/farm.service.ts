@@ -62,17 +62,61 @@ export class FarmApplicationService {
   constructor(@Inject('FarmRepository') private readonly farmRepo: FarmRepository, @Inject('FieldRepository') private readonly fieldRepo: FieldRepository,
     private readonly eventService: FarmEventService) {}
 
+  /**
+   * Plan entitlements for a farm write: the org's plan must allow the farm
+   * type (features.farmTypes, derived from features.modules) and — for
+   * creates — have maxFarms headroom. These checks existed only as
+   * never-called Express middleware in features.ts, so the Nest routes
+   * bypassed them entirely: any plan could create any farm type and exceed
+   * its farm cap. Super admins bypass plan entitlements (both old guards
+   * did); everyone else is checked.
+   */
+  private async assertPlanAllowsFarmWrite(organizationId: string, farmTypes: string[], additionalFarms = 0) {
+    const { prisma, checkFarmTypeAllowed, checkSubscriptionLimit, getIsSuperAdmin } = await import(
+      '@farm/database'
+    );
+    if (getIsSuperAdmin()) return;
+    // The dynamically-imported client is a $extends'd instance whose type
+    // doesn't structurally satisfy PrismaClient (missing `$on` in the nominal
+    // shape) — cast at the boundary; runtime-wise it's the same client the
+    // checks expect.
+    for (const farmType of Array.from(new Set(farmTypes))) {
+      const typeError = await checkFarmTypeAllowed(prisma as any, organizationId, farmType);
+      if (typeError) throw new ForbiddenException(typeError);
+    }
+    if (additionalFarms <= 0) return;
+    const limitError = await checkSubscriptionLimit(prisma as any, organizationId, 'farms');
+    if (limitError) throw new ForbiddenException(limitError);
+    // checkSubscriptionLimit compares only the CURRENT count against the cap;
+    // a bulk import must also account for the incoming rows.
+    if (additionalFarms > 1) {
+      const org = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { subscriptionPlanRef: { select: { maxFarms: true } } },
+      });
+      const maxFarms = org?.subscriptionPlanRef?.maxFarms;
+      if (maxFarms) {
+        const current = await prisma.farm.count({ where: { organizationId } });
+        if (current + additionalFarms > maxFarms) {
+          throw new ForbiddenException(`Farm limit reached (${maxFarms}) for your subscription plan`);
+        }
+      }
+    }
+  }
+
   async createFarm(data: FarmWriteInput & { organizationId: string }) {
     if (!data.organizationId) {
       throw new ForbiddenException('No organization associated with caller');
     }
+    const row = toFarmRow(data, data.organizationId, false);
+    await this.assertPlanAllowsFarmWrite(data.organizationId, [row.farmType as string], 1);
     const farm = await this.farmRepo.create({
       location: null,
       latitude: null,
       longitude: null,
       size: 0,
       status: 'active',
-      ...toFarmRow(data, data.organizationId, false),
+      ...row,
     } as any);
     await this.eventService.emitFarmCreatedEvent(farm);
     return farm;
@@ -97,6 +141,11 @@ export class FarmApplicationService {
         throw error;
       }
     });
+    await this.assertPlanAllowsFarmWrite(
+      organizationId,
+      clean.map((row) => row.farmType),
+      clean.length,
+    );
     const farms = await this.farmRepo.createMany(clean);
     for (const farm of farms) {
       await this.eventService.emitFarmCreatedEvent(farm);
@@ -128,8 +177,15 @@ export class FarmApplicationService {
   }
 
   async updateFarm(id: string, organizationId: string, data: FarmWriteInput) {
-    await this.getFarmById(id, organizationId);
-    const updatedFarm = await this.farmRepo.update(id, organizationId, toFarmRow(data, organizationId, true) as any);
+    const existing = await this.getFarmById(id, organizationId);
+    const row = toFarmRow(data, organizationId, true);
+    // Re-check only when the farmType CHANGES: renaming a farm that predates
+    // a plan downgrade must keep working, but you can't migrate INTO a type
+    // the plan doesn't include.
+    if (row.farmType !== undefined && row.farmType !== existing.farmType) {
+      await this.assertPlanAllowsFarmWrite(organizationId, [row.farmType as string]);
+    }
+    const updatedFarm = await this.farmRepo.update(id, organizationId, row as any);
     await this.eventService.emitFarmUpdatedEvent(updatedFarm);
     return updatedFarm;
   }

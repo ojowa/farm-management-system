@@ -12,11 +12,6 @@ import {
   Pencil,
   Trash2,
   Eye,
-  Tractor,
-  Beef,
-  Egg,
-  Droplets,
-  Fish,
 } from 'lucide-react';
 import { farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -41,15 +36,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { farmFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
 
-const FARM_TYPES = [
-  { value: 'CROP', label: 'Crop', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Tractor },
-  { value: 'LIVESTOCK', label: 'Livestock', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Beef },
-  { value: 'POULTRY', label: 'Poultry', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: Egg },
-  { value: 'DAIRY', label: 'Dairy', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Droplets },
-  { value: 'AQUACULTURE', label: 'Aquaculture', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Fish },
-];
-
-const FARM_TYPE_MAP = Object.fromEntries(FARM_TYPES.map((t) => [t.value, t]));
+import { FARM_TYPE_ROWS as FARM_TYPES, FARM_TYPE_MAP } from '@/lib/farmTypes';
 
 interface Farm {
   id: string;
