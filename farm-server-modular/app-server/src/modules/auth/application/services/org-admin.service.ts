@@ -19,17 +19,19 @@ export class OrgAdminService {
     }
   }
 
-  async getOrganization(userId: string) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.organizationId) throw new NotFoundException('No organization found');
-    return prisma.organization.findUnique({ where: { id: user.organizationId } });
+  async getOrganization(organizationId: string) {
+    // Scoped by the JWT claim like every sibling method below: for
+    // organization staff it equals their membership; for a platform admin it
+    // is the acting context picked in the admin app popup — their own
+    // account never joins the organization.
+    if (!organizationId) throw new NotFoundException('No organization found');
+    return prisma.organization.findUnique({ where: { id: organizationId } });
   }
 
-  async updateOrganization(userId: string, data: { name?: string; phone?: string; website?: string; logo?: string }) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.organizationId) throw new NotFoundException('No organization found');
+  async updateOrganization(organizationId: string, data: { name?: string; phone?: string; website?: string; logo?: string }) {
+    if (!organizationId) throw new NotFoundException('No organization found');
     return prisma.organization.update({
-      where: { id: user.organizationId },
+      where: { id: organizationId },
       data: {
         name: data.name !== undefined ? data.name?.trim() || undefined : undefined,
         phone: data.phone !== undefined ? data.phone?.trim() || null : undefined,
@@ -39,11 +41,13 @@ export class OrgAdminService {
     });
   }
 
-  async listUsers(userId: string) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.organizationId) throw new NotFoundException('No organization found');
+  async listUsers(organizationId: string) {
+    // Members only — the query keys off the organization itself, so a
+    // platform admin acting with context here is NOT listed as one of its
+    // users (their account row remains organization-less).
+    if (!organizationId) throw new NotFoundException('No organization found');
     return prisma.user.findMany({
-      where: { organizationId: user.organizationId },
+      where: { organizationId },
       select: { id: true, firstName: true, lastName: true, email: true, isActive: true, role: true },
     });
   }

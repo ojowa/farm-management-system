@@ -102,7 +102,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @SkipThrottle()
   async getProfile(@Req() req: any) {
-    return this.authService.getProfile(req.user?.id);
+    return this.authService.getProfile(req.user?.id, req.user?.organizationId);
   }
 
   @Put('profile')

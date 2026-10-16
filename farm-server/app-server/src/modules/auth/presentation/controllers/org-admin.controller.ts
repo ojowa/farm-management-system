@@ -9,19 +9,19 @@ export class OrgAdminController {
 
   @Get('me')
   getOrganization(@Req() req: any) {
-    return this.orgAdminService.getOrganization(req.user?.sub);
+    return this.orgAdminService.getOrganization(req.user?.organizationId);
   }
 
   @Put('me')
   @Permission('organization.manage')
   updateOrganization(@Req() req: any, @Body() body: { name?: string; phone?: string; website?: string; logo?: string }) {
-    return this.orgAdminService.updateOrganization(req.user?.sub, body);
+    return this.orgAdminService.updateOrganization(req.user?.organizationId, body);
   }
 
   @Get('users')
   @Permission('users.read')
   listUsers(@Req() req: any) {
-    return this.orgAdminService.listUsers(req.user?.sub);
+    return this.orgAdminService.listUsers(req.user?.organizationId);
   }
 
   @Post('users')

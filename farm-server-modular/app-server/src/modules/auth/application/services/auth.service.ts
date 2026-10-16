@@ -106,13 +106,24 @@ export class AuthService {
 
   async refreshToken(token: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
     if (!token) throw new UnauthorizedException('Refresh token is required');
+    // The refresh JWT may carry a platform admin's acting-organization
+    // context — their membership row is organization-less, so the context
+    // cannot be re-derived from the user table. A bad signature falls
+    // through to the hash lookup below, which rejects uniformly.
+    let tokenOrganizationId: string | undefined;
+    try {
+      const payload = jwt.verify(token, getJwtRefreshSecret()) as any;
+      if (typeof payload?.organizationId === 'string') tokenOrganizationId = payload.organizationId;
+    } catch {
+      /* invalid token — reported by the hash lookup below */
+    }
     const tokenHash = hashToken(token);
     const stored = await this.refreshTokenRepo.findValidByHash(tokenHash);
     if (!stored) throw new UnauthorizedException('Invalid refresh token');
     const user = await this.userRepo.findById(stored.userId);
     if (!user) throw new NotFoundException('User not found');
-    const accessToken = await this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    const accessToken = await this.generateAccessToken(user, tokenOrganizationId);
+    const refreshToken = await this.generateRefreshToken(user.id, ctx, tokenOrganizationId);
     // Revoke old token and record which new token replaced it
     const newTokenHash = hashToken(refreshToken);
     await this.refreshTokenRepo.revoke(stored.id, newTokenHash);
@@ -125,8 +136,14 @@ export class AuthService {
     return !!stored?.revoked;
   }
 
-  async generateRefreshToken(userId: string, ctx?: { ipAddress?: string; deviceInfo?: string }) {
-    const rawToken = jwt.sign({ sub: userId }, getJwtRefreshSecret(), { expiresIn: REFRESH_TOKEN_EXPIRY });
+  async generateRefreshToken(userId: string, ctx?: { ipAddress?: string; deviceInfo?: string }, organizationId?: string | null) {
+    // A platform admin's acting-organization context rides the refresh token
+    // so it survives rotation without ever touching User.organizationId
+    // (membership). Organization staff carry no claim — their membership
+    // column is the source of truth.
+    const claims: { sub: string; organizationId?: string } = { sub: userId };
+    if (organizationId) claims.organizationId = organizationId;
+    const rawToken = jwt.sign(claims, getJwtRefreshSecret(), { expiresIn: REFRESH_TOKEN_EXPIRY });
     const tokenHash = hashToken(rawToken);
     await this.refreshTokenRepo.create({
       userId,
@@ -138,14 +155,23 @@ export class AuthService {
     return rawToken;
   }
 
-  async generateAccessToken(user: any) {
+  async generateAccessToken(user: any, organizationIdOverride?: string | null) {
     let permissions: string[] = [];
     if (user.roleId) {
       permissions = await this.roleRepo.getPermissionsForRole(user.roleId);
     }
     const secret = getJwtSecret();
     const token = jwt.sign(
-      { sub: user.id, email: user.email, role: user.role?.name || user.roleName, permissions, organizationId: user.organizationId },
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role?.name || user.roleName,
+        permissions,
+        // A platform admin's acting context (picked in the admin app's
+        // organization popup) overrides their organization-less membership;
+        // for everyone else this is simply their membership column.
+        organizationId: organizationIdOverride !== undefined ? organizationIdOverride : user.organizationId,
+      },
       secret,
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
@@ -168,7 +194,7 @@ export class AuthService {
     await this.refreshTokenRepo.revoke(tokenId);
   }
 
-  async getProfile(userId: string) {
+  async getProfile(userId: string, tokenOrganizationId?: string | null) {
     if (!userId) {
       throw new UnauthorizedException('User ID is missing from token');
     }
@@ -184,6 +210,12 @@ export class AuthService {
       });
       if (!user) throw new NotFoundException('User not found');
       const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
+      // The session's organization is whatever the JWT says: the membership
+      // column for organization staff (they are equal), the picked acting
+      // context for a platform admin whose row stays organization-less.
+      if (tokenOrganizationId !== undefined) {
+        userWithoutPassword.organizationId = tokenOrganizationId ?? user.organizationId;
+      }
       return userWithoutPassword;
     } catch (err) {
       throw err;
@@ -293,20 +325,25 @@ export class AuthService {
   }
 
   /**
-   * Re-issues tokens for the caller's organization. Self-service switching to
-   * a *different* organization is rejected on purpose: with one organization
-   * per account, moving someone is a platform-admin action — otherwise any
-   * signed-in user could join any organization simply by naming its id.
-   * Platform admins are the exception: the admin app's organization popup
-   * lets them enter any existing organization, and the choice is persisted to
-   * their account row so org-scoped reads and stamped writes line up with the
-   * issued token.
+   * Re-issues tokens for the caller's organization context.
+   *
+   * - Organization staff: only their OWN organization is accepted (one
+   *   organization per account) — otherwise any signed-in user could join any
+   *   organization simply by naming its id. Nothing is written: the membership
+   *   column already matches.
+   * - Platform admins (the admin app's organization popup): may enter any
+   *   existing organization WITHOUT joining it. The choice rides the issued
+   *   access + refresh tokens as an acting context only — the account row
+   *   stays organization-less, so the admin never appears in that org's user
+   *   lists, counts, or per-org ownership checks.
    */
   async switchOrganization(userId: string, organizationId: string) {
     const user = await this.userRepo.findById(userId);
     if (!user) throw new NotFoundException('User not found');
     if (!organizationId) throw new BadRequestException('organizationId is required');
 
+    // undefined = fall back to the membership column when issuing the token.
+    let actingContext: string | undefined;
     if (user.organizationId !== organizationId) {
       if (!(await this.isPlatformAdminRole(user.roleId))) {
         throw new ForbiddenException('Your account belongs to a single organization. A platform administrator can move you.');
@@ -314,14 +351,18 @@ export class AuthService {
       const { prisma } = await import('../../../../kernel/database');
       const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } });
       if (!org) throw new NotFoundException('Organization not found');
+      actingContext = organizationId;
     }
 
-    const updated = await this.userRepo.update(userId, { organizationId } as any);
-    const accessToken = await this.generateAccessToken(updated);
-    const refreshToken = await this.generateRefreshToken(userId);
+    const accessToken = await this.generateAccessToken(user, actingContext);
+    const refreshToken = await this.generateRefreshToken(userId, undefined, actingContext);
 
-    const { passwordHash, twoFactorSecret, ...userWithoutPassword } = updated as any;
-    return { user: userWithoutPassword, accessToken, refreshToken };
+    const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
+    return {
+      user: { ...userWithoutPassword, organizationId: actingContext ?? user.organizationId },
+      accessToken,
+      refreshToken,
+    };
   }
 
   /**
