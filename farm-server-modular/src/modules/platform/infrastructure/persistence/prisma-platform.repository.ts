@@ -204,11 +204,11 @@ export class PrismaPlatformConfigRepository implements PlatformConfigRepository 
     return prisma.platformConfig.findUnique({ where: { key } }) as Promise<PlatformConfig | null>;
   }
 
-  async upsert(key: string, value: any, description?: string): Promise<PlatformConfig> {
+  async upsert(key: string, value: any, description?: string, category?: string): Promise<PlatformConfig> {
     return prisma.platformConfig.upsert({
       where: { key },
-      update: { value, description: description ?? undefined },
-      create: { key, value, description: description || null },
+      update: { value, description: description ?? undefined, category: category ?? undefined },
+      create: { key, value, description: description || null, category: category || 'general' },
     }) as Promise<PlatformConfig>;
   }
 

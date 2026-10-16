@@ -63,6 +63,6 @@ export interface BroadcastRepository {
 export interface PlatformConfigRepository {
   findMany(): Promise<PlatformConfig[]>;
   findByKey(key: string): Promise<PlatformConfig | null>;
-  upsert(key: string, value: any, description?: string): Promise<PlatformConfig>;
+  upsert(key: string, value: any, description?: string, category?: string): Promise<PlatformConfig>;
   delete(key: string): Promise<void>;
 }

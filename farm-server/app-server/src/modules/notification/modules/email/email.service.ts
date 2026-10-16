@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { prisma } from '@farm/database';
 import {
   invitationTemplate,
   welcomeTemplate,
@@ -61,13 +62,19 @@ export class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      if (this.resendApiKey) {
-        await this.sendViaResend(options);
+      // Precedence: PlatformConfig in the DB (managed from the platform
+      // console) overrides the env vars, so keys can be set or rotated at
+      // runtime without a redeploy — this also makes Resend work on any
+      // host (Render, Vercel, …).
+      const from = (await this.getFromAddress()) || this.fromEmail;
+      const resendApiKey = await this.getResendApiKey();
+      if (resendApiKey) {
+        await this.sendViaResend(options, resendApiKey, from);
         this.logger.log(`Email sent to ${options.to}: ${options.subject}`);
         return true;
       } else if (this.transporter) {
         await this.transporter.sendMail({
-          from: this.fromEmail,
+          from,
           to: options.to,
           subject: options.subject,
           html: options.html,
@@ -86,19 +93,19 @@ export class EmailService {
   }
 
   /**
-   * Resend HTTP API — the preferred transport when RESEND_API_KEY is set.
+   * Resend HTTP API — the preferred transport whenever a key is configured.
    * Uses the global fetch (Node >= 18), so no extra SDK is pulled in; the
    * From address must be a domain verified in Resend.
    */
-  private async sendViaResend(options: EmailOptions): Promise<void> {
+  private async sendViaResend(options: EmailOptions, apiKey: string, from: string): Promise<void> {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${this.resendApiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: this.fromEmail,
+        from,
         to: [options.to],
         subject: options.subject,
         html: options.html,
@@ -108,6 +115,26 @@ export class EmailService {
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       throw new Error(`Resend API ${res.status}: ${detail}`);
+    }
+  }
+
+  /** DB-backed config (platform console) with environment-variable fallback. */
+  private async getFromAddress(): Promise<string | null> {
+    return (await this.getPlatformConfigValue('email.from')) || this.configService.get('EMAIL_FROM') || null;
+  }
+
+  private async getResendApiKey(): Promise<string | null> {
+    return (await this.getPlatformConfigValue('email.resend_api_key')) || this.resendApiKey;
+  }
+
+  private async getPlatformConfigValue(key: string): Promise<string | null> {
+    try {
+      const row = await prisma.platformConfig.findUnique({ where: { key } });
+      const value = row?.value;
+      return typeof value === 'string' && value.trim() ? value.trim() : null;
+    } catch {
+      // A config lookup must never block sending — fall back to env.
+      return null;
     }
   }
 

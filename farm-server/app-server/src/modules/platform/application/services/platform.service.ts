@@ -874,25 +874,42 @@ export class PlatformBroadcastService {
   }
 }
 
+// Config values that are secrets: once written they are never echoed back to
+// clients (the console sees this mask instead), and a round-tripped mask on
+// write means "leave unchanged". An empty value clears the key.
+const SECRET_CONFIG_KEYS = new Set(['email.resend_api_key']);
+const SECRET_MASK = '••••••••';
+
+function maskSecretConfig(config: any): any {
+  return config && SECRET_CONFIG_KEYS.has(config.key) && config.value
+    ? { ...config, value: SECRET_MASK, isSecret: true }
+    : config;
+}
+
 @Injectable()
 export class PlatformConfigService {
   constructor(@Inject('PlatformConfigRepository') private readonly configRepo: PlatformConfigRepository, @Inject('AuditLogRepository') private readonly auditLogRepo: AuditLogRepository) {}
 
   async findAllConfig() {
     const configs = await this.configRepo.findMany();
-    return { configs };
+    return { configs: configs.map(maskSecretConfig) };
   }
 
   async findConfigByKey(key: string) {
     const config = await this.configRepo.findByKey(key);
     if (!config) throw new NotFoundException(`Config key '${key}' not found`);
-    return config;
+    return maskSecretConfig(config);
   }
 
   async upsertConfigs(configs: Array<{ key: string; value: string; description?: string; category?: string }>, auditUserId: string) {
     const results = [];
     for (const c of configs) {
-      const result = await this.configRepo.upsert(c.key, c.value, c.description);
+      if (SECRET_CONFIG_KEYS.has(c.key) && c.value === SECRET_MASK) {
+        const existing = await this.configRepo.findByKey(c.key);
+        if (existing) results.push(existing);
+        continue;
+      }
+      const result = await this.configRepo.upsert(c.key, c.value, c.description, c.category);
       results.push(result);
     }
     await this.auditLogRepo.create({ userId: auditUserId, action: 'config.update', entity: 'PlatformConfig', entityId: configs.map((c) => c.key).join(',') });

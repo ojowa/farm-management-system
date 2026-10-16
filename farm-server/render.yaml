@@ -84,6 +84,9 @@ services:
 #   # the nodemailer fallback; with neither configured, emails are only logged.
 #   RESEND_API_KEY=re_...
 #   EMAIL_FROM=FMS <no-reply@yourdomain.com>
+#   # Either key can instead be stored from the platform console's Platform
+#   # Config page (email.resend_api_key / email.from) — DB values take
+#   # precedence over env and need no redeploy.
 #
 #   # Object storage for document uploads (S3-compatible: AWS S3, Cloudflare R2…).
 #   # Unset STORAGE_DRIVER to auto-select "s3" when S3_BUCKET is set, else "local".
