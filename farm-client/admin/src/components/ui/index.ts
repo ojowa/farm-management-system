@@ -8,6 +8,7 @@ export { Badge } from './badge';
 export { Avatar } from './avatar';
 export { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from './dropdown-menu';
 export { Dialog, DialogTrigger, DialogContent } from './dialog';
+export { ConfirmDialog } from './confirm-dialog';
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './table';
 export { Pagination } from './pagination';
 export { LoadingSpinner, LoadingOverlay } from './loading';

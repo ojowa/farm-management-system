@@ -108,6 +108,7 @@ export interface CreateFarmRequest {
   latitude?: number;
   longitude?: number;
   size?: number;
+  status?: string;
 }
 
 export interface UpdateFarmRequest {

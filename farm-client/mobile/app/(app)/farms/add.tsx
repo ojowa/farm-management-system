@@ -6,26 +6,27 @@ import {
   Text,
   TouchableOpacity,
   Switch,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { farmsAPI } from '../../../src/services/api';
-import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
-import { useToasts } from '../../../src/core/hooks/useToasts';
-import { describeApiError } from '../../../src/core/utils/apiError';
-import { useAppSelector } from '../../../src/modules/auth/hooks/useAuth';
-import { FARM_TYPES } from '../../../src/core/farmTypes';
+import { useCreateFarmMutation } from '@/store/api';
+import type { CreateFarmRequest, User } from '@/services/types';
+import { TextInputField, Button } from '@/core/ui/UIComponents';
+import { StateView } from '@/core/ui/feedback';
+import { useToasts } from '@/core/hooks/useToasts';
+import { describeApiError } from '@/core/utils/apiError';
+import { usePermission } from '@/core/hooks/usePermission';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { useAppTheme } from '@/core/theme/ThemeContext';
+import { FARM_TYPES, FARM_TYPE_COLORS, FARM_TYPE_LABELS } from '@/core/farmTypes';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 20,
     flexDirection: 'row',
@@ -55,7 +56,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
-    color: colors.text,
+  },
+  planHint: {
+    fontSize: 12,
+    marginTop: 8,
   },
   switchContainer: {
     flexDirection: 'row',
@@ -63,14 +67,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   switchLabel: {
     fontSize: 16,
-    color: colors.text,
   },
   submitButton: {
     marginTop: 20,
@@ -95,15 +96,28 @@ interface FormErrors {
 export default function AddFarmScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
-  const user = useAppSelector((s) => s.auth.user);
-  // Plan-filtered picker: only farm types the org's plan includes are offered
-  // (undefined/empty = no filtering). The server re-checks the plan on create.
+  const { canCreate } = usePermission();
+  const canWrite = canCreate('farm');
+  // The auth slice's cached user type predates the plan's farm caps; the
+  // server includes `maxFarms` in planFeatures (canonical shape in
+  // services/types.ts), so read the user through that type.
+  const user = useAppSelector((s) => s.auth.user) as User | null;
+  const { colors: themeColors, isDark } = useAppTheme();
+  const [createFarm, { isLoading: isCreating }] = useCreateFarmMutation();
+
+  // Plan-filtered picker: only farm types the org's plan includes are
+  // offered. An empty/missing plan list is RESTRICTIVE, not permissive —
+  // the server falls back to ['CROP'] when features.farmTypes is absent
+  // (kernel/database features.ts), so the picker mirrors that instead of
+  // showing all five types. The server re-checks the plan on create and a
+  // 403 entitlement message is surfaced verbatim via describeApiError.
   const allowedFarmTypes = user?.planFeatures?.farmTypes;
-  const farmTypes =
+  const farmTypes = FARM_TYPES.filter((type) =>
     allowedFarmTypes && allowedFarmTypes.length > 0
-      ? FARM_TYPES.filter((t) => allowedFarmTypes.includes(t))
-      : FARM_TYPES;
-  const [loading, setLoading] = useState(false);
+      ? allowedFarmTypes.includes(type)
+      : type === 'CROP'
+  );
+
   const [formData, setFormData] = useState<FormData>({
     name: '',
     farmType: '',
@@ -143,25 +157,23 @@ export default function AddFarmScreen() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const farmData = {
-        name: formData.name.trim(),
-        farmType: formData.farmType,
-        location: formData.location.trim(),
-        size: Number(formData.size),
-        status: formData.status,
-        organizationId: user?.organizationId || '',
-      };
+    // The server scopes farms from the caller's JWT — a body-supplied
+    // organizationId is ignored (and would be a tenant-escape attempt), so
+    // it is never sent.
+    const payload: Omit<CreateFarmRequest, 'organizationId'> = {
+      name: formData.name.trim(),
+      farmType: formData.farmType as CreateFarmRequest['farmType'],
+      location: formData.location.trim(),
+      size: Number(formData.size),
+      status: formData.status,
+    };
 
-      await farmsAPI.create(farmData as any);
+    try {
+      await createFarm(payload).unwrap();
       success('Farm created successfully');
       router.back();
-    } catch (error: any) {
-      const message = describeApiError(error, 'Failed to create farm. Please try again.');
-      showError(message);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      showError(describeApiError(error, 'Failed to create farm. Please try again.'));
     }
   };
 
@@ -173,9 +185,57 @@ export default function AddFarmScreen() {
     }
   };
 
+  const dynamicStyles = {
+    container: {
+      backgroundColor: themeColors.background,
+    },
+    header: {
+      backgroundColor: themeColors.headerBg || themeColors.primary,
+    },
+    label: {
+      color: themeColors.text,
+    },
+    planHint: {
+      color: themeColors.textSecondary,
+    },
+    switchContainer: {
+      backgroundColor: themeColors.card,
+      borderColor: isDark ? themeColors.border : themeColors.borderLight,
+    },
+    switchLabel: {
+      color: themeColors.text,
+    },
+    errorText: {
+      color: themeColors.error,
+    },
+  };
+
+  // Hooks above stay unconditional; the permission gate replaces only the
+  // form body (the API would 403 farm.write regardless).
+  if (!canWrite) {
+    return (
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, dynamicStyles.header]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Add Farm</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <StateView
+          variant="error"
+          title="You don't have permission"
+          message="You don't have permission to create farms. Ask your administrator for farm.write access."
+          onRetry={() => router.back()}
+          retryLabel="Go Back"
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, dynamicStyles.header]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -185,7 +245,7 @@ export default function AddFarmScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.content}
@@ -202,17 +262,11 @@ export default function AddFarmScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Farm Type *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Farm Type *</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
               {farmTypes.map((type) => {
                 const isSelected = formData.farmType === type;
-                const colors: Record<string, { bg: string; text: string }> = {
-                  CROP: { bg: '#DCFCE7', text: '#166534' },
-                  LIVESTOCK: { bg: '#FEF3C7', text: '#92400E' },
-                  POULTRY: { bg: '#FFEDD5', text: '#9A3412' },
-                  DAIRY: { bg: '#DBEAFE', text: '#1E40AF' },
-                  AQUACULTURE: { bg: '#CFFAFE', text: '#155E75' },
-                };
+                const typeColors = FARM_TYPE_COLORS[type] || { bg: '#F3F4F6', text: '#6B7280' };
                 return (
                   <TouchableOpacity
                     key={type}
@@ -222,18 +276,39 @@ export default function AddFarmScreen() {
                       paddingVertical: 8,
                       borderRadius: 20,
                       borderWidth: isSelected ? 2 : 1,
-                      borderColor: isSelected ? colors[type].text : '#D1D5DB',
-                      backgroundColor: isSelected ? colors[type].bg : '#F9FAFB',
+                      borderColor: isSelected
+                        ? typeColors.text
+                        : isDark ? themeColors.border : '#D1D5DB',
+                      backgroundColor: isSelected
+                        ? typeColors.bg
+                        : isDark ? themeColors.surface : '#F9FAFB',
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '600' : '400', color: isSelected ? colors[type].text : '#6B7280' }}>
-                      {type.charAt(0) + type.slice(1).toLowerCase()}
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: isSelected ? '600' : '400',
+                        color: isSelected
+                          ? typeColors.text
+                          : isDark ? themeColors.textSecondary : '#6B7280',
+                      }}
+                    >
+                      {FARM_TYPE_LABELS[type] || type}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            {errors.farmType && <Text style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>{errors.farmType}</Text>}
+            {errors.farmType && (
+              <Text style={[{ fontSize: 12, marginTop: 4 }, dynamicStyles.errorText]}>
+                {errors.farmType}
+              </Text>
+            )}
+            {user?.planFeatures?.maxFarms ? (
+              <Text style={[styles.planHint, dynamicStyles.planHint]}>
+                Your plan allows up to {user.planFeatures.maxFarms} farms.
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.formGroup}>
@@ -258,9 +333,9 @@ export default function AddFarmScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Status</Text>
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchLabel}>
+            <Text style={[styles.label, dynamicStyles.label]}>Status</Text>
+            <View style={[styles.switchContainer, dynamicStyles.switchContainer]}>
+              <Text style={[styles.switchLabel, dynamicStyles.switchLabel]}>
                 {formData.status === 'active' ? 'Active' : 'Inactive'}
               </Text>
               <Switch
@@ -268,8 +343,8 @@ export default function AddFarmScreen() {
                 onValueChange={(value) =>
                   updateFormData('status', value ? 'active' : 'inactive')
                 }
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={formData.status === 'active' ? '#FFFFFF' : colors.textLight}
+                trackColor={{ false: themeColors.border, true: themeColors.primary }}
+                thumbColor={formData.status === 'active' ? '#FFFFFF' : themeColors.textSecondary}
               />
             </View>
           </View>
@@ -277,8 +352,8 @@ export default function AddFarmScreen() {
           <Button
             title="Create Farm"
             onPress={handleSubmit}
-            loading={loading}
-            disabled={loading}
+            loading={isCreating}
+            disabled={isCreating}
             style={styles.submitButton}
           />
         </ScrollView>

@@ -119,9 +119,13 @@ export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNaviga
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Main navigation">
         {filteredNav.map((item) => {
+          // "Farms" owns every /farms/* route except the map page, which has
+          // its own nav entry — otherwise both highlight at once.
           const isActive = item.href === '/'
             ? pathname === '/'
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            : item.href === '/farms'
+              ? pathname === '/farms' || (pathname.startsWith('/farms/') && pathname !== '/farms/map')
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <Link

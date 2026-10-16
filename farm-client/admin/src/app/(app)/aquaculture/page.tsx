@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus,
@@ -86,11 +86,14 @@ const getStatusVariant = (status: string) => {
 
 export default function AquaculturePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('aquaculture');
   const [search, setSearch] = useState('');
-  const [farmFilter, setFarmFilter] = useState('');
+  // Arrives from the farm detail page's Related Data links — seeds the
+  // existing farm filter select.
+  const [farmFilter, setFarmFilter] = useState(() => searchParams.get('farmId') || '');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
@@ -302,6 +305,8 @@ export default function AquaculturePage() {
                   setFarmFilter('');
                   setStatusFilter('');
                   setPage(1);
+                  // Drop a ?farmId= param so a refresh doesn't resurrect it.
+                  router.replace('/aquaculture');
                 }}
               >
                 Clear filters

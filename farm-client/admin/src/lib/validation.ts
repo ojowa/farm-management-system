@@ -48,10 +48,31 @@ export const farmFormSchema = z.object({
   }),
   location: z.string().optional(),
   size: z.string().optional(),
-  description: z.string().optional(),
 });
 
 export type FarmFormInput = z.infer<typeof farmFormSchema>;
+
+/** Farm fields whose server 400s ("name" is required) map to inline errors. */
+const FARM_FORM_FIELDS = ['name', 'farmType', 'location', 'size'];
+
+/**
+ * Map a farm API validation error onto inline form errors. The server's
+ * farm service raises messages like `"name" is required` or
+ * `"size" must be a number`; when the named field is one the form owns,
+ * surface it under that input instead of a toast.
+ *
+ * Returns `null` when the message doesn't name a recognizable field so the
+ * caller can fall back to a generic toast.
+ */
+export function fieldErrorsFromFarmApiError(err: any): Record<string, string> | null {
+  const message = err?.response?.data?.message;
+  if (typeof message !== 'string') return null;
+  const match = /^"(\w+)"\s+(.+)$/.exec(message.trim());
+  if (!match) return null;
+  const [, field, detail] = match;
+  if (!FARM_FORM_FIELDS.includes(field)) return null;
+  return { [field]: detail.charAt(0).toUpperCase() + detail.slice(1) };
+}
 
 export const cropFormSchema = z.object({
   name: z.string().min(1, 'Crop name is required'),

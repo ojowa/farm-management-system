@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,16 +12,21 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useListFarmsQuery, useDeleteFarmMutation } from '@/store/api';
-import { Card, Button, colors } from '@/core/ui/UIComponents';
+import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { setSelectedFarmId, setFarmsFilter } from '@/store/slices/uiSlice';
+import { useToasts } from '@/core/hooks/useToasts';
+import { describeApiError } from '@/core/utils/apiError';
+import { usePermission } from '@/core/hooks/usePermission';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 import { FARM_TYPE_COLORS, FARM_TYPE_LABELS } from '@/core/farmTypes';
 
+const PAGE_SIZE = 20;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1 },
   header: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 20,
     flexDirection: 'row',
@@ -45,34 +50,30 @@ const styles = StyleSheet.create({
     minHeight: 300,
   },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 },
-  emptySubtext: { fontSize: 14, color: colors.textLight, marginBottom: 20, textAlign: 'center' },
+  emptyText: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  emptySubtext: { fontSize: 14, marginBottom: 20, textAlign: 'center' },
   filterContainer: { flexDirection: 'row', marginBottom: 16, gap: 8 },
   filterButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  filterButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterButtonText: { fontSize: 12, color: colors.textLight },
+  filterButtonText: { fontSize: 12 },
   filterButtonTextActive: { color: '#FFFFFF' },
   farmCard: { marginBottom: 12, overflow: 'hidden' },
   farmCardContent: { paddingBottom: 0 },
-  farmName: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 },
-  farmLocation: { fontSize: 13, color: colors.textLight, marginBottom: 12 },
+  farmName: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  farmLocation: { fontSize: 13, marginBottom: 12 },
   farmStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.light,
   },
   farmStat: { alignItems: 'center', flex: 1 },
-  farmStatLabel: { fontSize: 11, color: colors.textLight, marginBottom: 4 },
-  farmStatValue: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  farmStatLabel: { fontSize: 11, marginBottom: 4 },
+  farmStatValue: { fontSize: 16, fontWeight: '700' },
   farmActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -80,18 +81,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.light,
   },
   actionButton: {
     flex: 1,
     paddingVertical: 8,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.primary,
   },
-  actionButtonText: { color: colors.primary, fontSize: 12, textAlign: 'center' },
-  deleteButtonText: { color: colors.error },
-  deleteBorderColor: { borderColor: colors.error },
+  actionButtonText: { fontSize: 12, textAlign: 'center' },
   listContent: { paddingHorizontal: 20, paddingBottom: 20 },
 });
 
@@ -99,27 +96,36 @@ type FarmFilter = 'all' | 'active' | 'inactive';
 
 const keyExtractor = (item: any) => item.id;
 
+// Server rows carry lowercase statuses ("active"); display copy is Title
+// case ("Active"/"Inactive") in both the list and the detail screen.
+const formatStatus = (status?: string) => {
+  const value = String(status || '').trim();
+  if (!value) return '—';
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+};
+
 export default function FarmsScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const filter = useAppSelector((s) => s.ui.filters.farms);
-  const orgId = useAppSelector((state) => state.auth.user?.organizationId);
-  const user = useAppSelector((state) => state.auth.user);
+  const { success, error: showError } = useToasts();
+  const { colors: themeColors, isDark } = useAppTheme();
 
   // Farm actions mirror the server's permission checks: everyone with
   // farm.read sees the list; only farm.write may add/edit, farm.delete may
-  // delete. Missing permissions default to hidden (same pattern as
-  // settings.tsx) — the API would 403 regardless.
-  const canWrite = user?.permissions?.includes('farm.write') ?? false;
-  const canDelete = user?.permissions?.includes('farm.delete') ?? false;
+  // delete. usePermission is wildcard-aware ("*" and "farm.*" both grant
+  // farm.write) where a raw permissions.includes() was not.
+  const { canCreate, canDelete } = usePermission();
+  const canWrite = canCreate('farm');
+  const canRemove = canDelete('farm');
 
-  const [page] = useState(1);
+  // Infinite scroll: the list keeps `limit` honest instead of re-fetching a
+  // frozen page 1 — onEndReached grows the window by PAGE_SIZE while more
+  // rows exist server-side.
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data, isLoading, isFetching, error, refetch } = useListFarmsQuery({
-    page,
-    limit: 20,
-    ...(orgId ? { organizationId: orgId } : {}),
-  });
+  const { data, isLoading, isFetching, error, refetch } = useListFarmsQuery({ limit });
 
   const [deleteFarm] = useDeleteFarmMutation();
 
@@ -131,13 +137,35 @@ export default function FarmsScreen() {
     return Array.isArray(items) ? items : [];
   }, [data]);
 
+  const total = useMemo(() => {
+    if (!data || Array.isArray(data)) return farms.length;
+    return typeof data.total === 'number' ? data.total : farms.length;
+  }, [data, farms]);
+
+  const hasMore = farms.length < total;
+
   const filteredFarms = useMemo(() => {
     return farms.filter((farm: any) => {
-      if (filter === 'active' && farm.status !== 'active') return false;
-      if (filter === 'inactive' && farm.status !== 'inactive') return false;
+      const status = String(farm?.status || '').toLowerCase();
+      if (filter === 'active' && status !== 'active') return false;
+      if (filter === 'inactive' && status !== 'inactive') return false;
       return true;
     });
   }, [farms, filter]);
+
+  useEffect(() => {
+    if (refreshing && !isFetching) setRefreshing(false);
+  }, [refreshing, isFetching]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    refetch();
+  }, [refetch]);
+
+  const handleEndReached = useCallback(() => {
+    if (!hasMore || isFetching) return;
+    setLimit((prev) => prev + PAGE_SIZE);
+  }, [hasMore, isFetching]);
 
   const handleDeleteFarm = useCallback((farmId: string, farmName: string) => {
     Alert.alert(
@@ -151,45 +179,129 @@ export default function FarmsScreen() {
           onPress: async () => {
             try {
               await deleteFarm(farmId).unwrap();
+              success('Farm deleted successfully');
               dispatch(setSelectedFarmId(null));
             } catch (error) {
-              // Error handled by RTK Query
+              // The server explains why (e.g. 409 "Farm has dependent
+              // records…") — surface that verbatim instead of swallowing it.
+              showError(describeApiError(error, 'Failed to delete farm. Please try again.'));
             }
           },
         },
       ]
     );
-  }, [deleteFarm, dispatch]);
+  }, [deleteFarm, dispatch, success, showError]);
 
   const handleFilterChange = useCallback((next: FarmFilter) => {
     dispatch(setFarmsFilter(next));
   }, [dispatch]);
 
+  const dynamicStyles = useMemo(() => ({
+    container: {
+      backgroundColor: themeColors.background,
+    },
+    header: {
+      backgroundColor: themeColors.headerBg || themeColors.primary,
+    },
+    cardBackground: {
+      backgroundColor: themeColors.card,
+      borderColor: isDark ? themeColors.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    emptyText: {
+      color: themeColors.text,
+    },
+    emptySubtext: {
+      color: themeColors.textSecondary,
+    },
+    filterButton: {
+      backgroundColor: themeColors.card,
+      borderColor: isDark ? themeColors.border : themeColors.borderLight,
+    },
+    filterButtonActive: {
+      backgroundColor: themeColors.primary,
+      borderColor: themeColors.primary,
+    },
+    filterButtonText: {
+      color: themeColors.textSecondary,
+    },
+    farmName: {
+      color: themeColors.text,
+    },
+    farmLocation: {
+      color: themeColors.textSecondary,
+    },
+    divider: {
+      borderTopColor: isDark ? themeColors.border : themeColors.borderLight,
+    },
+    farmStatLabel: {
+      color: themeColors.textSecondary,
+    },
+    farmStatValue: {
+      color: themeColors.primary,
+    },
+    actionButton: {
+      borderColor: themeColors.primary,
+    },
+    actionButtonText: {
+      color: themeColors.primary,
+    },
+    deleteButtonText: {
+      color: themeColors.error,
+    },
+    deleteBorderColor: {
+      borderColor: themeColors.error,
+    },
+    footerText: {
+      color: themeColors.textSecondary,
+    },
+  }), [themeColors, isDark]);
+
   const renderFooter = useCallback(() => {
-    if (!isFetching) return null;
+    // Only the "load more" growth fetch shows here — pull-to-refresh drives
+    // its own spinner in the RefreshControl.
+    if (isLoading || !isFetching || refreshing) return null;
     return (
       <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-        <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={{ fontSize: 12, color: colors.textLight }}>Loading more…</Text>
+        <ActivityIndicator size="small" color={themeColors.primary} />
+        <Text style={[{ fontSize: 12 }, dynamicStyles.footerText]}>Loading more…</Text>
       </View>
     );
-  }, [isFetching]);
+  }, [isFetching, isLoading, refreshing, themeColors.primary, dynamicStyles]);
 
-  const renderEmpty = useCallback(() => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🌾</Text>
-      <Text style={styles.emptyText}>No Farms Yet</Text>
-      <Text style={styles.emptySubtext}>
-        Create your first farm to get started managing your agricultural operations
-      </Text>
-      {canWrite && (
-        <Button title="Add Farm" onPress={() => router.push('/farms/add')} accessibilityLabel="Add your first farm" />
-      )}
-    </View>
-  ), [router, canWrite]);
+  const renderEmpty = useCallback(() => {
+    if (filter !== 'all') {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No {filter} farms</Text>
+          <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
+            No farms match this filter. Try a different one.
+          </Text>
+          <Button
+            title="Show All Farms"
+            onPress={() => handleFilterChange('all')}
+            accessibilityLabel="Clear the farm filter"
+          />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🌾</Text>
+        <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Farms Yet</Text>
+        <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
+          Create your first farm to get started managing your agricultural operations
+        </Text>
+        {canWrite && (
+          <Button title="Add Farm" onPress={() => router.push('/farms/add')} accessibilityLabel="Add your first farm" />
+        )}
+      </View>
+    );
+  }, [router, canWrite, filter, handleFilterChange, dynamicStyles]);
 
   const renderItem = useCallback(({ item: farm }: { item: any }) => (
-    <Card style={styles.farmCard}>
+    <Card style={[styles.farmCard, dynamicStyles.cardBackground]}>
       <TouchableOpacity
         onPress={() => {
           dispatch(setSelectedFarmId(farm.id));
@@ -199,65 +311,65 @@ export default function FarmsScreen() {
       >
         <View style={styles.farmCardContent}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Text style={styles.farmName}>{farm.name}</Text>
+            <Text style={[styles.farmName, dynamicStyles.farmName]}>{farm.name}</Text>
             <View style={{ backgroundColor: FARM_TYPE_COLORS[farm.farmType]?.bg || '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
               <Text style={{ fontSize: 10, fontWeight: '600', color: FARM_TYPE_COLORS[farm.farmType]?.text || '#6B7280' }}>
                 {FARM_TYPE_LABELS[farm.farmType] || farm.farmType}
               </Text>
             </View>
           </View>
-          <Text style={styles.farmLocation}>📍 {farm.location}</Text>
-          <View style={styles.farmStats}>
+          <Text style={[styles.farmLocation, dynamicStyles.farmLocation]}>📍 {farm.location}</Text>
+          <View style={[styles.farmStats, dynamicStyles.divider]}>
             <View style={styles.farmStat}>
-              <Text style={styles.farmStatLabel}>Size</Text>
-              <Text style={styles.farmStatValue}>{farm.size} ha</Text>
+              <Text style={[styles.farmStatLabel, dynamicStyles.farmStatLabel]}>Size</Text>
+              <Text style={[styles.farmStatValue, dynamicStyles.farmStatValue]}>{farm.size} ha</Text>
             </View>
             <View style={styles.farmStat}>
-              <Text style={styles.farmStatLabel}>Status</Text>
-              <Text style={styles.farmStatValue}>
-                {String(farm.status || '').toUpperCase() || '—'}
+              <Text style={[styles.farmStatLabel, dynamicStyles.farmStatLabel]}>Status</Text>
+              <Text style={[styles.farmStatValue, dynamicStyles.farmStatValue]}>
+                {formatStatus(farm.status)}
               </Text>
             </View>
           </View>
         </View>
       </TouchableOpacity>
-      <View style={styles.farmActions}>
+      <View style={[styles.farmActions, dynamicStyles.divider]}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, dynamicStyles.actionButton]}
           onPress={() => router.push(`/farms/${farm.id}`)}
           accessibilityRole="button"
           accessibilityLabel={`View details of ${farm.name}`}
         >
-          <Text style={styles.actionButtonText}>View Details</Text>
+          <Text style={[styles.actionButtonText, dynamicStyles.actionButtonText]}>View Details</Text>
         </TouchableOpacity>
         {canWrite && (
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[styles.actionButton, dynamicStyles.actionButton]}
             onPress={() => router.push(`/farms/${farm.id}/edit`)}
             accessibilityRole="button"
             accessibilityLabel={`Edit ${farm.name}`}
           >
-            <Text style={styles.actionButtonText}>Edit</Text>
+            <Text style={[styles.actionButtonText, dynamicStyles.actionButtonText]}>Edit</Text>
           </TouchableOpacity>
         )}
-        {canDelete && (
+        {canRemove && (
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteBorderColor]}
+            style={[styles.actionButton, dynamicStyles.deleteBorderColor]}
             onPress={() => handleDeleteFarm(farm.id, farm.name)}
             accessibilityRole="button"
             accessibilityLabel={`Delete ${farm.name}`}
           >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+            <Text style={[styles.actionButtonText, dynamicStyles.deleteButtonText]}>Delete</Text>
           </TouchableOpacity>
         )}
       </View>
     </Card>
-  ), [dispatch, router, handleDeleteFarm, canWrite, canDelete]);
+  ), [dispatch, router, handleDeleteFarm, canWrite, canRemove, dynamicStyles]);
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, dynamicStyles.header]}>
           <Text style={styles.headerTitle}>My Farms</Text>
         </View>
         <ScreenLoading message="Loading your farms…" />
@@ -267,14 +379,14 @@ export default function FarmsScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, dynamicStyles.header]}>
           <Text style={styles.headerTitle}>My Farms</Text>
         </View>
         <StateView
           variant="error"
           title="Couldn't load your farms"
-          message="Failed to load farms. Please try again."
+          message={describeApiError(error, 'Failed to load farms. Please try again.')}
           onRetry={refetch}
           retryLabel="Retry"
         />
@@ -283,8 +395,8 @@ export default function FarmsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, dynamicStyles.header]}>
         <Text style={styles.headerTitle}>My Farms</Text>
         {canWrite && (
           <TouchableOpacity
@@ -303,14 +415,21 @@ export default function FarmsScreen() {
           {(['all', 'active', 'inactive'] as const).map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, filter === f && styles.filterButtonActive]}
+              style={[
+                styles.filterButton,
+                filter === f ? dynamicStyles.filterButtonActive : dynamicStyles.filterButton,
+              ]}
               onPress={() => handleFilterChange(f)}
               accessibilityRole="button"
               accessibilityLabel={`Filter ${f}`}
               accessibilityState={{ selected: filter === f }}
             >
               <Text
-                style={[styles.filterButtonText, filter === f && styles.filterButtonTextActive]}
+                style={[
+                  styles.filterButtonText,
+                  dynamicStyles.filterButtonText,
+                  filter === f && styles.filterButtonTextActive,
+                ]}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
@@ -326,7 +445,16 @@ export default function FarmsScreen() {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} />}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[themeColors.primary]}
+            tintColor={themeColors.primary}
+          />
+        }
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         windowSize={10}

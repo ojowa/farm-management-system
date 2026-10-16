@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { Bird, Home, Egg, Syringe, Skull, Pill, DollarSign } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Bird, Home, Egg, Syringe, Skull, Pill, DollarSign, X } from 'lucide-react';
+import { farmsAPI } from '@/lib/api';
+import { useFetch } from '@/hooks/useFetch';
 
 const sections = [
   { label: 'Flocks', href: '/poultry/flocks', icon: Bird, description: 'Manage bird flocks and batches' },
@@ -15,9 +18,39 @@ const sections = [
 ];
 
 export default function PoultryPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Arrives from the farm detail page's Related Data links.
+  const farmId = searchParams.get('farmId') || '';
+
+  // Only needed to resolve the chip's farm name.
+  const { data: farmsData } = useFetch<{ data: Array<{ id: string; name: string }> }>(
+    'farms-dropdown',
+    () => farmsAPI.list({ limit: 100 }),
+    { cacheTime: 60_000, enabled: Boolean(farmId) }
+  );
+  const farmName = farmsData?.data?.find((f) => f.id === farmId)?.name;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Poultry Management</h1>
+
+      {/* Farm filter chip (from /farms/:id Related Data links) — this hub has
+          no list of its own, so it only surfaces and clears the param. */}
+      {farmId && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.replace('/poultry')}
+            className="inline-flex items-center gap-1 rounded-full border border-primary/50 bg-primary/5 px-3 py-1 text-sm text-foreground hover:bg-primary/10 transition-colors"
+            aria-label="Clear farm filter"
+          >
+            Filtered to farm: {farmName || farmId}
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sections.map((s) => (
           <Link

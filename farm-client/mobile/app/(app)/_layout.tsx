@@ -79,15 +79,7 @@ export default function AppLayout() {
       <Tabs.Screen name="crops" options={{ href: null }} />
       <Tabs.Screen name="livestock" options={{ href: null }} />
       <Tabs.Screen name="aquaculture" options={{ href: null }} />
-      <Tabs.Screen name="irrigation" options={{ href: null }} />
-      <Tabs.Screen name="roster" options={{ href: null }} />
-      <Tabs.Screen name="attendance" options={{ href: null }} />
-      <Tabs.Screen name="correspondence" options={{ href: null }} />
       <Tabs.Screen name="leave" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="equipment" options={{ href: null }} />
-      <Tabs.Screen name="contracts" options={{ href: null }} />
-      <Tabs.Screen name="marketplace" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -9,22 +9,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { farmsAPI } from '../../../../src/services/api';
-import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
-import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
-import { useToasts } from '../../../../src/core/hooks/useToasts';
-import { describeApiError } from '../../../../src/core/utils/apiError';
-import { useAppDispatch, useAppSelector } from '../../../../src/modules/auth/hooks/useAuth';
-import { setSelectedFarmId } from '../../../../src/store/slices/uiSlice';
+import { useGetFarmQuery, useDeleteFarmMutation } from '@/store/api';
+import { Card, Button } from '@/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '@/core/ui/feedback';
+import { useToasts } from '@/core/hooks/useToasts';
+import { describeApiError } from '@/core/utils/apiError';
+import { usePermission } from '@/core/hooks/usePermission';
+import { useAppDispatch } from '@/modules/auth/hooks/useAuth';
+import { setSelectedFarmId } from '@/store/slices/uiSlice';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 import { FARM_TYPE_COLORS, FARM_TYPE_LABELS } from '@/core/farmTypes';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 20,
     flexDirection: 'row',
@@ -53,12 +53,10 @@ const styles = StyleSheet.create({
   farmName: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: 8,
   },
   farmLocation: {
     fontSize: 16,
-    color: colors.textLight,
     marginBottom: 16,
   },
   statusBadge: {
@@ -69,10 +67,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusActive: {
-    backgroundColor: colors.success,
+    backgroundColor: '#16A34A',
   },
   statusInactive: {
-    backgroundColor: colors.border,
+    backgroundColor: '#9CA3AF',
   },
   statusText: {
     color: '#FFFFFF',
@@ -84,7 +82,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: colors.light,
     marginTop: 8,
   },
   statItem: {
@@ -93,13 +90,30 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: colors.textLight,
     marginBottom: 4,
   },
   statValue: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.primary,
+  },
+  relatedCard: {
+    marginBottom: 16,
+  },
+  relatedTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  relatedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+  relatedRowText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -109,63 +123,55 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-  deleteButton: {
-    backgroundColor: colors.error,
-  },
   deleteAction: {
     flex: 1,
-    backgroundColor: colors.error,
   },
 });
 
-interface FarmData {
-  id: string;
-  name: string;
-  location: string;
-  size: number;
-  status: 'active' | 'inactive';
-  farmType?: string;
-  createdAt?: string;
-}
+// Server rows carry lowercase statuses ("active"); display copy is Title
+// case ("Active"/"Inactive") in both the list and the detail screen.
+const formatStatus = (status?: string) => {
+  const value = String(status || '').trim();
+  if (!value) return '—';
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+};
 
 export default function FarmDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const { success, error: showError } = useToasts();
+  const { colors: themeColors, isDark } = useAppTheme();
 
-  // Mirror the server's permission checks: only farm.write may edit,
-  // farm.delete may delete. Missing permissions default to hidden.
-  const user = useAppSelector((state) => state.auth.user);
-  const canWrite = user?.permissions?.includes('farm.write') ?? false;
-  const canDelete = user?.permissions?.includes('farm.delete') ?? false;
+  // Mirror the server's permission checks via the wildcard-aware
+  // permission system: only farm.write may edit, farm.delete may delete.
+  const { canCreate, canDelete } = usePermission();
+  const canWrite = canCreate('farm');
+  const canRemove = canDelete('farm');
 
-  const [loading, setLoading] = useState(true);
-  const [farm, setFarm] = useState<FarmData | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: farm, isLoading, error: loadError, refetch } = useGetFarmQuery(id);
+  const [deleteFarm, { isLoading: isDeleting }] = useDeleteFarmMutation();
 
   useEffect(() => {
-    fetchFarm();
-  }, [id]);
+    if (id) dispatch(setSelectedFarmId(id));
+  }, [id, dispatch]);
 
-  const fetchFarm = async () => {
-    if (!id) return;
-
-    try {
-      setLoading(true);
-      setLoadError(null);
-      const response = await farmsAPI.get(id);
-      const farmData = response.data as any;
-      setFarm(farmData);
-      dispatch(setSelectedFarmId(id));
-    } catch (error: any) {
-      const message = describeApiError(error, 'Failed to load farm details.');
-      setLoadError(message);
-      showError(message);
-    } finally {
-      setLoading(false);
+  // Type-aware related links. POULTRY is omitted: the mobile app has no
+  // poultry list route on disk. AQUACULTURE links without a farmId because
+  // the aquaculture list screen doesn't read one.
+  const relatedLinks = useMemo(() => {
+    const farmType = String(farm?.farmType || '').toUpperCase();
+    if (farmType === 'CROP') {
+      return [{ label: 'Crops', icon: '🌱', path: `/crops?farmId=${id}` }];
     }
-  };
+    if (farmType === 'LIVESTOCK' || farmType === 'DAIRY') {
+      return [{ label: 'Livestock', icon: '🐄', path: `/livestock?farmId=${id}` }];
+    }
+    if (farmType === 'AQUACULTURE') {
+      return [{ label: 'Aquaculture', icon: '🐟', path: '/aquaculture' }];
+    }
+    return [];
+  }, [farm?.farmType, id]);
 
   const handleDelete = () => {
     if (!id || !farm) return;
@@ -191,20 +197,62 @@ export default function FarmDetailScreen() {
     if (!id) return;
 
     try {
-      await farmsAPI.delete(id);
+      await deleteFarm(id).unwrap();
       success('Farm deleted successfully');
       dispatch(setSelectedFarmId(null));
       router.back();
-    } catch (error: any) {
-      const message = describeApiError(error, 'Failed to delete farm. Please try again.');
-      showError(message);
+    } catch (error) {
+      // The server explains why (e.g. 409 "Farm has dependent records…") —
+      // surface that verbatim instead of a generic failure.
+      showError(describeApiError(error, 'Failed to delete farm. Please try again.'));
     }
   };
 
-  if (loading) {
+  const dynamicStyles = {
+    container: {
+      backgroundColor: themeColors.background,
+    },
+    header: {
+      backgroundColor: themeColors.headerBg || themeColors.primary,
+    },
+    cardBackground: {
+      backgroundColor: themeColors.card,
+      borderColor: isDark ? themeColors.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    farmName: {
+      color: themeColors.text,
+    },
+    farmLocation: {
+      color: themeColors.textSecondary,
+    },
+    statLabel: {
+      color: themeColors.textSecondary,
+    },
+    statValue: {
+      color: themeColors.primary,
+    },
+    divider: {
+      borderTopColor: isDark ? themeColors.border : themeColors.borderLight,
+    },
+    relatedTitle: {
+      color: themeColors.text,
+    },
+    relatedRowText: {
+      color: themeColors.text,
+    },
+    relatedArrow: {
+      color: themeColors.textSecondary,
+    },
+    deleteAction: {
+      backgroundColor: themeColors.error,
+    },
+  };
+
+  if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -218,8 +266,8 @@ export default function FarmDetailScreen() {
 
   if (loadError || !farm) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -229,17 +277,23 @@ export default function FarmDetailScreen() {
         <StateView
           variant="error"
           title="Couldn't load farm"
-          message={loadError || 'Farm not found'}
-          onRetry={fetchFarm}
+          message={
+            loadError
+              ? describeApiError(loadError, 'Failed to load farm details.')
+              : 'Farm not found'
+          }
+          onRetry={refetch}
           retryLabel="Retry"
         />
       </SafeAreaView>
     );
   }
 
+  const isActive = String(farm.status || '').toLowerCase() === 'active';
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, dynamicStyles.header]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -248,8 +302,8 @@ export default function FarmDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Card style={styles.farmCard}>
-          <Text style={styles.farmName}>{farm.name}</Text>
+        <Card style={[styles.farmCard, dynamicStyles.cardBackground]}>
+          <Text style={[styles.farmName, dynamicStyles.farmName]}>{farm.name}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 }}>
             <View style={{ backgroundColor: FARM_TYPE_COLORS[farm.farmType || '']?.bg || '#F3F4F6', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: FARM_TYPE_COLORS[farm.farmType || '']?.text || '#6B7280' }}>
@@ -257,27 +311,27 @@ export default function FarmDetailScreen() {
               </Text>
             </View>
           </View>
-          <Text style={styles.farmLocation}>📍 {farm.location}</Text>
+          <Text style={[styles.farmLocation, dynamicStyles.farmLocation]}>📍 {farm.location}</Text>
 
           <View
             style={[
               styles.statusBadge,
-              farm.status === 'active' ? styles.statusActive : styles.statusInactive,
+              isActive ? styles.statusActive : styles.statusInactive,
             ]}
           >
             <Text style={styles.statusText}>
-              {farm.status === 'active' ? 'Active' : 'Inactive'}
+              {formatStatus(farm.status)}
             </Text>
           </View>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, dynamicStyles.divider]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Size</Text>
-              <Text style={styles.statValue}>{farm.size} ha</Text>
+              <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Size</Text>
+              <Text style={[styles.statValue, dynamicStyles.statValue]}>{farm.size} ha</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Registered</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Registered</Text>
+              <Text style={[styles.statValue, dynamicStyles.statValue]}>
                 {farm.createdAt
                   ? new Date(farm.createdAt).toLocaleDateString()
                   : '—'}
@@ -286,7 +340,27 @@ export default function FarmDetailScreen() {
           </View>
         </Card>
 
-        {(canWrite || canDelete) && (
+        {relatedLinks.length > 0 && (
+          <Card style={[styles.relatedCard, dynamicStyles.cardBackground]}>
+            <Text style={[styles.relatedTitle, dynamicStyles.relatedTitle]}>Related</Text>
+            {relatedLinks.map((link) => (
+              <TouchableOpacity
+                key={link.label}
+                style={[styles.relatedRow, dynamicStyles.divider]}
+                onPress={() => router.push(link.path)}
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${link.label} for this farm`}
+              >
+                <Text style={[styles.relatedRowText, dynamicStyles.relatedRowText]}>
+                  {link.icon} {link.label}
+                </Text>
+                <Text style={dynamicStyles.relatedArrow}>→</Text>
+              </TouchableOpacity>
+            ))}
+          </Card>
+        )}
+
+        {(canWrite || canRemove) && (
           <View style={styles.actionsContainer}>
             {canWrite && (
               <Button
@@ -295,11 +369,13 @@ export default function FarmDetailScreen() {
                 style={styles.actionButton}
               />
             )}
-            {canDelete && (
+            {canRemove && (
               <Button
                 title="Delete"
                 onPress={handleDelete}
-                style={styles.deleteAction}
+                loading={isDeleting}
+                disabled={isDeleting}
+                style={[styles.deleteAction, dynamicStyles.deleteAction]}
               />
             )}
           </View>

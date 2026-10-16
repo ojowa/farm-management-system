@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus,
   Search,
   Sprout,
   Calendar,
-  MoreHorizontal,
   Pencil,
   Trash2,
   Eye,
+  X,
 } from 'lucide-react';
 import { cropsAPI, farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -57,11 +57,14 @@ const PAGE_SIZE = 10;
 
 export default function CropsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('crop');
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  // Arrives from the farm detail page's Related Data links.
+  const [farmFilter, setFarmFilter] = useState(() => searchParams.get('farmId') || '');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
@@ -120,8 +123,11 @@ export default function CropsPage() {
     if (statusFilter) {
       result = result.filter((c) => c.status === statusFilter);
     }
+    if (farmFilter) {
+      result = result.filter((c) => c.farmId === farmFilter);
+    }
     return result;
-  }, [crops, search, statusFilter]);
+  }, [crops, search, statusFilter, farmFilter]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -241,6 +247,26 @@ export default function CropsPage() {
         </CardContent>
       </Card>
 
+      {/* Farm filter chip (from /farms/:id Related Data links) */}
+      {farmFilter && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setFarmFilter('');
+              setPage(1);
+              // Drop the param too so a refresh doesn't resurrect the filter.
+              router.replace('/crops');
+            }}
+            className="inline-flex items-center gap-1 rounded-full border border-primary/50 bg-primary/5 px-3 py-1 text-sm text-foreground hover:bg-primary/10 transition-colors"
+            aria-label="Clear farm filter"
+          >
+            Filtered to farm: {getFarmName(farmFilter)}
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <Card>
         {loading ? (
@@ -251,11 +277,11 @@ export default function CropsPage() {
           <CardContent className="p-12 text-center">
             <Sprout className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
-              {search || statusFilter
+              {search || statusFilter || farmFilter
                 ? 'No crops match your filters.'
                 : 'No crops yet. Create your first crop!'}
             </p>
-            {!search && !statusFilter && !readOnly && (
+            {!search && !statusFilter && !farmFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Crop
