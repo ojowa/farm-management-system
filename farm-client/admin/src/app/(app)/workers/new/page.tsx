@@ -43,14 +43,14 @@ export default function NewWorkerPage() {
     { cacheTime: 60_000 }
   );
 
-  const { data: rolesData, loading: loadingRoles } = useFetch<RoleOption[]>(
+  const { data: rolesData, loading: loadingRoles } = useFetch<{ data: RoleOption[] }>(
     'roles-list',
     () => rolesAPI.list(),
     { cacheTime: 60_000 }
   );
 
   const farms = farmsData?.data || [];
-  const roles = rolesData || [];
+  const roles = rolesData?.data || [];
 
   // Default the login role to the system WORKER role once roles arrive; an
   // empty value still works — the backend falls back to WORKER as well.

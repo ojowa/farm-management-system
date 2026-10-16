@@ -90,14 +90,14 @@ export default function WorkersPage() {
     { cacheTime: 60_000 }
   );
 
-  const { data: rolesData } = useFetch<RoleOption[]>(
+  const { data: rolesData } = useFetch<{ data: RoleOption[] }>(
     'roles-list',
     () => rolesAPI.list(),
     { cacheTime: 60_000 }
   );
 
   const farms = farmsData?.data || [];
-  const roles = rolesData || [];
+  const roles = rolesData?.data || [];
   const workers = workersData?.data || [];
 
   // Default the login role to the system WORKER role once roles arrive; an
