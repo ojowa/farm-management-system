@@ -708,6 +708,57 @@ export class HrApplicationService {
   }
 
   // Leave Request operations
+
+  /**
+   * The workers on approved leave spanning `date` (default today), joined to
+   * their login user and the covering request + leave type. This is the
+   * "who is off right now" signal the roster and workers list surface.
+   */
+  async getWorkersOnLeave(organizationId: string, dateStr?: string) {
+    const date = dateStr ? new Date(dateStr) : new Date();
+    if (Number.isNaN(date.getTime())) throw new BadRequestException('Invalid date');
+
+    const requests = await prisma.leaveRequest.findMany({
+      where: {
+        organizationId,
+        status: 'APPROVED',
+        startDate: { lte: date },
+        endDate: { gte: date },
+      },
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+        userId: true,
+        leaveType: { select: { name: true, isPaid: true } },
+      },
+    });
+    if (requests.length === 0) return [];
+
+    const workers = await prisma.worker.findMany({
+      where: { organizationId, deletedAt: null, userId: { in: requests.map((r: any) => r.userId) } },
+      select: { id: true, firstName: true, middleName: true, lastName: true, position: true, farmId: true, userId: true },
+    });
+
+    return requests
+      .map((r: any) => {
+        const worker = workers.find((w: any) => w.userId === r.userId);
+        if (!worker) return null;
+        return {
+          workerId: worker.id,
+          name: `${worker.firstName} ${worker.lastName}`.trim(),
+          position: worker.position,
+          farmId: worker.farmId,
+          leaveRequestId: r.id,
+          leaveType: r.leaveType?.name || null,
+          isPaid: r.leaveType?.isPaid ?? null,
+          startDate: r.startDate,
+          endDate: r.endDate,
+        };
+      })
+      .filter(Boolean);
+  }
+
   async getLeaveRequests(organizationId: string, userPermissions: string[], userId: string, filters?: {
     status?: string;
     userId?: string;
@@ -721,7 +772,31 @@ export class HrApplicationService {
       processedFilters.userId = filters.userId;
     }
 
-    return this.leaveRequestRepo.findByOrganizationId(organizationId, processedFilters);
+    const rows = await this.leaveRequestRepo.findByOrganizationId(organizationId, processedFilters);
+
+    // Attach the requester's display name (and their worker record, when the
+    // requester is a worker) so a manager can tell requests apart, and so the
+    // edit form knows which worker a request belongs to.
+    const userIds = [...new Set(rows.map((r) => r.userId).filter(Boolean))];
+    if (userIds.length === 0) return rows;
+    const [users, workers] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+      prisma.worker.findMany({
+        where: { organizationId, deletedAt: null, userId: { in: userIds } },
+        select: { id: true, userId: true },
+      }),
+    ]);
+    const nameByUserId = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim()]));
+    const workerIdByUserId = new Map(workers.filter((w) => w.userId).map((w) => [w.userId as string, w.id]));
+
+    return rows.map((r) => ({
+      ...r,
+      requesterName: nameByUserId.get(r.userId) ?? null,
+      workerId: workerIdByUserId.get(r.userId) ?? null,
+    }));
   }
 
   async createLeaveRequest(organizationId: string, userId: string, data: {
@@ -729,34 +804,44 @@ export class HrApplicationService {
     startDate: string;
     endDate: string;
     reason?: string;
-  }) {
-    const { leaveTypeId, startDate, endDate, reason } = data;
+    workerId?: string;
+  }, callerPermissions: string[] = []) {
+    const { leaveTypeId, startDate, endDate, reason, workerId } = data;
     if (!leaveTypeId || !startDate || !endDate) {
       throw new BadRequestException('leaveTypeId, startDate, and endDate are required');
+    }
+
+    // A worker with leave.write may only file for themselves. Filing for
+    // someone else (via workerId) is a manager action gated on hr.write, which
+    // the route already requires — but re-check here so the rule can't be
+    // bypassed by a future route that loosens the decorator.
+    let targetUserId = userId;
+    if (workerId) {
+      if (!callerPermissions.includes('hr.write')) {
+        throw new ForbiddenException('Only managers can file leave on behalf of a worker');
+      }
+      const worker = await this.workerRepo.findById(workerId, organizationId);
+      if (!worker) throw new NotFoundException('Worker not found');
+      // Legacy workers predate the login feature and may have no linked user.
+      if (!worker.userId) throw new BadRequestException('This worker has no login account yet');
+      targetUserId = worker.userId;
     }
 
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (end < start) throw new BadRequestException('endDate must be after startDate');
 
-    let days = 0;
-    const current = new Date(start);
-    while (current <= end) {
-      const dow = current.getDay();
-      if (dow !== 0 && dow !== 6) days++;
-      current.setDate(current.getDate() + 1);
-    }
-    if (days === 0) throw new BadRequestException('Leave must include at least one business day');
+    const days = this.countBusinessDays(start, end);
 
     const year = start.getFullYear();
-    const balance = await this.leaveBalanceRepo.findByUserAndTypeAndYear(userId, leaveTypeId, year);
+    const balance = await this.leaveBalanceRepo.findByUserAndTypeAndYear(targetUserId, leaveTypeId, year);
     if (balance && (balance.usedDays + days) > balance.totalDays) {
       throw new BadRequestException(`Insufficient leave balance. Available: ${balance.totalDays - balance.usedDays} days`);
     }
 
     const leaveRequest = await this.leaveRequestRepo.create({
       organizationId,
-      userId,
+      userId: targetUserId,
       leaveTypeId,
       startDate: start,
       endDate: end,
@@ -771,6 +856,138 @@ export class HrApplicationService {
     return leaveRequest;
   }
 
+  /**
+   * Monday–Friday days in [start, end] — weekends are never leave days.
+   */
+  private countBusinessDays(start: Date, end: Date): number {
+    let days = 0;
+    const current = new Date(start);
+    while (current <= end) {
+      const dow = current.getDay();
+      if (dow !== 0 && dow !== 6) days++;
+      current.setDate(current.getDate() + 1);
+    }
+    if (days === 0) throw new BadRequestException('Leave must include at least one business day');
+    return days;
+  }
+
+  /**
+   * Modify a leave request. Workers (leave.write) may edit their own request
+   * while it is still pending. Owners/managers (hr.write) may edit any request
+   * in their organization: a pending one, a rejected one (which is resubmitted
+   * as pending for re-approval), or an approved one (the balance debit is moved
+   * to match the new type/dates/duration). The target user is immutable — to
+   * move leave to someone else, cancel and refile.
+   */
+  async updateLeaveRequest(
+    id: string,
+    organizationId: string,
+    callerUserId: string,
+    data: { leaveTypeId?: string; startDate?: string; endDate?: string; reason?: string },
+    callerPermissions: string[] = [],
+  ) {
+    const existing = await this.leaveRequestRepo.findById(id, organizationId);
+    if (!existing) throw new NotFoundException('Leave request not found');
+
+    const isManager = callerPermissions.includes('hr.write');
+    if (!isManager && existing.userId !== callerUserId) {
+      throw new ForbiddenException('Cannot modify leave requests from other users');
+    }
+    if (existing.status === 'CANCELLED') {
+      throw new ConflictException('Cancelled requests cannot be modified');
+    }
+    // Workers may only touch their own pending request; touching an approved
+    // or rejected one is a manager decision.
+    if (!isManager && existing.status !== 'PENDING') {
+      throw new ConflictException('Only pending requests can be modified');
+    }
+
+    const leaveTypeId = data.leaveTypeId || existing.leaveTypeId;
+    const leaveType = await this.leaveTypeRepo.findById(leaveTypeId, organizationId);
+    if (!leaveType) throw new NotFoundException('Leave type not found');
+
+    const start = data.startDate ? new Date(data.startDate) : new Date(existing.startDate);
+    const end = data.endDate ? new Date(data.endDate) : new Date(existing.endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid startDate or endDate');
+    }
+    if (end < start) throw new BadRequestException('endDate must be after startDate');
+    const days = this.countBusinessDays(start, end);
+
+    const wasApproved = existing.status === 'APPROVED';
+    const oldYear = new Date(existing.startDate).getFullYear();
+    const newYear = start.getFullYear();
+
+    if (!wasApproved) {
+      // Pending/rejected requests have not been debited yet — same headroom
+      // rule as create.
+      const balance = await this.leaveBalanceRepo.findByUserAndTypeAndYear(existing.userId, leaveTypeId, newYear);
+      if (balance && (balance.usedDays + days) > balance.totalDays) {
+        throw new BadRequestException(`Insufficient leave balance. Available: ${balance.totalDays - balance.usedDays} days`);
+      }
+    } else {
+      // Approved: move the existing debit to the new type/year/duration.
+      // Checks run before any mutation so a failure leaves balances untouched.
+      const newRow = await this.leaveBalanceRepo.findByUserAndTypeAndYear(existing.userId, leaveTypeId, newYear);
+      if (leaveTypeId === existing.leaveTypeId && newYear === oldYear) {
+        const delta = days - existing.days;
+        const total = newRow?.totalDays ?? leaveType.daysPerYear;
+        if (delta !== 0) {
+          if ((newRow?.usedDays ?? 0) + delta > total) {
+            throw new BadRequestException(`Insufficient leave balance. Available: ${Math.max(total - (newRow?.usedDays ?? 0), 0)} days`);
+          }
+          // usedDays upsert increments, so a negative delta releases days.
+          await this.leaveBalanceRepo.upsert({
+            organizationId,
+            userId: existing.userId,
+            leaveTypeId,
+            year: newYear,
+            totalDays: total,
+            usedDays: delta,
+          });
+        }
+      } else {
+        const newTotal = newRow?.totalDays ?? leaveType.daysPerYear;
+        if ((newRow?.usedDays ?? 0) + days > newTotal) {
+          throw new BadRequestException(`Insufficient leave balance. Available: ${Math.max(newTotal - (newRow?.usedDays ?? 0), 0)} days`);
+        }
+        const oldRow = await this.leaveBalanceRepo.findByUserAndTypeAndYear(existing.userId, existing.leaveTypeId, oldYear);
+        if (oldRow) {
+          await this.leaveBalanceRepo.upsert({
+            organizationId,
+            userId: existing.userId,
+            leaveTypeId: existing.leaveTypeId,
+            year: oldYear,
+            totalDays: oldRow.totalDays,
+            usedDays: -existing.days,
+          });
+        }
+        await this.leaveBalanceRepo.upsert({
+          organizationId,
+          userId: existing.userId,
+          leaveTypeId,
+          year: newYear,
+          totalDays: newTotal,
+          usedDays: days,
+        });
+      }
+    }
+
+    const updated = await this.leaveRequestRepo.update(id, {
+      leaveTypeId,
+      startDate: start,
+      endDate: end,
+      days,
+      ...(data.reason !== undefined ? { reason: data.reason || null } : {}),
+      // A fixed rejected request goes back into the approval queue.
+      ...(existing.status === 'REJECTED'
+        ? { status: 'PENDING', rejectionReason: null, approvedById: null, approvedAt: null }
+        : {}),
+    });
+    await this.eventService.emitHrEvent('updated', { entity: 'leaveRequest', data: updated });
+    return updated;
+  }
+
   async approveLeaveRequest(id: string, organizationId: string, approverId: string) {
     const existing = await this.leaveRequestRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave request not found');
@@ -783,12 +1000,17 @@ export class HrApplicationService {
     });
 
     const year = new Date(existing.startDate).getFullYear();
+    // Preserve an existing allowance row (or initialise it from the leave
+    // type's daysPerYear). Passing 0 here used to zero out totalDays, which
+    // made every later balance/headroom check fail.
+    const currentBalance = await this.leaveBalanceRepo.findByUserAndTypeAndYear(existing.userId, existing.leaveTypeId, year);
+    const leaveType = await this.leaveTypeRepo.findById(existing.leaveTypeId, organizationId);
     await this.leaveBalanceRepo.upsert({
       organizationId: existing.organizationId,
       userId: existing.userId,
       leaveTypeId: existing.leaveTypeId,
       year,
-      totalDays: 0,
+      totalDays: currentBalance?.totalDays ?? leaveType?.daysPerYear ?? 0,
       usedDays: existing.days,
     });
 

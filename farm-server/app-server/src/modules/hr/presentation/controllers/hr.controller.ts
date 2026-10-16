@@ -277,12 +277,14 @@ export class ShiftAssignmentsController {
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('leave/types')
 export class LeaveTypesController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  // Workers need the type list to request leave from the mobile app; managers
+  // reach it with hr.read. Management routes below stay hr.write/hr.delete.
+  @PermissionAny('leave.read', 'hr.read')
   @Get()
   findAll(@Req() req: any) {
     return this.hrService.getLeaveTypes(getOrgId(req));
@@ -309,12 +311,22 @@ export class LeaveTypesController {
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('leave/requests')
 export class LeaveRequestsController {
   constructor(private readonly hrService: HrApplicationService) {}
 
+  // Managers see who's off today (hr.read). Not exposed to workers — it lists
+  // the whole organization's leave, not just the caller's.
   @Permission('hr.read')
+  @Get('on-leave')
+  onLeave(@Req() req: any, @Query('date') date?: string) {
+    return this.hrService.getWorkersOnLeave(getOrgId(req), date);
+  }
+
+  // Managers see everyone (hr.read); workers see only their own — the service
+  // scopes non-hr.write callers to their own userId.
+  @PermissionAny('leave.read', 'hr.read')
   @Get()
   findAll(
     @Req() req: any,
@@ -327,45 +339,66 @@ export class LeaveRequestsController {
     });
   }
 
-  @Permission('hr.write')
+  // A worker requests their own leave (leave.write); an admin with hr.write may
+  // also pass workerId to file on a worker's behalf.
+  @PermissionAny('leave.write', 'hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Req() req: any, @Body() body: any) {
-    return this.hrService.createLeaveRequest(getOrgId(req), getUserId(req), body);
+    return this.hrService.createLeaveRequest(getOrgId(req), getUserId(req), body, getUserPermissions(req));
   }
 
-  @Permission('hr.write')
+  // Modify a request: the requester edits their own pending request; anyone
+  // with hr.write (owners/managers) can edit any request in the org — fixing a
+  // rejected one resubmits it as pending, and editing an approved one moves the
+  // balance debit. Type/dates/reason only; the target user can't be changed.
+  @PermissionAny('leave.write', 'hr.write')
+  @Put(':id')
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateLeaveRequest(id, getOrgId(req), getUserId(req), body, getUserPermissions(req));
+  }
+
+  // Approving/rejecting: hr.write (owners/managers) or the dedicated
+  // leave.approve permission the approvals UI checks for.
+  @PermissionAny('hr.write', 'leave.approve')
   @Put(':id/approve')
   approve(@Param('id') id: string, @Req() req: any) {
     return this.hrService.approveLeaveRequest(id, getOrgId(req), getUserId(req));
   }
 
-  @Permission('hr.write')
+  @PermissionAny('hr.write', 'leave.approve')
   @Put(':id/reject')
   reject(@Param('id') id: string, @Req() req: any, @Body() body: { rejectionReason?: string }) {
     return this.hrService.rejectLeaveRequest(id, getOrgId(req), getUserId(req), body.rejectionReason);
   }
 
-  @Permission('hr.write')
+  // The service enforces ownership (only the requester can cancel their own).
+  @PermissionAny('leave.write', 'hr.write')
   @Put(':id/cancel')
   cancel(@Param('id') id: string, @Req() req: any) {
     return this.hrService.cancelLeaveRequest(id, getOrgId(req), getUserId(req));
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('leave/balance')
 export class LeaveBalanceController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  // Workers check their own balance (leave.read); managers check anyone's
+  // (hr.read + ?userId). Non-hr.read callers are pinned to their own userId so
+  // a worker cannot read someone else's balance.
+  @PermissionAny('leave.read', 'hr.read')
   @Get()
   findAll(
     @Req() req: any,
     @Query('userId') queryUserId?: string,
     @Query('year') yearStr?: string,
   ) {
-    const userId = queryUserId || getUserId(req);
+    const permissions = getUserPermissions(req);
+    const userId = permissions.includes('hr.read')
+      ? (queryUserId || getUserId(req))
+      : getUserId(req);
     const year = yearStr ? parseInt(yearStr) : undefined;
     return this.hrService.getLeaveBalance(getOrgId(req), userId, year);
   }

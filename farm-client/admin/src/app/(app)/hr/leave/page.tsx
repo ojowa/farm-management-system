@@ -20,6 +20,9 @@ interface LeaveRequest {
   status: string;
   rejectionReason?: string;
   leaveType?: { name: string; isPaid: boolean };
+  // Attached by the server list endpoint so managers can tell requests apart.
+  requesterName?: string | null;
+  workerId?: string | null;
   createdAt: string;
 }
 
@@ -37,6 +40,16 @@ interface LeaveType {
   name: string;
 }
 
+interface WorkerOnLeave {
+  workerId: string;
+  name: string;
+  position: string;
+  leaveType: string | null;
+  isPaid: boolean | null;
+  startDate: string;
+  endDate: string;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'yellow',
   APPROVED: 'green',
@@ -46,21 +59,28 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function LeavePage() {
   const { toast } = useToast();
-  const { hasAnyPermission } = usePermission();
+  const { hasAnyPermission, hasPermission } = usePermission();
   // Submitting and cancelling your own requests is leave.write on the server.
   const canRequest = hasAnyPermission('leave.write', 'hr.write');
+  // The on-leave roster lists the whole org, so it's a manager view (hr.read).
+  const canSeeRoster = hasPermission('hr.read');
+  // Filing leave for a worker, and modifying anyone's request, is hr.write.
+  const canFileForWorker = hasPermission('hr.write');
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [balance, setBalance] = useState<BalanceItem[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [onLeave, setOnLeave] = useState<WorkerOnLeave[]>([]);
+  const [workers, setWorkers] = useState<{ id: string; firstName: string; lastName: string; position?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'requests' | 'balance'>('requests');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ leaveTypeId: '', startDate: '', endDate: '', reason: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ leaveTypeId: '', startDate: '', endDate: '', reason: '', workerId: '' });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   useEffect(() => {
-    Promise.all([loadRequests(), loadBalance(), loadLeaveTypes()]).finally(() => setLoading(false));
+    Promise.all([loadRequests(), loadBalance(), loadLeaveTypes(), loadOnLeave(), loadWorkers()]).finally(() => setLoading(false));
   }, []);
 
   async function loadRequests() {
@@ -72,16 +92,61 @@ export default function LeavePage() {
   async function loadLeaveTypes() {
     try { const { data } = await apiClient.get('/leave/types'); setLeaveTypes(data.filter((t: any) => t.isActive)); } catch { /* ignore */ }
   }
+  async function loadOnLeave() {
+    if (!canSeeRoster) return;
+    try { const { data } = await apiClient.get('/leave/requests/on-leave'); setOnLeave(data); } catch { /* ignore */ }
+  }
+  async function loadWorkers() {
+    if (!canFileForWorker) return;
+    try {
+      const { data } = await apiClient.get('/workers', { params: { limit: 200 } });
+      setWorkers(Array.isArray(data) ? data : data?.data || []);
+    } catch { /* ignore */ }
+  }
+
+  const resetForm = () => setForm({ leaveTypeId: '', startDate: '', endDate: '', reason: '', workerId: '' });
+
+  const openCreate = () => { resetForm(); setEditingId(null); setShowForm(true); };
+
+  const openEdit = (req: LeaveRequest) => {
+    setEditingId(req.id);
+    setForm({
+      leaveTypeId: req.leaveTypeId,
+      startDate: String(req.startDate).slice(0, 10),
+      endDate: String(req.endDate).slice(0, 10),
+      reason: req.reason || '',
+      workerId: req.workerId || '',
+    });
+    setShowForm(true);
+  };
+
+  const closeForm = () => { setShowForm(false); setEditingId(null); resetForm(); };
+
+  // Workers edit their own pending requests; owners/managers (hr.write) can
+  // also fix rejected ones (resubmitted as pending) and adjust approved ones.
+  const canEdit = (req: LeaveRequest) =>
+    req.status !== 'CANCELLED' && canRequest && (canFileForWorker || req.status === 'PENDING');
 
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.leaveTypeId || !form.startDate || !form.endDate) { toast({ title: 'All fields required', type: 'error' }); return; }
     setSaving(true);
     try {
-      await apiClient.post('/leave/requests', form);
-      toast({ title: 'Leave request submitted', type: 'success' });
-      setShowForm(false);
-      setForm({ leaveTypeId: '', startDate: '', endDate: '', reason: '' });
+      const payload = {
+        leaveTypeId: form.leaveTypeId,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        reason: form.reason || undefined,
+        ...(editingId || !form.workerId ? {} : { workerId: form.workerId }),
+      };
+      if (editingId) {
+        await apiClient.put(`/leave/requests/${editingId}`, payload);
+        toast({ title: 'Leave request updated', type: 'success' });
+      } else {
+        await apiClient.post('/leave/requests', payload);
+        toast({ title: 'Leave request submitted', type: 'success' });
+      }
+      closeForm();
       await Promise.all([loadRequests(), loadBalance()]);
     } catch (err: any) { toast({ title: err.response?.data?.error || 'Failed to submit', type: 'error' }); }
     finally { setSaving(false); }
@@ -102,16 +167,43 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
           <p className="text-sm text-gray-500 mt-1">Request and manage time off</p>
         </div>
-        {canRequest && <Button onClick={() => setShowForm(true)}>+ Request Leave</Button>}
+        {canRequest && <Button onClick={openCreate}>+ Request Leave</Button>}
       </div>
 
       <div className="flex gap-4 border-b border-gray-200 mb-6">
         {(['requests', 'balance'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${tab === t ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            {t === 'requests' ? 'My Requests' : 'My Balance'}
+            {t === 'requests' ? (canSeeRoster ? 'All Requests' : 'My Requests') : 'My Balance'}
           </button>
         ))}
       </div>
+
+      {canSeeRoster && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-900">Who&apos;s Off Today</h2>
+            <span className="text-xs text-gray-500">{onLeave.length} on leave</span>
+          </div>
+          {onLeave.length === 0 ? (
+            <Card className="p-4"><p className="text-sm text-gray-500">No one is on approved leave today.</p></Card>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {onLeave.map((w) => (
+                <Card key={w.workerId} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-gray-900">{w.name}</p>
+                    <Badge variant="secondary">{w.isPaid ? 'Paid' : 'Unpaid'}</Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{w.position}{w.leaveType ? ` • ${w.leaveType}` : ''}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(w.startDate).toLocaleDateString()} — {new Date(w.endDate).toLocaleDateString()}
+                  </p>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : tab === 'requests' ? (
         <>
@@ -133,10 +225,14 @@ export default function LeavePage() {
                         <Badge color={STATUS_COLORS[req.status] || 'gray'}>{req.status}</Badge>
                         <span className="text-sm text-gray-500">{req.days} day{req.days !== 1 ? 's' : ''}</span>
                       </div>
+                      {req.requesterName && <p className="text-sm font-medium text-gray-700 mb-1">{req.requesterName}</p>}
                       <p className="text-sm text-gray-500">{new Date(req.startDate).toLocaleDateString()} — {new Date(req.endDate).toLocaleDateString()}</p>
                       {req.reason && <p className="text-sm text-gray-400 mt-1">{req.reason}</p>}
                     </div>
-                    {req.status === 'PENDING' && <button onClick={() => handleCancel(req.id)} className="text-xs text-red-600 hover:text-red-800">Cancel</button>}
+                    <div className="flex items-center gap-3">
+                      {canEdit(req) && <button onClick={() => openEdit(req)} className="text-xs text-green-700 hover:text-green-900">Edit</button>}
+                      {req.status === 'PENDING' && <button onClick={() => handleCancel(req.id)} className="text-xs text-red-600 hover:text-red-800">Cancel</button>}
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -165,8 +261,20 @@ export default function LeavePage() {
         </div>
       )}
 
-      <Dialog open={showForm} onOpenChange={setShowForm} title="Request Leave">
+      <Dialog open={showForm} onOpenChange={(open) => (open ? setShowForm(true) : closeForm())} title={editingId ? 'Edit Leave Request' : 'Request Leave'}>
         <form onSubmit={handleRequest} className="space-y-4">
+              {canFileForWorker && !editingId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">For</label>
+                  <select value={form.workerId} onChange={(e) => setForm({ ...form, workerId: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                    <option value="">Me</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={w.id}>{`${w.firstName} ${w.lastName}${w.position ? ` — ${w.position}` : ''}`}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">Leave filed for a worker appears on their record and in approvals.</p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
                 <select value={form.leaveTypeId} onChange={(e) => setForm({ ...form, leaveTypeId: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" required>
@@ -189,8 +297,8 @@ export default function LeavePage() {
                 <textarea value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} rows={2} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" loading={saving}>Submit Request</Button>
+                <Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button>
+                <Button type="submit" loading={saving}>{editingId ? 'Save Changes' : 'Submit Request'}</Button>
               </div>
             </form>
       </Dialog>

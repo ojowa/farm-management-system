@@ -17,6 +17,8 @@ interface LeaveRequest {
   reason?: string;
   status: string;
   leaveType?: { name: string };
+  // Attached by the server list endpoint so approvers can tell requests apart.
+  requesterName?: string | null;
   createdAt: string;
 }
 
@@ -51,7 +53,7 @@ export default function LeaveApprovalsPage() {
     catch (err: any) { toast({ title: err.response?.data?.error || 'Failed to reject', type: 'error' }); }
   };
 
-  // The server approves leave with hr.write (the catalog's leave.approve is unused).
+  // The server accepts hr.write or the dedicated leave.approve permission.
   if (!hasAnyPermission('leave.approve', 'hr.write')) {
     return <div className="text-center py-12 text-gray-500">You don&apos;t have permission to approve leave requests</div>;
   }
@@ -84,6 +86,9 @@ export default function LeaveApprovalsPage() {
                     <Badge color={req.status === 'PENDING' ? 'yellow' : req.status === 'APPROVED' ? 'green' : 'red'}>{req.status}</Badge>
                     <span className="text-sm text-gray-500">{req.days} day{req.days !== 1 ? 's' : ''}</span>
                   </div>
+                  {req.requesterName && (
+                    <p className="text-sm font-medium text-gray-700 mb-1">{req.requesterName}</p>
+                  )}
                   <p className="text-sm text-gray-500">{new Date(req.startDate).toLocaleDateString()} — {new Date(req.endDate).toLocaleDateString()}</p>
                   {req.reason && <p className="text-sm text-gray-400 mt-1">{req.reason}</p>}
                 </div>

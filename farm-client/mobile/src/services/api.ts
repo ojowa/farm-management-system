@@ -675,6 +675,8 @@ export const leaveAPI = {
     http.get<LeaveRequest[]>('/leave/requests', { params }),
   createRequest: (data: any) =>
     http.post<LeaveRequest>('/leave/requests', data),
+  updateRequest: (id: string, data: any) =>
+    http.put<LeaveRequest>(`/leave/requests/${id}`, data),
   approve: (id: string) =>
     http.put(`/leave/requests/${id}/approve`),
   reject: (id: string, data?: any) =>

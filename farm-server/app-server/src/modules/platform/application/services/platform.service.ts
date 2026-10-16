@@ -708,6 +708,21 @@ export class PlatformOrganizationService {
       throw e;
     }
     await this.auditLogRepo.create({ userId: auditUserId, action: 'organization.create', entity: 'Organization', entityId: org.id });
+
+    // Give every new organization a starter set of leave types so leave works
+    // out of the box (managers can edit/disable them from HR settings later).
+    await prisma.leaveType.createMany({
+      data: [
+        { organizationId: org.id, name: 'Annual Leave', daysPerYear: 20, isPaid: true, isActive: true },
+        { organizationId: org.id, name: 'Sick Leave', daysPerYear: 10, isPaid: true, isActive: true },
+        { organizationId: org.id, name: 'Casual Leave', daysPerYear: 7, isPaid: true, isActive: true },
+        { organizationId: org.id, name: 'Unpaid Leave', daysPerYear: 0, isPaid: false, isActive: true },
+        { organizationId: org.id, name: 'Compassionate Leave', daysPerYear: 5, isPaid: true, isActive: true },
+        { organizationId: org.id, name: 'Maternity Leave', daysPerYear: 84, isPaid: true, isActive: true },
+      ],
+      skipDuplicates: true,
+    });
+
     return org;
   }
 
