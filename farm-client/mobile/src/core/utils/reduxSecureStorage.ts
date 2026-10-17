@@ -39,15 +39,20 @@ const webStorage: StateStorage = {
 function createNativeAdapter(): StateStorage {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const SecureStore = require('expo-secure-store');
+  const secureStoreKey = (key: string): string =>
+    `redux_persist_${Array.from(key, (character) =>
+      character.codePointAt(0)?.toString(16),
+    ).join('_')}`;
+
   return {
     getItem: async (key: string): Promise<string | null> => {
-      return SecureStore.getItemAsync(key);
+      return SecureStore.getItemAsync(secureStoreKey(key));
     },
     setItem: async (key: string, value: string): Promise<void> => {
-      await SecureStore.setItemAsync(key, value);
+      await SecureStore.setItemAsync(secureStoreKey(key), value);
     },
     removeItem: async (key: string): Promise<void> => {
-      await SecureStore.deleteItemAsync(key);
+      await SecureStore.deleteItemAsync(secureStoreKey(key));
     },
   };
 }

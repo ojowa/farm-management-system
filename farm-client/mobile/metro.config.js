@@ -5,16 +5,12 @@ const projectRoot = __dirname;
 const config = getDefaultConfig(projectRoot);
 
 // Resolve @/ alias to ./src/ (must match tsconfig.json paths)
-const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName.startsWith('@/')) {
     const subPath = moduleName.slice(2);
-    return {
-      filePath: path.join(projectRoot, 'src', subPath),
-      type: 'sourceFile',
-    };
+    return context.resolveRequest(context, path.resolve(projectRoot, 'src', subPath), platform);
   }
-  return originalResolveRequest(context, moduleName, platform);
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 config.resolver.nodeModulesPaths = [
