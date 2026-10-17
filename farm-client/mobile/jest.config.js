@@ -6,6 +6,11 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^test-renderer$': 'react-test-renderer',
+    // SDK 57's dependency graph leaves expo-modules-core nested under expo/
+    // (hoisting it conflicts with react-native-worklets 0.13's peer range),
+    // so jest can't resolve the bare specifier that jest-expo's setup uses.
+    '^expo-modules-core$': '<rootDir>/node_modules/expo/node_modules/expo-modules-core',
+    '^expo-modules-core/(.*)$': '<rootDir>/node_modules/expo/node_modules/expo-modules-core/$1',
   },
   setupFiles: ['<rootDir>/jest-setup.js'],
   clearMocks: true,
