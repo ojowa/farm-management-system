@@ -52,6 +52,9 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { prefix: '/correspondence', permissions: ['hr.read'] },
   { prefix: '/messages', permissions: ['hr.read', 'communication.read'] },
   { prefix: '/hr', permissions: ['hr.read', 'leave.read'] },
+  // Approving/rejecting is a narrower view than leave itself: hr.write or the
+  // dedicated leave.approve grant, mirroring @PermissionAny on the controller.
+  { prefix: '/hr/leave/approvals', permissions: ['leave.approve', 'hr.write'] },
 
   // Money & reporting
   { prefix: '/finance', permissions: ['finance.read'] },

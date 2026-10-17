@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function LeavePage() {
+  const router = useRouter();
   const { toast } = useToast();
   const { hasAnyPermission, hasPermission } = usePermission();
   // Submitting and cancelling your own requests is leave.write on the server.
@@ -66,6 +68,9 @@ export default function LeavePage() {
   const canSeeRoster = hasPermission('hr.read');
   // Filing leave for a worker, and modifying anyone's request, is hr.write.
   const canFileForWorker = hasPermission('hr.write');
+  // Approving/rejecting lives on /hr/leave/approvals and needs hr.write or
+  // the dedicated leave.approve grant (same gate the server enforces).
+  const canApprove = hasAnyPermission('leave.approve', 'hr.write');
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [balance, setBalance] = useState<BalanceItem[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -159,6 +164,10 @@ export default function LeavePage() {
   };
 
   const filtered = filter === 'all' ? requests : requests.filter((r) => r.status === filter);
+  // Requests already load org-wide for approvers (the server scopes non-hr.write
+  // callers to their own), so the badge count matches what the approvals page
+  // would show them.
+  const pendingCount = requests.filter((r) => r.status === 'PENDING').length;
 
   return (
     <div>
@@ -167,7 +176,19 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
           <p className="text-sm text-gray-500 mt-1">Request and manage time off</p>
         </div>
-        {canRequest && <Button onClick={openCreate}>+ Request Leave</Button>}
+        <div className="flex items-center gap-2">
+          {canApprove && (
+            <Button variant="outline" size="sm" onClick={() => router.push('/hr/leave/approvals')}>
+              Approvals
+              {pendingCount > 0 && (
+                <span className="ml-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-yellow-100 px-1.5 text-xs font-medium text-yellow-800">
+                  {pendingCount}
+                </span>
+              )}
+            </Button>
+          )}
+          {canRequest && <Button onClick={openCreate}>+ Request Leave</Button>}
+        </div>
       </div>
 
       <div className="flex gap-4 border-b border-gray-200 mb-6">
