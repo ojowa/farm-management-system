@@ -39,6 +39,15 @@ export interface PlatformOrganization {
   email: string | null;
   subscriptionPlan: string;
   subscriptionStatus: string;
+  /** End of the current paid period; null for comps / never-checked-out orgs. */
+  subscriptionPaidThrough?: string | null;
+  /** Live Paystack subscription mirror, when the org has ever checked out. */
+  billing?: {
+    status: string;
+    cancelReason: string | null;
+    nextBillingDate: string | null;
+    customerEmail: string | null;
+  } | null;
   userCount: number;
   farmCount: number;
   createdAt: string;
@@ -66,7 +75,27 @@ export interface PlatformSubscriptionPlan {
     perks?: string[];
   };
   organizationCount?: number;
+  /** Paystack plan code, created lazily on first recurring checkout. */
+  paystackPlanCode?: string | null;
   isActive: boolean;
+}
+
+export interface PlatformPayment {
+  id: string;
+  reference: string;
+  organizationId: string;
+  /** Resolved org name; null when the org was hard-deleted. */
+  organizationName?: string | null;
+  planId: string | null;
+  planName: string;
+  kind: string;
+  /** Prisma Decimal — JSON-serializes as a string. */
+  amount: string | number;
+  currency: string;
+  status: string;
+  channel: string | null;
+  paidAt: string | null;
+  createdAt: string;
 }
 
 export interface PlatformFeature {

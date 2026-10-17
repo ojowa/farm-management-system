@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { platformOrgsAPI, platformFeaturesAPI, platformOptionsAPI } from '@/lib/api';
 import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
-import type { SelectOption } from '@/lib/types';
+import { formatMoney } from '@/lib/utils';
+import type { SelectOption, PlatformPayment } from '@/lib/types';
 
 const PLAN_BADGE: Record<string, string> = {
   default: 'bg-gray-100 text-gray-700',
@@ -26,9 +27,12 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
   const [toggling, setToggling] = useState<string | null>(null);
   const [planOptions, setPlanOptions] = useState<SelectOption[]>([]);
   const [statusOptions, setStatusOptions] = useState<SelectOption[]>([]);
+  const [orgPayments, setOrgPayments] = useState<PlatformPayment[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
 
   useEffect(() => { loadOrg(); loadOptions(); }, [id]);
   useEffect(() => { if (tab === 'modules') loadModules(); }, [tab, id]);
+  useEffect(() => { if (tab === 'subscription') loadOrgPayments(); }, [tab, id]);
 
   async function loadOptions() {
     try {
@@ -65,6 +69,15 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
       }
       setOverrides(ovMap);
     } catch (err) { toastError(getErrorMessage(err)); }
+  }
+
+  async function loadOrgPayments() {
+    setPaymentsLoading(true);
+    try {
+      const { data } = await platformOrgsAPI.payments(id, { limit: 20 });
+      setOrgPayments(data.payments || []);
+    } catch (err) { toastError(getErrorMessage(err)); }
+    finally { setPaymentsLoading(false); }
   }
 
   async function handleToggleModule(featureId: string) {
@@ -342,6 +355,57 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
+            {/* Billing state — paid-through comes from the org's checkout
+                history; comps / never-checked-out orgs have no date and never
+                auto-expire. `billing` mirrors the live Paystack subscription. */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Paid through</p>
+                {org.subscriptionPaidThrough ? (
+                  <p className="text-sm font-semibold text-gray-900">
+                    {new Date(org.subscriptionPaidThrough).toLocaleDateString()}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-gray-900">—</p>
+                    <p className="text-xs text-gray-500 mt-1">Complimentary or never checked out (never auto-expires).</p>
+                  </>
+                )}
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Paystack subscription</p>
+                {org.billing ? (
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        org.billing.status === 'ACTIVE' ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {org.billing.status}
+                      </span>
+                      {org.billing.cancelReason && (
+                        <span className="text-xs text-gray-500">cancelled ({org.billing.cancelReason})</span>
+                      )}
+                    </div>
+                    {org.billing.customerEmail && (
+                      <p className="text-xs text-gray-500">{org.billing.customerEmail}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">No online subscription</p>
+                )}
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Next billing</p>
+                {org.billing?.nextBillingDate ? (
+                  <p className="text-sm font-semibold text-gray-900">
+                    {new Date(org.billing.nextBillingDate).toLocaleDateString()}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600">—</p>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-8">
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -426,6 +490,65 @@ export default function OrgDetailPage({ params }: { params: Promise<{ id: string
                 Updating subscription...
               </div>
             )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">Payment History</h2>
+              <p className="text-sm text-gray-500 mt-1">Paystack transactions for this organization (checkouts and renewals)</p>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Reference</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paymentsLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center">
+                      <div className="w-6 h-6 border-2 border-[#16a34a] border-t-transparent rounded-full animate-spin mx-auto" />
+                    </td>
+                  </tr>
+                ) : orgPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-500">
+                      No payments yet — paid checkouts and renewals will appear here.
+                    </td>
+                  </tr>
+                ) : orgPayments.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 text-sm text-gray-600">{new Date(p.paidAt || p.createdAt).toLocaleString()}</td>
+                    <td className="px-6 py-4">
+                      <code className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-mono">{p.reference}</code>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{p.planName}</td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        {p.kind}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">{formatMoney(p.amount, p.currency)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                        p.status === 'SUCCESS'
+                          ? 'bg-[#16a34a]/10 text-[#16a34a]'
+                          : p.status === 'PENDING'
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-red-50 text-red-600'
+                      }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

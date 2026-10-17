@@ -141,6 +141,8 @@ export const platformOrgsAPI = {
   members: (id: string) => apiClient.get(`/api/platform-organizations/${id}/members`),
   updateSubscription: (id: string, data: { subscriptionPlan?: string; subscriptionStatus?: string }) =>
     apiClient.patch(`/api/platform-organizations/${id}/subscription`, data),
+  payments: (id: string, params?: { limit?: number }) =>
+    apiClient.get(`/api/platform-organizations/${id}/payments`, { params }),
   toggleUserActive: (userId: string) => apiClient.put(`/api/platform-users/${userId}/toggle-active`),
 };
 
@@ -160,6 +162,11 @@ export const platformSubscriptionsAPI = {
   updatePlan: (id: string, data: any) => apiClient.patch(`/api/platform-subscriptions/plans/${id}`, data),
   deletePlan: (id: string) => apiClient.delete(`/api/platform-subscriptions/plans/${id}`),
   assignPlan: (orgId: string, data: { planId: string; status?: string }) => apiClient.patch(`/api/platform-organizations/${orgId}/subscription`, data),
+};
+
+export const platformPaymentsAPI = {
+  list: (params?: { page?: number; limit?: number; status?: string; search?: string; organizationId?: string }) =>
+    apiClient.get('/api/platform-payments', { params }),
 };
 
 export const platformHealthAPI = {
