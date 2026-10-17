@@ -206,7 +206,7 @@ export default function DashboardScreen() {
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
-          <Text style={styles.subtitle}>Here\u2019s an overview of your farm</Text>
+          <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
         </View>
         <ScreenLoading message="Fetching your farm overview…" />
       </SafeAreaView>
@@ -218,11 +218,11 @@ export default function DashboardScreen() {
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
-          <Text style={styles.subtitle}>Here\u2019s an overview of your farm</Text>
+          <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
         </View>
         <StateView
           variant="error"
-          title="Couldn\u2019t load your dashboard"
+          title="Couldn’t load your dashboard"
           message={loadError}
           onRetry={() => {
             setLoading(true);
@@ -250,7 +250,7 @@ export default function DashboardScreen() {
         <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
           <View style={styles.headerTexts}>
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
-          <Text style={styles.subtitle}>Here\u2019s an overview of your farm</Text>
+          <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
           </View>
           <TouchableOpacity
             onPress={() => router.push('/settings')}
