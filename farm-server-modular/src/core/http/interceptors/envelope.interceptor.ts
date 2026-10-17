@@ -8,7 +8,14 @@ import { Response } from 'express';
  *  clients' `unwrapEnvelope` depends on that shape.
  *  Note `/health/livestock/...` etc. WERE proxied (and wrapped), so health
  *  is matched exactly, while weather/docs/realtime are prefix-matched. */
-const RAW_PATHS = new Set(['/health', '/health/ready', '/health/live', '/health/routes']);
+const RAW_PATHS = new Set([
+  '/health',
+  '/health/ready',
+  '/health/live',
+  '/health/routes',
+  // Paystack expects a plain ack, not the client envelope.
+  '/payments/webhook',
+]);
 const RAW_PATH_PREFIXES = ['/weather', '/docs', '/realtime'];
 
 function isRawPath(originalUrl: string): boolean {

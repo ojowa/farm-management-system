@@ -32,6 +32,8 @@ export interface SubscriptionPlan {
   features: any;
   isActive: boolean;
   sortOrder: number;
+  // Cached Paystack plan code (PLN_...), null until the first recurring checkout.
+  paystackPlanCode?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

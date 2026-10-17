@@ -82,3 +82,11 @@ services:
 #   S3_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
 #   S3_ACCESS_KEY_ID=...
 #   S3_SECRET_ACCESS_KEY=...
+#
+#   # Paystack recurring billing for org subscriptions (admin/mobile checkout).
+#   # The secret can instead live on the console's Platform Config page as
+#   # paystack.secret_key (masked on read; DB takes precedence over env).
+#   PAYSTACK_SECRET_KEY=sk_test_...   # sk_live_... in production
+#   PAYSTACK_CALLBACK_URL=https://<admin-origin>/subscription   # optional; defaults to ADMIN_URL/subscription
+#   # Paystack Dashboard > Settings > API Keys & Webhooks:
+#   #   Webhook URL = https://<api-host>/v1/payments/webhook

@@ -7,6 +7,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   UsePipes,
   UseGuards,
@@ -49,6 +50,54 @@ export class OrganizationController {
     return this.organizationService.changeSubscriptionPlan(
       String(req.user?.organizationId || ''),
       String(body?.planId || ''),
+    );
+  }
+
+  // Paystack billing endpoints. All owner-only (billing.manage) and declared
+  // before @Get(':id') so no path segment is ever captured as an :id.
+  @Permission('billing.manage')
+  @Post('subscription/checkout')
+  async startCheckout(@Req() req: any, @Body() body: { planId?: string }) {
+    return this.organizationService.checkoutPlan(
+      String(req.user?.organizationId || ''),
+      String(body?.planId || ''),
+      { id: req.user?.id, email: req.user?.email },
+    );
+  }
+
+  @Permission('billing.manage')
+  @Get('subscription/checkout/:reference')
+  async checkoutStatus(@Param('reference') reference: string, @Req() req: any) {
+    return this.organizationService.checkoutStatus(
+      String(req.user?.organizationId || ''),
+      String(reference || ''),
+    );
+  }
+
+  @Permission('billing.manage')
+  @Get('subscription/payments')
+  async listPayments(@Req() req: any, @Query('limit') limit?: string) {
+    return this.organizationService.listPayments(
+      String(req.user?.organizationId || ''),
+      limit ? Number(limit) : undefined,
+    );
+  }
+
+  @Permission('billing.manage')
+  @Post('subscription/cancel')
+  async cancelSubscription(@Req() req: any) {
+    return this.organizationService.cancelBilling(
+      String(req.user?.organizationId || ''),
+      req.user?.id,
+    );
+  }
+
+  @Permission('billing.manage')
+  @Post('subscription/resume')
+  async resumeSubscription(@Req() req: any) {
+    return this.organizationService.resumeBilling(
+      String(req.user?.organizationId || ''),
+      req.user?.id,
     );
   }
 

@@ -19,7 +19,13 @@ import { AppModule } from './app.module';
  * identically configured application.
  */
 export async function createApp() {
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log', 'debug'] });
+  // rawBody: true keeps the exact request bytes on req.rawBody so the
+  // Paystack webhook can verify its x-paystack-signature HMAC over them
+  // (re-parsed JSON would not byte-match the signed payload).
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug'],
+    rawBody: true,
+  });
 
   // Behind Render's load balancer, trust X-Forwarded-For so req.ip (used for
   // rate limiting and audit logs) is the real client instead of the proxy.

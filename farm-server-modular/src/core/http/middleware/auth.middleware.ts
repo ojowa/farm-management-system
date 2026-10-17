@@ -20,6 +20,8 @@ export class AuthMiddleware implements NestMiddleware {
     '/health/ready',
     '/health/live',
     '/docs',
+    // Paystack posts its signed webhooks without any token.
+    '/payments/webhook',
   ]);
 
   use(req: Request, _res: Response, next: NextFunction) {

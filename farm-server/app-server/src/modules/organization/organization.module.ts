@@ -3,8 +3,10 @@ import { OrganizationController } from './presentation/controllers/organization.
 import { DeletedDataController } from './presentation/controllers/deleted-data.controller';
 import { OrganizationApplicationService } from './application/services/organization.service';
 import { PrismaOrganizationRepository } from './infrastructure/persistence/prisma-organization.repository';
+import { PaymentsModule } from '../payments';
 
 @Module({
+  imports: [PaymentsModule],
   controllers: [OrganizationController, DeletedDataController],
   providers: [
     OrganizationApplicationService,

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { applySubscriptionExpiryIfNeeded } from './billing';
 
 /**
  * Canonical farm types — the single server-side source of truth for what a
@@ -169,13 +170,25 @@ export async function checkSubscriptionLimit(
   organizationId: string,
   resource: 'users' | 'farms'
 ): Promise<string | null> {
-  const org = await prisma.organization.findUnique({
+  let org = await prisma.organization.findUnique({
     where: { id: organizationId },
     include: { subscriptionPlanRef: true },
   });
 
   if (!org) {
     return 'Organization not found';
+  }
+
+  // Billing-managed orgs demote to FREE once paid-through lapses (lazy —
+  // no cron). Re-read so the checks below see the plan it actually holds.
+  if (await applySubscriptionExpiryIfNeeded(prisma, org)) {
+    org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: { subscriptionPlanRef: true },
+    });
+    if (!org) {
+      return 'Organization not found';
+    }
   }
 
   if (org.subscriptionStatus === 'SUSPENDED') {
@@ -260,13 +273,25 @@ export async function checkFarmTypeAllowed(
   organizationId: string,
   farmType: string
 ): Promise<string | null> {
-  const org = await prisma.organization.findUnique({
+  let org = await prisma.organization.findUnique({
     where: { id: organizationId },
     include: { subscriptionPlanRef: true },
   });
 
   if (!org) {
     return 'Organization not found';
+  }
+
+  // Same lazy billing expiry as checkSubscriptionLimit — the farm-type
+  // entitlements must follow a demotion to FREE immediately.
+  if (await applySubscriptionExpiryIfNeeded(prisma, org)) {
+    org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: { subscriptionPlanRef: true },
+    });
+    if (!org) {
+      return 'Organization not found';
+    }
   }
 
   if (org.subscriptionStatus === 'SUSPENDED') {

@@ -14,6 +14,7 @@ import { FinanceModule } from './modules/finance';
 import { HrModule } from './modules/hr';
 import { NotificationModule } from './modules/notification';
 import { OrganizationModule } from './modules/organization';
+import { PaymentsModule } from './modules/payments';
 import { PlatformModule } from './modules/platform';
 import { ReportingModule } from './modules/reporting';
 import { RealtimeModule } from './modules/realtime';
@@ -53,6 +54,7 @@ import { ApiExceptionFilter } from './core/http/filters/api-exception.filter';
     HrModule,
     NotificationModule,
     OrganizationModule,
+    PaymentsModule,
     PlatformModule,
     ReportingModule,
     RealtimeModule,

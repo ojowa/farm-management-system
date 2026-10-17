@@ -32,9 +32,10 @@ import {
 import { PlatformAdminGuard, SuperAdminGuard } from './presentation/guards/platform-admin.guard';
 import { StorageModule } from '../../shared/storage';
 import { EmailModule } from '../notification/modules/email/email.module';
+import { PaymentsModule } from '../payments';
 
 @Module({
-  imports: [StorageModule, EmailModule],
+  imports: [StorageModule, EmailModule, PaymentsModule],
   controllers: [
     PlatformFeaturesController,
     PlatformSubscriptionsController,

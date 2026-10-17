@@ -2,11 +2,15 @@ import { Controller, Get, Patch, Delete, Post, Body, Param, Query, UseGuards, Re
 import { PlatformOrganizationService } from '../../application/services/platform.service';
 import { PlatformAdminGuard } from '../guards/platform-admin.guard';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
+import { PaymentsApplicationService } from '../../../payments';
 
 @Controller('platform-organizations')
 @UseGuards(JwtAuthGuard, AuthorizationGuard, PlatformAdminGuard)
 export class PlatformOrganizationsController {
-  constructor(private readonly orgService: PlatformOrganizationService) {}
+  constructor(
+    private readonly orgService: PlatformOrganizationService,
+    private readonly payments: PaymentsApplicationService
+  ) {}
 
   @Get()
   @Permission('platform.manage')
@@ -54,6 +58,12 @@ export class PlatformOrganizationsController {
   @Permission('platform.manage')
   stats(@Param('id') id: string) {
     return this.orgService.getOrganizationStats(id);
+  }
+
+  @Get(':id/payments')
+  @Permission('platform.manage')
+  paymentsForOrg(@Param('id') id: string, @Query('limit') limit?: string) {
+    return this.payments.listOrgPayments(id, limit ? Number(limit) : 50);
   }
 
   @Get(':id/members')

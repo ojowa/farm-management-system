@@ -1,10 +1,14 @@
 import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { OrganizationRepository } from '../../domain/repositories/organization.repository';
 import { CreateOrganizationRequest } from '../../../../kernel/types';
+import { PaymentsApplicationService } from '../../../payments';
 
 @Injectable()
 export class OrganizationApplicationService {
-  constructor(@Inject('OrganizationRepository') private readonly orgRepo: OrganizationRepository) {}
+  constructor(
+    @Inject('OrganizationRepository') private readonly orgRepo: OrganizationRepository,
+    private readonly payments: PaymentsApplicationService
+  ) {}
 
   async create(createDto: CreateOrganizationRequest) {
     const existingBySlug = await this.orgRepo.findBySlug(createDto.slug);
@@ -89,25 +93,41 @@ export class OrganizationApplicationService {
    */
   async getSubscription(organizationId: string) {
     if (!organizationId) throw new NotFoundException('Organization not found');
-    const { prisma } = await import('../../../../kernel/database');
-    const org = await prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: {
-        id: true,
-        name: true,
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        subscriptionPlanRef: {
-          select: {
-            id: true, name: true, displayName: true, description: true,
-            price: true, currency: true, billingCycle: true,
-            maxUsers: true, maxFarms: true, maxStorage: true, features: true,
-          },
+    const { prisma, applySubscriptionExpiryIfNeeded } = await import('../../../../kernel/database');
+    const snapshotSelect = {
+      id: true,
+      name: true,
+      subscriptionPlan: true,
+      subscriptionStatus: true,
+      subscriptionPlanId: true,
+      subscriptionPaidThrough: true,
+      subscriptionPlanRef: {
+        select: {
+          id: true, name: true, displayName: true, description: true,
+          price: true, currency: true, billingCycle: true,
+          maxUsers: true, maxFarms: true, maxStorage: true, features: true,
         },
-        _count: { select: { farms: true, users: true } },
       },
+      _count: { select: { farms: true, users: true } },
+    } as const;
+    let org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: snapshotSelect,
     });
     if (!org) throw new NotFoundException('Organization not found');
+
+    // Lazy billing expiry: a lapse must be reflected in this very snapshot.
+    if (await applySubscriptionExpiryIfNeeded(prisma as any, org as any)) {
+      org = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: snapshotSelect,
+      });
+      if (!org) throw new NotFoundException('Organization not found');
+    }
+
+    const billing = await prisma.paystackSubscription.findUnique({
+      where: { organizationId },
+    });
 
     // Same normalization as withPlanFeatures: unconfigured plans store the
     // legacy `"[]"` default, which is not an entitlement object.
@@ -138,6 +158,19 @@ export class OrganizationApplicationService {
           }
         : null,
       usage: { farms: org._count.farms, users: org._count.users },
+      // Recurring billing state: null for free/comped orgs (never expires);
+      // set by checkout/renewal webhooks for billing-managed ones.
+      paidThrough: org.subscriptionPaidThrough ? org.subscriptionPaidThrough.toISOString() : null,
+      billing: billing
+        ? {
+            status: billing.status,
+            cancelReason: billing.cancelReason,
+            nextBillingDate: billing.nextPaymentDate
+              ? billing.nextPaymentDate.toISOString()
+              : null,
+            customerEmail: billing.customerEmail,
+          }
+        : null,
     };
   }
 
@@ -149,24 +182,71 @@ export class OrganizationApplicationService {
   async changeSubscriptionPlan(organizationId: string, planId: string) {
     if (!organizationId) throw new NotFoundException('Organization not found');
     if (!planId) throw new BadRequestException('planId is required');
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma, applySubscriptionExpiryIfNeeded } = await import('../../../../kernel/database');
+    let org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, subscriptionPlanId: true, subscriptionPaidThrough: true },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    if (await applySubscriptionExpiryIfNeeded(prisma as any, org as any)) {
+      org = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { id: true, subscriptionPlanId: true, subscriptionPaidThrough: true },
+      });
+      if (!org) throw new NotFoundException('Organization not found');
+    }
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan || !plan.isActive) {
       throw new BadRequestException('Subscription plan not found');
     }
-    const org = await prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { id: true, subscriptionPlanId: true },
-    });
-    if (!org) throw new NotFoundException('Organization not found');
     if (org.subscriptionPlanId === plan.id) {
       throw new BadRequestException(`Already subscribed to the ${plan.name} plan`);
     }
+    // Paid plans switch through Paystack checkout only — this PATCH is the
+    // instant, free path (and is how an owner returns to FREE).
+    if (Number(plan.price ?? 0) > 0) {
+      throw new BadRequestException(
+        `The ${plan.displayName} plan is paid — start checkout instead of switching directly`
+      );
+    }
+    // Moving to a free plan ends any live Paystack subscription (future
+    // charges stop) and clears the paid-through date.
+    await this.payments.forceCancelForFreeSwitch(organizationId);
     await prisma.organization.update({
       where: { id: organizationId },
-      data: { subscriptionPlanId: plan.id, subscriptionPlan: plan.name },
+      data: {
+        subscriptionPlanId: plan.id,
+        subscriptionPlan: plan.name,
+        subscriptionPaidThrough: null,
+      },
     });
     return this.getSubscription(organizationId);
+  }
+
+  // ── Paystack checkout surface (controller routes, all billing.manage) ──
+
+  async checkoutPlan(
+    organizationId: string,
+    planId: string,
+    user: { id?: string; email?: string }
+  ) {
+    return this.payments.initializeCheckout(organizationId, planId, user);
+  }
+
+  async checkoutStatus(organizationId: string, reference: string) {
+    return this.payments.pollCheckoutStatus(organizationId, reference);
+  }
+
+  async cancelBilling(organizationId: string, userId?: string) {
+    return this.payments.cancelBilling(organizationId, userId);
+  }
+
+  async resumeBilling(organizationId: string, userId?: string) {
+    return this.payments.resumeBilling(organizationId, userId);
+  }
+
+  async listPayments(organizationId: string, limit?: number) {
+    return this.payments.listOrgPayments(organizationId, limit);
   }
 
   async delete(id: string, organizationId?: string) {

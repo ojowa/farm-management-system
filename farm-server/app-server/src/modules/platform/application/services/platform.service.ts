@@ -66,7 +66,17 @@ export class PlatformSubscriptionService {
 
   async findAllPlans() {
     const plans = await this.planRepo.findMany();
-    return { plans };
+    // Console plan cards show how many orgs run each plan — the raw rows
+    // never carried it (it rendered "undefined organization(s)").
+    const { prisma } = await import('@farm/database');
+    const counts = await prisma.organization.groupBy({
+      by: ['subscriptionPlanId'],
+      _count: { _all: true },
+    });
+    const byId = new Map<string, number>(
+      counts.map((c: any) => [c.subscriptionPlanId, c._count._all])
+    );
+    return { plans: plans.map((p: any) => ({ ...p, organizationCount: byId.get(p.id) ?? 0 })) };
   }
 
   async findOnePlan(id: string) {
@@ -128,12 +138,19 @@ export class PlatformSubscriptionService {
     features: any;
     isActive: boolean;
     sortOrder: number;
+    paystackPlanCode: string | null;
   }>,  auditUserId: string) {
     await this.findOnePlan(id);
-    // Re-derive farmTypes whenever features are supplied — plan edits must
-    // not be able to reintroduce module/farmType mismatches.
+    // Re-derive farmTypes whenever features are supplied - plan edits must
+    // not be able to reintroduce module/farmType mismatches. Price, currency
+    // or cycle changes also invalidate the cached Paystack plan code so the
+    // next checkout re-creates it with the new amount.
     const { normalizePlanFeatures } = await import('@farm/database');
-    const updated = await this.planRepo.update(id, data.features !== undefined ? { ...data, features: normalizePlanFeatures(data.features) } : data);
+    const payload =
+      data.price !== undefined || data.currency !== undefined || data.billingCycle !== undefined
+        ? { ...data, paystackPlanCode: null }
+        : data;
+    const updated = await this.planRepo.update(id, payload.features !== undefined ? { ...payload, features: normalizePlanFeatures(payload.features) } : payload);
     await this.auditLogRepo.create({ userId: auditUserId, action: 'subscription.plan.update', entity: 'SubscriptionPlan', entityId: id });
     return updated;
   }
@@ -664,10 +681,24 @@ export class PlatformOrganizationService {
       },
     });
     if (!org) throw new NotFoundException('Organization not found');
+    const billing = await prisma.paystackSubscription.findUnique({
+      where: { organizationId: id },
+    });
     return {
       ...org,
       userCount: org._count.users,
       farmCount: org._count.farms,
+      // Normalized for the console's subscription tab (matches the org-side
+      // GET /organizations/subscription shape).
+      subscriptionPaidThrough: org.subscriptionPaidThrough?.toISOString() ?? null,
+      billing: billing
+        ? {
+            status: billing.status,
+            cancelReason: billing.cancelReason,
+            nextBillingDate: billing.nextPaymentDate?.toISOString() ?? null,
+            customerEmail: billing.customerEmail,
+          }
+        : null,
       users: org.users.map((u: any) => ({
         id: u.id,
         email: u.email,
@@ -837,13 +868,53 @@ export class PlatformOrganizationService {
     const org = await prisma.organization.findUnique({ where: { id } });
     if (!org) throw new NotFoundException('Organization not found');
 
+    // Keep the legacy name column AND the FK in sync — writing only the
+    // string (what this did before) recreates the entitlement drift the
+    // org-side endpoint was fixed to avoid. A platform assignment is also a
+    // comp/override: it clears paid-through (the org no longer auto-expires)
+    // and detaches any live Paystack subscription so auto-charges stop under
+    // manual control.
+    let planId = org.subscriptionPlanId ?? null;
+    if (data.subscriptionPlan !== undefined) {
+      const plan = await prisma.subscriptionPlan.findFirst({
+        where: { name: data.subscriptionPlan },
+      });
+      if (!plan) throw new NotFoundException(`Subscription plan '${data.subscriptionPlan}' not found`);
+      planId = plan.id;
+    }
+
     const updated = await prisma.organization.update({
       where: { id },
       data: {
-        subscriptionPlan: data.subscriptionPlan ?? undefined,
-        subscriptionStatus: data.subscriptionStatus ?? undefined,
+        ...(data.subscriptionPlan !== undefined
+          ? { subscriptionPlan: data.subscriptionPlan, subscriptionPlanId: planId, subscriptionPaidThrough: null }
+          : {}),
+        ...(data.subscriptionStatus !== undefined
+          ? { subscriptionStatus: data.subscriptionStatus }
+          : {}),
       },
     });
+
+    if (data.subscriptionPlan !== undefined) {
+      const sub = await prisma.paystackSubscription.findUnique({ where: { organizationId: id } });
+      if (sub && sub.status !== 'CANCELLED') {
+        try {
+          const { paystackClient } = await import('../../../payments');
+          const token = sub.token || (await paystackClient.findSubscriptionToken(sub.subscriptionCode));
+          if (token) await paystackClient.disableSubscription(sub.subscriptionCode, token);
+        } catch (err: any) {
+          // Local cancel below is authoritative for entitlements; a stale
+          // Paystack-side subscription would re-apply itself on renewal and
+          // get re-cancelled by the next platform override.
+          console.warn(`[platform] Paystack disable for org ${id} failed: ${err?.message}`);
+        }
+        await prisma.paystackSubscription.update({
+          where: { organizationId: id },
+          data: { status: 'CANCELLED', cancelReason: 'platform' },
+        });
+      }
+    }
+
     await this.auditLogRepo.create({ userId: auditUserId, action: 'organization.subscription.update', entity: 'Organization', entityId: id });
     return updated;
   }
@@ -900,7 +971,7 @@ export class PlatformBroadcastService {
 // Config values that are secrets: once written they are never echoed back to
 // clients (the console sees this mask instead), and a round-tripped mask on
 // write means "leave unchanged". An empty value clears the key.
-const SECRET_CONFIG_KEYS = new Set(['email.resend_api_key']);
+const SECRET_CONFIG_KEYS = new Set(['email.resend_api_key', 'paystack.secret_key']);
 const SECRET_MASK = '••••••••';
 
 function maskSecretConfig(config: any): any {

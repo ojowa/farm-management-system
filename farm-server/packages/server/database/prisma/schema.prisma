@@ -19,10 +19,14 @@ model Organization {
   website  String?
   industry String?
 
-  subscriptionPlan   String  @default("FREE")
-  subscriptionStatus String  @default("TRIAL")
-  subscriptionPlanId String?
-  settings           Json    @default("{}")
+  subscriptionPlan          String    @default("FREE")
+  subscriptionStatus        String    @default("TRIAL")
+  subscriptionPlanId        String?
+  // Set only by Paystack checkout/renewal webhooks: the date through which
+  // the org has paid. Null = free/comped/platform-managed (never expires
+  // by billing). Lazily evaluated by kernel/database/billing.ts.
+  subscriptionPaidThrough   DateTime?
+  settings                  Json      @default("{}")
 
   users               User[]
   farms               Farm[]
@@ -1053,10 +1057,60 @@ model SubscriptionPlan {
   features     Json     @default("[]")
   isActive     Boolean  @default(true)
   sortOrder    Int      @default(0)
+  // Cached Paystack plan code (PLN_...) for recurring checkout; cleared by
+  // updatePlan when price/currency/billingCycle change so the next checkout
+  // re-creates it with the new amount.
+  paystackPlanCode String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   organizations Organization[]
+}
+
+// ── Paystack billing: one row per charge (first checkout + renewals) ──────
+
+model PaymentTransaction {
+  id               String   @id @default(uuid())
+  organizationId   String
+  planId           String?
+  planName         String
+  userId           String?
+  reference        String   @unique // Paystack transaction reference (fms_* for our checkouts)
+  subscriptionCode String?
+  kind             String   @default("checkout") // checkout | renewal
+  amount           Decimal  @default(0)
+  currency         String
+  status           String   @default("PENDING") // PENDING | SUCCESS | FAILED | ABANDONED
+  channel          String?
+  raw              Json?
+  paidAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizationId, createdAt])
+  @@index([status])
+}
+
+// ── Paystack billing: our mirror of the live subscription (one per org) ──
+
+model PaystackSubscription {
+  id                String    @id @default(uuid())
+  organizationId    String    @unique
+  planId            String?
+  planName          String
+  paystackPlanCode  String?
+  subscriptionCode  String    @unique
+  token             String? // needed by Paystack's enable/disable APIs
+  customerEmail     String
+  customerId        String?
+  status            String    @default("ACTIVE") // ACTIVE | CANCELLED
+  cancelReason      String? // owner | platform | billing | not_renew
+  nextPaymentDate   DateTime?
+  raw               Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
 }
 
 // ── Platform Console: User Sessions ───────────────────────
