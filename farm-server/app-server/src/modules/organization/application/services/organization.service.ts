@@ -1,6 +1,6 @@
 import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { OrganizationRepository } from '../../domain/repositories/organization.repository';
-import { CreateOrganizationRequest } from '../../../../kernel/types';
+import type { CreateOrganizationRequest } from '@farm/types-server';
 import { PaymentsApplicationService } from '../../../payments';
 
 @Injectable()
@@ -93,7 +93,7 @@ export class OrganizationApplicationService {
    */
   async getSubscription(organizationId: string) {
     if (!organizationId) throw new NotFoundException('Organization not found');
-    const { prisma, applySubscriptionExpiryIfNeeded } = await import('../../../../kernel/database');
+    const { prisma, applySubscriptionExpiryIfNeeded } = await import('@farm/database');
     const snapshotSelect = {
       id: true,
       name: true,
@@ -182,7 +182,7 @@ export class OrganizationApplicationService {
   async changeSubscriptionPlan(organizationId: string, planId: string) {
     if (!organizationId) throw new NotFoundException('Organization not found');
     if (!planId) throw new BadRequestException('planId is required');
-    const { prisma, applySubscriptionExpiryIfNeeded } = await import('../../../../kernel/database');
+    const { prisma, applySubscriptionExpiryIfNeeded } = await import('@farm/database');
     let org = await prisma.organization.findUnique({
       where: { id: organizationId },
       select: { id: true, subscriptionPlanId: true, subscriptionPaidThrough: true },

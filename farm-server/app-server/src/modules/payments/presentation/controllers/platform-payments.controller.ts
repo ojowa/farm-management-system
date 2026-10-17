@@ -1,7 +1,7 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { PaymentsApplicationService } from '../../application/services/payments.service';
 import { PlatformAdminGuard } from '../../../platform/presentation/guards/platform-admin.guard';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 
 /** Platform-console view of every Paystack transaction (all orgs). */
 @Controller('platform-payments')

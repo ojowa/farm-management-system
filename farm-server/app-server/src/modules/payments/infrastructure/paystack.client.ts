@@ -14,7 +14,7 @@ const PAYSTACK_BASE_URL = (process.env.PAYSTACK_BASE_URL || 'https://api.paystac
 export class PaystackClient {
   async getSecretKey(): Promise<string> {
     try {
-      const { prisma } = await import('../../../kernel/database');
+      const { prisma } = await import('@farm/database');
       const cfg = await prisma.platformConfig.findUnique({ where: { key: 'paystack.secret_key' } });
       const dbKey = typeof cfg?.value === 'string' ? cfg.value.trim() : '';
       if (dbKey) return dbKey;

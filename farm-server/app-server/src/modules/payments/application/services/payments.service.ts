@@ -39,7 +39,7 @@ function addCycle(from: Date, cycle: string): Date {
  * org's plan (FK + legacy name column together).
  *
  * Orgs that never check out have no paid-through date and are untouched by
- * the lazy expiry in kernel/database/billing.ts.
+ * the lazy expiry in @farm/database.
  */
 @Injectable()
 export class PaymentsApplicationService {
@@ -54,7 +54,7 @@ export class PaymentsApplicationService {
   ) {
     if (!organizationId) throw new NotFoundException('Organization not found');
     if (!planId) throw new BadRequestException('planId is required');
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
 
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan || !plan.isActive) throw new BadRequestException('Subscription plan not found');
@@ -120,7 +120,7 @@ export class PaymentsApplicationService {
    */
   async pollCheckoutStatus(organizationId: string, reference: string) {
     if (!organizationId) throw new NotFoundException('Organization not found');
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const row = await prisma.paymentTransaction.findUnique({ where: { reference } });
     if (!row || row.organizationId !== organizationId) {
       throw new NotFoundException('Payment not found');
@@ -159,7 +159,7 @@ export class PaymentsApplicationService {
   // ── Cancel / resume ─────────────────────────────────────────────────────
 
   async cancelBilling(organizationId: string, userId?: string) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const sub = await prisma.paystackSubscription.findUnique({ where: { organizationId } });
     if (!sub) throw new BadRequestException('No active subscription to cancel');
     const org = await prisma.organization.findUnique({
@@ -182,7 +182,7 @@ export class PaymentsApplicationService {
       data: { status: 'CANCELLED', cancelReason: 'owner', token },
     });
     // Entitlements continue until subscriptionPaidThrough, then the lazy
-    // expiry in kernel/database/billing.ts demotes the org to FREE.
+    // expiry in @farm/database demotes the org to FREE.
     await this.audit(organizationId, 'organization.subscription.cancel', organizationId, userId);
     return {
       status: 'CANCELLED',
@@ -191,7 +191,7 @@ export class PaymentsApplicationService {
   }
 
   async resumeBilling(organizationId: string, userId?: string) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const sub = await prisma.paystackSubscription.findUnique({ where: { organizationId } });
     if (!sub) throw new BadRequestException('No subscription to resume');
     if (sub.status === 'ACTIVE') return { status: 'ACTIVE' };
@@ -236,7 +236,7 @@ export class PaymentsApplicationService {
    * webhook that still lands would re-apply the paid plan the owner paid for).
    */
   async forceCancelForFreeSwitch(organizationId: string) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const sub = await prisma.paystackSubscription.findUnique({ where: { organizationId } });
     if (!sub || sub.status === 'CANCELLED') return;
     try {
@@ -287,7 +287,7 @@ export class PaymentsApplicationService {
   }
 
   private async processEvent(name: string, data: any) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     switch (name) {
       case 'charge.success':
         await this.applySuccessfulCharge(data);
@@ -339,7 +339,7 @@ export class PaymentsApplicationService {
    * a reference already marked SUCCESS is a replay and changes nothing.
    */
   async applySuccessfulCharge(charge: any): Promise<{ applied: boolean; status: string }> {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const reference = String(charge?.reference || '');
     if (!reference) return { applied: false, status: 'IGNORED' };
 
@@ -511,7 +511,7 @@ export class PaymentsApplicationService {
   }
 
   private async onSubscriptionCreate(data: any) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const code = String(data?.subscription_code || '');
     if (!code) return;
 
@@ -604,7 +604,7 @@ export class PaymentsApplicationService {
     status: 'ACTIVE' | 'CANCELLED',
     cancelReason: string | null | undefined
   ) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const code = String(data?.subscription_code || '');
     if (!code) return;
     const sub = await prisma.paystackSubscription.findUnique({
@@ -634,7 +634,7 @@ export class PaymentsApplicationService {
 
   async listOrgPayments(organizationId: string, limit = 20) {
     if (!organizationId) throw new NotFoundException('Organization not found');
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const take = Math.min(50, Math.max(1, Number(limit) || 20));
     const [payments, total] = await Promise.all([
       prisma.paymentTransaction.findMany({
@@ -659,7 +659,7 @@ export class PaymentsApplicationService {
     search?: string;
     organizationId?: string;
   }) {
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 25));
     const search = String(query.search || '').trim();
@@ -722,7 +722,7 @@ export class PaymentsApplicationService {
     paystackPlanCode: string | null;
   }): Promise<string> {
     if (plan.paystackPlanCode) return plan.paystackPlanCode;
-    const { prisma } = await import('../../../../kernel/database');
+    const { prisma } = await import('@farm/database');
     const created = await paystackClient.createPlan({
       name: `FMS ${plan.name}`,
       interval: String(plan.billingCycle).toUpperCase() === 'YEARLY' ? 'annually' : 'monthly',
@@ -763,7 +763,7 @@ export class PaymentsApplicationService {
     metadata?: Record<string, any>
   ) {
     try {
-      const { prisma } = await import('../../../../kernel/database');
+      const { prisma } = await import('@farm/database');
       await prisma.auditLog.create({
         data: {
           organizationId,
