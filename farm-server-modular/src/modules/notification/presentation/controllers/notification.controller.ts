@@ -12,17 +12,41 @@ import {
   UseGuards,
   Inject,
   NotFoundException,
+  UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
 import { NotificationApplicationService } from '../../application/services/notification.service';
 import { Notification } from '../../domain/entities/notification.entity';
-import { CreateNotificationRequest } from '../dto/notification.dto';
+import { CreateNotificationRequest, UpdateNotificationRequest } from '../dto/notification.dto';
 import { ZodValidationPipe } from '../../../../kernel/utils';
-import { createNotificationSchema, updateNotificationSchema } from '../../../../kernel/validation';
+import {
+  createNotificationSchema,
+  createBulkNotificationSchema,
+  updateNotificationSchema,
+  registerDeviceTokenSchema,
+  unregisterDeviceTokenSchema,
+} from '../../../../kernel/validation';
 import { DeviceTokenRepository } from '../../domain/repositories/notification.repository';
 
+/**
+ * `JwtAuthGuard` stores the verified principal as `req.user` in the
+ * `VerifiedUser` shape (`{ id, email, role, permissions, organizationId }`).
+ * `sub` is only the raw JWT claim, so it is kept as a defensive fallback —
+ * reading it alone used to leave every self-service route with an empty
+ * caller id (404s everywhere and push tokens stored under `userId: ''`).
+ */
 function getCallerUserId(req: any): string {
-  return String(req.user?.sub || '');
+  const user = req?.user;
+  return String(user?.id ?? user?.sub ?? '');
+}
+
+function requireCallerUserId(req: any): string {
+  const userId = getCallerUserId(req);
+  if (!userId) {
+    throw new UnauthorizedException('Authentication required');
+  }
+  return userId;
 }
 
 /**
@@ -31,8 +55,8 @@ function getCallerUserId(req: any): string {
  * any other user's id reads as not-found.
  */
 function requireSelfUserId(userId: string, req: any): string {
-  const me = getCallerUserId(req);
-  if (!me || userId !== me) {
+  const me = requireCallerUserId(req);
+  if (userId !== me) {
     throw new NotFoundException('Notifications not found');
   }
   return me;
@@ -52,7 +76,7 @@ export class NotificationController {
 
   @Permission('notification.write')
   @Post('bulk')
-  @UsePipes(new ZodValidationPipe(createNotificationSchema))
+  @UsePipes(new ZodValidationPipe(createBulkNotificationSchema))
   async createBulk(@Req() req: any, @Body() notifications: CreateNotificationRequest[]): Promise<Notification[]> {
     return this.notificationService.createBulk(notifications, String(req.user?.organizationId || ''));
   }
@@ -60,7 +84,7 @@ export class NotificationController {
   @Permission('notification.read')
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req: any): Promise<Notification> {
-    return this.notificationService.findById(id, getCallerUserId(req));
+    return this.notificationService.findById(id, requireCallerUserId(req));
   }
 
   @Permission('notification.read')
@@ -92,18 +116,21 @@ export class NotificationController {
   async update(
     @Param('id') id: string,
     @Req() req: any,
-    @Body() updateDto: Partial<Notification>
+    @Body() updateDto: UpdateNotificationRequest
   ): Promise<Notification> {
-    return this.notificationService.update(id, getCallerUserId(req), updateDto);
+    return this.notificationService.update(id, requireCallerUserId(req), updateDto);
   }
 
-  @Permission('notification.write')
+  // Marking your own notifications read is self-service on rows you already
+  // own, so it sits behind `notification.read` (read-only roles — accountant,
+  // supervisor, worker — were locked out of their own inbox before).
+  @Permission('notification.read')
   @Put(':id/read')
   async markAsRead(@Param('id') id: string, @Req() req: any): Promise<Notification> {
-    return this.notificationService.markAsRead(id, getCallerUserId(req));
+    return this.notificationService.markAsRead(id, requireCallerUserId(req));
   }
 
-  @Permission('notification.write')
+  @Permission('notification.read')
   @Put('user/:userId/read-all')
   async markAllAsRead(@Param('userId') userId: string, @Req() req: any): Promise<{ count: number }> {
     const count = await this.notificationService.markAllAsRead(requireSelfUserId(userId, req));
@@ -113,7 +140,7 @@ export class NotificationController {
   @Permission('notification.write')
   @Delete(':id')
   async delete(@Param('id') id: string, @Req() req: any): Promise<void> {
-    return this.notificationService.delete(id, getCallerUserId(req));
+    return this.notificationService.delete(id, requireCallerUserId(req));
   }
 
   @Permission('notification.read')
@@ -123,7 +150,7 @@ export class NotificationController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string
   ): Promise<Notification[]> {
-    return this.notificationService.findAll(getCallerUserId(req), {
+    return this.notificationService.findAll(requireCallerUserId(req), {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
     });
@@ -135,47 +162,43 @@ export class NotificationController {
 export class DeviceController {
   constructor(@Inject('DeviceTokenRepository') private readonly deviceTokenRepo: DeviceTokenRepository) {}
 
-  @Permission('notification.write')
+  // Self-service: the row is always bound to the caller's own user id from
+  // the verified JWT, so any role that receives notifications may bind its
+  // push handle — gating this on `notification.write` silently denied push
+  // to read-only roles (accountant, supervisor, worker).
+  @Permission('notification.read')
   @Post('tokens')
+  @UsePipes(new ZodValidationPipe(registerDeviceTokenSchema))
   async registerToken(
     @Req() req: any,
     @Body() body: { token: string; platform: 'web' | 'ios' | 'android' }
   ): Promise<{ success: boolean; message: string }> {
     // Identity comes from the verified JWT only — a spoofable `x-user-id`
     // header must never decide which user's devices get push tokens.
-    const userId = getCallerUserId(req);
-    const { token, platform } = body;
-
-    if (!token || !platform) {
-      return { success: false, message: 'Token and platform are required' };
-    }
+    const userId = requireCallerUserId(req);
 
     try {
-      await this.deviceTokenRepo.register(userId, token, platform);
+      await this.deviceTokenRepo.register(userId, body.token, body.platform);
       return { success: true, message: 'Device token registered successfully' };
     } catch (error) {
-      return { success: false, message: 'Failed to register device token' };
+      throw new InternalServerErrorException({ success: false, message: 'Failed to register device token' });
     }
   }
 
-  @Permission('notification.write')
+  @Permission('notification.read')
   @Delete('tokens')
+  @UsePipes(new ZodValidationPipe(unregisterDeviceTokenSchema))
   async unregisterToken(
     @Req() req: any,
     @Body() body: { token: string }
   ): Promise<{ success: boolean; message: string }> {
-    const userId = getCallerUserId(req);
-    const { token } = body;
-
-    if (!token) {
-      return { success: false, message: 'Token is required' };
-    }
+    const userId = requireCallerUserId(req);
 
     try {
-      await this.deviceTokenRepo.deactivateByToken(userId, token);
+      await this.deviceTokenRepo.deactivateByToken(userId, body.token);
       return { success: true, message: 'Device token unregistered successfully' };
     } catch (error) {
-      return { success: false, message: 'Failed to unregister device token' };
+      throw new InternalServerErrorException({ success: false, message: 'Failed to unregister device token' });
     }
   }
 }

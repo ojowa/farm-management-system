@@ -188,4 +188,20 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
     this.logger.log(`Broadcasted realtime event: ${entityEventName}`);
   }
+
+  /**
+   * Emit an event straight into one user's room (used by the internal
+   * `/realtime/emit-internal` endpoint so other processes — e.g. the
+   * notification service — can reach clients connected to this gateway).
+   */
+  sendToUser(userId: string, event: string, payload: unknown): void {
+    if (!userId) return;
+    const shared = (global as any).__FMS_SOCKET_IO__ as Server | undefined;
+    const io = shared || this.server;
+    if (!io) {
+      this.logger.warn(`Socket.IO server not initialized, cannot emit "${event}" to ${userId}`);
+      return;
+    }
+    io.to(`user:${userId}`).emit(event, payload);
+  }
 }

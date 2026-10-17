@@ -8,10 +8,22 @@ export interface DropdownMenuProps {
   children: React.ReactNode;
   trigger: React.ReactNode;
   align?: 'start' | 'end' | 'center';
+  /** Optional controlled state — pass both to close the menu from outside
+   *  (e.g. after navigating from an item). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const DropdownMenu = ({ children, trigger, align = 'end' }: DropdownMenuProps) => {
-  const [open, setOpen] = React.useState(false);
+const DropdownMenu = ({ children, trigger, align = 'end', open: controlledOpen, onOpenChange }: DropdownMenuProps) => {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      setInternalOpen(next);
+      onOpenChange?.(next);
+    },
+    [onOpenChange]
+  );
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {

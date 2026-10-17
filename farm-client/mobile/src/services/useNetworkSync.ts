@@ -10,6 +10,7 @@ export function useNetworkSync() {
   const reconcileRef = useRef<ReturnType<typeof reconcileOfflineQueue> | null>(null);
   const socketAccessToken = useAppSelector((state) => state.auth.socketAccessToken);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const user = useAppSelector((state) => state.auth.user);
   const initialCheckDone = useRef(false);
 
   useEffect(() => {
@@ -17,6 +18,13 @@ export function useNetworkSync() {
       socketService.disconnect();
       return;
     }
+
+    // Notifications are only delivered to authenticated users who joined a
+    // room named after their user id — pass identity so the socket service
+    // can join it on connect and reconnect.
+    const socketIdentity = user?.id
+      ? { userId: user.id, organizationId: user.organizationId }
+      : undefined;
 
     let unsubscribeNetInfo: (() => void) | null = null;
 
@@ -37,14 +45,14 @@ export function useNetworkSync() {
         dispatch(setIsOnline(online));
 
         if (online && socketAccessToken && !socketService.isConnected) {
-          socketService.connect(socketAccessToken);
+          socketService.connect(socketAccessToken, socketIdentity);
         }
       });
     } else {
       // On web, default to online
       dispatch(setIsOnline(true));
       if (socketAccessToken && !socketService.isConnected) {
-        socketService.connect(socketAccessToken);
+        socketService.connect(socketAccessToken, socketIdentity);
       }
     }
 
@@ -63,5 +71,5 @@ export function useNetworkSync() {
       socketService.disconnect();
       reconcileRef.current?.stop();
     };
-  }, [dispatch, socketAccessToken, isAuthenticated]);
+  }, [dispatch, socketAccessToken, isAuthenticated, user]);
 }

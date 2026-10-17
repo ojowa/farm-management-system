@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { scopedPrisma as prisma } from '@farm/database';
 import { NotificationRepository, DeviceTokenRepository } from '../../domain/repositories/notification.repository';
 import { Notification, DeviceToken } from '../../domain/entities/notification.entity';
-import { CreateNotificationRequest } from '../../presentation/dto/notification.dto';
+import { CreateNotificationRequest, UpdateNotificationRequest } from '../../presentation/dto/notification.dto';
 
 function mapNotification(row: any): Notification {
   return {
@@ -14,9 +14,24 @@ function mapNotification(row: any): Notification {
     link: row.link ?? undefined,
     entityType: row.entityType ?? undefined,
     entityId: row.entityId ?? undefined,
-    isRead: row.read,
+    // The column (and every client) calls this `read` — keep the API response
+    // in step with it so unread badges and mark-read states line up.
+    read: row.read,
     createdAt: row.createdAt,
   };
+}
+
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 200;
+
+function clampLimit(limit: number | undefined, fallback = DEFAULT_PAGE_SIZE): number {
+  if (limit === undefined || !Number.isFinite(limit)) return fallback;
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_PAGE_SIZE);
+}
+
+function clampOffset(offset: number | undefined): number {
+  if (offset === undefined || !Number.isFinite(offset) || offset < 0) return 0;
+  return Math.trunc(offset);
 }
 
 @Injectable()
@@ -38,8 +53,8 @@ export class PrismaNotificationRepository implements NotificationRepository {
     const rows = await prisma.notification.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: options?.limit || 10,
-      skip: options?.offset || 0,
+      take: clampLimit(options?.limit, 10),
+      skip: clampOffset(options?.offset),
     });
     return rows.map(mapNotification);
   }
@@ -48,8 +63,8 @@ export class PrismaNotificationRepository implements NotificationRepository {
     const rows = await prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: options?.limit,
-      skip: options?.offset,
+      take: clampLimit(options?.limit),
+      skip: clampOffset(options?.offset),
     });
     return rows.map(mapNotification);
   }
@@ -69,24 +84,33 @@ export class PrismaNotificationRepository implements NotificationRepository {
     return mapNotification(notification);
   }
 
-  async update(id: string, updateDto: Partial<Notification>): Promise<Notification> {
+  async update(id: string, userId: string, updateDto: UpdateNotificationRequest): Promise<Notification | null> {
     const data: any = {};
     if (updateDto.title !== undefined) data.title = updateDto.title;
     if (updateDto.message !== undefined) data.message = updateDto.message;
     if (updateDto.type !== undefined) data.type = updateDto.type;
     if (updateDto.link !== undefined) data.link = updateDto.link;
-    if (updateDto.isRead !== undefined) data.read = updateDto.isRead;
+    if (updateDto.entityType !== undefined) data.entityType = updateDto.entityType;
+    if (updateDto.entityId !== undefined) data.entityId = updateDto.entityId;
+    // `read` is canonical; `isRead` is the legacy alias accepted by the schema.
+    const read = updateDto.read ?? updateDto.isRead;
+    if (read !== undefined) data.read = read;
+    if (Object.keys(data).length === 0) return this.findById(id, userId);
 
-    const row = await prisma.notification.update({ where: { id }, data });
-    return mapNotification(row);
+    // updateMany keeps the ownership check inside the mutation itself instead
+    // of relying on a separate read (TOCTOU).
+    const result = await prisma.notification.updateMany({ where: { id, userId }, data });
+    if (result.count === 0) return null;
+    return this.findById(id, userId);
   }
 
-  async markAsRead(id: string): Promise<Notification> {
-    const row = await prisma.notification.update({
-      where: { id },
+  async markAsRead(id: string, userId: string): Promise<Notification | null> {
+    const result = await prisma.notification.updateMany({
+      where: { id, userId },
       data: { read: true },
     });
-    return mapNotification(row);
+    if (result.count === 0) return null;
+    return this.findById(id, userId);
   }
 
   async markAllAsRead(userId: string): Promise<number> {
@@ -103,8 +127,11 @@ export class PrismaNotificationRepository implements NotificationRepository {
     });
   }
 
-  async delete(id: string): Promise<void> {
-    await prisma.notification.delete({ where: { id } });
+  async delete(id: string, userId: string): Promise<boolean> {
+    // `deleteMany` is rewritten by the soft-delete extension into a
+    // `deletedAt` stamp, so the userId stays in the where clause.
+    const result = await prisma.notification.deleteMany({ where: { id, userId } });
+    return result.count > 0;
   }
 
   async filterUserIdsInOrg(userIds: string[], organizationId: string): Promise<string[]> {

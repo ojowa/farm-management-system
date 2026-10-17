@@ -1,22 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/lib/notifications';
-import { Bell, X, Check, Mail, AlertTriangle, CheckCircle, Info } from 'lucide-react';
-import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { usePermission } from '@/lib/usePermission';
+import { Bell, X, Check, AlertTriangle, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export function NotificationCenter() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { hasPermission } = usePermission();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const canManage = hasPermission('notification.write');
 
   const getIcon = (type: string) => {
-    switch (type) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'error': return <Mail className="h-4 w-4 text-red-500" />;
+    switch (String(type ?? '').toUpperCase()) {
+      case 'SUCCESS': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'WARNING': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'ALERT': return <AlertCircle className="h-4 w-4 text-red-500" />;
       default: return <Info className="h-4 w-4 text-blue-500" />;
     }
   };
@@ -35,10 +39,18 @@ export function NotificationCenter() {
     return `${days}d ago`;
   };
 
+  const openNotification = (notification: { id: string; read: boolean; link?: string }) => {
+    if (!notification.read) void markAsRead(notification.id);
+    setOpen(false);
+    if (notification.link) router.push(notification.link);
+  };
+
   return (
     <DropdownMenu
+      open={open}
+      onOpenChange={setOpen}
       trigger={
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white">
@@ -72,9 +84,7 @@ export function NotificationCenter() {
                   !notification.read && 'bg-muted/50'
                 )}
                 inset
-                onClick={() => {
-                  if (!notification.read) markAsRead(notification.id);
-                }}
+                onClick={() => openNotification(notification)}
               >
                 <div className="flex items-start gap-2 w-full">
                   <div className="flex-shrink-0 mt-0.5">{getIcon(notification.type)}</div>
@@ -92,19 +102,23 @@ export function NotificationCenter() {
                         markAsRead(notification.id);
                       }}
                       className="text-muted-foreground hover:text-foreground"
+                      aria-label="Mark as read"
                     >
                       <Check className="h-3 w-3" />
                     </button>
                   )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteNotification(notification.id);
-                    }}
-                    className="text-muted-foreground hover:text-red-500"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notification.id);
+                      }}
+                      className="text-muted-foreground hover:text-red-500"
+                      aria-label="Delete notification"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
               </DropdownMenuItem>
             ))
@@ -112,7 +126,13 @@ export function NotificationCenter() {
         </div>
         {notifications.length > 0 && (
           <div className="border-t p-3">
-            <DropdownMenuItem className="text-center text-primary hover:bg-accent">
+            <DropdownMenuItem
+              className="text-center text-primary hover:bg-accent"
+              onClick={() => {
+                setOpen(false);
+                router.push('/notifications');
+              }}
+            >
               View all notifications
             </DropdownMenuItem>
           </div>

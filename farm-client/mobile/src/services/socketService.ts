@@ -28,7 +28,11 @@ export type RealtimeEvent =
   | 'poultry.deleted'
   | 'finance.created'
   | 'finance.updated'
-  | 'finance.deleted';
+  | 'finance.deleted'
+  | 'notification:new'
+  | 'notification:read'
+  | 'notification:all-read'
+  | 'notification:deleted';
 
 export interface RealtimePayload {
   entity?: string;
@@ -38,6 +42,11 @@ export interface RealtimePayload {
   timestamp?: string;
 }
 
+export interface SocketIdentity {
+  userId: string;
+  organizationId?: string;
+}
+
 type EventCallback = (payload: RealtimePayload) => void;
 
 class SocketService {
@@ -45,10 +54,19 @@ class SocketService {
   private listeners: Map<string, Set<EventCallback>> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
+  private identity: SocketIdentity | null = null;
   private onConnectionChange: ((connected: boolean) => void) | null = null;
   private onReconnecting: ((attempt: number) => void) | null = null;
 
-  async connect(accessToken?: string) {
+  /**
+   * Connect to the realtime gateway and authenticate via handshake token.
+   *
+   * Notifications are only delivered to users who authenticate AND join a
+   * room named after their user id (see NotificationGateway on the server).
+   * Pass `identity` so the room can be joined automatically on connect and
+   * on every reconnect; without it, incoming notifications are missed.
+   */
+  async connect(accessToken?: string, identity?: SocketIdentity) {
     if (this.socket?.connected) return;
 
     if (this.socket) {
@@ -58,6 +76,9 @@ class SocketService {
     }
 
     const token = accessToken || undefined;
+    if (identity?.userId) {
+      this.identity = identity;
+    }
 
     this.socket = io(SOCKET_URL, {
       auth: token ? { token } : undefined,
@@ -72,6 +93,7 @@ class SocketService {
 
     this.socket.on('connect', () => {
       this.reconnectAttempts = 0;
+      this.joinPersonalRoom();
       this.onConnectionChange?.(true);
     });
 
@@ -85,13 +107,16 @@ class SocketService {
     this.socket.on('connect_error', (err) => {
       this.reconnectAttempts++;
       this.onReconnecting?.(this.reconnectAttempts);
-      if (this.reconnectAttempts >= 3) {
+      // Respect the configured retry budget instead of giving up after three
+      // attempts (reconnectionAttempts defaults to 10).
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         this.socket?.disconnect();
       }
     });
 
     this.socket.on('reconnect', () => {
       this.reconnectAttempts = 0;
+      this.joinPersonalRoom();
       this.onConnectionChange?.(true);
     });
 
@@ -107,9 +132,19 @@ class SocketService {
     });
   }
 
+  /** Join the user-specific room the server targets notifications to. */
+  private joinPersonalRoom() {
+    if (!this.identity?.userId) return;
+    this.socket?.emit('join', {
+      userId: this.identity.userId,
+      organizationId: this.identity.organizationId,
+    });
+  }
+
   disconnect() {
     this.socket?.disconnect();
     this.socket = null;
+    this.identity = null;
     this.listeners.clear();
   }
 

@@ -29,9 +29,10 @@ import {
 } from './infrastructure/persistence/prisma-hr.repository';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { EmailModule } from '../notification/modules/email/email.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [RealtimeModule, EmailModule],
+  imports: [RealtimeModule, EmailModule, NotificationModule],
   controllers: [
     WorkerController,
     AttendanceController,

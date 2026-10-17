@@ -7,7 +7,8 @@ export interface Notification {
   link?: string;
   entityType?: string;
   entityId?: string;
-  isRead: boolean;
+  /** Matches the `Notification.read` column; clients read this field. */
+  read: boolean;
   createdAt: Date;
 }
 

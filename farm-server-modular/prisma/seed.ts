@@ -178,7 +178,7 @@ async function main() {
       'notification.read',
       'hr.read', 'leave.read', 'leave.write',
     ],
-    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'aquaculture.read', 'aquaculture.write', 'farm.read', 'hr.read'],
+    VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'aquaculture.read', 'aquaculture.write', 'farm.read', 'hr.read', 'notification.read'],
     WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'aquaculture.read', 'inventory.read', 'worker.read', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
   }
 

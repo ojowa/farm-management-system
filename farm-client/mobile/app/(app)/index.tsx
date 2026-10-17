@@ -34,6 +34,7 @@ export default function DashboardScreen() {
   });
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
   const [attendanceSummary, setAttendanceSummary] = useState<{ total: number; present: number; absent: number; late: number } | null>(null);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [recentActivity, setRecentActivity] = useState<{ id: string; title: string; message: string; type: string; createdAt: string }[]>([]);
 
   const loadDashboardData = useCallback(async (isSilent = false) => {
@@ -49,6 +50,7 @@ export default function DashboardScreen() {
         tasksRes,
         attendanceRes,
         notifsRes,
+        unreadRes,
       ] = await Promise.allSettled([
         farmsAPI.list(),
         cropsAPI.list(),
@@ -58,6 +60,7 @@ export default function DashboardScreen() {
         tasksAPI.list({ status: 'PENDING', limit: 5 }),
         attendanceAPI.getToday(),
         user?.id ? notificationsAPI.list(user.id, { limit: 5 }) : Promise.resolve({ data: [] }),
+        user?.id ? notificationsAPI.unreadCount(user.id) : Promise.resolve({ data: { count: 0 } }),
       ]);
 
       const allCoreFailed =
@@ -114,6 +117,7 @@ export default function DashboardScreen() {
       setPendingTasks(tasks.slice(0, 5));
       setAttendanceSummary(attendanceSummary);
       setRecentActivity(Array.isArray(notifs) ? notifs.slice(0, 5) : []);
+      setUnreadNotifs(unreadRes.status === 'fulfilled' ? (unreadRes.value?.data?.count ?? 0) : 0);
     } catch (error) {
       const message = describeApiError(error, 'Couldn\u2019t load your dashboard. Please try again.');
       setLoadError(message);
@@ -252,14 +256,35 @@ export default function DashboardScreen() {
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
           <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push('/settings')}
-            style={styles.headerGear}
-            accessibilityRole="button"
-            accessibilityLabel="Settings"
-          >
-            <Text style={styles.headerGearText}>⚙️</Text>
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              onPress={() => router.push('/notifications')}
+              style={styles.headerGear}
+              accessibilityRole="button"
+              accessibilityLabel={
+                unreadNotifs > 0
+                  ? `Notifications, ${unreadNotifs} unread`
+                  : 'Notifications'
+              }
+            >
+              <Text style={styles.headerGearText}>🔔</Text>
+              {unreadNotifs > 0 && (
+                <View style={styles.headerBellBadge}>
+                  <Text style={styles.headerBellBadgeText}>
+                    {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/settings')}
+              style={styles.headerGear}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+            >
+              <Text style={styles.headerGearText}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.content}>
@@ -533,6 +558,28 @@ const styles = StyleSheet.create({
   },
   headerGearText: {
     fontSize: 20,
+    color: '#FFFFFF',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerBellBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EF4444',
+  },
+  headerBellBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   greeting: {

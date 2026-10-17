@@ -4,6 +4,7 @@ const keys = {
   accessToken: 'access_token',
   refreshToken: 'refresh_token',
   mfaSession: 'mfa_session',
+  expoPushToken: 'expo_push_token',
 } as const;
 
 // Platform-aware storage helpers
@@ -67,6 +68,20 @@ export async function getMfaSession(): Promise<string | null> {
 
 export async function deleteMfaSession(): Promise<void> {
   return removeItem(keys.mfaSession);
+}
+
+// Push token is persisted so logout can unregister it even when
+// getExpoPushTokenAsync() is unavailable (e.g. after permissions change).
+export async function setExpoPushToken(token: string): Promise<void> {
+  return setItem(keys.expoPushToken, token);
+}
+
+export async function getStoredExpoPushToken(): Promise<string | null> {
+  return getItem(keys.expoPushToken);
+}
+
+export async function deleteExpoPushToken(): Promise<void> {
+  return removeItem(keys.expoPushToken);
 }
 
 export async function clearAllSecure(): Promise<void> {

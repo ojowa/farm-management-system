@@ -13,7 +13,15 @@ export interface SendBulkNotificationRequest {
 }
 
 export interface UpdateNotificationRequest {
-  isRead: boolean;
+  title?: string;
+  message?: string;
+  type?: string;
+  link?: string;
+  entityType?: string;
+  entityId?: string;
+  read?: boolean;
+  /** @deprecated legacy alias for `read`. */
+  isRead?: boolean;
 }
 
 export interface CreateDeviceTokenRequest {

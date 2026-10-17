@@ -1,7 +1,9 @@
-import { Inject,  Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Inject,  Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { prisma } from '../../../../kernel/database';
 import bcrypt from 'bcryptjs';
 import { EmailService } from '../../../notification/modules/email/email.service';
+import { NotificationApplicationService } from '../../../notification/application/services/notification.service';
+import { CreateNotificationRequest } from '../../../notification/presentation/dto/notification.dto';
 import {
   WorkerRepository,
   AttendanceRepository,
@@ -20,10 +22,76 @@ import { HrEventService } from '../../infrastructure/messaging/hr.event.service'
 
 @Injectable()
 export class HrApplicationService {
+  private readonly logger = new Logger(HrApplicationService.name);
+
   constructor(@Inject('WorkerRepository') private readonly workerRepo: WorkerRepository, @Inject('AttendanceRepository') private readonly attendanceRepo: AttendanceRepository, @Inject('TaskRepository') private readonly taskRepo: TaskRepository, @Inject('ShiftRepository') private readonly shiftRepo: ShiftRepository, @Inject('ShiftAssignmentRepository') private readonly shiftAssignmentRepo: ShiftAssignmentRepository, @Inject('LeaveTypeRepository') private readonly leaveTypeRepo: LeaveTypeRepository, @Inject('LeaveRequestRepository') private readonly leaveRequestRepo: LeaveRequestRepository, @Inject('LeaveBalanceRepository') private readonly leaveBalanceRepo: LeaveBalanceRepository, @Inject('MessageRepository') private readonly messageRepo: MessageRepository, @Inject('MessageRecipientRepository') private readonly messageRecipientRepo: MessageRecipientRepository, @Inject('CorrespondenceRepository') private readonly correspondenceRepo: CorrespondenceRepository, @Inject('CorrespondenceAttachmentRepository') private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository, 
     private readonly eventService: HrEventService,
     private readonly emailService: EmailService,
+    private readonly notificationService: NotificationApplicationService,
   ) {}
+
+  /**
+   * Notify users about an HR event (leave, messages, tasks).
+   *
+   * Fire-and-forget on purpose: the notification module writes the row, emits
+   * the realtime event and fans out push/email, but none of that may fail the
+   * HR operation that triggered it.
+   */
+  private notify(
+    userIds: Array<string | null | undefined>,
+    organizationId: string,
+    notification: Omit<CreateNotificationRequest, 'userId'>
+  ): void {
+    const targets = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
+    if (!targets.length || !organizationId) return;
+
+    void Promise.allSettled(
+      targets.map((userId) =>
+        this.notificationService.create({ ...notification, userId }, organizationId)
+      )
+    ).then((results) => {
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          this.logger.error(
+            `Notification "${notification.title}" failed: ${(result.reason as Error)?.message}`
+          );
+        }
+      }
+    });
+  }
+
+  /** Users whose role carries `permission` inside `organizationId`. */
+  private async userIdsForPermission(
+    organizationId: string,
+    permission: string,
+    excludeUserId?: string
+  ): Promise<string[]> {
+    const roleRows = await prisma.rolePermission.findMany({
+      where: { permission: { name: permission } },
+      select: { roleId: true },
+    });
+    const roleIds = roleRows.map((r) => r.roleId);
+    if (!roleIds.length) return [];
+
+    const users = await prisma.user.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+        roleId: { in: roleIds },
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      },
+      select: { id: true },
+    });
+    return users.map((u) => u.id);
+  }
+
+  private static formatDate(value: Date | string): string {
+    return new Date(value).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
 
   // Worker operations
   async getWorkerById(id: string, organizationId: string) {
@@ -441,6 +509,20 @@ export class HrApplicationService {
       completedAt: null,
     });
     await this.eventService.emitHrEvent('created', { entity: 'task', data: task });
+    // Producer: assignee gets the task in their inbox (+ push).
+    const creatorId = user?.id ?? user?.sub ?? null;
+    if (task.assignedToId && task.assignedToId !== creatorId) {
+      this.notify([task.assignedToId], organizationId, {
+        title: 'New task assigned',
+        message:
+          `"${task.title}"${task.dueDate ? ` — due ${HrApplicationService.formatDate(task.dueDate)}` : ''}` +
+          `${task.priority ? ` (${task.priority} priority)` : ''}`,
+        type: task.priority === 'HIGH' || task.priority === 'URGENT' ? 'ALERT' : 'INFO',
+        link: '/tasks',
+        entityType: 'Task',
+        entityId: task.id,
+      });
+    }
     return task;
   }
 
@@ -487,6 +569,19 @@ export class HrApplicationService {
 
     const updated = await this.taskRepo.update(id, updateData);
     await this.eventService.emitHrEvent('updated', { entity: 'task', data: updated });
+    // Producer: a reassignment lands in the new assignee's inbox.
+    if (updateData.assignedToId && updateData.assignedToId !== existing.assignedToId) {
+      this.notify([updateData.assignedToId], organizationId, {
+        title: 'Task assigned to you',
+        message:
+          `"${updated.title}"${updated.dueDate ? ` — due ${HrApplicationService.formatDate(updated.dueDate)}` : ''}` +
+          `${updated.priority ? ` (${updated.priority} priority)` : ''}`,
+        type: updated.priority === 'HIGH' || updated.priority === 'URGENT' ? 'ALERT' : 'INFO',
+        link: '/tasks',
+        entityType: 'Task',
+        entityId: id,
+      });
+    }
     return updated;
   }
 
@@ -853,7 +948,45 @@ export class HrApplicationService {
       rejectionReason: null,
     });
     await this.eventService.emitHrEvent('created', { entity: 'leaveRequest', data: leaveRequest });
+    // Producer: tell the org's approvers a request is waiting on them.
+    void this.notifyLeaveApprovers(leaveRequest, organizationId);
     return leaveRequest;
+  }
+
+  /** Fan a new leave request out to every user holding `leave.approve`. */
+  private async notifyLeaveApprovers(
+    leaveRequest: {
+      id: string;
+      userId: string;
+      startDate: Date;
+      endDate: Date;
+      days: number;
+      reason: string | null;
+    },
+    organizationId: string
+  ): Promise<void> {
+    try {
+      const approverIds = await this.userIdsForPermission(
+        organizationId,
+        'leave.approve',
+        leaveRequest.userId
+      );
+      this.notify(approverIds, organizationId, {
+        title: 'Leave request awaiting approval',
+        message:
+          `Leave requested for ${HrApplicationService.formatDate(leaveRequest.startDate)} – ` +
+          `${HrApplicationService.formatDate(leaveRequest.endDate)} (${leaveRequest.days} day(s))` +
+          `${leaveRequest.reason ? `: ${leaveRequest.reason}` : ''}.`,
+        type: 'INFO',
+        link: '/hr/leave/approvals',
+        entityType: 'LeaveRequest',
+        entityId: leaveRequest.id,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to notify leave approvers for ${leaveRequest.id}: ${(error as Error).message}`
+      );
+    }
   }
 
   /**
@@ -1015,6 +1148,18 @@ export class HrApplicationService {
     });
 
     await this.eventService.emitHrEvent('updated', { entity: 'leaveRequest', data: updated });
+    // Producer: SUCCESS/ALERT + entityType LeaveRequest drives the approved/
+    // rejected email and push inside the notification module.
+    this.notify([existing.userId], organizationId, {
+      title: 'Leave request approved',
+      message:
+        `Your leave from ${HrApplicationService.formatDate(existing.startDate)} to ` +
+        `${HrApplicationService.formatDate(existing.endDate)} (${existing.days} day(s)) was approved.`,
+      type: 'SUCCESS',
+      link: '/hr/leave',
+      entityType: 'LeaveRequest',
+      entityId: id,
+    });
     return updated;
   }
 
@@ -1031,6 +1176,17 @@ export class HrApplicationService {
     });
 
     await this.eventService.emitHrEvent('updated', { entity: 'leaveRequest', data: updated });
+    this.notify([existing.userId], organizationId, {
+      title: 'Leave request rejected',
+      message:
+        `Your leave from ${HrApplicationService.formatDate(existing.startDate)} to ` +
+        `${HrApplicationService.formatDate(existing.endDate)} was rejected` +
+        `${rejectionReason ? `: ${rejectionReason}` : '.'}`,
+      type: 'ALERT',
+      link: '/hr/leave',
+      entityType: 'LeaveRequest',
+      entityId: id,
+    });
     return updated;
   }
 
@@ -1176,6 +1332,20 @@ export class HrApplicationService {
     );
 
     await this.eventService.emitHrEvent('created', { entity: 'message', data: message });
+    // Producer: one in-app row (+ email/push) per recipient.
+    const isHighPriority = priority === 'HIGH' || priority === 'URGENT' || priority === 'CRITICAL';
+    this.notify(
+      recipients.map((r: any) => r.id),
+      organizationId,
+      {
+        title: subject.trim(),
+        message: `New message from ${senderName}`,
+        type: isHighPriority ? 'ALERT' : 'INFO',
+        link: '/messages',
+        entityType: 'Message',
+        entityId: message.id,
+      }
+    );
     return message;
   }
 

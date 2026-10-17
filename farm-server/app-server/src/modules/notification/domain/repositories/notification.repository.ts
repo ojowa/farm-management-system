@@ -1,10 +1,10 @@
 import { Notification, DeviceToken } from '../entities/notification.entity';
-import { CreateNotificationRequest } from '../../presentation/dto/notification.dto';
+import { CreateNotificationRequest, UpdateNotificationRequest } from '../../presentation/dto/notification.dto';
 
 export interface NotificationRepository {
   // Ownership: Notification has no organizationId column — rows belong to the
-  // receiving user, so every lookup is scoped to that user (a foreign id
-  // reads as null → 404).
+  // receiving user, so every lookup and mutation is scoped to that user (a
+  // foreign id reads as null / 0 rows → 404).
   findById(id: string, userId: string): Promise<Notification | null>;
   findByUserId(userId: string, options?: {
     unreadOnly?: boolean;
@@ -13,11 +13,12 @@ export interface NotificationRepository {
   }): Promise<Notification[]>;
   findAll(userId: string, options?: { limit?: number; offset?: number }): Promise<Notification[]>;
   create(data: CreateNotificationRequest): Promise<Notification>;
-  update(id: string, data: Partial<Notification>): Promise<Notification>;
-  markAsRead(id: string): Promise<Notification>;
+  update(id: string, userId: string, data: UpdateNotificationRequest): Promise<Notification | null>;
+  markAsRead(id: string, userId: string): Promise<Notification | null>;
   markAllAsRead(userId: string): Promise<number>;
   countUnread(userId: string): Promise<number>;
-  delete(id: string): Promise<void>;
+  /** Soft-deletes the row; returns false when it is not the caller's to delete. */
+  delete(id: string, userId: string): Promise<boolean>;
   // Delivery scoping: a tenant may only address notifications to users inside
   // its own organization — returns the subset of the given ids that qualify.
   filterUserIdsInOrg(userIds: string[], organizationId: string): Promise<string[]>;

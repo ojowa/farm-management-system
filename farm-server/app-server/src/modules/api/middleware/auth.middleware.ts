@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware, Logger, UnauthorizedException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken, signServiceToken } from '@farm/auth-server';
+import { verifyAccessToken, verifyServiceToken, signServiceToken } from '@farm/auth-server';
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
@@ -31,6 +31,25 @@ export class AuthMiddleware implements NestMiddleware {
     const isPublic = this.publicPaths.has(cleanPath) ||
       cleanPath.startsWith('/docs') ||
       cleanPath.startsWith('/health');
+
+    // Internal service-to-service relay (notification service -> gateway
+    // socket broadcast). No user JWT exists for these calls: they are
+    // authenticated by the SERVICE_SECRET-signed x-service-token alone, and
+    // only for this single path — every other route still requires a user
+    // token below.
+    if (cleanPath === '/realtime/emit-internal') {
+      const serviceToken = req.headers['x-service-token'];
+      if (typeof serviceToken === 'string' && serviceToken) {
+        try {
+          verifyServiceToken(serviceToken);
+        } catch (err: any) {
+          this.logger.debug(`[Auth] Internal relay rejected: ${err.message}`);
+          throw new UnauthorizedException('Invalid service token');
+        }
+        next();
+        return;
+      }
+    }
 
     let token: string | null = null;
 

@@ -930,27 +930,73 @@ GET    /correspondence/attachments/:id # Get attachment
 
 ## 10. Notifications API
 
+Notification rows belong to their receiving user (no `organizationId` column),
+so the `user/:userId` routes are strictly self-service — any other user's id
+reads as `404 Not Found`. Identity always comes from the verified JWT; there is
+no way to read or mutate another user's inbox.
+
 ### 10.1 Notifications
 
 ```http
-POST   /notifications                    # Create
-POST   /notifications/bulk               # Bulk create
-GET    /notifications                    # List
-GET    /notifications/:id                # Get
-GET    /notifications/user/:userId       # Get by user
-GET    /notifications/user/:userId/unread-count # Unread count
-PUT    /notifications/:id                # Update
-PUT    /notifications/:id/read           # Mark as read
-PUT    /notifications/user/:userId/read-all # Mark all as read
-DELETE /notifications/:id                # Delete
+POST   /notifications                    # Create (notification.write)
+POST   /notifications/bulk               # Bulk create (notification.write)
+GET    /notifications                    # List caller's own (notification.read)
+GET    /notifications/:id                # Get (notification.read)
+GET    /notifications/user/:userId       # Get by user (notification.read, self only)
+GET    /notifications/user/:userId/unread-count # Unread count (notification.read, self only)
+PUT    /notifications/:id                # Update (notification.write)
+PUT    /notifications/:id/read           # Mark as read (notification.read)
+PUT    /notifications/user/:userId/read-all # Mark all as read (notification.read, self only)
+DELETE /notifications/:id                # Delete (notification.write)
 ```
+
+List endpoints accept these query parameters:
+
+| Param | Type | Default | Notes |
+|-------|------|---------|-------|
+| `unreadOnly` | `boolean` | `false` | `GET /user/:userId` only |
+| `limit` | `integer` | `50` (`10` for `user/:userId`) | Clamped to 1–200 |
+| `offset` | `integer` | `0` | |
+
+`POST /notifications/bulk` accepts either a bare JSON array of notifications or
+the wrapper form `{"notifications": [ ... ]}` — both are validated the same way
+(1–200 items).
+
+Notification objects use a canonical **`read`** boolean field. `isRead` is
+accepted as a deprecated alias on `PUT /notifications/:id` so older callers keep
+working, but responses always return `read`.
 
 ### 10.2 Device Tokens
 
+Push handles are always bound to the caller's own user id from the verified
+JWT, so any role that receives notifications may manage its devices
+(`notification.read` — not `notification.write`).
+
 ```http
-POST   /devices/tokens               # Register token
-DELETE /devices/tokens               # Unregister token
+POST   /devices/tokens               # Register token (body: { token, platform })
+DELETE /devices/tokens               # Unregister token (body: { token })
 ```
+
+`platform` is one of `web`, `ios`, `android`. Both endpoints are self-service:
+the stored row is always scoped to the authenticated caller.
+
+### 10.3 Realtime Events
+
+In-app notifications are pushed live over Socket.IO. Clients connect to the
+gateway's **root** namespace, authenticate via the handshake (`auth.token` or
+the `accessToken` cookie), then `join` a room named after their own user id —
+the server rejects joins for any other user. Events are delivered to that room:
+
+| Event | Payload | When |
+|-------|---------|------|
+| `notification:new` | full notification | A notification is created (single or bulk) |
+| `notification:read` | full notification (`read: true`) | Marked read individually |
+| `notification:all-read` | `{ count }` | All of a user's notifications marked read |
+| `notification:updated` | full notification | Updated but not marked read |
+| `notification:deleted` | `{ id }` | Deleted |
+
+Creating a notification also fans out to email and push, honoring each user's
+saved preferences (`emailNotifications` / `pushNotifications`, default enabled).
 
 ---
 

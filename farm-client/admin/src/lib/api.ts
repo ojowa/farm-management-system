@@ -176,6 +176,7 @@ export const farmMapAPI = {
 
 export const notificationsAPI = {
   list: (userId: string, params?: any) => apiClient.get(`/notifications/user/${userId}`, { params }),
+  unreadCount: (userId: string) => apiClient.get(`/notifications/user/${userId}/unread-count`),
   markRead: (id: string) => apiClient.put(`/notifications/${id}/read`),
   markAllRead: (userId: string) => apiClient.put(`/notifications/user/${userId}/read-all`),
   delete: (id: string) => apiClient.delete(`/notifications/${id}`),
