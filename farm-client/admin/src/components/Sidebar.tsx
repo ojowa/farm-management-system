@@ -127,7 +127,12 @@ export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNaviga
   // module list (same semantics as the mobile tab bar).
   const modules: string[] | undefined = user?.planFeatures?.modules;
   const isVisible = (item: NavItem) => {
-    if (item.module && modules && !modules.includes(item.module)) return false;
+    // `/auth/me` returns `modules: []` when the org has no plan linked or the
+    // plan lookup failed - "unknown", not "entitled to nothing". An empty list
+    // must never blank the nav (it was leaving only 5 items: Dashboard, Users,
+    // Roles, Weather, Settings - even Farms was gated away). Only a non-empty
+    // list restricts.
+    if (item.module && modules && modules.length > 0 && !modules.includes(item.module)) return false;
     const required = requiredPermissionsForPath(item.href);
     return !required || required.length === 0 || required.some((p) => hasPermission(p));
   };

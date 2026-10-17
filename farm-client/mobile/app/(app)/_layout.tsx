@@ -38,7 +38,10 @@ export default function AppLayout() {
 
   const visibleTabs = TAB_CONFIG.filter((tab) => {
     if (tab.permission && !hasPermission(tab.permission)) return false;
-    if (tab.module && user?.planFeatures?.modules && !user.planFeatures.modules.includes(tab.module)) return false;
+    // `modules: []` means "no plan linked / lookup failed", not "no modules" -
+    // only a non-empty list may hide a tab (matches the admin sidebar).
+    const planModules: string[] | undefined = user?.planFeatures?.modules;
+    if (tab.module && planModules && planModules.length > 0 && !planModules.includes(tab.module)) return false;
     return true;
   });
 
