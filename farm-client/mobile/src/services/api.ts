@@ -839,6 +839,22 @@ export const subscriptionAPI = {
     http.get('/organizations/subscription-plans'),
   changePlan: (planId: string) =>
     http.patch('/organizations/subscription', { planId }),
+  // Paystack billing — owner-only (billing.manage), same gate server-side.
+  /** Hosted checkout: { reference, authorizationUrl }. */
+  checkout: (planId: string) =>
+    http.post('/organizations/subscription/checkout', { planId }),
+  /** Poll a reference until it settles (SUCCESS | FAILED | ABANDONED). */
+  checkoutStatus: (reference: string) =>
+    http.get(`/organizations/subscription/checkout/${encodeURIComponent(reference)}`),
+  /** This org's payment history: { payments, total }. */
+  payments: (limit?: number) =>
+    http.get('/organizations/subscription/payments', { params: limit ? { limit } : undefined }),
+  /** Stop auto-renewal: { status: 'CANCELLED', paidThrough }. */
+  cancel: () =>
+    http.post('/organizations/subscription/cancel'),
+  /** Re-enable a cancelled subscription: { status: 'ACTIVE', paidThrough }. */
+  resume: () =>
+    http.post('/organizations/subscription/resume'),
 };
 
 // ─── Org Admin ────────────────────────────────────────────────────────────────
