@@ -38,8 +38,11 @@ function extractServerMessage(payload: unknown): string | undefined {
     const inner = body.data ?? body.error;
     if (typeof inner === 'string' && inner) return inner;
     if (inner && typeof inner.message === 'string' && inner.message) return inner.message;
-    if (typeof body.error === 'string' && body.error) return body.error;
   }
+  // Servers also emit bare `{ error }` / `{ detail }` strings outside the
+  // success:false envelope (Express default, validation errors).
+  if (typeof body.error === 'string' && body.error) return body.error;
+  if (typeof body.detail === 'string' && body.detail) return body.detail;
   return undefined;
 }
 
