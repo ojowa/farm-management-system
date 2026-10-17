@@ -115,6 +115,7 @@ export default function SettingsScreen() {
   const [roleSaving, setRoleSaving] = useState(false);
 
   const canManageRoles = user?.permissions?.includes('organization.manage') ?? false;
+  const canManageBilling = user?.permissions?.includes('billing.manage') ?? false;
 
   useEffect(() => {
     checkNotificationStatus();
@@ -296,6 +297,30 @@ export default function SettingsScreen() {
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
         </Card>
+
+        <View style={styles.divider} />
+
+        {canManageBilling && (
+          <>
+            <Text style={styles.sectionTitle}>Billing</Text>
+            <Card style={styles.settingItem}>
+              <TouchableOpacity
+                style={styles.settingItemRow}
+                onPress={() => router.push('/subscription')}
+                accessibilityRole="button"
+                accessibilityLabel="Subscription"
+              >
+                <View style={styles.settingItemText}>
+                  <Text style={styles.settingItemTitle}>Subscription</Text>
+                  <Text style={styles.settingItemDescription}>
+                    View your plan, usage, and switch plans
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 18 }}>›</Text>
+              </TouchableOpacity>
+            </Card>
+          </>
+        )}
 
         <View style={styles.divider} />
 

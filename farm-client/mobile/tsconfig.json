@@ -5,7 +5,7 @@
     "noImplicitAny": false,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "types": ["react-native"],
+    "types": ["react-native", "node"],
     "paths": {
       "@/*": ["./src/*"]
     }

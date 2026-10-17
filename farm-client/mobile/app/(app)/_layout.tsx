@@ -86,6 +86,7 @@ export default function AppLayout() {
       <Tabs.Screen name="aquaculture" options={{ href: null }} />
       <Tabs.Screen name="leave" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="subscription" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -830,6 +830,17 @@ export const organizationsAPI = {
     http.get('/organizations/subscription-plans'),
 };
 
+// ── Subscription (owner-only billing; server gates on billing.manage) ──
+
+export const subscriptionAPI = {
+  current: () =>
+    http.get('/organizations/subscription'),
+  listPlans: () =>
+    http.get('/organizations/subscription-plans'),
+  changePlan: (planId: string) =>
+    http.patch('/organizations/subscription', { planId }),
+};
+
 // ─── Org Admin ────────────────────────────────────────────────────────────────
 
 export const orgAdminAPI = {
