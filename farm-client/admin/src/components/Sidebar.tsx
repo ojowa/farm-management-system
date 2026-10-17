@@ -19,6 +19,7 @@ import {
   Package,
   DollarSign,
   BarChart3,
+  CreditCard,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -111,7 +112,10 @@ const navigation: { label: string; items: NavItem[] }[] = [
   },
   {
     label: 'System',
-    items: [{ name: 'Settings', href: '/settings', icon: Settings }],
+    items: [
+      { name: 'Subscription', href: '/subscription', icon: CreditCard },
+      { name: 'Settings', href: '/settings', icon: Settings },
+    ],
   },
 ];
 

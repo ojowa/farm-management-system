@@ -27,3 +27,19 @@ export function createDocumentsAPI(client: AxiosInstance): DocumentsAPI {
     delete: (id) => client.delete(`/documents/${id}`),
   };
 }
+
+// Owner-only billing views — the server gates both on `billing.manage`.
+export interface SubscriptionAPI {
+  /** Snapshot: linked plan, entitlements, and usage against the plan caps. */
+  current: () => Promise<any>;
+  listPlans: () => Promise<any>;
+  changePlan: (planId: string) => Promise<any>;
+}
+
+export function createSubscriptionAPI(client: AxiosInstance): SubscriptionAPI {
+  return {
+    current: () => client.get('/organizations/subscription'),
+    listPlans: () => client.get('/organizations/subscription-plans'),
+    changePlan: (planId) => client.patch('/organizations/subscription', { planId }),
+  };
+}

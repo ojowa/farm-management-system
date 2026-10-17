@@ -90,6 +90,7 @@ export const reportsAPI = client.reports;
 export const scheduledReportsAPI = client.scheduledReports;
 export const weatherAPI = client.weather;
 export const documentsAPI = client.documents;
+export const subscriptionAPI = client.subscription;
 export const equipmentAPI = client.equipment;
 export const contractsAPI = client.contracts;
 export const marketplaceAPI = client.marketplace;

@@ -27,6 +27,9 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { prefix: '/users', permissions: ['users.manage'] },
   { prefix: '/roles', permissions: ['role.read', 'organization.read'] },
   { prefix: '/permissions', permissions: ['role.read', 'organization.read'] },
+  // Owner-only billing management, mirroring @Permission('billing.manage')
+  // on GET/PATCH /organizations/subscription.
+  { prefix: '/subscription', permissions: ['billing.manage'] },
 
   // Every authenticated user keeps these
   { prefix: '/dashboard', permissions: [] },

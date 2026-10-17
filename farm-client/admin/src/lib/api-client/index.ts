@@ -32,7 +32,7 @@ import { createInventoryAPI, createLowStockAPI, createEquipmentAPI, InventoryAPI
 import { createReportsAPI, createScheduledReportsAPI, ReportsAPI, ScheduledReportsAPI } from './contexts/reporting';
 
 // ── Platform Context ─────────────────────────────────────────────
-import { createWeatherAPI, createDocumentsAPI, WeatherAPI, DocumentsAPI } from './contexts/platform';
+import { createWeatherAPI, createDocumentsAPI, createSubscriptionAPI, WeatherAPI, DocumentsAPI, SubscriptionAPI } from './contexts/platform';
 
 export type {
   AuthAPI, RolesAPI, OrgAdminAPI, AdminAPI,
@@ -45,7 +45,7 @@ export type {
   WorkersAPI, TasksAPI, AttendanceAPI, RosterAPI, MessagesAPI, CorrespondenceAPI, LeaveAPI,
   InventoryAPI, LowStockAPI, EquipmentAPI,
   ReportsAPI, ScheduledReportsAPI,
-  WeatherAPI, DocumentsAPI,
+  WeatherAPI, DocumentsAPI, SubscriptionAPI,
   APIClientConfig,
 };
 
@@ -92,6 +92,7 @@ export interface FarmManagementClient {
   scheduledReports: ScheduledReportsAPI;
   weather: WeatherAPI;
   documents: DocumentsAPI;
+  subscription: SubscriptionAPI;
 }
 
 export function createFarmManagementClient(config: APIClientConfig = {}): FarmManagementClient {
@@ -140,6 +141,7 @@ export function createFarmManagementClient(config: APIClientConfig = {}): FarmMa
     scheduledReports: createScheduledReportsAPI(client),
     weather: createWeatherAPI(client),
     documents: createDocumentsAPI(client),
+    subscription: createSubscriptionAPI(client),
   };
 }
 

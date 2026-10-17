@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -10,11 +11,11 @@ import {
   UsePipes,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
 import { OrganizationApplicationService } from '../../application/services/organization.service';
 import { Organization } from '../../domain/entities/organization.entity';
-import { ZodValidationPipe } from '@farm/utils';
-import { createOrganizationSchema, updateOrganizationSchema } from '@farm/validation-server';
+import { ZodValidationPipe } from '../../../../kernel/utils';
+import { createOrganizationSchema, updateOrganizationSchema } from '../../../../kernel/validation';
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('organizations')
@@ -32,6 +33,23 @@ export class OrganizationController {
   @Get('subscription-plans')
   async getSubscriptionPlans() {
     return this.organizationService.getSubscriptionPlans();
+  }
+
+  // Owner-only billing views. Declared before @Get(':id') so "subscription"
+  // is never captured as an :id; gated by billing.manage (ORGANIZATION_OWNER).
+  @Permission('billing.manage')
+  @Get('subscription')
+  async getSubscription(@Req() req: any) {
+    return this.organizationService.getSubscription(String(req.user?.organizationId || ''));
+  }
+
+  @Permission('billing.manage')
+  @Patch('subscription')
+  async changeSubscription(@Req() req: any, @Body() body: { planId?: string }) {
+    return this.organizationService.changeSubscriptionPlan(
+      String(req.user?.organizationId || ''),
+      String(body?.planId || ''),
+    );
   }
 
   @Permission('organization.read')
