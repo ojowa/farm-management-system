@@ -28,12 +28,23 @@ export function createDocumentsAPI(client: AxiosInstance): DocumentsAPI {
   };
 }
 
-// Owner-only billing views — the server gates both on `billing.manage`.
+// Owner-only billing views — the server gates all of these on `billing.manage`.
 export interface SubscriptionAPI {
-  /** Snapshot: linked plan, entitlements, and usage against the plan caps. */
+  /** Snapshot: linked plan, entitlements, usage, and Paystack billing state. */
   current: () => Promise<any>;
   listPlans: () => Promise<any>;
+  /** Free-plan switch (paid plans are rejected server-side: checkout instead). */
   changePlan: (planId: string) => Promise<any>;
+  /** Hosted Paystack checkout: { reference, authorizationUrl }. */
+  checkout: (planId: string) => Promise<any>;
+  /** Poll a reference until it settles (SUCCESS | FAILED | ABANDONED). */
+  checkoutStatus: (reference: string) => Promise<any>;
+  /** This org's payment history: { payments, total }. */
+  payments: (limit?: number) => Promise<any>;
+  /** Stop auto-renewal: { status: 'CANCELLED', paidThrough }. */
+  cancel: () => Promise<any>;
+  /** Re-enable a cancelled subscription: { status: 'ACTIVE', paidThrough }. */
+  resume: () => Promise<any>;
 }
 
 export function createSubscriptionAPI(client: AxiosInstance): SubscriptionAPI {
@@ -41,5 +52,11 @@ export function createSubscriptionAPI(client: AxiosInstance): SubscriptionAPI {
     current: () => client.get('/organizations/subscription'),
     listPlans: () => client.get('/organizations/subscription-plans'),
     changePlan: (planId) => client.patch('/organizations/subscription', { planId }),
+    checkout: (planId) => client.post('/organizations/subscription/checkout', { planId }),
+    checkoutStatus: (reference) =>
+      client.get(`/organizations/subscription/checkout/${encodeURIComponent(reference)}`),
+    payments: (limit) => client.get('/organizations/subscription/payments', { params: limit ? { limit } : undefined }),
+    cancel: () => client.post('/organizations/subscription/cancel'),
+    resume: () => client.post('/organizations/subscription/resume'),
   };
 }
