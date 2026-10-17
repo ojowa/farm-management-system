@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { NavTabs } from '@/components/NavTabs';
 import {
   Plus,
   Search,
@@ -215,6 +216,14 @@ export default function WorkersPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs
+        ariaLabel="Workers section"
+        tabs={[
+          { label: 'Workers', href: '/workers' },
+          { label: 'Attendance', href: '/workers/attendance' },
+        ]}
+      />
 
       {/* Filters */}
       <Card>

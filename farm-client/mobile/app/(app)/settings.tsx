@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 20 },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF' },
+  backButton: { alignSelf: 'flex-start', marginBottom: 6 },
+  backText: { fontSize: 16, color: '#FFFFFF', fontWeight: '500' },
   content: { paddingHorizontal: 20, paddingVertical: 16 },
   profileSection: { alignItems: 'center', marginBottom: 32 },
   avatar: {
@@ -238,6 +240,14 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={styles.backButton}
+        >
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 

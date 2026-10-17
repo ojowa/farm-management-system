@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { NavTabs } from '@/components/NavTabs';
 import {
   Plus,
   Search,
@@ -197,6 +198,15 @@ export default function LivestockPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs
+        ariaLabel="Livestock section"
+        tabs={[
+          { label: 'Livestock', href: '/livestock' },
+          { label: 'Health', href: '/livestock/health' },
+          { label: 'Breeding', href: '/livestock/breeding' },
+        ]}
+      />
 
       <Card>
         <CardContent className="p-4">

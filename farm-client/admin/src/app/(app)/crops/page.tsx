@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { NavTabs } from '@/components/NavTabs';
 import {
   Plus,
   Search,
@@ -200,6 +201,16 @@ export default function CropsPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs
+        ariaLabel="Crops section"
+        tabs={[
+          { label: 'Crops', href: '/crops' },
+          { label: 'Calendar', href: '/crops/calendar' },
+          { label: 'Pest & Disease', href: '/crops/pest-disease' },
+          { label: 'Irrigation', href: '/irrigation' },
+        ]}
+      />
 
       {/* Filters */}
       <Card>

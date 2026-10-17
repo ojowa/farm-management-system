@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { NavTabs } from '@/components/NavTabs';
 import {
   Plus,
   Search,
@@ -152,6 +153,14 @@ export default function FinancePage() {
           )}
         </div>
       </div>
+
+      <NavTabs
+        ariaLabel="Finance section"
+        tabs={[
+          { label: 'Finance', href: '/finance' },
+          { label: 'Profitability', href: '/finance/profitability' },
+        ]}
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">

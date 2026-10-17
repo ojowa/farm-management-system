@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { NavTabs } from '@/components/NavTabs';
 import {
   Plus,
   Search,
@@ -177,6 +178,14 @@ export default function InventoryPage() {
           )}
         </div>
       </div>
+
+      <NavTabs
+        ariaLabel="Inventory section"
+        tabs={[
+          { label: 'All Items', href: '/inventory' },
+          { label: 'Low Stock', href: '/inventory/low-stock' },
+        ]}
+      />
 
       {/* Filters */}
       <Card>

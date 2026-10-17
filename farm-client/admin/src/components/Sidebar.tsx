@@ -25,15 +25,9 @@ import {
   Shield,
   UserCog,
   ListTodo,
-  Clock,
   Calendar,
   CalendarDays,
-  Heart,
-  Baby,
-  Droplets,
-  Bug,
   CloudSun,
-  MapPin,
   Wrench,
   FileText,
   Mail,
@@ -41,40 +35,84 @@ import {
 } from 'lucide-react';
 import { requiredPermissionsForPath } from '@/lib/routePermissions';
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Users', href: '/users', icon: UserCog },
-  { name: 'Roles', href: '/roles', icon: Shield },
-  { name: 'Permissions', href: '/permissions', icon: Shield },
-  { name: 'Farms', href: '/farms', icon: Home },
-  { name: 'Farm Map', href: '/farms/map', icon: MapPin },
-  { name: 'Crops', href: '/crops', icon: Sprout },
-  { name: 'Crop Calendar', href: '/crops/calendar', icon: Calendar },
-  { name: 'Pest & Disease', href: '/crops/pest-disease', icon: Bug },
-  { name: 'Livestock', href: '/livestock', icon: Beef },
-  { name: 'Health', href: '/livestock/health', icon: Heart },
-  { name: 'Breeding', href: '/livestock/breeding', icon: Baby },
-  { name: 'Irrigation', href: '/irrigation', icon: Droplets },
-  { name: 'Poultry', href: '/poultry', icon: Egg },
-  { name: 'Aquaculture', href: '/aquaculture', icon: Fish },
-  { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Low Stock', href: '/inventory/low-stock', icon: Package },
-  { name: 'Equipment', href: '/equipment', icon: Wrench },
-  { name: 'Workers', href: '/workers', icon: Users },
-  { name: 'Roster', href: '/roster', icon: CalendarDays },
-  { name: 'Tasks', href: '/tasks', icon: ListTodo },
-  { name: 'Attendance', href: '/workers/attendance', icon: Clock },
-  { name: 'Messages', href: '/messages', icon: FileText },
-  { name: 'Correspondence', href: '/correspondence', icon: Mail },
-  { name: 'Leave', href: '/hr/leave', icon: Calendar },
-  { name: 'Finance', href: '/finance', icon: DollarSign },
-  { name: 'Profitability', href: '/finance/profitability', icon: DollarSign },
-  { name: 'Contracts', href: '/contracts', icon: FileText },
-  { name: 'Marketplace', href: '/marketplace', icon: Store },
-  { name: 'Reports', href: '/reports', icon: BarChart3 },
-  { name: 'Scheduled Reports', href: '/reports/scheduled', icon: BarChart3 },
-  { name: 'Weather', href: '/weather', icon: CloudSun },
-  { name: 'Settings', href: '/settings', icon: Settings },
+/**
+ * Sectioned sidebar: 8 labeled groups instead of one 33-item flat list.
+ * Child views (Farm Map, Crop Calendar, Health, Low Stock, Attendance,
+ * Profitability, Scheduled Reports, Permissions) were demoted to tabs on
+ * their parent pages (`@/components/NavTabs`) so routes stay reachable
+ * without a sidebar entry of their own.
+ *
+ * `module` mirrors the plan-module names in the server's features module -
+ * the same gating mobile's tab bar applies - so a plan without e.g. the
+ * poultry module never offers a dead-end link. `undefined` = core (always
+ * shown).
+ */
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  module?: string;
+}
+
+const navigation: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Overview',
+    items: [{ name: 'Dashboard', href: '/', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Access',
+    items: [
+      { name: 'Users', href: '/users', icon: UserCog },
+      { name: 'Roles', href: '/roles', icon: Shield },
+    ],
+  },
+  {
+    label: 'Farming',
+    items: [
+      { name: 'Farms', href: '/farms', icon: Home, module: 'farm' },
+      { name: 'Crops', href: '/crops', icon: Sprout, module: 'crop' },
+      { name: 'Livestock', href: '/livestock', icon: Beef, module: 'livestock' },
+      { name: 'Poultry', href: '/poultry', icon: Egg, module: 'poultry' },
+      { name: 'Aquaculture', href: '/aquaculture', icon: Fish, module: 'aquaculture' },
+    ],
+  },
+  {
+    label: 'Assets',
+    items: [
+      { name: 'Inventory', href: '/inventory', icon: Package, module: 'inventory' },
+      { name: 'Equipment', href: '/equipment', icon: Wrench, module: 'inventory' },
+    ],
+  },
+  {
+    label: 'People',
+    items: [
+      { name: 'Workers', href: '/workers', icon: Users, module: 'hr' },
+      { name: 'Roster', href: '/roster', icon: CalendarDays, module: 'hr' },
+      { name: 'Tasks', href: '/tasks', icon: ListTodo, module: 'worker' },
+      { name: 'Leave', href: '/hr/leave', icon: Calendar, module: 'hr' },
+      { name: 'Messages', href: '/messages', icon: FileText, module: 'communication' },
+      { name: 'Correspondence', href: '/correspondence', icon: Mail, module: 'communication' },
+    ],
+  },
+  {
+    label: 'Money',
+    items: [
+      { name: 'Finance', href: '/finance', icon: DollarSign, module: 'finance' },
+      { name: 'Contracts', href: '/contracts', icon: FileText, module: 'finance' },
+      { name: 'Marketplace', href: '/marketplace', icon: Store, module: 'finance' },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { name: 'Reports', href: '/reports', icon: BarChart3, module: 'reporting' },
+      { name: 'Weather', href: '/weather', icon: CloudSun },
+    ],
+  },
+  {
+    label: 'System',
+    items: [{ name: 'Settings', href: '/settings', icon: Settings }],
+  },
 ];
 
 export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
@@ -84,11 +122,18 @@ export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNaviga
   const [collapsed, setCollapsed] = useState(false);
 
   // Visibility comes from the same map AppLayout gates routes with, so the
-  // nav can never offer a link the user would be denied on arrival.
-  const filteredNav = navigation.filter((item) => {
+  // nav can never offer a link the user would be denied on arrival. Plan
+  // modules layer on top: only gate when the plan actually declares its
+  // module list (same semantics as the mobile tab bar).
+  const modules: string[] | undefined = user?.planFeatures?.modules;
+  const isVisible = (item: NavItem) => {
+    if (item.module && modules && !modules.includes(item.module)) return false;
     const required = requiredPermissionsForPath(item.href);
     return !required || required.length === 0 || required.some((p) => hasPermission(p));
-  });
+  };
+  const visibleSections = navigation
+    .map((section) => ({ ...section, items: section.items.filter(isVisible) }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside
@@ -118,33 +163,41 @@ export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNaviga
       </div>
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Main navigation">
-        {filteredNav.map((item) => {
-          // "Farms" owns every /farms/* route except the map page, which has
-          // its own nav entry — otherwise both highlight at once.
-          const isActive = item.href === '/'
-            ? pathname === '/'
-            : item.href === '/farms'
-              ? pathname === '/farms' || (pathname.startsWith('/farms/') && pathname !== '/farms/map')
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              )}
-              title={collapsed ? item.name : undefined}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-              {!collapsed && <span>{item.name}</span>}
-            </Link>
-          );
-        })}
+        {visibleSections.map((section) => (
+          <div key={section.label} className="space-y-1">
+            {collapsed ? (
+              <div className="my-3 border-t border-gray-200 dark:border-gray-700" role="separator" />
+            ) : (
+              <p className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                {section.label}
+              </p>
+            )}
+            {section.items.map((item) => {
+              const isActive =
+                item.href === '/'
+                  ? pathname === '/'
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  )}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <Icon className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                  {!collapsed && <span>{item.name}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">

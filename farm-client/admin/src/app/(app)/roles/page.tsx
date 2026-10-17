@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { rolesAPI } from '@/lib/api';
 import { useToast } from '@/lib/toasts';
+import { NavTabs } from '@/components/NavTabs';
 import { Card, Badge, Input, Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui';
 
 export default function RolesPage() {
@@ -34,6 +35,14 @@ export default function RolesPage() {
         <h1 className="text-2xl font-bold text-gray-900">Roles</h1>
         <p className="text-sm text-gray-500 mt-1">View roles and their assigned permissions</p>
       </div>
+
+      <NavTabs
+        ariaLabel="Access section"
+        tabs={[
+          { label: 'Roles', href: '/roles' },
+          { label: 'Permissions', href: '/permissions' },
+        ]}
+      />
 
       <Card>
         <div className="p-4 border-b">

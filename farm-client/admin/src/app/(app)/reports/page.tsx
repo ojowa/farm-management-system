@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { NavTabs } from '@/components/NavTabs';
 import {
   Home,
   Sprout,
@@ -177,6 +178,14 @@ export default function ReportsPage() {
           </Link>
         )}
       </div>
+
+      <NavTabs
+        ariaLabel="Reports section"
+        tabs={[
+          { label: 'Reports', href: '/reports' },
+          { label: 'Scheduled', href: '/reports/scheduled' },
+        ]}
+      />
 
       {/* Report Templates */}
       <div>

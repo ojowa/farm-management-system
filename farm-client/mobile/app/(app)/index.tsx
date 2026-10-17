@@ -247,9 +247,19 @@ export default function DashboardScreen() {
           />
         }
       >
-        <View style={[styles.header, dynamicStyles.header]}>
+        <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+          <View style={styles.headerTexts}>
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
           <Text style={styles.subtitle}>Here\u2019s an overview of your farm</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            style={styles.headerGear}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Text style={styles.headerGearText}>⚙️</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
@@ -505,6 +515,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTexts: {
+    flex: 1,
+  },
+  headerGear: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  headerGearText: {
+    fontSize: 20,
+    color: '#FFFFFF',
   },
   greeting: {
     fontSize: 28,

@@ -13,7 +13,9 @@ const TAB_CONFIG = [
   { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'worker.read', module: 'worker' },
   { name: 'messages', title: 'Messages', icon: '✉️', permission: 'communication.read', module: 'communication' },
   { name: 'finance', title: 'Finance', icon: '💰', permission: 'finance.read', module: 'finance' },
-  { name: 'settings', title: 'Settings', icon: '⚙️', permission: null, module: null },
+  // Settings was a 6th tab, past the conventional 5-max and crowding small
+  // phones - it now lives behind the gear button in the Home header (the
+  // route stays, hidden below via href: null).
 ];
 
 export default function AppLayout() {
@@ -80,6 +82,7 @@ export default function AppLayout() {
       <Tabs.Screen name="livestock" options={{ href: null }} />
       <Tabs.Screen name="aquaculture" options={{ href: null }} />
       <Tabs.Screen name="leave" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }
