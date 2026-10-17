@@ -71,6 +71,8 @@ export default function NotificationsPage() {
   const [unread, setUnread] = useState(0);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [unreadCountError, setUnreadCountError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
@@ -94,7 +96,10 @@ export default function NotificationsPage() {
       const seq = ++loadSeq.current;
 
       if (mode === 'more') setLoadingMore(true);
-      else setLoading(true);
+      else {
+        setLoading(true);
+        setLoadError(null);
+      }
 
       try {
         const limit = mode === 'reset' ? Math.max(itemsRef.current.length, PAGE_SIZE) : PAGE_SIZE;
@@ -121,13 +126,29 @@ export default function NotificationsPage() {
             });
           }
         } else if (mode === 'reset') {
+          const message = getErrorMessage(listRes.reason);
           setItems([]);
           setHasMore(false);
-          toast({ type: 'error', title: 'Could not load notifications', message: getErrorMessage(listRes.reason) });
+          setLoadError(message);
+          toast({ type: 'error', title: 'Could not load notifications', message });
+        } else {
+          toast({
+            type: 'error',
+            title: 'Could not load more notifications',
+            message: getErrorMessage(listRes.reason),
+          });
         }
 
         if (countRes.status === 'fulfilled') {
           setUnread(countRes.value.data?.count ?? 0);
+          setUnreadCountError(false);
+        } else {
+          setUnreadCountError(true);
+          toast({
+            type: 'error',
+            title: 'Could not refresh unread count',
+            message: getErrorMessage(countRes.reason),
+          });
         }
       } finally {
         if (seq === loadSeq.current) {
@@ -198,7 +219,11 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
           <p className="text-muted-foreground">
-            {unread > 0 ? `You have ${unread} unread notification${unread === 1 ? '' : 's'}` : 'You are all caught up'}
+            {unreadCountError
+              ? 'Unread count unavailable'
+              : unread > 0
+                ? `You have ${unread} unread notification${unread === 1 ? '' : 's'}`
+                : 'You are all caught up'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -209,7 +234,12 @@ export default function NotificationsPage() {
           >
             {unreadOnly ? 'Showing unread' : 'Unread only'}
           </Button>
-          <Button variant="outline" size="sm" onClick={markAllRead} disabled={unread === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={markAllRead}
+            disabled={unread === 0 && !unreadCountError}
+          >
             <Check className="h-4 w-4 mr-1" />
             Mark all read
           </Button>
@@ -227,6 +257,15 @@ export default function NotificationsPage() {
           {loading ? (
             <div className="flex items-center justify-center p-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : loadError ? (
+            <div className="p-12 text-center" role="alert">
+              <AlertCircle className="h-12 w-12 mx-auto mb-3 text-destructive" />
+              <p className="font-medium">Could not load notifications</p>
+              <p className="text-sm text-muted-foreground mt-1">{loadError}</p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => void load('reset')}>
+                Try again
+              </Button>
             </div>
           ) : items.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">

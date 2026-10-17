@@ -41,10 +41,15 @@ export function ConnectionBanner() {
 
   // Show "back online" toast when transitioning from offline to online
   useEffect(() => {
-    if (wasOffline.current && isOnline && socketConnected) {
-      success('Back online');
+    if (!isOnline) {
+      wasOffline.current = true;
+      return;
     }
-    wasOffline.current = !isOnline;
+
+    if (wasOffline.current && socketConnected) {
+      success('Back online');
+      wasOffline.current = false;
+    }
   }, [isOnline, socketConnected, success]);
 
   if (isOnline && socketConnected && offlineQueue.length === 0) {
@@ -54,8 +59,10 @@ export function ConnectionBanner() {
   let message = '';
   if (!isOnline) {
     message = 'You are offline. Changes will sync when reconnected.';
-  } else if (!socketConnected && reconnectAttempt > 0) {
-    message = `Reconnecting… (attempt ${reconnectAttempt})`;
+  } else if (!socketConnected) {
+    message = reconnectAttempt > 0
+      ? `Reconnecting… (attempt ${reconnectAttempt})`
+      : 'Connecting to live updates…';
   } else if (syncing) {
     message = `Syncing ${offlineQueue.length} pending change${offlineQueue.length !== 1 ? 's' : ''}…`;
   } else if (offlineQueue.length > 0) {

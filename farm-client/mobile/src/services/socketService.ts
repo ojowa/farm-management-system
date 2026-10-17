@@ -67,7 +67,10 @@ class SocketService {
    * on every reconnect; without it, incoming notifications are missed.
    */
   async connect(accessToken?: string, identity?: SocketIdentity) {
-    if (this.socket?.connected) return;
+    if (identity?.userId) {
+      this.identity = identity;
+    }
+    if (this.socket?.active) return;
 
     if (this.socket) {
       this.socket.removeAllListeners();
@@ -76,9 +79,7 @@ class SocketService {
     }
 
     const token = accessToken || undefined;
-    if (identity?.userId) {
-      this.identity = identity;
-    }
+    this.reconnectAttempts = 0;
 
     this.socket = io(SOCKET_URL, {
       auth: token ? { token } : undefined,

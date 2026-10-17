@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import type { NetInfoState } from '@react-native-community/netinfo';
 import { useAppDispatch, useAppSelector } from '../modules/auth/hooks/useAuth';
 import { setIsOnline, setSocketConnected, setReconnectAttempt } from '../store/slices/syncSlice';
 import { socketService } from './socketService';
@@ -10,51 +11,25 @@ export function useNetworkSync() {
   const reconcileRef = useRef<ReturnType<typeof reconcileOfflineQueue> | null>(null);
   const socketAccessToken = useAppSelector((state) => state.auth.socketAccessToken);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  const user = useAppSelector((state) => state.auth.user);
-  const initialCheckDone = useRef(false);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const organizationId = useAppSelector((state) => state.auth.user?.organizationId);
 
   useEffect(() => {
     if (!isAuthenticated) {
       socketService.disconnect();
+      dispatch(setSocketConnected(false));
+      dispatch(setReconnectAttempt(0));
       return;
     }
 
     // Notifications are only delivered to authenticated users who joined a
     // room named after their user id — pass identity so the socket service
     // can join it on connect and reconnect.
-    const socketIdentity = user?.id
-      ? { userId: user.id, organizationId: user.organizationId }
+    const socketIdentity = userId
+      ? { userId, organizationId }
       : undefined;
 
     let unsubscribeNetInfo: (() => void) | null = null;
-
-    // NetInfo is not reliable on web — default to online
-    if (Platform.OS !== 'web') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const NetInfo = require('@react-native-community/netinfo').default;
-      unsubscribeNetInfo = NetInfo.addEventListener((state: any) => {
-        if (!initialCheckDone.current) {
-          initialCheckDone.current = true;
-          if (state.isConnected === false) {
-            dispatch(setIsOnline(false));
-          }
-          return;
-        }
-
-        const online = state.isConnected === true && state.isInternetReachable !== false;
-        dispatch(setIsOnline(online));
-
-        if (online && socketAccessToken && !socketService.isConnected) {
-          socketService.connect(socketAccessToken, socketIdentity);
-        }
-      });
-    } else {
-      // On web, default to online
-      dispatch(setIsOnline(true));
-      if (socketAccessToken && !socketService.isConnected) {
-        socketService.connect(socketAccessToken, socketIdentity);
-      }
-    }
 
     socketService.setConnectionChangeHandler((connected) => {
       dispatch(setSocketConnected(connected));
@@ -64,6 +39,28 @@ export function useNetworkSync() {
       dispatch(setReconnectAttempt(attempt));
     });
 
+    const updateNetworkStatus = (state: NetInfoState) => {
+      const online = state.isConnected === true && state.isInternetReachable !== false;
+      dispatch(setIsOnline(online));
+
+      if (online && socketAccessToken && !socketService.isConnected) {
+        void socketService.connect(socketAccessToken, socketIdentity);
+      }
+    };
+
+    // NetInfo is not reliable on web — default to online
+    if (Platform.OS !== 'web') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const NetInfo = require('@react-native-community/netinfo').default;
+      unsubscribeNetInfo = NetInfo.addEventListener(updateNetworkStatus);
+    } else {
+      // On web, default to online
+      dispatch(setIsOnline(true));
+      if (socketAccessToken && !socketService.isConnected) {
+        void socketService.connect(socketAccessToken, socketIdentity);
+      }
+    }
+
     reconcileRef.current = reconcileOfflineQueue(dispatch);
 
     return () => {
@@ -71,5 +68,5 @@ export function useNetworkSync() {
       socketService.disconnect();
       reconcileRef.current?.stop();
     };
-  }, [dispatch, socketAccessToken, isAuthenticated, user]);
+  }, [dispatch, socketAccessToken, isAuthenticated, userId, organizationId]);
 }
