@@ -13,9 +13,28 @@ import {
   CorrespondenceAttachment,
 } from '../entities/hr.entity';
 
+export interface WorkerListFilters {
+  search?: string;
+  status?: string;
+  farmId?: string;
+  department?: string;
+  position?: string;
+}
+
+export interface PageResult<T> {
+  rows: T[];
+  total: number;
+}
+
 export interface WorkerRepository {
   findById(id: string, organizationId: string): Promise<Worker | null>;
-  findByOrganizationId(organizationId: string): Promise<Worker[]>;
+  findByOrganizationId(organizationId: string, filters?: WorkerListFilters): Promise<Worker[]>;
+  findManyWithCount(
+    organizationId: string,
+    filters: WorkerListFilters | undefined,
+    page: number,
+    limit: number
+  ): Promise<PageResult<Worker>>;
   create(data: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>): Promise<Worker>;
   update(id: string, data: Partial<Worker>): Promise<Worker>;
   delete(id: string): Promise<void>;
@@ -42,9 +61,18 @@ export interface TaskRepository {
     status?: string;
     priority?: string;
     assignedToId?: string;
+    assignedToIds?: string[];
     farmId?: string;
     search?: string;
   }): Promise<Task[]>;
+  findManyWithCount(organizationId: string, filters: {
+    status?: string;
+    priority?: string;
+    assignedToId?: string;
+    assignedToIds?: string[];
+    farmId?: string;
+    search?: string;
+  } | undefined, page: number, limit: number): Promise<PageResult<Task>>;
   create(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task>;
   update(id: string, data: Partial<Task>): Promise<Task>;
   delete(id: string): Promise<void>;
@@ -70,6 +98,7 @@ export interface ShiftAssignmentRepository {
   }): Promise<ShiftAssignment[]>;
   findByShiftAndUserAndDate(shiftId: string, userId: string, date: Date): Promise<ShiftAssignment | null>;
   create(data: Omit<ShiftAssignment, 'id' | 'createdAt' | 'updatedAt'>): Promise<ShiftAssignment>;
+  update(id: string, data: Partial<ShiftAssignment>): Promise<ShiftAssignment>;
   delete(id: string): Promise<void>;
   createMany(data: Omit<ShiftAssignment, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<number>;
 }
@@ -89,6 +118,8 @@ export interface LeaveRequestRepository {
   findByOrganizationId(organizationId: string, filters?: {
     status?: string;
     userId?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<LeaveRequest[]>;
   create(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<LeaveRequest>;
   update(id: string, data: Partial<LeaveRequest>): Promise<LeaveRequest>;

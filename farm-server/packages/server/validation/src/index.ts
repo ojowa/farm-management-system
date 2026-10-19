@@ -7,6 +7,7 @@ export * from './aquaculture.schema';
 export * from './inventory.schema';
 export * from './poultry.schema';
 export * from './worker.schema';
+export * from './hr.schema';
 export * from './finance.schema';
 export * from './notification.schema';
 

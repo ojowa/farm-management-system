@@ -13,6 +13,7 @@ import {
   MessageRecipientRepository,
   CorrespondenceRepository,
   CorrespondenceAttachmentRepository,
+  WorkerListFilters,
 } from '../../domain/repositories/hr.repository';
 import {
   Worker,
@@ -33,15 +34,53 @@ const prisma = scopedPrisma as any;
 
 @Injectable()
 export class PrismaWorkerRepository implements WorkerRepository {
+  private whereFor(organizationId: string, filters?: WorkerListFilters): any {
+    const where: any = { organizationId };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.farmId) where.farmId = filters.farmId;
+    if (filters?.department) where.department = filters.department;
+    if (filters?.position) where.position = filters.position;
+    if (filters?.search) {
+      const s = filters.search;
+      where.OR = [
+        { firstName: { contains: s, mode: 'insensitive' } },
+        { lastName: { contains: s, mode: 'insensitive' } },
+        { email: { contains: s, mode: 'insensitive' } },
+        { phone: { contains: s, mode: 'insensitive' } },
+        { position: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+    return where;
+  }
+
   async findById(id: string, organizationId: string): Promise<Worker | null> {
     return prisma.worker.findFirst({ where: { id, organizationId } });
   }
 
-  async findByOrganizationId(organizationId: string): Promise<Worker[]> {
+  async findByOrganizationId(organizationId: string, filters?: WorkerListFilters): Promise<Worker[]> {
     return prisma.worker.findMany({
-      where: { organizationId },
+      where: this.whereFor(organizationId, filters),
       orderBy: { lastName: 'asc' },
     });
+  }
+
+  async findManyWithCount(
+    organizationId: string,
+    filters: WorkerListFilters | undefined,
+    page: number,
+    limit: number
+  ): Promise<{ rows: Worker[]; total: number }> {
+    const where = this.whereFor(organizationId, filters);
+    const [rows, total] = await Promise.all([
+      prisma.worker.findMany({
+        where,
+        orderBy: { lastName: 'asc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.worker.count({ where }),
+    ]);
+    return { rows, total };
   }
 
   async create(data: Omit<Worker, 'id' | 'createdAt' | 'updatedAt'>): Promise<Worker> {
@@ -121,6 +160,29 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
 
 @Injectable()
 export class PrismaTaskRepository implements TaskRepository {
+  private whereFor(organizationId: string, filters?: {
+    status?: string;
+    priority?: string;
+    assignedToId?: string;
+    assignedToIds?: string[];
+    farmId?: string;
+    search?: string;
+  }): any {
+    const where: any = { organizationId };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.priority) where.priority = filters.priority;
+    if (filters?.assignedToId) where.assignedToId = filters.assignedToId;
+    if (filters?.assignedToIds?.length) where.assignedToId = { in: filters.assignedToIds };
+    if (filters?.farmId) where.farmId = filters.farmId;
+    if (filters?.search) {
+      where.OR = [
+        { title: { contains: filters.search, mode: 'insensitive' } },
+        { description: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+    return where;
+  }
+
   async findById(id: string, organizationId: string): Promise<Task | null> {
     return prisma.task.findFirst({ where: { id, organizationId } });
   }
@@ -129,29 +191,43 @@ export class PrismaTaskRepository implements TaskRepository {
     status?: string;
     priority?: string;
     assignedToId?: string;
+    assignedToIds?: string[];
     farmId?: string;
     search?: string;
   }): Promise<Task[]> {
-    const where: any = { organizationId };
-    if (filters?.status) where.status = filters.status;
-    if (filters?.priority) where.priority = filters.priority;
-    if (filters?.assignedToId) where.assignedToId = filters.assignedToId;
-    if (filters?.farmId) where.farmId = filters.farmId;
-    if (filters?.search) {
-      where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
-      ];
-    }
-
     return prisma.task.findMany({
-      where,
+      where: this.whereFor(organizationId, filters),
       orderBy: [
         { status: 'asc' },
         { priority: 'desc' },
         { dueDate: 'asc' },
       ],
     });
+  }
+
+  async findManyWithCount(organizationId: string, filters: {
+    status?: string;
+    priority?: string;
+    assignedToId?: string;
+    assignedToIds?: string[];
+    farmId?: string;
+    search?: string;
+  } | undefined, page: number, limit: number): Promise<{ rows: Task[]; total: number }> {
+    const where = this.whereFor(organizationId, filters);
+    const [rows, total] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        orderBy: [
+          { status: 'asc' },
+          { priority: 'desc' },
+          { dueDate: 'asc' },
+        ],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.task.count({ where }),
+    ]);
+    return { rows, total };
   }
 
   async create(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
@@ -252,6 +328,14 @@ export class PrismaShiftAssignmentRepository implements ShiftAssignmentRepositor
     });
   }
 
+  async update(id: string, data: Partial<ShiftAssignment>): Promise<ShiftAssignment> {
+    return prisma.shiftAssignment.update({
+      where: { id },
+      data,
+      include: { shift: true },
+    });
+  }
+
   async delete(id: string): Promise<void> {
     await prisma.shiftAssignment.delete({ where: { id } });
   }
@@ -311,10 +395,17 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepository {
   async findByOrganizationId(organizationId: string, filters?: {
     status?: string;
     userId?: string;
+    startDate?: Date;
+    endDate?: Date;
   }): Promise<LeaveRequest[]> {
     const where: any = { organizationId };
     if (filters?.status) where.status = filters.status;
     if (filters?.userId) where.userId = filters.userId;
+    if (filters?.startDate || filters?.endDate) {
+      where.startDate = {};
+      if (filters.startDate) where.startDate.gte = filters.startDate;
+      if (filters.endDate) where.endDate.lte = filters.endDate;
+    }
 
     return prisma.leaveRequest.findMany({
       where,

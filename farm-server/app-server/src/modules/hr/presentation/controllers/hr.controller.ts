@@ -11,10 +11,31 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UsePipes,
 } from '@nestjs/common';
 
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { PermissionAny, PermissionAnyGuard } from '../../../../shared/auth/permission-any.guard';
+import { ZodValidationPipe } from '@farm/utils';
+import {
+  createWorkerSchema,
+  updateWorkerSchema,
+  createTaskSchema,
+  updateTaskSchema,
+  createTaskCommentSchema,
+  createTaskAttachmentSchema,
+  createAttendanceSchema,
+  updateAttendanceSchema,
+  createShiftSchema,
+  updateShiftSchema,
+  createShiftAssignmentSchema,
+  updateShiftAssignmentSchema,
+  createLeaveTypeSchema,
+  updateLeaveTypeSchema,
+  createLeaveRequestSchema,
+  updateLeaveRequestSchema,
+  upsertLeaveBalanceSchema,
+} from '@farm/validation-server';
 import { HrApplicationService } from '../../application/services/hr.service';
 
 function getOrgId(req: any): string {
@@ -41,8 +62,25 @@ export class WorkerController {
 
   @Permission('hr.read')
   @Get()
-  findAll(@Req() req: any) {
-    return this.hrService.getAllWorkers(getOrgId(req));
+  findAll(
+    @Req() req: any,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('farmId') farmId?: string,
+    @Query('department') department?: string,
+    @Query('position') position?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.hrService.getAllWorkers(getOrgId(req), {
+      search,
+      status,
+      farmId,
+      department,
+      position,
+      page,
+      limit,
+    });
   }
 
   @Permission('hr.read')
@@ -54,14 +92,24 @@ export class WorkerController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createWorkerSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createWorker({ ...body, organizationId: getOrgId(req) });
   }
 
   @Permission('hr.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateWorkerSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateWorker(id, getOrgId(req), body);
+  }
+
+  // Rotate the linked login's password and resend the invitation email.
+  @Permission('hr.write')
+  @Post(':id/reinvite')
+  @HttpCode(HttpStatus.CREATED)
+  reinvite(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.reinviteWorker(id, getOrgId(req));
   }
 
   @Permission('hr.delete')
@@ -72,12 +120,14 @@ export class WorkerController {
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  // Workers see their own records (worker.read, pinned to their own profile
+  // in the service); managers see everyone (hr.read).
+  @PermissionAny('hr.read', 'worker.read')
   @Get()
   findAll(
     @Req() req: any,
@@ -87,16 +137,25 @@ export class AttendanceController {
     @Query('endDate') endDate?: string,
     @Query('status') status?: string,
   ) {
-    return this.hrService.getAttendance(getOrgId(req), { workerId, date, startDate, endDate, status });
+    return this.hrService.getAttendance(
+      getOrgId(req),
+      { workerId, date, startDate, endDate, status },
+      { userId: getUserId(req), permissions: getUserPermissions(req) },
+    );
   }
 
-  @Permission('hr.read')
+  @PermissionAny('hr.read', 'worker.read')
   @Get('today')
   today(@Req() req: any) {
-    return this.hrService.getTodayAttendance(getOrgId(req));
+    return this.hrService.getTodayAttendance(getOrgId(req), {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
   }
 
-  @Permission('hr.read')
+  // workerId omitted → org-wide summary for managers; workers are always
+  // pinned to their own profile regardless of what they pass.
+  @PermissionAny('hr.read', 'worker.read')
   @Get('summary')
   summary(
     @Req() req: any,
@@ -106,34 +165,46 @@ export class AttendanceController {
   ) {
     return this.hrService.getAttendanceSummary(
       getOrgId(req),
-      workerId || '',
+      workerId || undefined,
       month ? parseInt(month) : undefined,
       year ? parseInt(year) : undefined,
+      { userId: getUserId(req), permissions: getUserPermissions(req) },
     );
   }
 
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createAttendanceSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createAttendance(getOrgId(req), body);
   }
 
-  @Permission('hr.write')
+  // The WORKER role clocks itself in/out with worker.write; managers can clock
+  // any worker with hr.write. The service pins non-hr.write callers to their
+  // own profile, so the body's workerId is only honoured for managers.
+  @PermissionAny('hr.write', 'worker.write')
   @Post('clock-in')
   @HttpCode(HttpStatus.CREATED)
   clockIn(@Req() req: any, @Body() body: { workerId: string; workerName: string }) {
-    return this.hrService.clockIn(getOrgId(req), body.workerId, body.workerName);
+    return this.hrService.clockIn(getOrgId(req), body.workerId, body.workerName, {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
   }
 
-  @Permission('hr.write')
+  @PermissionAny('hr.write', 'worker.write')
   @Post('clock-out')
   clockOut(@Req() req: any, @Body() body: { workerId: string }) {
-    return this.hrService.clockOut(getOrgId(req), body.workerId);
+    return this.hrService.clockOut(getOrgId(req), body.workerId, {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
   }
 
   @Permission('hr.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateAttendanceSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateAttendance(id, getOrgId(req), body);
   }
@@ -148,12 +219,14 @@ export class AttendanceController {
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  // Workers list their own tasks (worker.read → scoped to their user/worker id
+  // in the service); managers see the org's board (hr.read).
+  @PermissionAny('hr.read', 'worker.read')
   @Get()
   findAll(
     @Req() req: any,
@@ -162,6 +235,8 @@ export class TasksController {
     @Query('assignedToId') assignedToId?: string,
     @Query('farmId') farmId?: string,
     @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.hrService.getTasks(getOrgId(req), getUserPermissions(req), getUserId(req), {
       status,
@@ -169,24 +244,28 @@ export class TasksController {
       assignedToId,
       farmId,
       search,
+      page,
+      limit,
     });
   }
 
-  @Permission('hr.read')
+  @PermissionAny('hr.read', 'worker.read')
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
-    return this.hrService.getTaskById(id, getOrgId(req));
+    return this.hrService.getTaskById(id, getOrgId(req), getUserPermissions(req), getUserId(req));
   }
 
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createTaskSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createTask(getOrgId(req), getUserPermissions(req), (req as any).user, body);
   }
 
   @Permission('hr.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateTaskSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateTask(id, getOrgId(req), getUserPermissions(req), getUserId(req), body);
   }
@@ -203,14 +282,80 @@ export class TasksController {
   updateStatus(@Param('id') id: string, @Req() req: any, @Body() body: { status: string }) {
     return this.hrService.updateTaskStatus(id, getOrgId(req), body.status);
   }
+
+  // ── Comments ──────────────────────────────────────────────────────────
+
+  @PermissionAny('hr.read', 'worker.read')
+  @Get(':id/comments')
+  listComments(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.getTaskComments(getOrgId(req), id);
+  }
+
+  @PermissionAny('hr.write', 'worker.write')
+  @Post(':id/comments')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createTaskCommentSchema))
+  addComment(@Param('id') id: string, @Req() req: any, @Body() body: { body: string }) {
+    return this.hrService.addTaskComment(
+      getOrgId(req),
+      id,
+      { id: getUserId(req), name: getUserName(req) },
+      body.body,
+    );
+  }
+
+  @PermissionAny('hr.write', 'hr.delete', 'worker.write')
+  @Delete('comments/:id')
+  removeComment(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteTaskComment(getOrgId(req), id, {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
+  }
+
+  // ── Attachments ───────────────────────────────────────────────────────
+
+  @PermissionAny('hr.read', 'worker.read')
+  @Get(':id/attachments')
+  listAttachments(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.getTaskAttachments(getOrgId(req), id);
+  }
+
+  @PermissionAny('hr.write', 'worker.write')
+  @Post(':id/attachments')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createTaskAttachmentSchema))
+  addAttachment(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { fileName: string; fileUrl: string; fileSize?: number },
+  ) {
+    return this.hrService.addTaskAttachment(
+      getOrgId(req),
+      id,
+      { id: getUserId(req), name: getUserName(req) },
+      body,
+    );
+  }
+
+  @PermissionAny('hr.write', 'hr.delete', 'worker.write')
+  @Delete('attachments/:id')
+  removeAttachment(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteTaskAttachment(getOrgId(req), id, {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
+  }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('shifts')
 export class ShiftsController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  // Readable by workers too (mobile roster view); management routes below
+  // stay hr.write/hr.delete.
+  @PermissionAny('hr.read', 'worker.read')
   @Get()
   findAll(@Req() req: any) {
     return this.hrService.getShifts(getOrgId(req));
@@ -219,12 +364,14 @@ export class ShiftsController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createShiftSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createShift(getOrgId(req), body);
   }
 
   @Permission('hr.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateShiftSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateShift(id, getOrgId(req), body);
   }
@@ -237,12 +384,12 @@ export class ShiftsController {
   }
 }
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PermissionAnyGuard)
 @Controller('shift-assignments')
 export class ShiftAssignmentsController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  @PermissionAny('hr.read', 'worker.read')
   @Get()
   findAll(
     @Req() req: any,
@@ -256,8 +403,18 @@ export class ShiftAssignmentsController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createShiftAssignmentSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createShiftAssignment(getOrgId(req), body);
+  }
+
+  // Re-assign: move someone to a different shift/date or edit notes. Runs the
+  // same duplicate + overlap checks as create (excluding itself).
+  @Permission('hr.write')
+  @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateShiftAssignmentSchema))
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateShiftAssignment(id, getOrgId(req), body);
   }
 
   @Permission('hr.write')
@@ -293,12 +450,14 @@ export class LeaveTypesController {
   @Permission('hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createLeaveTypeSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createLeaveType(getOrgId(req), body);
   }
 
   @Permission('hr.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateLeaveTypeSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateLeaveType(id, getOrgId(req), body);
   }
@@ -332,11 +491,27 @@ export class LeaveRequestsController {
     @Req() req: any,
     @Query('status') status?: string,
     @Query('userId') filterUserId?: string,
+    @Query('year') year?: string,
   ) {
     return this.hrService.getLeaveRequests(getOrgId(req), getUserPermissions(req), getUserId(req), {
       status,
       userId: filterUserId,
+      year,
     });
+  }
+
+  // One call to clear the pending queue: `{ ids, action, rejectionReason? }`.
+  // Per-row results come back as { succeeded, failed }.
+  @PermissionAny('hr.write', 'leave.approve')
+  @Put('bulk')
+  bulk(@Req() req: any, @Body() body: any) {
+    return this.hrService.bulkLeaveDecision(
+      getOrgId(req),
+      getUserId(req),
+      Array.isArray(body?.ids) ? body.ids : [],
+      body?.action,
+      body?.rejectionReason,
+    );
   }
 
   // A worker requests their own leave (leave.write); an admin with hr.write may
@@ -344,6 +519,7 @@ export class LeaveRequestsController {
   @PermissionAny('leave.write', 'hr.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createLeaveRequestSchema))
   create(@Req() req: any, @Body() body: any) {
     return this.hrService.createLeaveRequest(getOrgId(req), getUserId(req), body, getUserPermissions(req));
   }
@@ -354,6 +530,7 @@ export class LeaveRequestsController {
   // balance debit. Type/dates/reason only; the target user can't be changed.
   @PermissionAny('leave.write', 'hr.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateLeaveRequestSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.hrService.updateLeaveRequest(id, getOrgId(req), getUserId(req), body, getUserPermissions(req));
   }
@@ -403,8 +580,17 @@ export class LeaveBalanceController {
     return this.hrService.getLeaveBalance(getOrgId(req), userId, year);
   }
 
+  // Every user's balance for the year — the admin "leave ledger" table. The
+  // route sits before the plain GET above in path specificity ('/all').
+  @Permission('hr.read')
+  @Get('all')
+  allBalances(@Req() req: any, @Query('year') yearStr?: string) {
+    return this.hrService.getAllLeaveBalances(getOrgId(req), yearStr ? parseInt(yearStr) : undefined);
+  }
+
   @Permission('hr.write')
   @Put()
+  @UsePipes(new ZodValidationPipe(upsertLeaveBalanceSchema))
   upsert(@Req() req: any, @Body() body: any) {
     return this.hrService.upsertLeaveBalance(getOrgId(req), body);
   }

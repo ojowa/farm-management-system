@@ -12,6 +12,13 @@ export interface Worker {
   department?: string | null;
   hireDate?: Date | null;
   status: string;
+  payRate?: number | null;
+  payType?: string | null;
+  terminationDate?: Date | null;
+  skills?: string[];
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,8 +30,9 @@ export interface Attendance {
   workerName: string;
   date: Date;
   status: string;
-  clockIn: string | null;
-  clockOut: string | null;
+  /** Stored as timestamps (overnight shifts); serialized to "HH:MM" on the wire. */
+  clockIn: Date | null;
+  clockOut: Date | null;
   hoursWorked: number | null;
   notes: string | null;
   createdAt: Date;
@@ -45,6 +53,9 @@ export interface Task {
   farmId: string | null;
   dueDate: Date | null;
   completedAt: Date | null;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  nextDueAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +66,8 @@ export interface Shift {
   name: string;
   startTime: string;
   endTime: string;
+  /** ["MON", "TUE", ...]; empty = runs every day. */
+  daysOfWeek: string[];
   color: string;
   isActive: boolean;
   createdAt: Date;
@@ -167,4 +180,27 @@ export interface CorrespondenceAttachment {
   organizationId: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface TaskComment {
+  id: string;
+  organizationId: string;
+  taskId: string;
+  authorId: string | null;
+  authorName: string;
+  body: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TaskAttachment {
+  id: string;
+  organizationId: string;
+  taskId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: number | null;
+  uploadedById: string | null;
+  uploadedByName: string | null;
+  createdAt: Date;
 }
