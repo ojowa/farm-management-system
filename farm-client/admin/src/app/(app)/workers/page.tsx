@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { NavTabs } from '@/components/NavTabs';
@@ -13,6 +13,7 @@ import {
   Eye,
   Calendar,
   Copy,
+  Download,
 } from 'lucide-react';
 import { workersAPI, farmsAPI, rolesAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -46,8 +47,12 @@ interface Worker {
   firstName: string;
   middleName?: string;
   lastName: string;
+  email?: string;
+  phone?: string;
   position: string;
   department?: string;
+  status: string;
+  hireDate?: string;
   farmId: string;
   farm?: { id: string; name: string };
   createdAt: string;
@@ -61,27 +66,61 @@ interface RoleOption {
 
 const PAGE_SIZE = 10;
 
+const statusColors: Record<string, string> = {
+  ACTIVE: 'bg-green-100 text-green-800',
+  INACTIVE: 'bg-gray-100 text-gray-800',
+  PROBATION: 'bg-yellow-100 text-yellow-800',
+  TERMINATED: 'bg-red-100 text-red-800',
+};
+
+const statusFilterOptions = [
+  { value: '', label: 'All Statuses' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'PROBATION', label: 'Probation' },
+  { value: 'TERMINATED', label: 'Terminated' },
+];
+
 export default function WorkersPage() {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('hr');
+  const canRemove = canDelete('hr');
   const { toast } = useToast();
   const [search, setSearch] = useState('');
-  const [positionFilter, setPositionFilter] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '', roleId: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
+
+  // Debounce the search box so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const {
     data: workersData,
     loading,
+    error,
     refetch,
   } = useFetch<{ data: Worker[]; total: number; page: number; totalPages: number }>(
-    'workers-list',
-    () => workersAPI.list({ page, limit: PAGE_SIZE }),
+    `workers-list-${debouncedSearch}-${statusFilter}-${page}`,
+    () =>
+      workersAPI.list({
+        page,
+        limit: PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        status: statusFilter || undefined,
+      }),
     { cacheTime: 30_000 }
   );
 
@@ -100,6 +139,7 @@ export default function WorkersPage() {
   const farms = farmsData?.data || [];
   const roles = rolesData?.data || [];
   const workers = workersData?.data || [];
+  const totalPages = workersData?.totalPages || 1;
 
   // Default the login role to the system WORKER role once roles arrive; an
   // empty value still works — the backend falls back to WORKER as well.
@@ -120,25 +160,52 @@ export default function WorkersPage() {
   );
   useRealtime('worker', handleRealtimeEvent);
 
-  const filtered = useMemo(() => {
-    let result = workers;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter((w) => `${w.firstName} ${w.lastName}`.toLowerCase().includes(q));
+  /** CSV of everything matching the current filters (not just this page). */
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { data } = await workersAPI.list({
+        limit: 1000,
+        search: debouncedSearch || undefined,
+        status: statusFilter || undefined,
+      });
+      const rows: Worker[] = data?.data || [];
+      const header = ['Name', 'Email', 'Phone', 'Position', 'Department', 'Status', 'Hire Date', 'Created'];
+      const csv = [
+        header.join(','),
+        ...rows.map((w) =>
+          [
+            `${w.firstName} ${w.middleName ? `${w.middleName} ` : ''}${w.lastName}`,
+            w.email || '',
+            w.phone || '',
+            w.position,
+            w.department || '',
+            w.status,
+            w.hireDate ? new Date(w.hireDate).toLocaleDateString() : '',
+            new Date(w.createdAt).toLocaleDateString(),
+          ]
+            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+            .join(',')
+        ),
+      ].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'workers.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ type: 'success', title: `Exported ${rows.length} workers` });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Export failed',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setExporting(false);
     }
-    if (positionFilter) {
-      result = result.filter((w) => w.position === positionFilter);
-    }
-    return result;
-  }, [workers, search, positionFilter]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const positions = useMemo(() => {
-    const r = new Set(workers.map((w) => w.position).filter(Boolean));
-    return Array.from(r).sort();
-  }, [workers]);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,12 +276,18 @@ export default function WorkersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Workers</h1>
           <p className="text-muted-foreground">Manage your farm workers</p>
         </div>
-        {!readOnly && (
-          <Button onClick={() => setShowAdd(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Worker
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExport} loading={exporting}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
           </Button>
-        )}
+          {!readOnly && (
+            <Button onClick={() => setShowAdd(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Worker
+            </Button>
+          )}
+        </div>
       </div>
 
       <NavTabs
@@ -232,31 +305,27 @@ export default function WorkersPage() {
             <div className="relative flex-1 min-w-[200px] max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search workers by name..."
+                placeholder="Search name, email, phone or position..."
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
+                onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
             <Select
-              placeholder="All positions"
-              options={positions.map((r) => ({ value: r, label: r }))}
-              value={positionFilter}
+              options={statusFilterOptions}
+              value={statusFilter}
               onChange={(e) => {
-                setPositionFilter(e.target.value);
+                setStatusFilter(e.target.value);
                 setPage(1);
               }}
             />
-            {(search || positionFilter) && (
+            {(search || statusFilter) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearch('');
-                  setPositionFilter('');
+                  setStatusFilter('');
                   setPage(1);
                 }}
               >
@@ -273,15 +342,23 @@ export default function WorkersPage() {
           <CardContent className="p-8 flex items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </CardContent>
-        ) : paginated.length === 0 ? (
+        ) : error ? (
+          <CardContent className="p-12 text-center">
+            <p className="text-lg font-medium text-destructive">Failed to load workers</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </CardContent>
+        ) : workers.length === 0 ? (
           <CardContent className="p-12 text-center">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
-              {search || positionFilter
+              {search || statusFilter
                 ? 'No workers match your filters.'
                 : 'No workers yet. Add your first worker!'}
             </p>
-            {!search && !positionFilter && !readOnly && (
+            {!search && !statusFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Worker
@@ -296,13 +373,14 @@ export default function WorkersPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Position</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Farm</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((worker) => (
+                  {workers.map((worker) => (
                     <TableRow
                       key={worker.id}
                       className="cursor-pointer"
@@ -313,6 +391,13 @@ export default function WorkersPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{worker.position}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${statusColors[worker.status] || 'bg-gray-100 text-gray-800'}`}
+                        >
+                          {worker.status || 'ACTIVE'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {worker.farm?.name || '—'}
@@ -337,26 +422,26 @@ export default function WorkersPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           {!readOnly && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  router.push(`/workers/${worker.id}/edit`)
-                                }
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => handleDelete(worker.id, `${worker.firstName} ${worker.lastName}`)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                router.push(`/workers/${worker.id}/edit`)
+                              }
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canRemove && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(worker.id, `${worker.firstName} ${worker.lastName}`)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>

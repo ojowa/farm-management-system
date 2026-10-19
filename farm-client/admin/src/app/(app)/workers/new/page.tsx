@@ -32,7 +32,24 @@ export default function NewWorkerPage() {
   const { canCreate } = usePermission();
   const readOnly = !canCreate('hr');
   const { toast } = useToast();
-  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '', roleId: '' });
+  const [form, setForm] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    position: '',
+    department: '',
+    farmId: '',
+    roleId: '',
+    hireDate: '',
+    payRate: '',
+    payType: '',
+    skills: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState<{ email: string; tempPassword: string } | null>(null);
@@ -89,6 +106,15 @@ export default function NewWorkerPage() {
         department: form.department || undefined,
         farmId: form.farmId,
         roleId: form.roleId || undefined,
+        hireDate: form.hireDate || undefined,
+        payRate: form.payRate ? Number(form.payRate) : undefined,
+        payType: form.payType || undefined,
+        skills: form.skills
+          ? form.skills.split(',').map((s) => s.trim()).filter(Boolean)
+          : undefined,
+        emergencyContactName: form.emergencyContactName || undefined,
+        emergencyContactPhone: form.emergencyContactPhone || undefined,
+        emergencyContactRelation: form.emergencyContactRelation || undefined,
       });
       clearFetchCache('workers');
       if (data?.tempPassword) {
@@ -291,6 +317,72 @@ export default function NewWorkerPage() {
               {errors.roleId && (
                 <p className="text-sm text-destructive mt-1">{errors.roleId}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Hire Date</label>
+                <Input
+                  type="date"
+                  value={form.hireDate}
+                  onChange={(e) => setForm({ ...form, hireDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Pay Rate</label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 15.50"
+                  value={form.payRate}
+                  onChange={(e) => setForm({ ...form, payRate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Pay Type</label>
+                <Select
+                  placeholder="Select pay type"
+                  options={[
+                    { value: 'HOURLY', label: 'Hourly' },
+                    { value: 'SALARY', label: 'Salary' },
+                    { value: 'PIECE', label: 'Piece rate' },
+                  ]}
+                  value={form.payType}
+                  onChange={(e) => setForm({ ...form, payType: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">Skills</label>
+              <Input
+                placeholder="Irrigation, Tractor, First aid"
+                value={form.skills}
+                onChange={(e) => setForm({ ...form, skills: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Comma-separated</p>
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <p className="text-sm font-medium">Emergency Contact</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Input
+                  placeholder="Contact name"
+                  value={form.emergencyContactName}
+                  onChange={(e) => setForm({ ...form, emergencyContactName: e.target.value })}
+                />
+                <Input
+                  placeholder="Contact phone"
+                  value={form.emergencyContactPhone}
+                  onChange={(e) => setForm({ ...form, emergencyContactPhone: e.target.value })}
+                />
+                <Input
+                  placeholder="Relationship"
+                  value={form.emergencyContactRelation}
+                  onChange={(e) => setForm({ ...form, emergencyContactRelation: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

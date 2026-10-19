@@ -7,6 +7,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { tasksAPI, workersAPI, farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
@@ -30,11 +31,13 @@ export default function EditTaskPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { canCreate } = usePermission();
+  const canManage = canCreate('hr');
 
-  if (!canCreate('hr')) {
-    router.push('/tasks');
-    return null;
-  }
+  // Redirect in an effect — an early return above the hooks below used to
+  // break the conditional-hooks rule for users without hr.write.
+  useEffect(() => {
+    if (!canManage) router.push('/tasks');
+  }, [canManage, router]);
 
   const {
     data: taskData,
@@ -70,6 +73,8 @@ export default function EditTaskPage() {
     assignedToId: '',
     farmId: '',
     dueDate: '',
+    isRecurring: false,
+    recurrenceRule: 'WEEKLY',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -83,9 +88,16 @@ export default function EditTaskPage() {
         assignedToId: task.assignedToId || '',
         farmId: task.farmId || '',
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+        isRecurring: Boolean(task.isRecurring),
+        recurrenceRule: task.recurrenceRule || 'WEEKLY',
       });
     }
   }, [task]);
+
+  const selectedWorker = workers.find((w) => w.id === form.assignedToId);
+  const assignedToName = selectedWorker
+    ? `${selectedWorker.firstName} ${selectedWorker.lastName}`
+    : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,8 +113,12 @@ export default function EditTaskPage() {
         description: form.description || undefined,
         priority: form.priority || undefined,
         assignedToId: form.assignedToId || undefined,
+        // Flat display name kept on the row — required for the tasks list.
+        assignedToName,
         farmId: form.farmId || undefined,
         dueDate: form.dueDate || undefined,
+        isRecurring: form.isRecurring,
+        recurrenceRule: form.isRecurring ? form.recurrenceRule : null,
       });
       toast({ type: 'success', title: 'Task updated successfully' });
       clearFetchCache('tasks');
@@ -117,6 +133,8 @@ export default function EditTaskPage() {
       setSaving(false);
     }
   };
+
+  if (!canManage) return null;
 
   if (loadingTask || loadingFarms || loadingWorkers) {
     return (
@@ -177,11 +195,38 @@ export default function EditTaskPage() {
 
             <div>
               <label className="text-sm font-medium mb-1 block">Description</label>
-              <Input
+              <Textarea
                 placeholder="Task details..."
+                rows={3}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={form.isRecurring}
+                  onChange={(e) => setForm({ ...form, isRecurring: e.target.checked })}
+                />
+                Recurring task — repeat after each completion
+              </label>
+              {form.isRecurring && (
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Repeats</label>
+                  <Select
+                    options={[
+                      { value: 'DAILY', label: 'Daily' },
+                      { value: 'WEEKLY', label: 'Weekly' },
+                      { value: 'MONTHLY', label: 'Monthly' },
+                    ]}
+                    value={form.recurrenceRule}
+                    onChange={(e) => setForm({ ...form, recurrenceRule: e.target.value })}
+                  />
+                </div>
+              )}
             </div>
 
             <div>

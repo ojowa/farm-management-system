@@ -25,7 +25,18 @@ type Entity =
   | 'eggProduction'
   | 'medication'
   | 'poultryHouse'
-  | 'notification';
+  | 'notification'
+  // HR module (server emits these from HrEventService)
+  | 'task'
+  | 'taskComment'
+  | 'taskAttachment'
+  | 'attendance'
+  | 'shift'
+  | 'shiftAssignment'
+  | 'leaveType'
+  | 'leaveRequest'
+  | 'message'
+  | 'correspondence';
 type Action = 'created' | 'updated' | 'deleted';
 
 interface RealtimeEvent {

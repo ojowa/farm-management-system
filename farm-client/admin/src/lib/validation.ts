@@ -249,6 +249,17 @@ export const workerFormSchema = z.object({
   // The add forms send it (defaulting to the WORKER role); the edit form has
   // no role field, so it stays optional and the backend defaults when absent.
   roleId: z.string().optional(),
+  // Optional employment / contact details — validated server-side; the form
+  // keeps them loose (free text + date inputs).
+  status: z.string().optional(),
+  hireDate: z.string().optional(),
+  payRate: z.string().optional(),
+  payType: z.string().optional(),
+  skills: z.string().optional(),
+  emergencyContactName: z.string().optional(),
+  emergencyContactPhone: z.string().optional(),
+  emergencyContactRelation: z.string().optional(),
+  terminationDate: z.string().optional(),
 });
 
 export type WorkerFormInput = z.infer<typeof workerFormSchema>;

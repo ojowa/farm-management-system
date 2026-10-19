@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Clock,
   Calendar,
@@ -10,9 +11,12 @@ import {
   User,
   LogIn,
   LogOut,
+  Pencil,
+  Plus,
 } from 'lucide-react';
 import { attendanceAPI, workersAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { NavTabs } from '@/components/NavTabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,11 +47,12 @@ interface AttendanceRecord {
   id: string;
   workerId: string;
   workerName: string;
-  clockIn: string;
+  clockIn: string | null;
   clockOut: string | null;
   hoursWorked: number | null;
   status: string;
   date: string;
+  notes?: string | null;
 }
 
 interface Worker {
@@ -58,47 +63,49 @@ interface Worker {
   position: string;
 }
 
-interface TableRow {
+interface AttendanceRow {
   workerId: string;
   workerName: string;
+  recordId?: string;
   clockIn: string | null;
   clockOut: string | null;
   hoursWorked: number | null;
-  status: string;
+  status: string | null;
+  notes: string | null;
   hasRecord: boolean;
 }
 
+// Server enum values (see AttendanceStatus in the Prisma schema) — the old
+// lowercase versions here never matched what the API returns.
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: 'present', label: 'Present' },
-  { value: 'absent', label: 'Absent' },
-  { value: 'late', label: 'Late' },
-  { value: 'half-day', label: 'Half Day' },
-  { value: 'on-leave', label: 'On Leave' },
+  { value: 'PRESENT', label: 'Present' },
+  { value: 'ABSENT', label: 'Absent' },
+  { value: 'LATE', label: 'Late' },
+  { value: 'HALF_DAY', label: 'Half Day' },
+  { value: 'ON_LEAVE', label: 'On Leave' },
 ];
 
-function getStatusBadgeVariant(status: string) {
-  switch (status) {
-    case 'present':
-      return 'success' as const;
-    case 'absent':
-      return 'destructive' as const;
-    case 'late':
-      return 'warning' as const;
-    case 'half-day':
-      return 'secondary' as const;
-    case 'on-leave':
-      return 'outline' as const;
-    default:
-      return 'default' as const;
-  }
-}
+const STATUS_BADGE: Record<string, { variant: 'success' | 'destructive' | 'warning' | 'secondary' | 'outline'; label: string }> = {
+  PRESENT: { variant: 'success', label: 'Present' },
+  ABSENT: { variant: 'destructive', label: 'Absent' },
+  LATE: { variant: 'warning', label: 'Late' },
+  HALF_DAY: { variant: 'secondary', label: 'Half Day' },
+  ON_LEAVE: { variant: 'outline', label: 'On Leave' },
+};
 
 function formatDate(date: Date) {
   return date.toISOString().split('T')[0];
 }
 
+function StatusBadge({ status }: { status: string | null }) {
+  if (!status) return <Badge variant="secondary">No record</Badge>;
+  const cfg = STATUS_BADGE[status];
+  return <Badge variant={cfg?.variant || 'default'}>{cfg?.label || status}</Badge>;
+}
+
 export default function AttendancePage() {
+  const router = useRouter();
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const canWrite = canCreate('hr');
@@ -111,11 +118,31 @@ export default function AttendancePage() {
   const [clockingIn, setClockingIn] = useState(false);
   const [clockingOutId, setClockingOutId] = useState<string | null>(null);
 
+  // Correction UI: record a new row (back-dating, marking absent) or edit one.
+  const [recordDialog, setRecordDialog] = useState(false);
+  const [recordForm, setRecordForm] = useState({
+    workerId: '',
+    date: today,
+    status: 'PRESENT',
+    clockIn: '',
+    clockOut: '',
+    notes: '',
+  });
+  const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    status: 'PRESENT',
+    clockIn: '',
+    clockOut: '',
+    notes: '',
+  });
+  const [savingRecord, setSavingRecord] = useState(false);
+
   const {
     data: todayData,
     loading: todayLoading,
+    error: todayError,
     refetch: refetchToday,
-  } = useFetch<{ data: TodaySummary }>(
+  } = useFetch<{ records: AttendanceRecord[]; summary: TodaySummary }>(
     'attendance-today',
     () => attendanceAPI.getToday(),
     { cacheTime: 30_000 }
@@ -124,8 +151,9 @@ export default function AttendancePage() {
   const {
     data: attendanceData,
     loading: attendanceLoading,
+    error: attendanceError,
     refetch: refetchAttendance,
-  } = useFetch<{ data: AttendanceRecord[] }>(
+  } = useFetch<AttendanceRecord[]>(
     `attendance-list-${selectedDate}`,
     () => attendanceAPI.list({ date: selectedDate }),
     { cacheTime: 30_000 }
@@ -137,11 +165,12 @@ export default function AttendancePage() {
     { cacheTime: 60_000 }
   );
 
-  const todaySummary = todayData?.data || { present: 0, absent: 0, late: 0, halfDay: 0, onLeave: 0 };
-  const attendanceRecords = attendanceData?.data || [];
+  // The endpoint returns { records, summary } directly.
+  const todaySummary = todayData?.summary || { present: 0, absent: 0, late: 0, halfDay: 0, onLeave: 0 };
+  const attendanceRecords = attendanceData || [];
   const workers = workersData?.data || [];
 
-  const tableRows = useMemo<TableRow[]>(() => {
+  const tableRows = useMemo<AttendanceRow[]>(() => {
     const recordMap = new Map<string, AttendanceRecord>();
     attendanceRecords.forEach((r) => recordMap.set(r.workerId, r));
 
@@ -152,20 +181,25 @@ export default function AttendancePage() {
         return {
           workerId: w.id,
           workerName: record.workerName || fullName,
+          recordId: record.id,
           clockIn: record.clockIn || null,
           clockOut: record.clockOut || null,
           hoursWorked: record.hoursWorked,
           status: record.status,
+          notes: record.notes || null,
           hasRecord: true,
         };
       }
+      // No row for this day is NOT the same as an absence — show it as such
+      // and let an admin record the real status.
       return {
         workerId: w.id,
         workerName: fullName,
         clockIn: null,
         clockOut: null,
         hoursWorked: null,
-        status: 'absent',
+        status: null,
+        notes: null,
         hasRecord: false,
       };
     });
@@ -175,6 +209,12 @@ export default function AttendancePage() {
     if (!statusFilter) return tableRows;
     return tableRows.filter((r) => r.status === statusFilter);
   }, [tableRows, statusFilter]);
+
+  const refreshAll = () => {
+    clearFetchCache('attendance');
+    refetchToday();
+    refetchAttendance();
+  };
 
   const handleClockIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,9 +230,7 @@ export default function AttendancePage() {
       toast({ type: 'success', title: `${workerName} clocked in successfully` });
       setShowClockInDialog(false);
       setSelectedWorkerId('');
-      clearFetchCache('attendance');
-      refetchToday();
-      refetchAttendance();
+      refreshAll();
     } catch (err: any) {
       toast({
         type: 'error',
@@ -209,9 +247,7 @@ export default function AttendancePage() {
     try {
       await attendanceAPI.clockOut({ workerId });
       toast({ type: 'success', title: `${workerName} clocked out successfully` });
-      clearFetchCache('attendance');
-      refetchToday();
-      refetchAttendance();
+      refreshAll();
     } catch (err: any) {
       toast({
         type: 'error',
@@ -223,12 +259,96 @@ export default function AttendancePage() {
     }
   };
 
+  const openRecordDialog = (workerId: string) => {
+    setRecordForm({
+      workerId,
+      date: selectedDate,
+      status: 'PRESENT',
+      clockIn: '',
+      clockOut: '',
+      notes: '',
+    });
+    setRecordDialog(true);
+  };
+
+  const handleRecordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recordForm.workerId) return;
+    const worker = workers.find((w) => w.id === recordForm.workerId);
+    const workerName = worker
+      ? `${worker.firstName} ${worker.middleName ? `${worker.middleName} ` : ''}${worker.lastName}`
+      : '';
+    setSavingRecord(true);
+    try {
+      await attendanceAPI.create({
+        workerId: recordForm.workerId,
+        workerName,
+        date: recordForm.date,
+        status: recordForm.status,
+        clockIn: recordForm.clockIn || undefined,
+        clockOut: recordForm.clockOut || undefined,
+        notes: recordForm.notes || undefined,
+      });
+      toast({ type: 'success', title: 'Attendance recorded' });
+      setRecordDialog(false);
+      refreshAll();
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to record attendance',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setSavingRecord(false);
+    }
+  };
+
+  const openEditDialog = (record: AttendanceRecord) => {
+    setEditRecord(record);
+    setEditForm({
+      status: record.status,
+      clockIn: record.clockIn || '',
+      clockOut: record.clockOut || '',
+      notes: record.notes || '',
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editRecord) return;
+    setSavingRecord(true);
+    try {
+      await attendanceAPI.update(editRecord.id, {
+        status: editForm.status,
+        clockIn: editForm.clockIn || null,
+        clockOut: editForm.clockOut || null,
+        notes: editForm.notes || null,
+      });
+      toast({ type: 'success', title: 'Attendance updated' });
+      setEditRecord(null);
+      refreshAll();
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to update attendance',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setSavingRecord(false);
+    }
+  };
+
   const notClockedInWorkers = useMemo(() => {
     const clockedInIds = new Set(attendanceRecords.filter((r) => r.clockIn).map((r) => r.workerId));
     return workers.filter((w) => !clockedInIds.has(w.id));
   }, [workers, attendanceRecords]);
 
   const loading = todayLoading || attendanceLoading;
+  const rowRecords = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    attendanceRecords.forEach((r) => map.set(r.workerId, r));
+    return map;
+  }, [attendanceRecords]);
 
   return (
     <div className="space-y-6">
@@ -238,17 +358,47 @@ export default function AttendancePage() {
           <p className="text-muted-foreground">Track daily attendance for your workers</p>
         </div>
         {canWrite && (
-          <Button onClick={() => setShowClockInDialog(true)}>
-            <LogIn className="mr-2 h-4 w-4" />
-            Clock In Worker
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRecordForm((f) => ({ ...f, workerId: '' }));
+                setRecordDialog(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Record Attendance
+            </Button>
+            <Button onClick={() => setShowClockInDialog(true)}>
+              <LogIn className="mr-2 h-4 w-4" />
+              Clock In Worker
+            </Button>
+          </div>
         )}
       </div>
+
+      <NavTabs
+        ariaLabel="Workers section"
+        tabs={[
+          { label: 'Workers', href: '/workers' },
+          { label: 'Attendance', href: '/workers/attendance' },
+        ]}
+      />
 
       {todayLoading ? (
         <div className="flex items-center justify-center py-8">
           <LoadingSpinner className="h-8 w-8" />
         </div>
+      ) : todayError ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="font-medium text-destructive">Failed to load today&apos;s summary</p>
+            <p className="text-sm text-muted-foreground">{todayError}</p>
+            <Button variant="outline" className="mt-4" onClick={() => refetchToday()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-5">
           <Card>
@@ -351,6 +501,14 @@ export default function AttendancePage() {
           <CardContent className="p-8 flex items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </CardContent>
+        ) : attendanceError ? (
+          <CardContent className="p-12 text-center">
+            <p className="text-lg font-medium text-destructive">Failed to load attendance</p>
+            <p className="text-sm text-muted-foreground">{attendanceError}</p>
+            <Button variant="outline" className="mt-4" onClick={() => refetchAttendance()}>
+              Retry
+            </Button>
+          </CardContent>
         ) : filteredRows.length === 0 ? (
           <CardContent className="p-12 text-center">
             <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -370,7 +528,7 @@ export default function AttendancePage() {
                   <TableHead>Clock Out</TableHead>
                   <TableHead>Hours Worked</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableHead className="w-[160px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -379,33 +537,18 @@ export default function AttendancePage() {
                     <TableCell>
                       <span className="font-medium">{row.workerName}</span>
                     </TableCell>
-                    <TableCell>
-                      {row.clockIn
-                        ? new Date(row.clockIn).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {row.clockOut
-                        ? new Date(row.clockOut).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '—'}
-                    </TableCell>
+                    {/* Clock times arrive from the server as "HH:MM". */}
+                    <TableCell>{row.clockIn || '—'}</TableCell>
+                    <TableCell>{row.clockOut || '—'}</TableCell>
                     <TableCell>
                       {row.hoursWorked != null ? `${row.hoursWorked.toFixed(1)}h` : '—'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(row.status)}>
-                        {row.status.replace('-', ' ')}
-                      </Badge>
+                      <StatusBadge status={row.status} />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {!row.clockIn && (
+                        {canWrite && !row.clockIn && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -429,8 +572,28 @@ export default function AttendancePage() {
                             Out
                           </Button>
                         )}
-                        {row.clockIn && row.clockOut && (
-                          <Badge variant="secondary">Completed</Badge>
+                        {canWrite && row.recordId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const record = rowRecords.get(row.workerId);
+                              if (record) openEditDialog(record);
+                            }}
+                          >
+                            <Pencil className="mr-1 h-3 w-3" />
+                            Edit
+                          </Button>
+                        )}
+                        {canWrite && !row.hasRecord && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openRecordDialog(row.workerId)}
+                          >
+                            <Plus className="mr-1 h-3 w-3" />
+                            Record
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -442,6 +605,7 @@ export default function AttendancePage() {
         )}
       </Card>
 
+      {/* Clock-in dialog (today, live times) */}
       <Dialog
         open={showClockInDialog}
         onOpenChange={(open) => {
@@ -498,6 +662,140 @@ export default function AttendancePage() {
           </div>
         </form>
       </Dialog>
+
+      {/* Record attendance dialog (back-dating, marking absent) */}
+      <Dialog
+        open={recordDialog}
+        onOpenChange={setRecordDialog}
+        title="Record Attendance"
+        description="Create an attendance row for any worker and date."
+      >
+        <form onSubmit={handleRecordSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Worker <span className="text-destructive">*</span>
+            </label>
+            <Select
+              placeholder="Select a worker"
+              options={workers.map((w) => ({
+                value: w.id,
+                label: `${w.firstName} ${w.middleName ? `${w.middleName} ` : ''}${w.lastName} (${w.position})`,
+              }))}
+              value={recordForm.workerId}
+              onChange={(e) => setRecordForm({ ...recordForm, workerId: e.target.value })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Date</label>
+              <Input
+                type="date"
+                value={recordForm.date}
+                onChange={(e) => setRecordForm({ ...recordForm, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Status</label>
+              <Select
+                options={STATUS_OPTIONS.filter((o) => o.value)}
+                value={recordForm.status}
+                onChange={(e) => setRecordForm({ ...recordForm, status: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Clock In</label>
+              <Input
+                type="time"
+                value={recordForm.clockIn}
+                onChange={(e) => setRecordForm({ ...recordForm, clockIn: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Clock Out</label>
+              <Input
+                type="time"
+                value={recordForm.clockOut}
+                onChange={(e) => setRecordForm({ ...recordForm, clockOut: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Notes</label>
+            <Input
+              placeholder="Optional note"
+              value={recordForm.notes}
+              onChange={(e) => setRecordForm({ ...recordForm, notes: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setRecordDialog(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={savingRecord} disabled={!recordForm.workerId}>
+              Record
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Edit (correction) dialog */}
+      {editRecord && (
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditRecord(null);
+          }}
+          title={`Edit Attendance — ${editRecord.workerName}`}
+          description={`Correct the record for ${new Date(editRecord.date).toLocaleDateString()}.`}
+        >
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Status</label>
+              <Select
+                options={STATUS_OPTIONS.filter((o) => o.value)}
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Clock In</label>
+                <Input
+                  type="time"
+                  value={editForm.clockIn}
+                  onChange={(e) => setEditForm({ ...editForm, clockIn: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Clock Out</label>
+                <Input
+                  type="time"
+                  value={editForm.clockOut}
+                  onChange={(e) => setEditForm({ ...editForm, clockOut: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Notes</label>
+              <Input
+                placeholder="Optional note"
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditRecord(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={savingRecord}>
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

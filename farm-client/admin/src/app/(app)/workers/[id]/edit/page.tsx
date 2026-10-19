@@ -40,14 +40,33 @@ export default function EditWorkerPage() {
   const worker = workerData?.data;
   const farms = farmsData?.data || [];
 
-  if (readOnly) {
-    router.push('/workers');
-    return null;
-  }
-
-  const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '' });
+  const [form, setForm] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    position: '',
+    department: '',
+    farmId: '',
+    status: 'ACTIVE',
+    hireDate: '',
+    payRate: '',
+    payType: '',
+    skills: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
+    terminationDate: '',
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // Redirect in an effect — an early return above the hooks below used to
+  // break the conditional-hooks rule for read-only users.
+  useEffect(() => {
+    if (readOnly) router.push('/workers');
+  }, [readOnly, router]);
 
   useEffect(() => {
     if (worker) {
@@ -60,6 +79,17 @@ export default function EditWorkerPage() {
         position: worker.position || '',
         department: worker.department || '',
         farmId: worker.farmId || '',
+        status: worker.status || 'ACTIVE',
+        hireDate: worker.hireDate ? worker.hireDate.split('T')[0] : '',
+        payRate: worker.payRate != null ? String(worker.payRate) : '',
+        payType: worker.payType || '',
+        skills: Array.isArray(worker.skills) ? worker.skills.join(', ') : '',
+        emergencyContactName: worker.emergencyContactName || '',
+        emergencyContactPhone: worker.emergencyContactPhone || '',
+        emergencyContactRelation: worker.emergencyContactRelation || '',
+        terminationDate: worker.terminationDate
+          ? worker.terminationDate.split('T')[0]
+          : '',
       });
     }
   }, [worker]);
@@ -87,6 +117,17 @@ export default function EditWorkerPage() {
         position: form.position,
         department: form.department || undefined,
         farmId: form.farmId,
+        status: form.status,
+        hireDate: form.hireDate || undefined,
+        payRate: form.payRate ? Number(form.payRate) : undefined,
+        payType: form.payType || undefined,
+        skills: form.skills
+          ? form.skills.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
+        emergencyContactName: form.emergencyContactName || undefined,
+        emergencyContactPhone: form.emergencyContactPhone || undefined,
+        emergencyContactRelation: form.emergencyContactRelation || undefined,
+        terminationDate: form.terminationDate || undefined,
       });
       toast({ type: 'success', title: 'Worker updated successfully' });
       clearFetchCache('workers');
@@ -101,6 +142,8 @@ export default function EditWorkerPage() {
       setSaving(false);
     }
   };
+
+  if (readOnly) return null;
 
   if (loadingWorker || loadingFarms) {
     return (
@@ -271,6 +314,101 @@ export default function EditWorkerPage() {
               {errors.farmId && (
                 <p className="text-sm text-destructive mt-1">{errors.farmId}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Status</label>
+                <Select
+                  options={[
+                    { value: 'ACTIVE', label: 'Active' },
+                    { value: 'INACTIVE', label: 'Inactive' },
+                    { value: 'PROBATION', label: 'Probation' },
+                    { value: 'TERMINATED', label: 'Terminated' },
+                  ]}
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Hire Date</label>
+                <Input
+                  type="date"
+                  value={form.hireDate}
+                  onChange={(e) => setForm({ ...form, hireDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Termination Date</label>
+                <Input
+                  type="date"
+                  value={form.terminationDate}
+                  onChange={(e) => setForm({ ...form, terminationDate: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Pay Rate</label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 15.50"
+                  value={form.payRate}
+                  onChange={(e) => setForm({ ...form, payRate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Pay Type</label>
+                <Select
+                  placeholder="Select pay type"
+                  options={[
+                    { value: 'HOURLY', label: 'Hourly' },
+                    { value: 'SALARY', label: 'Salary' },
+                    { value: 'PIECE', label: 'Piece rate' },
+                  ]}
+                  value={form.payType}
+                  onChange={(e) => setForm({ ...form, payType: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Skills</label>
+                <Input
+                  placeholder="Irrigation, Tractor, First aid"
+                  value={form.skills}
+                  onChange={(e) => setForm({ ...form, skills: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Comma-separated</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <p className="text-sm font-medium">Emergency Contact</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Input
+                  placeholder="Contact name"
+                  value={form.emergencyContactName}
+                  onChange={(e) =>
+                    setForm({ ...form, emergencyContactName: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Contact phone"
+                  value={form.emergencyContactPhone}
+                  onChange={(e) =>
+                    setForm({ ...form, emergencyContactPhone: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Relationship"
+                  value={form.emergencyContactRelation}
+                  onChange={(e) =>
+                    setForm({ ...form, emergencyContactRelation: e.target.value })
+                  }
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

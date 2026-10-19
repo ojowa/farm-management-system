@@ -70,29 +70,27 @@ const MONTHS = [
   { value: '12', label: 'December' },
 ];
 
+// Server enum values (AttendanceStatus in the Prisma schema) — the old
+// lowercase kebab variants never matched what the API actually returns.
+const STATUS_META: Record<string, { variant: 'success' | 'destructive' | 'warning' | 'secondary' | 'outline'; label: string }> = {
+  PRESENT: { variant: 'success', label: 'Present' },
+  ABSENT: { variant: 'destructive', label: 'Absent' },
+  LATE: { variant: 'warning', label: 'Late' },
+  HALF_DAY: { variant: 'secondary', label: 'Half Day' },
+  ON_LEAVE: { variant: 'outline', label: 'On Leave' },
+};
+
 function getStatusBadgeVariant(status: string) {
-  switch (status) {
-    case 'present':
-      return 'success' as const;
-    case 'absent':
-      return 'destructive' as const;
-    case 'late':
-      return 'warning' as const;
-    case 'half-day':
-      return 'secondary' as const;
-    case 'on-leave':
-      return 'outline' as const;
-    default:
-      return 'default' as const;
-  }
+  return STATUS_META[status]?.variant || ('default' as const);
 }
 
-function formatTime(dateStr: string | null) {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function getStatusLabel(status: string) {
+  return STATUS_META[status]?.label || status;
+}
+
+/** Clock times are serialized as "HH:MM" on the wire — display as-is. */
+function formatTime(timeStr: string | null) {
+  return timeStr || '—';
 }
 
 export default function WorkerAttendancePage() {
@@ -124,7 +122,9 @@ export default function WorkerAttendancePage() {
   const {
     data: summaryData,
     loading: summaryLoading,
-  } = useFetch<{ data: Summary }>(
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useFetch<{ records: AttendanceRecord[]; summary: Summary }>(
     `attendance-summary-${workerId}-${selectedMonth}-${selectedYear}`,
     () =>
       attendanceAPI.getSummary({
@@ -135,23 +135,30 @@ export default function WorkerAttendancePage() {
     { cacheTime: 30_000 }
   );
 
+  // The list endpoint filters by date range (month/year are only honoured on
+  // the summary endpoint) — convert the picker to a start/end window.
+  const startDate = `${selectedYear}-${selectedMonth.padStart(2, '0')}-01`;
+  const endDate = `${selectedYear}-${selectedMonth.padStart(2, '0')}-31`;
+
   const {
     data: recordsData,
     loading: recordsLoading,
-  } = useFetch<{ data: AttendanceRecord[] }>(
+    error: recordsError,
+    refetch: refetchRecords,
+  } = useFetch<AttendanceRecord[]>(
     `attendance-list-${workerId}-${selectedMonth}-${selectedYear}`,
     () =>
       attendanceAPI.list({
         workerId,
-        month: Number(selectedMonth),
-        year: Number(selectedYear),
+        startDate,
+        endDate,
       }),
     { cacheTime: 30_000 }
   );
 
   const worker = workerData?.data;
-  const summary = summaryData?.data;
-  const records = recordsData?.data || [];
+  const summary = summaryData?.summary;
+  const records = recordsData || [];
 
   const sortedRecords = useMemo(
     () => [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
@@ -226,6 +233,16 @@ export default function WorkerAttendancePage() {
         <div className="flex items-center justify-center py-8">
           <LoadingSpinner className="h-8 w-8" />
         </div>
+      ) : summaryError ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="font-medium text-destructive">Failed to load summary</p>
+            <p className="text-sm text-muted-foreground">{summaryError}</p>
+            <Button variant="outline" className="mt-4" onClick={() => refetchSummary()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       ) : summary ? (
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
           <Card>
@@ -314,6 +331,14 @@ export default function WorkerAttendancePage() {
           <CardContent className="p-8 flex items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </CardContent>
+        ) : recordsError ? (
+          <CardContent className="p-12 text-center">
+            <p className="text-lg font-medium text-destructive">Failed to load attendance records</p>
+            <p className="text-sm text-muted-foreground">{recordsError}</p>
+            <Button variant="outline" className="mt-4" onClick={() => refetchRecords()}>
+              Retry
+            </Button>
+          </CardContent>
         ) : sortedRecords.length === 0 ? (
           <CardContent className="p-12 text-center">
             <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -349,7 +374,7 @@ export default function WorkerAttendancePage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(record.status)}>
-                        {record.status.replace('-', ' ')}
+                        {getStatusLabel(record.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>{formatTime(record.clockIn)}</TableCell>

@@ -83,13 +83,22 @@ export default function LeavePage() {
   const [form, setForm] = useState({ leaveTypeId: '', startDate: '', endDate: '', reason: '', workerId: '' });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [requestsError, setRequestsError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([loadRequests(), loadBalance(), loadLeaveTypes(), loadOnLeave(), loadWorkers()]).finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year]);
 
   async function loadRequests() {
-    try { const { data } = await apiClient.get('/leave/requests'); setRequests(data); } catch { /* ignore */ }
+    setRequestsError(null);
+    try {
+      const { data } = await apiClient.get('/leave/requests', { params: { year } });
+      setRequests(Array.isArray(data) ? data : data?.data || []);
+    } catch (err: any) {
+      setRequestsError(err.response?.data?.message || 'Failed to load leave requests.');
+    }
   }
   async function loadBalance() {
     try { const { data } = await apiClient.get('/leave/balance'); setBalance(data); } catch { /* ignore */ }
@@ -176,7 +185,7 @@ export default function LeavePage() {
           <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
           <p className="text-sm text-gray-500 mt-1">Request and manage time off</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {canApprove && (
             <Button variant="outline" size="sm" onClick={() => router.push('/hr/leave/approvals')}>
               Approvals
@@ -185,6 +194,16 @@ export default function LeavePage() {
                   {pendingCount}
                 </span>
               )}
+            </Button>
+          )}
+          {canSeeRoster && (
+            <Button variant="outline" size="sm" onClick={() => router.push('/hr/leave/balances')}>
+              Balances
+            </Button>
+          )}
+          {canFileForWorker && (
+            <Button variant="outline" size="sm" onClick={() => router.push('/hr/leave/types')}>
+              Leave Types
             </Button>
           )}
           {canRequest && <Button onClick={openCreate}>+ Request Leave</Button>}
@@ -228,14 +247,39 @@ export default function LeavePage() {
 
       {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : tab === 'requests' ? (
         <>
-          <div className="flex gap-2 mb-4">
-            {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
-              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${filter === f ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex gap-2">
+              {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
+                <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${filter === f ? 'bg-green-100 text-green-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500" htmlFor="leave-year">Year</label>
+              <select
+                id="leave-year"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              >
+                {Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          {filtered.length === 0 ? <Card><div className="text-center py-12 text-gray-500">No leave requests found</div></Card> : (
+          {requestsError ? (
+            <Card>
+              <div className="text-center py-12">
+                <p className="font-medium text-destructive">Failed to load leave requests</p>
+                <p className="text-sm text-muted-foreground">{requestsError}</p>
+                <Button variant="outline" className="mt-4" onClick={() => { setLoading(true); Promise.all([loadRequests(), loadBalance()]).finally(() => setLoading(false)); }}>
+                  Retry
+                </Button>
+              </div>
+            </Card>
+          ) : filtered.length === 0 ? <Card><div className="text-center py-12 text-gray-500">No leave requests found for {year}</div></Card> : (
             <div className="space-y-3">
               {filtered.map((req) => (
                 <Card key={req.id}>
