@@ -1,21 +1,82 @@
-import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { Drawer } from 'react-native-drawer-layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { usePermission } from '@/core/hooks/usePermission';
+import { Sidebar } from '@/core/ui/Sidebar';
+import { SidebarContext } from '@/core/navigation/SidebarContext';
 
+// The six primary destinations shown in the bottom tab bar. Settings is not a
+// tab — it lives behind the gear button in the Home header (its route stays,
+// hidden below via href: null).
 const TAB_CONFIG = [
   { name: 'index', title: 'Home', icon: '🏠', permission: null, module: null },
-  { name: 'farms', title: 'Farm', icon: '🌾', permission: 'farm.read', module: 'farm' },
-  { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'worker.read', module: 'worker' },
-  { name: 'messages', title: 'Messages', icon: '✉️', permission: 'communication.read', module: 'communication' },
+  { name: 'farms', title: 'Farms', icon: '🌾', permission: 'farm.read', module: 'farm' },
+  { name: 'crops', title: 'Crops', icon: '🌱', permission: 'crop.read', module: 'crop' },
+  { name: 'livestock', title: 'Livestock', icon: '🐄', permission: 'livestock.read', module: 'livestock' },
   { name: 'finance', title: 'Finance', icon: '💰', permission: 'finance.read', module: 'finance' },
-  // Settings was a 6th tab, past the conventional 5-max and crowding small
-  // phones - it now lives behind the gear button in the Home header (the
-  // route stays, hidden below via href: null).
+  { name: 'tasks', title: 'Tasks', icon: '✅', permission: 'worker.read', module: 'worker' },
+];
+
+// expo-router's <Tabs> auto-appends a tab for every route file under
+// app/(app) that isn't declared as a <Tabs.Screen>, so detail, add, edit, and
+// nested screens would otherwise each surface as a bare tab. Listing them here
+// with `href: null` keeps them reachable via in-app navigation while removing
+// them from the bar. Add any new non-tab route to this list.
+const HIDDEN_ROUTES = [
+  'leave',
+  'messages',
+  'notifications',
+  'settings',
+  'settings/edit-profile',
+  'subscription',
+  'aquaculture',
+  'aquaculture/add',
+  'aquaculture/[id]',
+  'aquaculture/[id]/edit',
+  'crops/add',
+  'crops/[id]',
+  'crops/[id]/edit',
+  'farms/add',
+  'farms/[id]',
+  'farms/[id]/edit',
+  'finance/add',
+  'finance/profitability',
+  'finance/[id]',
+  'finance/[id]/edit',
+  'inventory/low-stock',
+  'livestock/add',
+  'livestock/[id]',
+  'livestock/[id]/edit',
+  'livestock/[id]/health',
+  'poultry',
+  'poultry/add',
+  'poultry/[id]',
+  'poultry/[id]/edit',
+  'equipment',
+  'equipment/add',
+  'equipment/[id]',
+  'equipment/[id]/edit',
+  'workers',
+  'workers/add',
+  'workers/[id]',
+  'workers/[id]/edit',
+  'reports/scheduled',
+  'users',
+  'users/[id]',
+  'roles',
+  'roles/[id]',
+  'roster',
+  'correspondence',
+  'correspondence/[id]',
+  'contracts',
+  'contracts/[id]',
+  'marketplace',
+  'weather',
 ];
 
 export default function AppLayout() {
@@ -27,6 +88,20 @@ export default function AppLayout() {
 
   const bottomInset = Math.max(insets.bottom, 8);
   const tabHeight = 56 + bottomInset;
+
+  // Sidebar drawer state. Any screen can open it via MenuButton (which reads
+  // this context); the drawer itself is also swipe-openable from the left edge.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const sidebarContextValue = useMemo(
+    () => ({ open: openSidebar, close: closeSidebar }),
+    [openSidebar, closeSidebar]
+  );
+  const renderDrawerContent = useCallback(() => <Sidebar />, []);
+
+  const { width } = useWindowDimensions();
+  const drawerWidth = Math.min(Math.round(width * 0.78), 320);
 
   if (!isAuthenticated) {
     return (
@@ -46,49 +121,58 @@ export default function AppLayout() {
   });
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: themeColors.primary,
-        tabBarInactiveTintColor: themeColors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: themeColors.tabBar || themeColors.surface,
-          borderTopColor: themeColors.border,
-          borderTopWidth: 1,
-          paddingBottom: bottomInset,
-          paddingTop: 6,
-          height: tabHeight,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          marginTop: 2,
-        },
-      }}
-    >
-      {visibleTabs.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.title,
-            tabBarLabel: tab.title,
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 22, color }} accessibilityRole="image" accessibilityLabel={tab.title}>
-                {tab.icon}
-              </Text>
-            ),
+    <SidebarContext.Provider value={sidebarContextValue}>
+      <Drawer
+        open={sidebarOpen}
+        onOpen={openSidebar}
+        onClose={closeSidebar}
+        drawerType="front"
+        drawerStyle={{ width: drawerWidth }}
+        swipeEdgeWidth={48}
+        overlayAccessibilityLabel="Close navigation menu"
+        renderDrawerContent={renderDrawerContent}
+      >
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            tabBarActiveTintColor: themeColors.primary,
+            tabBarInactiveTintColor: themeColors.textSecondary,
+            tabBarStyle: {
+              backgroundColor: themeColors.tabBar || themeColors.surface,
+              borderTopColor: themeColors.border,
+              borderTopWidth: 1,
+              paddingBottom: bottomInset,
+              paddingTop: 6,
+              height: tabHeight,
+            },
+            tabBarLabelStyle: {
+              fontSize: 11,
+              marginTop: 2,
+            },
           }}
-        />
-      ))}
-      {/* Hide sub-screens from tab bar */}
-      <Tabs.Screen name="crops" options={{ href: null }} />
-      <Tabs.Screen name="livestock" options={{ href: null }} />
-      <Tabs.Screen name="aquaculture" options={{ href: null }} />
-      <Tabs.Screen name="leave" options={{ href: null }} />
-      <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="subscription" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
-    </Tabs>
+        >
+          {visibleTabs.map((tab) => (
+            <Tabs.Screen
+              key={tab.name}
+              name={tab.name}
+              options={{
+                title: tab.title,
+                tabBarLabel: tab.title,
+                tabBarIcon: ({ color }) => (
+                  <Text style={{ fontSize: 22, color }} accessibilityRole="image" accessibilityLabel={tab.title}>
+                    {tab.icon}
+                  </Text>
+                ),
+              }}
+            />
+          ))}
+          {/* Hide every non-tab route so only the six above appear in the bar. */}
+          {HIDDEN_ROUTES.map((route) => (
+            <Tabs.Screen key={route} name={route} options={{ href: null }} />
+          ))}
+        </Tabs>
+      </Drawer>
+    </SidebarContext.Provider>
   );
 }
 

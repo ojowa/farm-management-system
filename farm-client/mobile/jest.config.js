@@ -14,6 +14,9 @@ module.exports = {
   },
   setupFiles: ['<rootDir>/jest-setup.js'],
   clearMocks: true,
+  // Cold first renders (dashboard/sidebar screens with heavy trees) commit in
+  // ~1-3s alone but can exceed the 5s default when suites run in parallel.
+  testTimeout: 15000,
   collectCoverageFrom: [
     'src/store/slices/*.ts',
     'src/core/utils/*.ts',

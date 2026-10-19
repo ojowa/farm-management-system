@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
-import { leaveAPI } from '@/services/api';
+import { leaveAPI } from '@/modules/hr';
 import { describeApiError } from '@/core/utils/apiError';
 
 const styles = StyleSheet.create({

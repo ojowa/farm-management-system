@@ -12,14 +12,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { aquacultureAPI, farmsAPI } from '../../../../src/services/api';
+import { aquacultureAPI } from '@/modules/aquaculture';
 import type {
   Pond,
   PondStocking,
   PondFeeding,
   PondWaterQuality,
   PondHarvest,
-} from '../../../../src/services/types';
+} from '@/modules/aquaculture';
+import { farmsAPI } from '@/modules/farm';
 import { TextInputField, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';

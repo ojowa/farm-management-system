@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
-import { financeAPI, farmsAPI } from '../../../src/services/api';
+import { financeAPI } from '@/modules/finance';
+import { farmsAPI } from '@/modules/farm';
 import { formatCurrencyValue } from '../../../src/core/utils/currency';
 
 export default function ProfitabilityScreen() {

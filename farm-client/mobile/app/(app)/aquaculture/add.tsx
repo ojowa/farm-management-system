@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { aquacultureAPI, farmsAPI } from '../../../src/services/api';
-import type { PondType, PondStatus } from '../../../src/services/types';
+import { aquacultureAPI } from '@/modules/aquaculture';
+import type { PondType, PondStatus } from '@/modules/aquaculture';
+import { farmsAPI } from '@/modules/farm';
 import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../src/core/utils/apiError';

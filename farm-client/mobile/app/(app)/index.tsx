@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -9,8 +9,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { MenuButton } from '@/core/ui/MenuButton';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
-import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, financeAPI, tasksAPI, attendanceAPI, notificationsAPI } from '@/services/api';
+import { farmsAPI } from '@/modules/farm';
+import { cropsAPI } from '@/modules/crop';
+import { livestockAPI } from '@/modules/livestock';
+import { poultryAPI } from '@/modules/poultry';
+import { financeAPI } from '@/modules/finance';
+import { tasksAPI } from '@/modules/worker';
+import { attendanceAPI } from '@/modules/hr';
+import { notificationsAPI } from '@/modules/notification';
 import { Card } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
@@ -18,9 +26,21 @@ import { describeApiError } from '@/core/utils/apiError';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { formatCurrency } from '@/core/utils/currency';
 
+// Per-section load failures. These are kept separate from the full-screen
+// `loadError` (which only triggers when every core list fails) so a dropped
+// connection shows a retryable error in the affected section instead of
+// masquerading as "No pending tasks" / "No attendance data".
+type DashboardSectionErrors = {
+  finance: string | null;
+  tasks: string | null;
+  attendance: string | null;
+  activity: string | null;
+};
+
 export default function DashboardScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
+  const isOnline = useAppSelector((state) => state.sync.isOnline);
   const { colors: themeColors, isDark } = useAppTheme();
   const { error: showError } = useToasts();
   const [loading, setLoading] = useState(true);
@@ -36,6 +56,12 @@ export default function DashboardScreen() {
   const [attendanceSummary, setAttendanceSummary] = useState<{ total: number; present: number; absent: number; late: number } | null>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [recentActivity, setRecentActivity] = useState<{ id: string; title: string; message: string; type: string; createdAt: string }[]>([]);
+  const [sectionErrors, setSectionErrors] = useState<DashboardSectionErrors>({
+    finance: null,
+    tasks: null,
+    attendance: null,
+    activity: null,
+  });
 
   const loadDashboardData = useCallback(async (isSilent = false) => {
     try {
@@ -46,7 +72,7 @@ export default function DashboardScreen() {
         cropsRes,
         livestockRes,
         poultryRes,
-        financeRes,
+        salesRes,
         tasksRes,
         attendanceRes,
         notifsRes,
@@ -56,7 +82,7 @@ export default function DashboardScreen() {
         cropsAPI.list(),
         livestockAPI.list(),
         poultryAPI.list(),
-        financeAPI.list(),
+        financeAPI.listSales(),
         tasksAPI.list({ status: 'PENDING', limit: 5 }),
         attendanceAPI.getToday(),
         user?.id ? notificationsAPI.list(user.id, { limit: 5 }) : Promise.resolve({ data: [] }),
@@ -81,13 +107,17 @@ export default function DashboardScreen() {
       const livestock = livestockRes.status === 'fulfilled' ? (livestockRes.value?.data || []) : [];
       const poultry = poultryRes.status === 'fulfilled' ? (poultryRes.value?.data || []) : [];
 
-      let totalRevenue = 0;
-      if (financeRes.status === 'fulfilled') {
-        const transactions = (financeRes.value?.data || []) as any[];
-        totalRevenue = transactions
-          .filter((t: any) => t.type === 'income')
-          .reduce((sum: number, t: any) => sum + Math.abs(t.amount || 0), 0);
-      }
+      // Revenue is summed straight from GET /sales. The old code used
+      // financeAPI.list() (raw expenses + sales merged) and filtered for
+      // `type === 'income'`, but neither raw shape carries `type`, and sales
+      // store their value in `total` (or quantity × price) — not `amount` —
+      // so the filter dropped every row and revenue always rendered as $0.
+      const sales = salesRes.status === 'fulfilled' ? ((salesRes.value?.data as any[]) || []) : [];
+      const totalRevenue = sales.reduce((sum: number, sale: any) => {
+        const raw = sale?.total ?? (sale?.quantity || 0) * (sale?.price || 0);
+        const amount = Math.abs(raw || 0);
+        return sum + (Number.isFinite(amount) ? amount : 0);
+      }, 0);
 
       const totalLivestock = [...livestock, ...poultry].reduce(
         (sum: number, item: any) => sum + (item.quantity || 0),
@@ -114,10 +144,32 @@ export default function DashboardScreen() {
           }
         : null;
 
+      // Record per-section failures so each section can render its own
+      // retryable error instead of pretending the data is simply empty.
+      setSectionErrors({
+        finance: salesRes.status === 'rejected'
+          ? describeApiError((salesRes as PromiseRejectedResult).reason, 'Couldn\u2019t load your revenue.')
+          : null,
+        tasks: tasksRes.status === 'rejected'
+          ? describeApiError((tasksRes as PromiseRejectedResult).reason, 'Couldn\u2019t load your pending tasks.')
+          : null,
+        attendance: attendanceRes.status === 'rejected'
+          ? describeApiError((attendanceRes as PromiseRejectedResult).reason, 'Couldn\u2019t load today\u2019s attendance.')
+          : null,
+        activity: notifsRes.status === 'rejected'
+          ? describeApiError((notifsRes as PromiseRejectedResult).reason, 'Couldn\u2019t load recent activity.')
+          : null,
+      });
+
       setPendingTasks(tasks.slice(0, 5));
       setAttendanceSummary(attendanceSummary);
       setRecentActivity(Array.isArray(notifs) ? notifs.slice(0, 5) : []);
       setUnreadNotifs(unreadRes.status === 'fulfilled' ? (unreadRes.value?.data?.count ?? 0) : 0);
+
+      // Any successful load clears the full-screen error even when silent, so
+      // a background retry (reconnect / refocus) can recover the dashboard
+      // without the user tapping Retry.
+      setLoadError(null);
     } catch (error) {
       const message = describeApiError(error, 'Couldn\u2019t load your dashboard. Please try again.');
       setLoadError(message);
@@ -133,15 +185,32 @@ export default function DashboardScreen() {
     await loadDashboardData(true);
   }, [loadDashboardData]);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
-
+  // Single trigger: useFocusEffect runs on mount and whenever the screen
+  // regains focus, so a separate useEffect here would double-fetch on mount.
   useFocusEffect(
     useCallback(() => {
       loadDashboardData(true);
     }, [loadDashboardData])
   );
+
+  // Reconnect self-heal: when NetInfo flips `isOnline` back to true, quietly
+  // reload if the last load left any section (or the whole screen) in an
+  // error state — otherwise the user would sit on "No connection…" cards
+  // until they noticed the pull-to-refresh.
+  const wasOnlineRef = useRef(isOnline);
+  useEffect(() => {
+    const cameOnline = isOnline && !wasOnlineRef.current;
+    wasOnlineRef.current = isOnline;
+    if (cameOnline && (loadError || Object.values(sectionErrors).some(Boolean))) {
+      loadDashboardData(true);
+    }
+  }, [isOnline, loadError, sectionErrors, loadDashboardData]);
+
+  // Shared retry for the per-section error cards — reloads everything
+  // quietly (the load is one batched request anyway).
+  const retryLoad = useCallback(() => {
+    loadDashboardData(true);
+  }, [loadDashboardData]);
 
   const firstName = user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
 
@@ -208,9 +277,12 @@ export default function DashboardScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        <View style={[styles.header, dynamicStyles.header]}>
-          <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
-          <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
+        <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+          <MenuButton />
+          <View style={styles.headerTexts}>
+            <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
+            <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
+          </View>
         </View>
         <ScreenLoading message="Fetching your farm overview…" />
       </SafeAreaView>
@@ -220,9 +292,12 @@ export default function DashboardScreen() {
   if (loadError) {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        <View style={[styles.header, dynamicStyles.header]}>
-          <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
-          <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
+        <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+          <MenuButton />
+          <View style={styles.headerTexts}>
+            <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
+            <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
+          </View>
         </View>
         <StateView
           variant="error"
@@ -252,6 +327,7 @@ export default function DashboardScreen() {
         }
       >
         <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+          <MenuButton />
           <View style={styles.headerTexts}>
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
           <Text style={styles.subtitle}>Here’s an overview of your farm</Text>
@@ -306,11 +382,37 @@ export default function DashboardScreen() {
                 <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Livestock</Text>
                 <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalLivestock}</Text>
               </Card>
-              <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Revenue: ${formatRevenue(stats.totalRevenue)}`}>
+              <Card
+                style={[styles.statCard, dynamicStyles.cardBackground]}
+                accessibilityLabel={
+                  sectionErrors.finance
+                    ? 'Revenue failed to load'
+                    : `Revenue: ${formatRevenue(stats.totalRevenue)}`
+                }
+              >
                 <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Revenue</Text>
-                <Text style={[styles.statValue, dynamicStyles.statValue]}>{formatRevenue(stats.totalRevenue)}</Text>
+                <Text style={[styles.statValue, dynamicStyles.statValue]}>
+                  {sectionErrors.finance ? '—' : formatRevenue(stats.totalRevenue)}
+                </Text>
               </Card>
             </View>
+            {sectionErrors.finance && (
+              <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
+                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>
+                  {sectionErrors.finance}
+                </Text>
+                <TouchableOpacity
+                  onPress={retryLoad}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry loading revenue"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600', marginTop: 6 }}>
+                    Retry
+                  </Text>
+                </TouchableOpacity>
+              </Card>
+            )}
           </View>
 
           {/* Quick Actions */}
@@ -411,7 +513,16 @@ export default function DashboardScreen() {
                 <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View all</Text>
               </TouchableOpacity>
             </View>
-            {pendingTasks.length === 0 ? (
+            {sectionErrors.tasks ? (
+              <StateView
+                variant="error"
+                title="Couldn’t load tasks"
+                message={sectionErrors.tasks}
+                onRetry={retryLoad}
+                retryLabel="Retry"
+                style={styles.sectionState}
+              />
+            ) : pendingTasks.length === 0 ? (
               <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
                 <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>No pending tasks</Text>
               </Card>
@@ -475,17 +586,38 @@ export default function DashboardScreen() {
                 <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View all</Text>
               </TouchableOpacity>
             </View>
-            {attendanceSummary ? (
-              <View style={styles.statsRow}>
-                <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Present: ${attendanceSummary.present}`}>
-                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Present</Text>
-                  <Text style={[styles.statValue, { color: '#16A34A' }]}>{attendanceSummary.present}</Text>
-                </Card>
-                <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Absent: ${attendanceSummary.absent}`}>
-                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Absent</Text>
-                  <Text style={[styles.statValue, { color: '#DC2626' }]}>{attendanceSummary.absent}</Text>
-                </Card>
-              </View>
+            {sectionErrors.attendance ? (
+              <StateView
+                variant="error"
+                title="Couldn’t load attendance"
+                message={sectionErrors.attendance}
+                onRetry={retryLoad}
+                retryLabel="Retry"
+                style={styles.sectionState}
+              />
+            ) : attendanceSummary ? (
+              <>
+                <View style={styles.statsRow}>
+                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Present: ${attendanceSummary.present}`}>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Present</Text>
+                    <Text style={[styles.statValue, { color: '#16A34A' }]}>{attendanceSummary.present}</Text>
+                  </Card>
+                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Absent: ${attendanceSummary.absent}`}>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Absent</Text>
+                    <Text style={[styles.statValue, { color: '#DC2626' }]}>{attendanceSummary.absent}</Text>
+                  </Card>
+                </View>
+                <View style={styles.statsRow}>
+                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Late: ${attendanceSummary.late}`}>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Late</Text>
+                    <Text style={[styles.statValue, { color: '#D97706' }]}>{attendanceSummary.late}</Text>
+                  </Card>
+                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Total records today: ${attendanceSummary.total}`}>
+                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Total</Text>
+                    <Text style={[styles.statValue, dynamicStyles.statValue]}>{attendanceSummary.total}</Text>
+                  </Card>
+                </View>
+              </>
             ) : (
               <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
                 <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>No attendance data</Text>
@@ -506,7 +638,16 @@ export default function DashboardScreen() {
                 <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View all</Text>
               </TouchableOpacity>
             </View>
-            {recentActivity.length === 0 ? (
+            {sectionErrors.activity ? (
+              <StateView
+                variant="error"
+                title="Couldn’t load activity"
+                message={sectionErrors.activity}
+                onRetry={retryLoad}
+                retryLabel="Retry"
+                style={styles.sectionState}
+              />
+            ) : recentActivity.length === 0 ? (
               <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
                 <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>No recent activity</Text>
               </Card>
@@ -609,6 +750,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
+  },
+  // Inline override for StateView inside a ScrollView section: neutralize
+  // its flex:1 full-screen sizing so it renders as a compact section card.
+  sectionState: {
+    flex: 0,
+    paddingVertical: 24,
   },
   quickActionCard: {
     padding: 16,

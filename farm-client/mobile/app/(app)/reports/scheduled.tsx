@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
-import { reportsAPI } from '../../../src/services/api';
+import { reportsAPI } from '@/modules/reporting';
 
 const STATUS_COLORS: Record<string, string> = {
   active: '#4CAF50',

@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { offlineFinanceAPI } from '@/services/offlineApi';
+import { MenuButton } from '@/core/ui/MenuButton';
+import { offlineFinanceAPI } from '@/modules/finance';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
@@ -26,6 +27,7 @@ import { formatCurrencyFixed } from '@/core/utils/currency';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 20 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 16 },
   summaryContainer: { flexDirection: 'row', gap: 12 },
   summaryCard: {
@@ -326,7 +328,10 @@ export default function FinanceScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Finance</Text>
+          <View style={styles.headerTitleRow}>
+            <MenuButton />
+            <Text style={styles.headerTitle}>Finance</Text>
+          </View>
         </View>
         <ScreenLoading message="Loading transactions…" />
       </SafeAreaView>
@@ -337,7 +342,10 @@ export default function FinanceScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Finance</Text>
+          <View style={styles.headerTitleRow}>
+            <MenuButton />
+            <Text style={styles.headerTitle}>Finance</Text>
+          </View>
         </View>
         <StateView
           variant="error"
@@ -353,7 +361,10 @@ export default function FinanceScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Finance</Text>
+        <View style={styles.headerTitleRow}>
+          <MenuButton />
+          <Text style={styles.headerTitle}>Finance</Text>
+        </View>
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Income</Text>

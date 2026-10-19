@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useListLivestockQuery } from '@/store/api';
+import { MenuButton } from '@/core/ui/MenuButton';
+import { useListLivestockQuery } from '@/modules/livestock';
 import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
@@ -206,15 +207,10 @@ export default function LivestockScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.back()}
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Livestock</Text>
+      {/* Tab root: the hamburger opens the navigation sidebar (replaces the old
+          "← Back" affordance, which made no sense on a top-level tab). */}
+      <MenuButton />
+      <Text style={[styles.headerTitle, { flex: 1 }]}>Livestock</Text>
       {canWrite ? (
         <TouchableOpacity
           style={styles.addButton}

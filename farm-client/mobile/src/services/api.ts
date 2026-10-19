@@ -74,6 +74,8 @@ import type {
   CreatePondWaterQualityRequest,
   PondHarvest,
   CreatePondHarvestRequest,
+  Equipment,
+  CreateEquipmentRequest,
 } from './types';
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -972,6 +974,21 @@ export const inventoryAPI = {
     http.post(`/inventory/${id}/reorder`),
 };
 
+// ─── Equipment ────────────────────────────────────────────────────────────────────
+
+export const equipmentAPI = {
+  list: (params?: ListParams & { farmId?: string; status?: string; type?: string }) =>
+    http.get('/equipment', { params }),
+  get: (id: string) =>
+    http.get<Equipment>(`/equipment/${id}`),
+  create: (data: CreateEquipmentRequest) =>
+    http.post<Equipment>('/equipment', data),
+  update: (id: string, data: any) =>
+    http.put<Equipment>(`/equipment/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/equipment/${id}`),
+};
+
 // ─── Egg Production ───────────────────────────────────────────────────────────
 
 export const eggProductionAPI = {
@@ -985,4 +1002,17 @@ export const eggProductionAPI = {
     http.put(`/egg-production/${id}`, data),
   delete: (id: string) =>
     http.delete(`/egg-production/${id}`),
+};
+
+// ─── Weather ────────────────────────────────────────────────────────────────────
+// Served by the server's weather.controller (proxies the weather provider with
+// the server-side API key). No permission — Weather is an open nav item.
+
+export const weatherAPI = {
+  current: (lat: number, lon: number) =>
+    http.get('/weather/current', { params: { lat, lon } }),
+  forecast: (lat: number, lon: number, days?: number) =>
+    http.get('/weather/forecast', { params: { lat, lon, days } }),
+  alerts: (lat: number, lon: number) =>
+    http.get('/weather/alerts', { params: { lat, lon } }),
 };

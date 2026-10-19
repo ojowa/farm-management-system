@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../store/store';
 import {
@@ -42,14 +42,31 @@ export const useToasts = (): UseToasts => {
 
   const clearToasts = useCallback(() => dispatch(clearToastsAction()), [dispatch]);
 
-  return {
-    toasts,
-    showToast,
-    removeToast,
-    clearToasts,
-    success: (msg, dur) => showToast(msg, 'success', dur),
-    error: (msg, dur) => showToast(msg, 'error', dur ?? 6000),
-    info: (msg, dur) => showToast(msg, 'info', dur),
-    warning: (msg, dur) => showToast(msg, 'warning', dur ?? 5000),
-  };
+  const success = useCallback(
+    (msg: string, dur?: number) => showToast(msg, 'success', dur),
+    [showToast]
+  );
+  const error = useCallback(
+    (msg: string, dur?: number) => showToast(msg, 'error', dur ?? 6000),
+    [showToast]
+  );
+  const info = useCallback((msg: string, dur?: number) => showToast(msg, 'info', dur), [showToast]);
+  const warning = useCallback(
+    (msg: string, dur?: number) => showToast(msg, 'warning', dur ?? 5000),
+    [showToast]
+  );
+
+  return useMemo(
+    () => ({
+      toasts,
+      showToast,
+      removeToast,
+      clearToasts,
+      success,
+      error,
+      info,
+      warning,
+    }),
+    [toasts, showToast, removeToast, clearToasts, success, error, info, warning]
+  );
 };

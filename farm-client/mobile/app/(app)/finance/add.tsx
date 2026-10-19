@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { offlineFinanceAPI } from '../../../src/services/offlineApi';
+import { offlineFinanceAPI } from '@/modules/finance';
 import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../src/core/utils/apiError';

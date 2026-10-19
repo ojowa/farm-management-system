@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { offlineLivestockAPI, offlinePoultryAPI } from '../../../../src/services/offlineApi';
+import { offlineLivestockAPI } from '@/modules/livestock';
+import { offlinePoultryAPI } from '@/modules/poultry';
 import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';

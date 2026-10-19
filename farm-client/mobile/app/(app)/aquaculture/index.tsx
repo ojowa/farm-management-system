@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { aquacultureAPI, farmsAPI } from '@/services/api';
-import { Pond } from '@/services/types';
+import { aquacultureAPI } from '@/modules/aquaculture';
+import type { Pond } from '@/modules/aquaculture';
+import { farmsAPI } from '@/modules/farm';
 import { Card, Button, TextInputField, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';

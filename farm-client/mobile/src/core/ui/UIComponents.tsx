@@ -359,7 +359,7 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, accessibil
   }
 
   return (
-    <View style={[styles.card, style]} accessibilityRole="summary">
+    <View style={[styles.card, style]} accessibilityRole="summary" accessibilityLabel={accessibilityLabel}>
       {children}
     </View>
   );

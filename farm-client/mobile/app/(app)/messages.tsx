@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, RefreshControl, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Button } from '@/core/ui/UIComponents';
-import { messagesAPI } from '@/services/api';
+import { messagesAPI } from '@/modules/communication';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { describeApiError } from '@/core/utils/apiError';

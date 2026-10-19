@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Card, colors } from '@/core/ui/UIComponents';
-import { notificationsAPI } from '@/services/api';
+import { notificationsAPI } from '@/modules/notification';
 import { socketService, RealtimePayload } from '@/services/socketService';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { describeApiError } from '@/core/utils/apiError';

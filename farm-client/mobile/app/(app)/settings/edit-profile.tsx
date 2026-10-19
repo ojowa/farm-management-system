@@ -18,7 +18,7 @@ import { ScreenLoading, StateView } from '../../../src/core/ui/feedback';
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { useAppDispatch } from '../../../src/modules/auth/hooks/useAuth';
 import { describeApiError } from '../../../src/core/utils/apiError';
-import { apiClient } from '../../../src/services/api';
+import { apiClient } from '../../../src/modules/auth';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },

@@ -1,0 +1,269 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { workersAPI } from '@/modules/hr';
+import type { Worker } from '@/modules/hr';
+import { farmsAPI } from '@/modules/farm';
+import { Button, colors } from '@/core/ui/UIComponents';
+import { ScreenLoading, StateView } from '@/core/ui/feedback';
+import { usePermission } from '@/core/hooks/usePermission';
+import { useToasts } from '@/core/hooks/useToasts';
+import { describeApiError } from '@/core/utils/apiError';
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  header: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', flex: 1, textAlign: 'center' },
+  backButton: { padding: 8 },
+  backButtonText: { color: '#FFFFFF', fontSize: 16 },
+  content: { paddingHorizontal: 20, paddingVertical: 16 },
+  card: { marginBottom: 16 },
+  workerName: { fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: 8 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.light,
+    marginTop: 8,
+  },
+  statItem: { alignItems: 'center', flex: 1 },
+  statLabel: { fontSize: 12, color: colors.textLight, marginBottom: 4 },
+  statValue: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  detailSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.light },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  detailLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
+  detailValue: { fontSize: 14, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  actions: { marginTop: 20, gap: 12 },
+});
+
+const WORKER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  ACTIVE: { bg: '#DCFCE7', text: '#166534' },
+  INACTIVE: { bg: '#F3F4F6', text: '#6B7280' },
+  ON_LEAVE: { bg: '#FEF3C7', text: '#92400E' },
+  TERMINATED: { bg: '#FEE2E2', text: '#991B1B' },
+};
+
+function formatDate(value?: string) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toLocaleDateString();
+}
+
+function unwrapOne<T>(payload: any): T | null {
+  if (payload?.id) return payload as T;
+  if (payload?.data?.id) return payload.data as T;
+  return null;
+}
+
+const fullName = (w: Worker) => [w.firstName, w.middleName, w.lastName].filter(Boolean).join(' ');
+
+export default function WorkerDetailScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { success, error: showError } = useToasts();
+  const { hasPermission } = usePermission();
+
+  const canDelete = hasPermission('hr.delete');
+  const canWrite = hasPermission('hr.write');
+
+  const [loading, setLoading] = useState(true);
+  const [worker, setWorker] = useState<Worker | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [farmName, setFarmName] = useState<string>('');
+
+  useEffect(() => {
+    fetchWorker();
+  }, [id]);
+
+  const fetchWorker = async () => {
+    if (!id) {
+      setLoadError('Missing worker id.');
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoadError(null);
+      const response = await workersAPI.get(id);
+      const record = unwrapOne<Worker>(response.data);
+      if (!record) {
+        setLoadError('Worker not found.');
+        return;
+      }
+      setWorker(record);
+      fetchFarmName(record.farmId);
+    } catch (error: any) {
+      setLoadError(describeApiError(error, 'Failed to load worker.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFarmName = async (farmId: string) => {
+    if (!farmId) return;
+    try {
+      const response = await farmsAPI.get(farmId);
+      const body: any = response.data;
+      setFarmName(body?.name || body?.data?.name || '');
+    } catch {
+      /* ignore — falls back to "—" */
+    }
+  };
+
+  const handleDelete = useCallback(() => {
+    if (!worker) return;
+    Alert.alert(
+      'Delete Worker',
+      `Are you sure you want to delete ${fullName(worker)}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await workersAPI.delete(worker.id);
+              success('Worker deleted successfully');
+              router.back();
+            } catch (error: any) {
+              showError(describeApiError(error, 'Failed to delete worker.'));
+            }
+          },
+        },
+      ]
+    );
+  }, [worker, success, showError, router]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Worker Details</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <ScreenLoading message="Loading worker…" />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError || !worker) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Worker Details</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <StateView
+          variant="error"
+          title="Couldn't load this worker"
+          message={loadError || 'Worker not found.'}
+          onRetry={fetchWorker}
+          retryLabel="Retry"
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const statusColors = WORKER_STATUS_COLORS[worker.status] || { bg: '#F3F4F6', text: '#6B7280' };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Worker Details</Text>
+        <View style={{ width: 60 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <Text style={styles.workerName}>{fullName(worker)}</Text>
+          <View style={styles.badgeRow}>
+            <View
+              style={{
+                backgroundColor: statusColors.bg,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '600', color: statusColors.text }}>
+                {worker.status || '—'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Position</Text>
+              <Text style={styles.statValue}>{worker.position || '—'}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Hired</Text>
+              <Text style={styles.statValue}>{formatDate(worker.hireDate)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.detailSection}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Department</Text>
+              <Text style={styles.detailValue}>{worker.department || '—'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Email</Text>
+              <Text style={styles.detailValue}>{worker.email || '—'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Phone</Text>
+              <Text style={styles.detailValue}>{worker.phone || '—'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Farm</Text>
+              <Text style={styles.detailValue}>{farmName || '—'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Hire Date</Text>
+              <Text style={styles.detailValue}>{formatDate(worker.hireDate)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {(canWrite || canDelete) && (
+          <View style={styles.actions}>
+            {canWrite && (
+              <Button
+                title="Edit Worker"
+                onPress={() => router.push(`/workers/${id}/edit`)}
+                accessibilityLabel="Edit this worker"
+              />
+            )}
+            {canDelete && (
+              <Button
+                title="Delete Worker"
+                variant="secondary"
+                onPress={handleDelete}
+                accessibilityLabel="Delete this worker"
+              />
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

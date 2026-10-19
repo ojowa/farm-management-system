@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useCreateFarmMutation } from '@/store/api';
-import type { CreateFarmRequest, User } from '@/services/types';
+import { useCreateFarmMutation } from '@/modules/farm';
+import type { CreateFarmRequest } from '@/modules/farm';
+import type { User } from '@/modules/auth';
 import { TextInputField, Button } from '@/core/ui/UIComponents';
 import { StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';

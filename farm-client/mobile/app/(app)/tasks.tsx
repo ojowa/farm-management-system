@@ -13,11 +13,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MenuButton } from '@/core/ui/MenuButton';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
-import { tasksAPI, workersAPI } from '@/services/api';
-import { offlineTasksAPI } from '@/services/offlineApi';
+import { tasksAPI } from '@/modules/worker';
+import { workersAPI } from '@/modules/hr';
+import { offlineTasksAPI } from '@/modules/worker';
 import { describeApiError } from '@/core/utils/apiError';
 
 const styles = StyleSheet.create({
@@ -236,7 +238,8 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{canManageTasks ? 'Tasks' : 'My Tasks'}</Text>
+        <MenuButton />
+        <Text style={[styles.headerTitle, { flex: 1 }]}>{canManageTasks ? 'Tasks' : 'My Tasks'}</Text>
         {canManageTasks && (
           <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>
             <Text style={styles.addButtonText}>+</Text>

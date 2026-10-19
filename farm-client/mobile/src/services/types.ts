@@ -830,6 +830,38 @@ export interface Organization {
   updatedAt: string;
 }
 
+// ─── Equipment ────────────────────────────────────────────────────────────────────
+
+export interface Equipment {
+  id: string;
+  organizationId: string;
+  farmId: string | null;
+  name: string;
+  type: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  purchaseDate: string | null;
+  purchaseCost: number | null;
+  status: string;
+  notes: string | null;
+  lastMaintenance?: string | null;
+  nextMaintenance?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEquipmentRequest {
+  farmId?: string;
+  name: string;
+  type?: string;
+  model?: string;
+  serialNumber?: string;
+  purchaseDate?: string;
+  purchaseCost?: number;
+  status?: string;
+  notes?: string;
+}
+
 // ─── Common ────────────────────────────────────────────────────────────────────
 
 export interface PaginationParams {

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
-import { inventoryAPI } from '../../../src/services/api';
+import { inventoryAPI } from '@/modules/inventory';
 import { formatCurrencyFixed } from '../../../src/core/utils/currency';
 
 const LOW_STOCK_THRESHOLD = 10;

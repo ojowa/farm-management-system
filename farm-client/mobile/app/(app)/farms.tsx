@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useListFarmsQuery, useDeleteFarmMutation } from '@/store/api';
+import { MenuButton } from '@/core/ui/MenuButton';
+import { useListFarmsQuery, useDeleteFarmMutation } from '@/modules/farm';
 import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
@@ -370,7 +371,8 @@ export default function FarmsScreen() {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
-          <Text style={styles.headerTitle}>My Farms</Text>
+          <MenuButton />
+          <Text style={[styles.headerTitle, { flex: 1 }]}>My Farms</Text>
         </View>
         <ScreenLoading message="Loading your farms…" />
       </SafeAreaView>
@@ -381,7 +383,8 @@ export default function FarmsScreen() {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
-          <Text style={styles.headerTitle}>My Farms</Text>
+          <MenuButton />
+          <Text style={[styles.headerTitle, { flex: 1 }]}>My Farms</Text>
         </View>
         <StateView
           variant="error"
@@ -397,7 +400,8 @@ export default function FarmsScreen() {
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <View style={[styles.header, dynamicStyles.header]}>
-        <Text style={styles.headerTitle}>My Farms</Text>
+        <MenuButton />
+        <Text style={[styles.headerTitle, { flex: 1 }]}>My Farms</Text>
         {canWrite && (
           <TouchableOpacity
             style={styles.addButton}

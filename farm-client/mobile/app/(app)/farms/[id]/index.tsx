@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useGetFarmQuery, useDeleteFarmMutation } from '@/store/api';
+import { useGetFarmQuery, useDeleteFarmMutation } from '@/modules/farm';
 import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';

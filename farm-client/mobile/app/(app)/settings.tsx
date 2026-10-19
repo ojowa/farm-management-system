@@ -24,8 +24,8 @@ import {
   unregisterFromNotifications,
   getNotificationPermissions,
   setupNotificationListeners,
-} from '@/services/notifications';
-import { orgAdminAPI } from '@/services/api';
+} from '@/modules/notification';
+import { orgAdminAPI } from '@/modules/settings';
 import { describeApiError } from '@/core/utils/apiError';
 
 const styles = StyleSheet.create({

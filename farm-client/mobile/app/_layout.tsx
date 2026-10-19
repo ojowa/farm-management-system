@@ -12,7 +12,7 @@ import { ConnectionBanner } from '../src/core/ui/layout/ConnectionBanner';
 import { useNetworkSync } from '../src/services/useNetworkSync';
 import { colors } from '../src/core/ui/UIComponents';
 import { ThemeProvider, useAppTheme } from '../src/core/theme/ThemeContext';
-import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/services/notifications';
+import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/modules/notification';
 import { useAppSelector, useAppDispatch } from '../src/modules/auth/hooks/useAuth';
 import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/modules/auth/services/authSlice';
 import { startInactivityTracker } from '../src/core/utils/inactivity';

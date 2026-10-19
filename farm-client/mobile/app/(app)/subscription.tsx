@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAppTheme } from '@/core/theme/ThemeContext';
-import { subscriptionAPI } from '@/services/api';
+import { subscriptionAPI } from '@/modules/settings';
 import { Card, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
