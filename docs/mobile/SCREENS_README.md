@@ -263,8 +263,8 @@ All screens follow Material Design 3 principles with proper spacing, typography,
 ## 🧪 Testing
 
 To test the authentication flow:
-1. Use test credentials: `test@example.com` / `password123`
-2. MFA code (if enabled): `123456`
+1. Sign in with your own registered account (no demo accounts ship with the app)
+2. MFA code (if enabled): the current code from your authenticator app
 3. Check console logs for API requests/responses
 
 ## 📋 Redux State Structure
@@ -301,11 +301,10 @@ To test the authentication flow:
 
 ## 📝 Notes
 
-- All screens use async/mock data for demonstration
-- Replace mock data with actual API calls
-- Implement proper error handling and retry logic
-- Add loading skeletons for better UX
-- Consider implementing offline support with Redux Persist
+- All screens are connected to the real API — no mock/demo data ships in the app
+- Error handling and retry logic are implemented per screen
+- Loading states use the shared feedback components (skeletons/spinners)
+- Offline support is handled through Redux Persist and the offline API layer
 
 ## 🐛 Known Issues & TODO
 

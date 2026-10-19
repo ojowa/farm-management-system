@@ -24,7 +24,7 @@ npx prisma db push
 # Generate Prisma client
 npx prisma generate
 
-# Seed demo data
+# Seed system data (roles, permissions, plans, feature flags)
 npx tsx prisma/seed.ts
 
 # Open Prisma Studio (visual editor)

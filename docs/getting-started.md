@@ -47,7 +47,7 @@ EOF
 # Push schema to database
 cd farm-server && npx prisma db push
 
-# Seed with demo data (7 users + farm data)
+# Seed system data (roles, permissions, plans, feature flags)
 npx tsx prisma/seed.ts
 ```
 
@@ -102,19 +102,12 @@ npm start
 
 See [mobile/README.md](./mobile/README.md) for Expo Go setup and emulator instructions.
 
-## 6. Test Credentials
+## 6. Create an Account
 
-All users share the password: `password123`
+No demo accounts are shipped. Create your own:
 
-| Email | Role | App |
-|-------|------|-----|
-| `Admin@fms.com` | Super Admin | Console |
-| `demo@farm.com` | Org Owner | Admin, Mobile |
-| `farmmanager.demo@farm.com` | Farm Manager | Admin, Mobile |
-| `accountant.demo@farm.com` | Account Manager | Admin, Mobile |
-| `supervisor.demo@farm.com` | Supervisor | Admin, Mobile |
-| `veterinarian.demo@farm.com` | Veterinarian | Admin, Mobile |
-| `worker.demo@farm.com` | Farm Worker | Admin, Mobile |
+1. Register an organization owner account through the admin/console signup flow
+2. Sign in and invite team members from the Users screen — each invitee sets their own password
 
 ## Project Structure
 

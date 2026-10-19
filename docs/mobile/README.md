@@ -50,7 +50,7 @@ EXPO_PUBLIC_API_URL=https://api.example.com/api
 ```json
 {
   "email": "user@example.com",
-  "password": "password123"
+  "password": "your-password"
 }
 ```
 **Response:**
@@ -259,10 +259,10 @@ console.log('Token:', token);
 
 ### Test API Directly
 ```bash
-# Get auth token
+# Get auth token (use your own registered account)
 curl -X POST http://localhost:4000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"demo@farm.com","password":"password123"}'
+  -d '{"email":"your-account@example.com","password":"your-password"}'
 
 # Use token to test protected endpoint
 curl -X GET http://localhost:4000/farms \

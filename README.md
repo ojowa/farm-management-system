@@ -145,22 +145,6 @@ See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for full architecture detai
 
 ---
 
-## Test Credentials
-
-All users share the password: **`password123`**
-
-| Email | Role | Access |
-|-------|------|--------|
-| `Admin@fms.com` | Super Admin | Console |
-| `demo@farm.com` | Org Owner | Admin, Web, Mobile |
-| `farmmanager.demo@farm.com` | Farm Manager | Web, Mobile |
-| `accountant.demo@farm.com` | Account Manager | Web, Mobile |
-| `supervisor.demo@farm.com` | Supervisor | Web, Mobile |
-| `veterinarian.demo@farm.com` | Veterinarian | Web, Mobile |
-| `worker.demo@farm.com` | Farm Worker | Web, Mobile |
-
----
-
 ## License
 
 Private — All rights reserved.
