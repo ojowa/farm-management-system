@@ -19,6 +19,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -126,6 +127,7 @@ export default function AquacultureScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const user = useAppSelector((state) => state.auth.user);
+  const { colors: tc, isDark } = useAppTheme();
 
   // Pond actions mirror the server's permission checks: everyone with
   // aquaculture.read sees the list; only aquaculture.write may add/edit,
@@ -218,33 +220,33 @@ export default function AquacultureScreen() {
     return (
       <View style={{ paddingVertical: 20, alignItems: 'center' }}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={{ fontSize: 12, color: colors.textLight }}>Loading more…</Text>
+        <Text style={{ fontSize: 12, color: tc.textSecondary }}>Loading more…</Text>
       </View>
     );
-  }, [refreshing]);
+  }, [refreshing, tc]);
 
   const renderEmpty = useCallback(() => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>🐟</Text>
-      <Text style={styles.emptyText}>No Ponds Yet</Text>
-      <Text style={styles.emptySubtext}>
+      <Text style={[styles.emptyText, { color: tc.text }]}>No Ponds Yet</Text>
+      <Text style={[styles.emptySubtext, { color: tc.textSecondary }]}>
         Create your first pond to start tracking stocking, feeding, water quality and harvests
       </Text>
       {canWrite && (
         <Button title="Add Pond" onPress={() => router.push('/aquaculture/add')} accessibilityLabel="Add your first pond" />
       )}
     </View>
-  ), [router, canWrite]);
+  ), [router, canWrite, tc]);
 
   const renderItem = useCallback(({ item: pond }: { item: Pond }) => (
-    <Card style={styles.pondCard}>
+    <Card style={[styles.pondCard, { backgroundColor: tc.card }]}>
       <TouchableOpacity
         onPress={() => router.push(`/aquaculture/${pond.id}`)}
         activeOpacity={0.7}
       >
         <View style={styles.pondCardContent}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-            <Text style={styles.pondName}>{pond.name}</Text>
+            <Text style={[styles.pondName, { color: tc.text }]}>{pond.name}</Text>
             <View style={{ backgroundColor: POND_TYPE_COLORS[pond.pondType]?.bg || '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
               <Text style={{ fontSize: 10, fontWeight: '600', color: POND_TYPE_COLORS[pond.pondType]?.text || '#6B7280' }}>
                 {pond.pondType || 'FISH'}
@@ -256,27 +258,27 @@ export default function AquacultureScreen() {
               </Text>
             </View>
           </View>
-          <Text style={styles.pondFarm}>🐟 {farmNames[pond.farmId] || 'Farm'}</Text>
-          <View style={styles.pondStats}>
+          <Text style={[styles.pondFarm, { color: tc.textSecondary }]}>🐟 {farmNames[pond.farmId] || 'Farm'}</Text>
+          <View style={[styles.pondStats, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.pondStat}>
-              <Text style={styles.pondStatLabel}>Area</Text>
-              <Text style={styles.pondStatValue}>{pond.area ?? '—'} ha</Text>
+              <Text style={[styles.pondStatLabel, { color: tc.textSecondary }]}>Area</Text>
+              <Text style={[styles.pondStatValue, { color: tc.primary }]}>{pond.area ?? '—'} ha</Text>
             </View>
             <View style={styles.pondStat}>
-              <Text style={styles.pondStatLabel}>Capacity</Text>
-              <Text style={styles.pondStatValue}>{pond.capacity ?? '—'}</Text>
+              <Text style={[styles.pondStatLabel, { color: tc.textSecondary }]}>Capacity</Text>
+              <Text style={[styles.pondStatValue, { color: tc.primary }]}>{pond.capacity ?? '—'}</Text>
             </View>
           </View>
         </View>
       </TouchableOpacity>
-      <View style={styles.pondActions}>
+      <View style={[styles.pondActions, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => router.push(`/aquaculture/${pond.id}`)}
           accessibilityRole="button"
           accessibilityLabel={`View details of ${pond.name}`}
         >
-          <Text style={styles.actionButtonText}>View Details</Text>
+          <Text style={[styles.actionButtonText, { color: tc.primary }]}>View Details</Text>
         </TouchableOpacity>
         {canWrite && (
           <TouchableOpacity
@@ -285,7 +287,7 @@ export default function AquacultureScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Edit ${pond.name}`}
           >
-            <Text style={styles.actionButtonText}>Edit</Text>
+            <Text style={[styles.actionButtonText, { color: tc.primary }]}>Edit</Text>
           </TouchableOpacity>
         )}
         {canDelete && (
@@ -300,12 +302,12 @@ export default function AquacultureScreen() {
         )}
       </View>
     </Card>
-  ), [farmNames, router, handleDeletePond, canWrite, canDelete]);
+  ), [farmNames, router, handleDeletePond, canWrite, canDelete, tc, isDark]);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <Text style={styles.headerTitle}>Aquaculture</Text>
         </View>
         <ScreenLoading message="Loading ponds…" />
@@ -315,8 +317,8 @@ export default function AquacultureScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <Text style={styles.headerTitle}>Aquaculture</Text>
         </View>
         <StateView
@@ -331,8 +333,8 @@ export default function AquacultureScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <Text style={styles.headerTitle}>Aquaculture</Text>
         {canWrite && (
           <TouchableOpacity
@@ -359,14 +361,14 @@ export default function AquacultureScreen() {
           {(['all', 'active', 'draining', 'maintenance', 'retired'] as const).map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive]}
+              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive, statusFilter === f ? undefined : { backgroundColor: tc.card, borderColor: tc.border }]}
               onPress={() => setStatusFilter(f)}
               accessibilityRole="button"
               accessibilityLabel={`Filter ${f}`}
               accessibilityState={{ selected: statusFilter === f }}
             >
               <Text
-                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}
+                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive, statusFilter === f ? undefined : { color: tc.textSecondary }]}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>

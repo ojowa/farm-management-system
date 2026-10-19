@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { reportsAPI } from '@/modules/reporting';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const STATUS_COLORS: Record<string, string> = {
   active: '#4CAF50',
@@ -30,6 +31,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export default function ScheduledReportsScreen() {
+  const { colors: tc, isDark } = useAppTheme();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,10 +52,24 @@ export default function ScheduledReportsScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadReports(); };
 
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    reportName: { color: tc.text },
+    reportLabel: { color: tc.textSecondary },
+    reportValue: { color: tc.text },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <Text style={styles.headerTitle}>Scheduled Reports</Text>
         </View>
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -62,8 +78,8 @@ export default function ScheduledReportsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <Text style={styles.headerTitle}>Scheduled Reports</Text>
         <Text style={styles.headerSubtext}>Automated reports scheduled for generation</Text>
       </View>
@@ -75,44 +91,44 @@ export default function ScheduledReportsScreen() {
         {reports.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📊</Text>
-            <Text style={styles.emptyText}>No scheduled reports</Text>
-            <Text style={styles.emptySubtext}>Schedule a report to receive automatic updates</Text>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No scheduled reports</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>Schedule a report to receive automatic updates</Text>
           </View>
         ) : (
           reports.map((report) => (
-            <Card key={report.id} style={styles.reportCard}>
+            <Card key={report.id} style={[styles.reportCard, dynamicStyles.cardBackground]}>
               <View style={styles.reportHeader}>
-                <Text style={styles.reportName}>{report.name}</Text>
+                <Text style={[styles.reportName, dynamicStyles.reportName]}>{report.name}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[report.status] || '#9E9E9E' }]}>
                   <Text style={styles.statusText}>{report.status}</Text>
                 </View>
               </View>
               {report.type && (
                 <View style={styles.reportRow}>
-                  <Text style={styles.reportLabel}>Type</Text>
-                  <Text style={styles.reportValue}>{report.type}</Text>
+                  <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Type</Text>
+                  <Text style={[styles.reportValue, dynamicStyles.reportValue]}>{report.type}</Text>
                 </View>
               )}
               {report.frequency && (
                 <View style={styles.reportRow}>
-                  <Text style={styles.reportLabel}>Frequency</Text>
-                  <Text style={styles.reportValue}>
+                  <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Frequency</Text>
+                  <Text style={[styles.reportValue, dynamicStyles.reportValue]}>
                     {FREQUENCY_LABELS[report.frequency] || report.frequency}
                   </Text>
                 </View>
               )}
               {report.nextRun && (
                 <View style={styles.reportRow}>
-                  <Text style={styles.reportLabel}>Next Run</Text>
-                  <Text style={styles.reportValue}>
+                  <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Next Run</Text>
+                  <Text style={[styles.reportValue, dynamicStyles.reportValue]}>
                     {new Date(report.nextRun).toLocaleDateString()}
                   </Text>
                 </View>
               )}
               {report.lastRun && (
                 <View style={styles.reportRow}>
-                  <Text style={styles.reportLabel}>Last Run</Text>
-                  <Text style={styles.reportValue}>
+                  <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Last Run</Text>
+                  <Text style={[styles.reportValue, dynamicStyles.reportValue]}>
                     {new Date(report.lastRun).toLocaleDateString()}
                   </Text>
                 </View>

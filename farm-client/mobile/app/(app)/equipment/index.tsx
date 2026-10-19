@@ -19,6 +19,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 import { MenuButton } from '@/core/ui/MenuButton';
 
 const styles = StyleSheet.create({
@@ -127,6 +128,7 @@ export default function EquipmentScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Equipment actions mirror the server's EquipmentController: farm.write
   // creates/edits, farm.delete removes. Missing permissions default to hidden.
@@ -224,18 +226,18 @@ export default function EquipmentScreen() {
       refreshing ? (
         <View style={{ paddingVertical: 20, alignItems: 'center' }}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={{ fontSize: 12, color: colors.textLight }}>Loading more…</Text>
+          <Text style={{ fontSize: 12, color: tc.textSecondary }}>Loading more…</Text>
         </View>
       ) : null,
-    [refreshing]
+    [refreshing, tc]
   );
 
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>🚜</Text>
-        <Text style={styles.emptyText}>No Equipment Yet</Text>
-        <Text style={styles.emptySubtext}>
+        <Text style={[styles.emptyText, { color: tc.text }]}>No Equipment Yet</Text>
+        <Text style={[styles.emptySubtext, { color: tc.textSecondary }]}>
           Add your first asset to start tracking machinery, tools and their maintenance
         </Text>
         {canWrite && (
@@ -247,14 +249,14 @@ export default function EquipmentScreen() {
         )}
       </View>
     ),
-    [router, canWrite]
+    [router, canWrite, tc]
   );
 
   const renderItem = useCallback(
     ({ item }: { item: Equipment }) => {
       const statusColors = EQUIP_STATUS_COLORS[item.status] || { bg: '#F3F4F6', text: '#6B7280' };
       return (
-        <Card style={styles.equipCard}>
+        <Card style={[styles.equipCard, { backgroundColor: tc.card }]}>
           <TouchableOpacity onPress={() => router.push(`/equipment/${item.id}`)} activeOpacity={0.7}>
             <View style={styles.equipCardContent}>
               <View
@@ -266,7 +268,7 @@ export default function EquipmentScreen() {
                   marginBottom: 2,
                 }}
               >
-                <Text style={styles.equipName}>{item.name}</Text>
+                <Text style={[styles.equipName, { color: tc.text }]}>{item.name}</Text>
                 <View
                   style={{
                     backgroundColor: statusColors.bg,
@@ -280,31 +282,31 @@ export default function EquipmentScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.equipMeta}>
+              <Text style={[styles.equipMeta, { color: tc.textSecondary }]}>
                 {item.type || 'Equipment'}
                 {item.model ? ` · ${item.model}` : ''} ·{' '}
                 {item.farmId ? farmNames[item.farmId] || 'Farm' : 'Unassigned'}
               </Text>
-              <View style={styles.equipStats}>
+              <View style={[styles.equipStats, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
                 <View style={styles.equipStat}>
-                  <Text style={styles.equipStatLabel}>Serial</Text>
+                  <Text style={[styles.equipStatLabel, { color: tc.textSecondary }]}>Serial</Text>
                   <Text style={styles.equipStatValue}>{item.serialNumber || '—'}</Text>
                 </View>
                 <View style={styles.equipStat}>
-                  <Text style={styles.equipStatLabel}>Cost</Text>
+                  <Text style={[styles.equipStatLabel, { color: tc.textSecondary }]}>Cost</Text>
                   <Text style={styles.equipStatValue}>{formatCost(item.purchaseCost)}</Text>
                 </View>
               </View>
             </View>
           </TouchableOpacity>
-          <View style={styles.equipActions}>
+          <View style={[styles.equipActions, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push(`/equipment/${item.id}`)}
               accessibilityRole="button"
               accessibilityLabel={`View details of ${item.name}`}
             >
-              <Text style={styles.actionButtonText}>View Details</Text>
+              <Text style={[styles.actionButtonText, { color: tc.primary }]}>View Details</Text>
             </TouchableOpacity>
             {canDelete && (
               <TouchableOpacity
@@ -320,13 +322,13 @@ export default function EquipmentScreen() {
         </Card>
       );
     },
-    [farmNames, router, handleDelete, canDelete]
+    [farmNames, router, handleDelete, canDelete, tc, isDark]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Equipment</Text>
         </View>
@@ -337,8 +339,8 @@ export default function EquipmentScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Equipment</Text>
         </View>
@@ -354,8 +356,8 @@ export default function EquipmentScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Equipment</Text>
         {canWrite && (
@@ -383,7 +385,7 @@ export default function EquipmentScreen() {
           {STATUS_FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive]}
+              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive, statusFilter === f ? undefined : { backgroundColor: tc.card, borderColor: tc.border }]}
               onPress={() => setStatusFilter(f)}
               accessibilityRole="button"
               accessibilityLabel={
@@ -392,7 +394,7 @@ export default function EquipmentScreen() {
               accessibilityState={{ selected: statusFilter === f }}
             >
               <Text
-                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}
+                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive, statusFilter === f ? undefined : { color: tc.textSecondary }]}
               >
                 {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
               </Text>

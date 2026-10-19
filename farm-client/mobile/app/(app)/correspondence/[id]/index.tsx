@@ -8,6 +8,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -93,6 +94,7 @@ export default function CorrespondenceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   const canWrite = hasPermission('hr.write');
   const canDelete = hasPermission('hr.delete');
@@ -100,6 +102,25 @@ export default function CorrespondenceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<CorrespondenceRecord | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardSurface: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    subject: { color: tc.text },
+    badge: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    refText: { color: tc.textSecondary },
+    divider: { borderTopColor: isDark ? tc.border : '#F5F5F5' },
+    detailLabel: { color: tc.text },
+    detailValue: { color: tc.text },
+    sectionTitle: { color: tc.textSecondary },
+    contentText: { color: tc.text },
+    attachmentRow: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    attachmentText: { color: tc.text },
+  };
 
   useEffect(() => {
     loadItem();
@@ -169,8 +190,8 @@ export default function CorrespondenceDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -184,8 +205,8 @@ export default function CorrespondenceDetailScreen() {
 
   if (loadError || !item) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -206,8 +227,8 @@ export default function CorrespondenceDetailScreen() {
   const archived = isArchived(item);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -216,62 +237,62 @@ export default function CorrespondenceDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.subject}>{subjectOf(item)}</Text>
+        <View style={[styles.card, dynamicStyles.cardSurface]}>
+          <Text style={[styles.subject, dynamicStyles.subject]}>{subjectOf(item)}</Text>
           <View style={styles.badgeRow}>
-            <View style={styles.badge}>
+            <View style={[styles.badge, dynamicStyles.badge]}>
               <Text style={styles.badgeText}>{item.type || '—'}</Text>
             </View>
             {!!item.category && (
-              <View style={styles.badge}>
+              <View style={[styles.badge, dynamicStyles.badge]}>
                 <Text style={styles.badgeText}>{item.category}</Text>
               </View>
             )}
             {!!item.priority && (
-              <View style={styles.badge}>
+              <View style={[styles.badge, dynamicStyles.badge]}>
                 <Text style={styles.badgeText}>{item.priority}</Text>
               </View>
             )}
             {archived && (
-              <View style={[styles.badge, { backgroundColor: '#F3F4F6' }]}>
+              <View style={[styles.badge, dynamicStyles.badge, { backgroundColor: '#F3F4F6' }]}>
                 <Text style={[styles.badgeText, { color: '#6B7280' }]}>Archived</Text>
               </View>
             )}
           </View>
-          {!!item.referenceNumber && <Text style={styles.refText}>Ref: {item.referenceNumber}</Text>}
+          {!!item.referenceNumber && <Text style={[styles.refText, dynamicStyles.refText]}>Ref: {item.referenceNumber}</Text>}
 
-          <View style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.light }}>
+          <View style={[{ marginTop: 8, paddingTop: 12, borderTopWidth: 1 }, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>From</Text>
-              <Text style={styles.detailValue}>{item.from || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>From</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{item.from || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>To</Text>
-              <Text style={styles.detailValue}>{item.to || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>To</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{item.to || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Status</Text>
-              <Text style={styles.detailValue}>{item.status || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Status</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{item.status || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{formatDate(item.receivedDate ?? item.createdAt)}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Date</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{formatDate(item.receivedDate ?? item.createdAt)}</Text>
             </View>
           </View>
 
           {!!item.content && (
             <>
-              <Text style={styles.sectionTitle}>Content</Text>
-              <Text style={styles.contentText}>{item.content}</Text>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Content</Text>
+              <Text style={[styles.contentText, dynamicStyles.contentText]}>{item.content}</Text>
             </>
           )}
 
           {(item.attachments?.length ?? 0) > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Attachments ({item.attachments!.length})</Text>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Attachments ({item.attachments!.length})</Text>
               {item.attachments!.map((a) => (
-                <View key={a.id} style={styles.attachmentRow}>
-                  <Text style={styles.attachmentText}>📎 {a.fileName}</Text>
+                <View key={a.id} style={[styles.attachmentRow, dynamicStyles.attachmentRow]}>
+                  <Text style={[styles.attachmentText, dynamicStyles.attachmentText]}>📎 {a.fileName}</Text>
                 </View>
               ))}
             </>

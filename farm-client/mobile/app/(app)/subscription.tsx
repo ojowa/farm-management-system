@@ -143,7 +143,7 @@ function UsageRow({ label, value }: { label: string; value: string }) {
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { hasPermission } = usePermission();
-  const { colors: themeColors } = useAppTheme();
+  const { colors: themeColors, isDark } = useAppTheme();
   const user = useAppSelector((state) => state.auth.user);
 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -337,7 +337,7 @@ export default function SubscriptionScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           accessibilityRole="button"
@@ -380,14 +380,14 @@ export default function SubscriptionScreen() {
                   onPress={() => settleCheckout(checkout.reference, checkout.planName)}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.actionButtonText}>Check now</Text>
+                  <Text style={[styles.actionButtonText, { color: isDark ? themeColors.textSecondary : "#374151" }]}>Check now</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => setCheckout(null)}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.actionButtonText}>Stop waiting</Text>
+                  <Text style={[styles.actionButtonText, { color: isDark ? themeColors.textSecondary : "#374151" }]}>Stop waiting</Text>
                 </TouchableOpacity>
               </View>
             </Card>

@@ -12,8 +12,10 @@ import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { financeAPI } from '@/modules/finance';
 import { farmsAPI } from '@/modules/farm';
 import { formatCurrencyValue } from '../../../src/core/utils/currency';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 export default function ProfitabilityScreen() {
+  const { colors: tc, isDark } = useAppTheme();
   const [farms, setFarms] = useState<any[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
@@ -75,12 +77,29 @@ export default function ProfitabilityScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    statLabel: { color: tc.textSecondary },
+    statValue: { color: tc.text },
+    sectionTitle: { color: tc.text },
+    farmName: { color: tc.text },
+    farmLabel: { color: tc.textSecondary },
+    farmValue: { color: tc.text },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+  };
+
   const formatCurrency = (amount: number) => formatCurrencyValue(amount);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <Text style={styles.headerTitle}>Profitability</Text>
         </View>
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -89,8 +108,8 @@ export default function ProfitabilityScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <Text style={styles.headerTitle}>Profitability</Text>
         <Text style={styles.headerSubtext}>Revenue, expenses, and profit overview</Text>
       </View>
@@ -100,45 +119,45 @@ export default function ProfitabilityScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
-            <Text style={styles.statLabel}>Revenue</Text>
+          <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Revenue</Text>
             <Text style={[styles.statValue, { color: '#4CAF50' }]}>{formatCurrency(totalRevenue)}</Text>
           </Card>
-          <Card style={styles.statCard}>
-            <Text style={styles.statLabel}>Expenses</Text>
+          <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Expenses</Text>
             <Text style={[styles.statValue, { color: '#F44336' }]}>{formatCurrency(totalExpenses)}</Text>
           </Card>
-          <Card style={styles.statCard}>
-            <Text style={styles.statLabel}>Profit</Text>
+          <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+            <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Profit</Text>
             <Text style={[styles.statValue, { color: totalProfit >= 0 ? '#4CAF50' : '#F44336' }]}>
               {formatCurrency(totalProfit)}
             </Text>
           </Card>
         </View>
 
-        <Text style={styles.sectionTitle}>Farm Breakdown</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Farm Breakdown</Text>
 
         {farms.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📊</Text>
-            <Text style={styles.emptyText}>No farm data</Text>
-            <Text style={styles.emptySubtext}>Add farms and transactions to see profitability</Text>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No farm data</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>Add farms and transactions to see profitability</Text>
           </View>
         ) : (
           farms.map((farm) => (
-            <Card key={farm.farmId} style={styles.farmCard}>
+            <Card key={farm.farmId} style={[styles.farmCard, dynamicStyles.cardBackground]}>
               <View style={styles.farmHeader}>
-                <Text style={styles.farmName}>{farm.farmName}</Text>
+                <Text style={[styles.farmName, dynamicStyles.farmName]}>{farm.farmName}</Text>
                 <View style={[styles.profitBadge, { backgroundColor: farm.profit >= 0 ? '#4CAF50' : '#F44336' }]}>
                   <Text style={styles.profitText}>{formatCurrency(farm.profit)}</Text>
                 </View>
               </View>
               <View style={styles.farmRow}>
-                <Text style={styles.farmLabel}>Revenue</Text>
+                <Text style={[styles.farmLabel, dynamicStyles.farmLabel]}>Revenue</Text>
                 <Text style={[styles.farmValue, { color: '#4CAF50' }]}>{formatCurrency(farm.revenue)}</Text>
               </View>
               <View style={styles.farmRow}>
-                <Text style={styles.farmLabel}>Expenses</Text>
+                <Text style={[styles.farmLabel, dynamicStyles.farmLabel]}>Expenses</Text>
                 <Text style={[styles.farmValue, { color: '#F44336' }]}>{formatCurrency(farm.expenses)}</Text>
               </View>
             </Card>

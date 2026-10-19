@@ -18,6 +18,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -168,6 +169,72 @@ export default function AttendanceScreen() {
   const workerId = typeof params.workerId === 'string' ? params.workerId : undefined;
   const { success, error: showError } = useToasts();
   const { hasPermission, canCreate } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    statLabel: {
+      color: tc.textSecondary,
+    },
+    statValue: {
+      color: tc.text,
+    },
+    dateInput: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    chip: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    chipText: {
+      color: tc.text,
+    },
+    workerName: {
+      color: tc.text,
+    },
+    rowMetaText: {
+      color: tc.textSecondary,
+    },
+    modalOverlay: {
+      backgroundColor: tc.overlay,
+    },
+    modalContent: {
+      backgroundColor: tc.surface,
+    },
+    modalTitle: {
+      color: tc.text,
+    },
+    label: {
+      color: tc.text,
+    },
+    input: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    sectionTitle: {
+      color: tc.textSecondary,
+    },
+    monthNavBtn: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    monthNavBtnText: {
+      color: tc.text,
+    },
+    monthLabel: {
+      color: tc.text,
+    },
+  };
 
   const canReadWorkers = hasPermission('hr.read');
   const canWrite = canCreate('hr');
@@ -452,7 +519,7 @@ export default function AttendanceScreen() {
   const summary = workerId ? monthSummary : todaySummary;
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
@@ -473,7 +540,7 @@ export default function AttendanceScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         {renderHeader()}
         <ScreenLoading message="Loading…" />
       </SafeAreaView>
@@ -482,7 +549,7 @@ export default function AttendanceScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         {renderHeader()}
         <StateView
           variant="error"
@@ -496,7 +563,7 @@ export default function AttendanceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       {renderHeader()}
 
       <FlatList
@@ -509,41 +576,41 @@ export default function AttendanceScreen() {
             {/* Summary */}
             {summary ? (
               <View style={styles.summaryRow}>
-                <Card style={styles.statCard}>
-                  <Text style={styles.statLabel}>{workerId ? 'Days' : 'Present'}</Text>
+                <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>{workerId ? 'Days' : 'Present'}</Text>
                   <Text style={[styles.statValue, { color: '#16A34A' }]}>
                     {workerId ? (summary.totalDays ?? summary.total ?? 0) : (summary.present ?? 0)}
                   </Text>
                 </Card>
-                <Card style={styles.statCard}>
-                  <Text style={styles.statLabel}>{workerId ? 'Absent' : 'Absent'}</Text>
+                <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>{workerId ? 'Absent' : 'Absent'}</Text>
                   <Text style={[styles.statValue, { color: '#DC2626' }]}>{summary.absent ?? 0}</Text>
                 </Card>
-                <Card style={styles.statCard}>
-                  <Text style={styles.statLabel}>Late</Text>
+                <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Late</Text>
                   <Text style={[styles.statValue, { color: '#D97706' }]}>{summary.late ?? 0}</Text>
                 </Card>
                 {workerId && (
                   <>
-                    <Card style={styles.statCard}>
-                      <Text style={styles.statLabel}>Hours</Text>
-                      <Text style={styles.statValue}>{(summary.totalHours ?? 0).toFixed(1)}h</Text>
+                    <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                      <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Hours</Text>
+                      <Text style={[styles.statValue, dynamicStyles.statValue]}>{(summary.totalHours ?? 0).toFixed(1)}h</Text>
                     </Card>
-                    <Card style={styles.statCard}>
-                      <Text style={styles.statLabel}>Rate</Text>
+                    <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                      <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Rate</Text>
                       <Text style={[styles.statValue, { color: '#2563EB' }]}>{summary.attendanceRate ?? 0}%</Text>
                     </Card>
                   </>
                 )}
                 {!workerId && (
                   <>
-                    <Card style={styles.statCard}>
-                      <Text style={styles.statLabel}>Half Day</Text>
-                      <Text style={styles.statValue}>{summary.halfDay ?? 0}</Text>
+                    <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                      <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Half Day</Text>
+                      <Text style={[styles.statValue, dynamicStyles.statValue]}>{summary.halfDay ?? 0}</Text>
                     </Card>
-                    <Card style={styles.statCard}>
-                      <Text style={styles.statLabel}>On Leave</Text>
-                      <Text style={styles.statValue}>{summary.onLeave ?? 0}</Text>
+                    <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
+                      <Text style={[styles.statLabel, dynamicStyles.statLabel]}>On Leave</Text>
+                      <Text style={[styles.statValue, dynamicStyles.statValue]}>{summary.onLeave ?? 0}</Text>
                     </Card>
                   </>
                 )}
@@ -555,12 +622,12 @@ export default function AttendanceScreen() {
               <View style={styles.monthNav}>
                 <TouchableOpacity
                   onPress={() => setMonthOffset((m) => m - 1)}
-                  style={styles.monthNavBtn}
+                  style={[styles.monthNavBtn, dynamicStyles.monthNavBtn]}
                   accessibilityLabel="Previous month"
                 >
-                  <Text style={styles.monthNavBtnText}>‹ Prev</Text>
+                  <Text style={[styles.monthNavBtnText, dynamicStyles.monthNavBtnText]}>‹ Prev</Text>
                 </TouchableOpacity>
-                <Text style={styles.monthLabel}>
+                <Text style={[styles.monthLabel, dynamicStyles.monthLabel]}>
                   {(() => {
                     const d = new Date();
                     d.setDate(1);
@@ -570,10 +637,10 @@ export default function AttendanceScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => setMonthOffset((m) => Math.min(0, m + 1))}
-                  style={styles.monthNavBtn}
+                  style={[styles.monthNavBtn, dynamicStyles.monthNavBtn]}
                   accessibilityLabel="Next month"
                 >
-                  <Text style={styles.monthNavBtnText}>Next ›</Text>
+                  <Text style={[styles.monthNavBtnText, dynamicStyles.monthNavBtnText]}>Next ›</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -594,17 +661,18 @@ export default function AttendanceScreen() {
                       }
                     }}
                     placeholder="YYYY-MM-DD"
-                    style={styles.dateInput}
+                    style={[styles.dateInput, dynamicStyles.dateInput]}
+                    placeholderTextColor={tc.placeholder}
                     keyboardType="numbers-and-punctuation"
                     returnKeyType="done"
                     accessibilityLabel="Attendance date"
                   />
                   <TouchableOpacity
                     onPress={() => { setDateInput(today); setAppliedDate(today); }}
-                    style={styles.chip}
+                    style={[styles.chip, dynamicStyles.chip]}
                     accessibilityLabel="Jump to today"
                   >
-                    <Text style={styles.chipText}>Today</Text>
+                    <Text style={[styles.chipText, dynamicStyles.chipText]}>Today</Text>
                   </TouchableOpacity>
                   {canWrite && (
                     <TouchableOpacity
@@ -621,10 +689,10 @@ export default function AttendanceScreen() {
                     <TouchableOpacity
                       key={s || 'all'}
                       onPress={() => setStatusFilter(s)}
-                      style={[styles.chip, statusFilter === s && styles.chipActive]}
+                      style={[styles.chip, dynamicStyles.chip, statusFilter === s && styles.chipActive]}
                       accessibilityLabel={`Filter ${s ? s.replace('_', ' ').toLowerCase() : 'all statuses'}`}
                     >
-                      <Text style={[styles.chipText, statusFilter === s && styles.chipTextActive]}>
+                      <Text style={[styles.chipText, dynamicStyles.chipText, statusFilter === s && styles.chipTextActive]}>
                         {s ? s.replace('_', ' ') : 'All'}
                       </Text>
                     </TouchableOpacity>
@@ -650,9 +718,9 @@ export default function AttendanceScreen() {
           if (workerId) {
             const badge = STATUS_BADGES[row.status];
             return (
-              <Card style={styles.rowCard}>
+              <Card style={[styles.rowCard, dynamicStyles.cardBackground]}>
                 <View style={styles.rowTop}>
-                  <Text style={styles.workerName}>
+                  <Text style={[styles.workerName, dynamicStyles.workerName]}>
                     {row.date ? new Date(row.date).toLocaleDateString() : '—'}
                   </Text>
                   <View style={[styles.badge, { backgroundColor: badge?.color || '#9CA3AF' }]}>
@@ -660,31 +728,31 @@ export default function AttendanceScreen() {
                   </View>
                 </View>
                 <View style={styles.rowMeta}>
-                  <Text style={styles.rowMetaText}>In: {formatClock(row.clockIn)}</Text>
-                  <Text style={styles.rowMetaText}>Out: {formatClock(row.clockOut)}</Text>
+                  <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>In: {formatClock(row.clockIn)}</Text>
+                  <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>Out: {formatClock(row.clockOut)}</Text>
                   {row.hoursWorked != null && (
-                    <Text style={styles.rowMetaText}>{Number(row.hoursWorked).toFixed(1)}h</Text>
+                    <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>{Number(row.hoursWorked).toFixed(1)}h</Text>
                   )}
                 </View>
-                {row.notes ? <Text style={[styles.rowMetaText, { marginTop: 6 }]}>{row.notes}</Text> : null}
+                {row.notes ? <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText, { marginTop: 6 }]}>{row.notes}</Text> : null}
               </Card>
             );
           }
 
           const badge = row.status ? STATUS_BADGES[row.status] : null;
           return (
-            <Card style={styles.rowCard}>
+            <Card style={[styles.rowCard, dynamicStyles.cardBackground]}>
               <View style={styles.rowTop}>
-                <Text style={styles.workerName}>{row.workerName}</Text>
+                <Text style={[styles.workerName, dynamicStyles.workerName]}>{row.workerName}</Text>
                 <View style={[styles.badge, { backgroundColor: badge?.color || '#9CA3AF' }]}>
                   <Text style={styles.badgeText}>{badge ? badge.label : 'No record'}</Text>
                 </View>
               </View>
               <View style={styles.rowMeta}>
-                <Text style={styles.rowMetaText}>In: {formatClock(row.clockIn)}</Text>
-                <Text style={styles.rowMetaText}>Out: {formatClock(row.clockOut)}</Text>
+                <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>In: {formatClock(row.clockIn)}</Text>
+                <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>Out: {formatClock(row.clockOut)}</Text>
                 {row.hoursWorked != null && (
-                  <Text style={styles.rowMetaText}>{Number(row.hoursWorked).toFixed(1)}h</Text>
+                  <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>{Number(row.hoursWorked).toFixed(1)}h</Text>
                 )}
               </View>
               {canWrite && (
@@ -734,22 +802,22 @@ export default function AttendanceScreen() {
 
       {/* Clock-in dialog */}
       <Modal visible={clockInOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Clock In Worker</Text>
-            <Text style={styles.label}>Worker</Text>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Clock In Worker</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Worker</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {workers.length === 0 && <Text style={styles.rowMetaText}>No workers found.</Text>}
+              {workers.length === 0 && <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>No workers found.</Text>}
               {workers.map((w) => {
                 const name = `${w.firstName} ${w.lastName}`;
                 return (
                   <TouchableOpacity
                     key={w.id}
                     onPress={() => setClockInWorkerId(w.id)}
-                    style={[styles.chip, clockInWorkerId === w.id && styles.chipActive, { marginRight: 8 }]}
+                    style={[styles.chip, dynamicStyles.chip, clockInWorkerId === w.id && styles.chipActive, { marginRight: 8 }]}
                     accessibilityLabel={`Select ${name}`}
                   >
-                    <Text style={[styles.chipText, clockInWorkerId === w.id && styles.chipTextActive]}>{name}</Text>
+                    <Text style={[styles.chipText, dynamicStyles.chipText, clockInWorkerId === w.id && styles.chipTextActive]}>{name}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -769,10 +837,10 @@ export default function AttendanceScreen() {
 
       {/* Record attendance dialog */}
       <Modal visible={recordOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Record Attendance</Text>
-            <Text style={styles.label}>Worker</Text>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Record Attendance</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Worker</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
               {workers.map((w) => {
                 const name = `${w.firstName} ${w.lastName}`;
@@ -780,32 +848,33 @@ export default function AttendanceScreen() {
                   <TouchableOpacity
                     key={w.id}
                     onPress={() => setRecordForm((f) => ({ ...f, workerId: w.id }))}
-                    style={[styles.chip, recordForm.workerId === w.id && styles.chipActive, { marginRight: 8 }]}
+                    style={[styles.chip, dynamicStyles.chip, recordForm.workerId === w.id && styles.chipActive, { marginRight: 8 }]}
                     accessibilityLabel={`Select ${name}`}
                   >
-                    <Text style={[styles.chipText, recordForm.workerId === w.id && styles.chipTextActive]}>{name}</Text>
+                    <Text style={[styles.chipText, dynamicStyles.chipText, recordForm.workerId === w.id && styles.chipTextActive]}>{name}</Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-            <Text style={styles.label}>Date</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Date</Text>
             <TextInput
               value={recordForm.date}
               onChangeText={(v) => setRecordForm((f) => ({ ...f, date: v }))}
               placeholder="YYYY-MM-DD"
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
+              placeholderTextColor={tc.placeholder}
               accessibilityLabel="Record date"
             />
-            <Text style={styles.label}>Status</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Status</Text>
             <View style={styles.chipRow}>
               {STATUS_FILTERS.filter(Boolean).map((s) => (
                 <TouchableOpacity
                   key={s}
                   onPress={() => setRecordForm((f) => ({ ...f, status: s }))}
-                  style={[styles.chip, recordForm.status === s && styles.chipActive]}
+                  style={[styles.chip, dynamicStyles.chip, recordForm.status === s && styles.chipActive]}
                   accessibilityLabel={`Status ${s.replace('_', ' ')}`}
                 >
-                  <Text style={[styles.chipText, recordForm.status === s && styles.chipTextActive]}>
+                  <Text style={[styles.chipText, dynamicStyles.chipText, recordForm.status === s && styles.chipTextActive]}>
                     {s.replace('_', ' ')}
                   </Text>
                 </TouchableOpacity>
@@ -813,32 +882,35 @@ export default function AttendanceScreen() {
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Clock In</Text>
+                <Text style={[styles.label, dynamicStyles.label]}>Clock In</Text>
                 <TextInput
                   value={recordForm.clockIn}
                   onChangeText={(v) => setRecordForm((f) => ({ ...f, clockIn: v }))}
                   placeholder="HH:MM"
-                  style={styles.input}
+                  style={[styles.input, dynamicStyles.input]}
+                  placeholderTextColor={tc.placeholder}
                   accessibilityLabel="Clock in time"
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Clock Out</Text>
+                <Text style={[styles.label, dynamicStyles.label]}>Clock Out</Text>
                 <TextInput
                   value={recordForm.clockOut}
                   onChangeText={(v) => setRecordForm((f) => ({ ...f, clockOut: v }))}
                   placeholder="HH:MM"
-                  style={styles.input}
+                  style={[styles.input, dynamicStyles.input]}
+                  placeholderTextColor={tc.placeholder}
                   accessibilityLabel="Clock out time"
                 />
               </View>
             </View>
-            <Text style={styles.label}>Notes</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Notes</Text>
             <TextInput
               value={recordForm.notes}
               onChangeText={(v) => setRecordForm((f) => ({ ...f, notes: v }))}
               placeholder="Optional note"
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
+              placeholderTextColor={tc.placeholder}
             />
             <View style={styles.modalActions}>
               <Button title="Cancel" variant="secondary" onPress={() => setRecordOpen(false)} style={{ flex: 1 }} />
@@ -855,21 +927,21 @@ export default function AttendanceScreen() {
 
       {/* Edit (correction) dialog */}
       <Modal visible={!!editRecord} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>
               Edit Attendance{editRecord ? ` — ${editRecord.workerName}` : ''}
             </Text>
-            <Text style={styles.label}>Status</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Status</Text>
             <View style={styles.chipRow}>
               {STATUS_FILTERS.filter(Boolean).map((s) => (
                 <TouchableOpacity
                   key={s}
                   onPress={() => setEditForm((f) => ({ ...f, status: s }))}
-                  style={[styles.chip, editForm.status === s && styles.chipActive]}
+                  style={[styles.chip, dynamicStyles.chip, editForm.status === s && styles.chipActive]}
                   accessibilityLabel={`Status ${s.replace('_', ' ')}`}
                 >
-                  <Text style={[styles.chipText, editForm.status === s && styles.chipTextActive]}>
+                  <Text style={[styles.chipText, dynamicStyles.chipText, editForm.status === s && styles.chipTextActive]}>
                     {s.replace('_', ' ')}
                   </Text>
                 </TouchableOpacity>
@@ -877,32 +949,35 @@ export default function AttendanceScreen() {
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Clock In</Text>
+                <Text style={[styles.label, dynamicStyles.label]}>Clock In</Text>
                 <TextInput
                   value={editForm.clockIn}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, clockIn: v }))}
                   placeholder="HH:MM"
-                  style={styles.input}
+                  style={[styles.input, dynamicStyles.input]}
+                  placeholderTextColor={tc.placeholder}
                   accessibilityLabel="Edit clock in time"
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Clock Out</Text>
+                <Text style={[styles.label, dynamicStyles.label]}>Clock Out</Text>
                 <TextInput
                   value={editForm.clockOut}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, clockOut: v }))}
                   placeholder="HH:MM"
-                  style={styles.input}
+                  style={[styles.input, dynamicStyles.input]}
+                  placeholderTextColor={tc.placeholder}
                   accessibilityLabel="Edit clock out time"
                 />
               </View>
             </View>
-            <Text style={styles.label}>Notes</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Notes</Text>
             <TextInput
               value={editForm.notes}
               onChangeText={(v) => setEditForm((f) => ({ ...f, notes: v }))}
               placeholder="Optional note"
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
+              placeholderTextColor={tc.placeholder}
             />
             <View style={styles.modalActions}>
               <Button title="Cancel" variant="secondary" onPress={() => setEditRecord(null)} style={{ flex: 1 }} />

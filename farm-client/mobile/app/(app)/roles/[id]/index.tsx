@@ -8,6 +8,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -70,12 +71,28 @@ export default function RoleDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   const canManage = hasPermission('organization.manage');
 
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<Role | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardSurface: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    roleName: { color: tc.text },
+    roleDescription: { color: tc.textSecondary },
+    sectionTitle: { color: tc.textSecondary },
+    permChip: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    permChipText: { color: tc.text },
+    emptyPerms: { color: tc.textSecondary },
+  };
 
   useEffect(() => {
     loadRole();
@@ -129,8 +146,8 @@ export default function RoleDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -144,8 +161,8 @@ export default function RoleDetailScreen() {
 
   if (loadError || !role) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -166,8 +183,8 @@ export default function RoleDetailScreen() {
   const permissions: any[] = role.permissions ?? [];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -176,27 +193,27 @@ export default function RoleDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.roleName}>{role.name}</Text>
-          {!!role.description && <Text style={styles.roleDescription}>{role.description}</Text>}
+        <View style={[styles.card, dynamicStyles.cardSurface]}>
+          <Text style={[styles.roleName, dynamicStyles.roleName]}>{role.name}</Text>
+          {!!role.description && <Text style={[styles.roleDescription, dynamicStyles.roleDescription]}>{role.description}</Text>}
 
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
             Permissions ({permissions.length || role.permissionIds?.length || 0})
           </Text>
           {permissions.length > 0 ? (
             permissions.map((p, index) => (
-              <View key={p?.id ?? index} style={styles.permChip}>
-                <Text style={styles.permChipText}>{permLabel(p)}</Text>
+              <View key={p?.id ?? index} style={[styles.permChip, dynamicStyles.permChip]}>
+                <Text style={[styles.permChipText, dynamicStyles.permChipText]}>{permLabel(p)}</Text>
               </View>
             ))
           ) : role.permissionIds && role.permissionIds.length > 0 ? (
             role.permissionIds.map((pid) => (
-              <View key={pid} style={styles.permChip}>
-                <Text style={styles.permChipText}>{pid}</Text>
+              <View key={pid} style={[styles.permChip, dynamicStyles.permChip]}>
+                <Text style={[styles.permChipText, dynamicStyles.permChipText]}>{pid}</Text>
               </View>
             ))
           ) : (
-            <Text style={styles.emptyPerms}>No permissions attached to this role.</Text>
+            <Text style={[styles.emptyPerms, dynamicStyles.emptyPerms]}>No permissions attached to this role.</Text>
           )}
         </View>
 

@@ -16,6 +16,7 @@ import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
 import { SelectField, SelectOption } from '@/core/ui/SelectField';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -71,6 +72,7 @@ interface FormErrors {
 export default function AddEquipmentScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
 
   const [loading, setLoading] = useState(false);
   const [farms, setFarms] = useState<SelectOption[]>([]);
@@ -149,8 +151,8 @@ export default function AddEquipmentScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>

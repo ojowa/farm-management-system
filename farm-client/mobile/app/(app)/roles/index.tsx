@@ -9,6 +9,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -79,6 +80,7 @@ export default function RolesScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Server: POST/PUT/DELETE /org-admin/roles require organization.manage;
   // reads use organization.read (the sidebar gates on role.read OR
@@ -95,6 +97,20 @@ export default function RolesScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState<string | undefined>();
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+    roleName: { color: tc.text },
+    roleDescription: { color: tc.textSecondary },
+    permBadge: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+  };
 
   useEffect(() => {
     loadRoles();
@@ -145,27 +161,27 @@ export default function RolesScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: Role }) => (
-      <Card style={styles.roleCard}>
+      <Card style={[styles.roleCard, dynamicStyles.cardBackground]}>
         <TouchableOpacity onPress={() => router.push(`/roles/${item.id}`)} activeOpacity={0.7}>
           <View style={styles.roleRow}>
             <View style={styles.roleInfo}>
-              <Text style={styles.roleName}>{item.name}</Text>
-              {!!item.description && <Text style={styles.roleDescription}>{item.description}</Text>}
+              <Text style={[styles.roleName, dynamicStyles.roleName]}>{item.name}</Text>
+              {!!item.description && <Text style={[styles.roleDescription, dynamicStyles.roleDescription]}>{item.description}</Text>}
             </View>
-            <View style={styles.permBadge}>
+            <View style={[styles.permBadge, dynamicStyles.permBadge]}>
               <Text style={styles.permBadgeText}>{permCount(item)} perms</Text>
             </View>
           </View>
         </TouchableOpacity>
       </Card>
     ),
-    [router]
+    [router, dynamicStyles]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Roles</Text>
         </View>
@@ -176,8 +192,8 @@ export default function RolesScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Roles</Text>
         </View>
@@ -193,8 +209,8 @@ export default function RolesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Roles</Text>
         {canManage && (
@@ -228,8 +244,8 @@ export default function RolesScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🛡️</Text>
-            <Text style={styles.emptyText}>No Roles Found</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Roles Found</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
               {search ? 'No roles match your search' : 'Create a role to define what your team can do'}
             </Text>
             {!search && canManage && (

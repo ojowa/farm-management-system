@@ -9,6 +9,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -71,6 +72,28 @@ export default function UserDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    avatar: {
+      backgroundColor: isDark ? tc.surface : '#F5F5F5',
+    },
+    userName: {
+      color: tc.text,
+    },
+    divider: {
+      borderTopColor: isDark ? tc.border : colors.light,
+    },
+    detailLabel: {
+      color: tc.text,
+    },
+    detailValue: {
+      color: tc.text,
+    },
+  };
 
   const canManage = hasPermission('users.manage');
 
@@ -127,8 +150,8 @@ export default function UserDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -142,8 +165,8 @@ export default function UserDetailScreen() {
 
   if (loadError || !user) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -162,8 +185,8 @@ export default function UserDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -173,28 +196,28 @@ export default function UserDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, dynamicStyles.avatar]}>
             <Text style={styles.avatarText}>{initials(user)}</Text>
           </View>
-          <Text style={styles.userName}>{displayName(user)}</Text>
+          <Text style={[styles.userName, dynamicStyles.userName]}>{displayName(user)}</Text>
           <Text style={styles.userRole}>{roleLabel(user.role) || 'Member'}</Text>
 
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Email</Text>
-              <Text style={styles.detailValue}>{user.email || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Email</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{user.email || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Phone</Text>
-              <Text style={styles.detailValue}>{user.phone || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Phone</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{user.phone || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Role</Text>
-              <Text style={styles.detailValue}>{roleLabel(user.role) || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Role</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{roleLabel(user.role) || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Platform Admin</Text>
-              <Text style={styles.detailValue}>{user.isPlatformAdmin ? 'Yes' : 'No'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Platform Admin</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{user.isPlatformAdmin ? 'Yes' : 'No'}</Text>
             </View>
           </View>
         </View>

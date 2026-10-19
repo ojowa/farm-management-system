@@ -9,6 +9,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -154,6 +155,70 @@ const EMPTY_FORM: ShiftForm = { name: '', startTime: '', endTime: '', daysOfWeek
 export default function RosterScreen() {
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    emptyText: {
+      color: tc.text,
+    },
+    emptySubtext: {
+      color: tc.textSecondary,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    shiftName: {
+      color: tc.text,
+    },
+    shiftTime: {
+      color: tc.textSecondary,
+    },
+    shiftDays: {
+      color: tc.textSecondary,
+    },
+    divider: {
+      borderTopColor: isDark ? tc.border : colors.light,
+    },
+    assignmentText: {
+      color: tc.text,
+    },
+    outlineButton: {
+      borderColor: tc.border,
+    },
+    outlineButtonText: {
+      color: tc.text,
+    },
+    label: {
+      color: tc.text,
+    },
+    chip: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    chipText: {
+      color: tc.text,
+    },
+    colorSwatchActive: {
+      borderColor: tc.text,
+    },
+    insetRow: {
+      backgroundColor: isDark ? tc.surface : '#F5F5F5',
+    },
+    assigneeName: {
+      color: tc.text,
+    },
+    assigneeDate: {
+      color: tc.textSecondary,
+    },
+    emptyNote: {
+      color: tc.textSecondary,
+    },
+  };
 
   // Server: GET /shifts is hr.read|worker.read, POST/PUT hr.write, DELETE
   // hr.delete; assignments create is hr.write and delete is hr.delete.
@@ -403,17 +468,17 @@ export default function RosterScreen() {
       const color = (item as any).color;
       const count = assignmentCounts[item.id] ?? 0;
       return (
-        <Card style={styles.shiftCard}>
+        <Card style={[styles.shiftCard, dynamicStyles.cardBackground]}>
           <View style={styles.shiftRow}>
             <View style={styles.shiftInfo}>
               <View style={styles.shiftNameRow}>
                 {color ? <View style={[styles.colorDot, { backgroundColor: color }]} /> : null}
-                <Text style={styles.shiftName}>{item.name}</Text>
+                <Text style={[styles.shiftName, dynamicStyles.shiftName]}>{item.name}</Text>
               </View>
-              <Text style={styles.shiftTime}>
+              <Text style={[styles.shiftTime, dynamicStyles.shiftTime]}>
                 {item.startTime} – {item.endTime}
               </Text>
-              <Text style={styles.shiftDays}>{describeDays(days)}</Text>
+              <Text style={[styles.shiftDays, dynamicStyles.shiftDays]}>{describeDays(days)}</Text>
             </View>
             <View style={isActive ? styles.activeBadge : styles.inactiveBadge}>
               <Text style={isActive ? styles.activeBadgeText : styles.inactiveBadgeText}>
@@ -421,29 +486,29 @@ export default function RosterScreen() {
               </Text>
             </View>
           </View>
-          <View style={styles.assignmentRow}>
-            <Text style={styles.assignmentText}>
+          <View style={[styles.assignmentRow, dynamicStyles.divider]}>
+            <Text style={[styles.assignmentText, dynamicStyles.assignmentText]}>
               {count} {count === 1 ? 'assignment' : 'assignments'}
             </Text>
             <View style={styles.assignmentActions}>
               {canWrite && (
                 <TouchableOpacity
-                  style={styles.outlineButton}
+                  style={[styles.outlineButton, dynamicStyles.outlineButton]}
                   onPress={() => openManage(item)}
                   accessibilityRole="button"
                   accessibilityLabel={`Manage assignments for ${item.name}`}
                 >
-                  <Text style={styles.outlineButtonText}>Assign</Text>
+                  <Text style={[styles.outlineButtonText, dynamicStyles.outlineButtonText]}>Assign</Text>
                 </TouchableOpacity>
               )}
               {canWrite && (
                 <TouchableOpacity
-                  style={styles.outlineButton}
+                  style={[styles.outlineButton, dynamicStyles.outlineButton]}
                   onPress={() => openEdit(item)}
                   accessibilityRole="button"
                   accessibilityLabel={`Edit ${item.name}`}
                 >
-                  <Text style={styles.outlineButtonText}>Edit</Text>
+                  <Text style={[styles.outlineButtonText, dynamicStyles.outlineButtonText]}>Edit</Text>
                 </TouchableOpacity>
               )}
               {canDelete && (
@@ -461,13 +526,13 @@ export default function RosterScreen() {
         </Card>
       );
     },
-    [assignmentCounts, canWrite, canDelete, deleteShift]
+    [assignmentCounts, canWrite, canDelete, deleteShift, dynamicStyles]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Roster</Text>
         </View>
@@ -478,8 +543,8 @@ export default function RosterScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Roster</Text>
         </View>
@@ -495,8 +560,8 @@ export default function RosterScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Roster</Text>
         {canWrite && (
@@ -519,8 +584,8 @@ export default function RosterScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📅</Text>
-            <Text style={styles.emptyText}>No Shifts Yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Shifts Yet</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
               Create shifts like “Morning” or “Evening” to build your farm's work roster
             </Text>
             {canWrite && (
@@ -561,7 +626,7 @@ export default function RosterScreen() {
           onChangeText={(v) => updateForm('endTime', v)}
           error={formErrors.endTime}
         />
-        <Text style={styles.label}>Repeating days (none = every day)</Text>
+        <Text style={[styles.label, dynamicStyles.label]}>Repeating days (none = every day)</Text>
         <View style={styles.chipRow}>
           {DAY_TOKENS.map((token) => {
             const active = form.daysOfWeek.includes(token);
@@ -569,25 +634,25 @@ export default function RosterScreen() {
               <TouchableOpacity
                 key={token}
                 onPress={() => toggleDay(token)}
-                style={[styles.chip, active && styles.chipActive]}
+                style={[styles.chip, dynamicStyles.chip, active && styles.chipActive]}
                 accessibilityRole="button"
                 accessibilityLabel={`Day ${token}`}
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                <Text style={[styles.chipText, dynamicStyles.chipText, active && styles.chipTextActive]}>
                   {DAY_LABELS[token]}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </View>
-        <Text style={styles.label}>Colour</Text>
+        <Text style={[styles.label, dynamicStyles.label]}>Colour</Text>
         <View style={styles.chipRow}>
           {SHIFT_COLORS.map((c) => (
             <TouchableOpacity
               key={c}
               onPress={() => updateForm('color', c)}
-              style={[styles.colorSwatch, { backgroundColor: c }, form.color === c && styles.colorSwatchActive]}
+              style={[styles.colorSwatch, { backgroundColor: c }, form.color === c && styles.colorSwatchActive, form.color === c && dynamicStyles.colorSwatchActive]}
               accessibilityRole="button"
               accessibilityLabel={`Colour ${c}`}
               accessibilityState={{ selected: form.color === c }}
@@ -614,13 +679,13 @@ export default function RosterScreen() {
       >
         <ScrollView style={{ maxHeight: 360 }}>
           {managedAssignments.length === 0 ? (
-            <Text style={styles.emptyNote}>No workers assigned to this shift yet.</Text>
+            <Text style={[styles.emptyNote, dynamicStyles.emptyNote]}>No workers assigned to this shift yet.</Text>
           ) : (
             managedAssignments.map((a: any) => (
-              <View key={a.id} style={styles.assigneeRow}>
+              <View key={a.id} style={[styles.assigneeRow, dynamicStyles.insetRow]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.assigneeName}>{a.userName || a.userId || 'Worker'}</Text>
-                  <Text style={styles.assigneeDate}>{a.date ? String(a.date).slice(0, 10) : ''}</Text>
+                  <Text style={[styles.assigneeName, dynamicStyles.assigneeName]}>{a.userName || a.userId || 'Worker'}</Text>
+                  <Text style={[styles.assigneeDate, dynamicStyles.assigneeDate]}>{a.date ? String(a.date).slice(0, 10) : ''}</Text>
                 </View>
                 {canDelete && (
                   <TouchableOpacity
@@ -648,9 +713,9 @@ export default function RosterScreen() {
                 />
               ) : (
                 <>
-                  <Text style={styles.label}>Pick a worker</Text>
+                  <Text style={[styles.label, dynamicStyles.label]}>Pick a worker</Text>
                   {availableWorkers.length === 0 ? (
-                    <Text style={styles.emptyNote}>No workers available.</Text>
+                    <Text style={[styles.emptyNote, dynamicStyles.emptyNote]}>No workers available.</Text>
                   ) : (
                     <View style={styles.chipRow}>
                       {availableWorkers.map((w) => {
@@ -661,11 +726,11 @@ export default function RosterScreen() {
                             key={w.id}
                             disabled={already || assigning}
                             onPress={() => handleAssign(w)}
-                            style={[styles.chip, already && { opacity: 0.4 }]}
+                            style={[styles.chip, dynamicStyles.chip, already && { opacity: 0.4 }]}
                             accessibilityRole="button"
                             accessibilityLabel={`Assign ${name}`}
                           >
-                            <Text style={styles.chipText}>{already ? `✓ ${name}` : name}</Text>
+                            <Text style={[styles.chipText, dynamicStyles.chipText]}>{already ? `✓ ${name}` : name}</Text>
                           </TouchableOpacity>
                         );
                       })}

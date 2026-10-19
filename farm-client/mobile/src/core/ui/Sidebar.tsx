@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePathname, useRouter } from 'expo-router';
-import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { useAppSelector, useAuth } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import {
@@ -25,6 +25,7 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { close } = useSidebar();
   const user = useAppSelector((state) => state.auth.user);
+  const { logout } = useAuth();
   const { hasPermission } = usePermission();
   const { colors } = useAppTheme();
 
@@ -47,6 +48,23 @@ export const Sidebar: React.FC = () => {
     },
     [close, router]
   );
+
+  // Mirrors settings.tsx: confirm first, then dispatch the logout thunk and
+  // bounce to the login screen. Guarded so a missing hook (test doubles)
+  // still navigates.
+  const confirmLogout = useCallback(() => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logout?.();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  }, [logout, router]);
 
   // Same active-item rule as the admin sidebar: exact match, or a child route
   // of the item (so /finance/add still highlights Finance). "/" only matches "/".
@@ -142,6 +160,17 @@ export const Sidebar: React.FC = () => {
             {user?.role ? user.role.replace(/_/g, ' ') : 'User'}
           </Text>
         </View>
+        <TouchableOpacity
+          onPress={confirmLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.logoutButton}
+        >
+          <Text style={styles.logoutIcon} accessibilityElementsHidden importantForAccessibility="no">
+            🚪
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -249,5 +278,12 @@ const styles = StyleSheet.create({
   footerRole: {
     fontSize: 12,
     marginTop: 1,
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 8,
+  },
+  logoutIcon: {
+    fontSize: 18,
   },
 });

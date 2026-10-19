@@ -26,6 +26,7 @@ import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
 import { useAppSelector } from '../../../../src/modules/auth/hooks/useAuth';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -157,30 +158,34 @@ interface SectionRowProps {
   deleteLabel?: string;
 }
 
-const SectionRow: React.FC<SectionRowProps> = ({ title, subtitle, onDelete, deleteLabel }) => (
-  <View style={styles.sectionRow}>
-    <View style={styles.sectionRowBody}>
-      <Text style={styles.sectionRowTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.sectionRowSubtitle}>{subtitle}</Text> : null}
+const SectionRow: React.FC<SectionRowProps> = ({ title, subtitle, onDelete, deleteLabel }) => {
+  const { colors: tc, isDark } = useAppTheme();
+  return (
+    <View style={[styles.sectionRow, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
+      <View style={styles.sectionRowBody}>
+        <Text style={[styles.sectionRowTitle, { color: tc.text }]}>{title}</Text>
+        {subtitle ? <Text style={[styles.sectionRowSubtitle, { color: tc.textSecondary }]}>{subtitle}</Text> : null}
+      </View>
+      {onDelete && (
+        <TouchableOpacity
+          style={styles.sectionRowDelete}
+          onPress={onDelete}
+          accessibilityRole="button"
+          accessibilityLabel={deleteLabel || 'Delete record'}
+        >
+          <Text style={styles.sectionRowDeleteText}>✕</Text>
+        </TouchableOpacity>
+      )}
     </View>
-    {onDelete && (
-      <TouchableOpacity
-        style={styles.sectionRowDelete}
-        onPress={onDelete}
-        accessibilityRole="button"
-        accessibilityLabel={deleteLabel || 'Delete record'}
-      >
-        <Text style={styles.sectionRowDeleteText}>✕</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-);
+  );
+};
 
 export default function PondDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const user = useAppSelector((state) => state.auth.user);
+  const { colors: tc, isDark } = useAppTheme();
 
   // Pond actions mirror the server's permission checks: only aquaculture.write
   // may add/edit records, aquaculture.delete may delete them. Missing
@@ -595,14 +600,14 @@ export default function PondDetailScreen() {
     if (sectionsLoading[key]) {
       return (
         <View style={styles.sectionLoading}>
-          <Text style={styles.sectionLoadingText}>Loading…</Text>
+          <Text style={[styles.sectionLoadingText, { color: tc.textSecondary }]}>Loading…</Text>
         </View>
       );
     }
     if (items.length === 0) {
       return (
         <View style={styles.sectionEmpty}>
-          <Text style={styles.sectionEmptyText}>{emptyLabel}</Text>
+          <Text style={[styles.sectionEmptyText, { color: tc.textSecondary }]}>{emptyLabel}</Text>
         </View>
       );
     }
@@ -614,7 +619,7 @@ export default function PondDetailScreen() {
       case 'stockings':
         return (
           <>
-            <Text style={styles.modalTitle}>Add Stocking</Text>
+            <Text style={[styles.modalTitle, { color: tc.text }]}>Add Stocking</Text>
             <ScrollView keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <TextInputField
@@ -697,18 +702,19 @@ export default function PondDetailScreen() {
                 />
               </View>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Status</Text>
+                <Text style={[styles.label, { color: tc.text }]}>Status</Text>
                 <View style={styles.chipRow}>
                   {STOCKING_STATUSES.map((status) => (
                     <TouchableOpacity
                       key={status}
-                      style={[styles.chip, stockingForm.status === status && styles.chipActive]}
+                      style={[styles.chip, stockingForm.status === status && styles.chipActive, stockingForm.status === status ? undefined : { backgroundColor: tc.card, borderColor: tc.border }]}
                       onPress={() => setStockingForm((prev) => ({ ...prev, status }))}
                     >
                       <Text
                         style={[
                           styles.chipText,
                           stockingForm.status === status && styles.chipTextActive,
+                          stockingForm.status === status ? undefined : { color: tc.textSecondary },
                         ]}
                       >
                         {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -742,7 +748,7 @@ export default function PondDetailScreen() {
       case 'feedings':
         return (
           <>
-            <Text style={styles.modalTitle}>Add Feeding</Text>
+            <Text style={[styles.modalTitle, { color: tc.text }]}>Add Feeding</Text>
             <ScrollView keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <TextInputField
@@ -819,7 +825,7 @@ export default function PondDetailScreen() {
       case 'waterQuality':
         return (
           <>
-            <Text style={styles.modalTitle}>Add Water Quality</Text>
+            <Text style={[styles.modalTitle, { color: tc.text }]}>Add Water Quality</Text>
             <ScrollView keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <TextInputField
@@ -923,7 +929,7 @@ export default function PondDetailScreen() {
       case 'harvests':
         return (
           <>
-            <Text style={styles.modalTitle}>Add Harvest</Text>
+            <Text style={[styles.modalTitle, { color: tc.text }]}>Add Harvest</Text>
             <ScrollView keyboardShouldPersistTaps="handled">
               <View style={styles.formGroup}>
                 <TextInputField
@@ -1018,8 +1024,8 @@ export default function PondDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -1033,8 +1039,8 @@ export default function PondDetailScreen() {
 
   if (loadError || !pond) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -1053,8 +1059,8 @@ export default function PondDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -1064,7 +1070,7 @@ export default function PondDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.pondCard}>
-          <Text style={styles.pondName}>{pond.name}</Text>
+          <Text style={[styles.pondName, { color: tc.text }]}>{pond.name}</Text>
           <View style={styles.badgeRow}>
             <View style={{ backgroundColor: POND_TYPE_COLORS[pond.pondType]?.bg || '#F3F4F6', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: POND_TYPE_COLORS[pond.pondType]?.text || '#6B7280' }}>
@@ -1077,33 +1083,33 @@ export default function PondDetailScreen() {
               </Text>
             </View>
           </View>
-          <Text style={{ fontSize: 14, color: colors.textLight, marginBottom: 8 }}>
+          <Text style={{ fontSize: 14, color: tc.textSecondary, marginBottom: 8 }}>
             🌊 {farmNames[pond.farmId] || 'Farm'}
             {pond.waterSource ? ` · Water source: ${pond.waterSource}` : ''}
           </Text>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Area</Text>
-              <Text style={styles.statValue}>{pond.area ?? '—'} ha</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Area</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{pond.area ?? '—'} ha</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Capacity</Text>
-              <Text style={styles.statValue}>{pond.capacity ?? '—'}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Capacity</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{pond.capacity ?? '—'}</Text>
             </View>
           </View>
 
           {pond.notes ? (
-            <View style={styles.detailSection}>
-              <Text style={styles.detailLabel}>Notes</Text>
-              <Text style={styles.detailValue}>{pond.notes}</Text>
+            <View style={[styles.detailSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Notes</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{pond.notes}</Text>
             </View>
           ) : null}
         </View>
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Stockings</Text>
+            <Text style={[styles.sectionTitle, { color: tc.text }]}>Stockings</Text>
             {canWrite && (
               <TouchableOpacity
                 style={styles.sectionAdd}
@@ -1149,7 +1155,7 @@ export default function PondDetailScreen() {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Feedings</Text>
+            <Text style={[styles.sectionTitle, { color: tc.text }]}>Feedings</Text>
             {canWrite && (
               <TouchableOpacity
                 style={styles.sectionAdd}
@@ -1191,7 +1197,7 @@ export default function PondDetailScreen() {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Water Quality</Text>
+            <Text style={[styles.sectionTitle, { color: tc.text }]}>Water Quality</Text>
             {canWrite && (
               <TouchableOpacity
                 style={styles.sectionAdd}
@@ -1243,7 +1249,7 @@ export default function PondDetailScreen() {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Harvests</Text>
+            <Text style={[styles.sectionTitle, { color: tc.text }]}>Harvests</Text>
             {canWrite && (
               <TouchableOpacity
                 style={styles.sectionAdd}
@@ -1318,12 +1324,12 @@ export default function PondDetailScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <TouchableOpacity
-            style={styles.modalOverlay}
+            style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
             activeOpacity={1}
             onPress={closeModal}
           >
             <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalContent}>{renderModalForm()}</View>
+              <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>{renderModalForm()}</View>
             </TouchableOpacity>
           </TouchableOpacity>
         </KeyboardAvoidingView>

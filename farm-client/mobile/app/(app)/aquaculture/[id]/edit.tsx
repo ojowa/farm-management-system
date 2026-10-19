@@ -19,6 +19,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -142,6 +143,7 @@ export default function EditPondScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [pond, setPond] = useState<PondData | null>(null);
@@ -258,8 +260,8 @@ export default function EditPondScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -273,8 +275,8 @@ export default function EditPondScreen() {
 
   if (loadError || !pond) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -293,8 +295,8 @@ export default function EditPondScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -308,15 +310,15 @@ export default function EditPondScreen() {
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Farm *</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Farm *</Text>
             <TouchableOpacity
-              style={[styles.selectButton, errors.farmId && styles.selectError]}
+              style={[styles.selectButton, errors.farmId && styles.selectError, { backgroundColor: tc.card }, errors.farmId ? undefined : { borderColor: tc.border }]}
               onPress={() => setShowFarmModal(true)}
             >
-              <Text style={selectedFarm ? styles.selectButtonText : styles.selectPlaceholder}>
+              <Text style={[selectedFarm ? styles.selectButtonText : styles.selectPlaceholder, { color: selectedFarm ? tc.text : tc.textSecondary }]}>
                 {selectedFarm ? selectedFarm.name : 'Select a farm'}
               </Text>
-              <Text style={styles.selectArrow}>▼</Text>
+              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
             </TouchableOpacity>
             {errors.farmId && <Text style={styles.errorText}>{errors.farmId}</Text>}
           </View>
@@ -328,16 +330,16 @@ export default function EditPondScreen() {
             onRequestClose={() => setShowFarmModal(false)}
           >
             <TouchableOpacity
-              style={styles.modalOverlay}
+              style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
               activeOpacity={1}
               onPress={() => setShowFarmModal(false)}
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Select Farm</Text>
+                <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
+                  <Text style={[styles.modalTitle, { color: tc.text }]}>Select Farm</Text>
                   {farms.length === 0 ? (
                     <View style={styles.modalItemEmpty}>
-                      <Text style={styles.modalItemEmptyText}>No farms available</Text>
+                      <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No farms available</Text>
                     </View>
                   ) : (
                     <FlatList
@@ -345,7 +347,7 @@ export default function EditPondScreen() {
                       keyExtractor={(item) => item.id}
                       renderItem={({ item }) => (
                         <TouchableOpacity
-                          style={styles.modalItem}
+                          style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
                           onPress={() => {
                             updateFormData('farmId', item.id);
                             setShowFarmModal(false);
@@ -358,6 +360,7 @@ export default function EditPondScreen() {
                                 color: colors.primary,
                                 fontWeight: '600',
                               },
+                              item.id === formData.farmId ? undefined : { color: tc.text },
                             ]}
                           >
                             {item.name}
@@ -388,7 +391,7 @@ export default function EditPondScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Pond Type *</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Pond Type *</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
               {POND_TYPES.map((type) => {
                 const isSelected = formData.pondType === type;
@@ -396,16 +399,19 @@ export default function EditPondScreen() {
                   <TouchableOpacity
                     key={type}
                     onPress={() => updateFormData('pondType', type)}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      borderWidth: isSelected ? 2 : 1,
-                      borderColor: isSelected ? POND_TYPE_COLORS[type].text : '#D1D5DB',
-                      backgroundColor: isSelected ? POND_TYPE_COLORS[type].bg : '#F9FAFB',
-                    }}
+                    style={[
+                      {
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? POND_TYPE_COLORS[type].text : '#D1D5DB',
+                        backgroundColor: isSelected ? POND_TYPE_COLORS[type].bg : '#F9FAFB',
+                      },
+                      isSelected ? undefined : { backgroundColor: tc.card, borderColor: tc.border },
+                    ]}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '600' : '400', color: isSelected ? POND_TYPE_COLORS[type].text : '#6B7280' }}>
+                    <Text style={[{ fontSize: 13, fontWeight: isSelected ? '600' : '400', color: isSelected ? POND_TYPE_COLORS[type].text : '#6B7280' }, isSelected ? undefined : { color: tc.textSecondary }]}>
                       {POND_TYPE_ICONS[type]} {type.charAt(0) + type.slice(1).toLowerCase()}
                     </Text>
                   </TouchableOpacity>
@@ -446,7 +452,7 @@ export default function EditPondScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Status</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Status</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
               {POND_STATUSES.map((status) => {
                 const isSelected = formData.status === status;
@@ -454,16 +460,19 @@ export default function EditPondScreen() {
                   <TouchableOpacity
                     key={status}
                     onPress={() => updateFormData('status', status)}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      borderWidth: isSelected ? 2 : 1,
-                      borderColor: isSelected ? colors.primary : '#D1D5DB',
-                      backgroundColor: isSelected ? '#E8F0FE' : '#F9FAFB',
-                    }}
+                    style={[
+                      {
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? colors.primary : '#D1D5DB',
+                        backgroundColor: isSelected ? '#E8F0FE' : '#F9FAFB',
+                      },
+                      isSelected ? undefined : { backgroundColor: tc.card, borderColor: tc.border },
+                    ]}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '600' : '400', color: isSelected ? colors.primary : '#6B7280' }}>
+                    <Text style={[{ fontSize: 13, fontWeight: isSelected ? '600' : '400', color: isSelected ? colors.primary : '#6B7280' }, isSelected ? undefined : { color: tc.textSecondary }]}>
                       {status.charAt(0).toUpperCase() + status.slice(1)}
                     </Text>
                   </TouchableOpacity>

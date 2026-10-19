@@ -49,7 +49,14 @@ export default function AppLayout() {
         overlayAccessibilityLabel="Close navigation menu"
         renderDrawerContent={renderDrawerContent}
       >
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            // Themed scene background: prevents a white flash when a new
+            // screen mounts before it paints its own container color.
+            contentStyle: { backgroundColor: themeColors.background },
+          }}
+        />
       </Drawer>
     </SidebarContext.Provider>
   );

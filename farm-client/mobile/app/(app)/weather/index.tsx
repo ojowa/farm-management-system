@@ -7,6 +7,7 @@ import { Card, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -142,6 +143,7 @@ function dayName(dateStr: string, index: number): string {
 }
 
 export default function WeatherScreen() {
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -245,10 +247,27 @@ export default function WeatherScreen() {
     }
   }, []);
 
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    locationText: { color: tc.textSecondary },
+    currentTemp: { color: tc.text },
+    currentDescription: { color: tc.textSecondary },
+    metricValue: { color: tc.text },
+    metricLabel: { color: tc.textSecondary },
+    sectionTitle: { color: tc.textSecondary },
+    forecastRow: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    forecastDay: { color: tc.text },
+    forecastDescription: { color: tc.textSecondary },
+    forecastHigh: { color: tc.text },
+    forecastLow: { color: tc.textSecondary },
+    partialNotice: { color: tc.textSecondary },
+    noForecast: { color: tc.textSecondary },
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Weather</Text>
         </View>
@@ -258,8 +277,8 @@ export default function WeatherScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Weather</Text>
         <TouchableOpacity
@@ -290,7 +309,7 @@ export default function WeatherScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadWeather(true)} />}
       >
-        {!!partialNote && <Text style={styles.partialNotice}>{partialNote}</Text>}
+        {!!partialNote && <Text style={[styles.partialNotice, dynamicStyles.partialNotice]}>{partialNote}</Text>}
 
         {alerts.map((alert) => {
           const severe = alert.severity === 'severe' || alert.severity === 'extreme';
@@ -309,7 +328,7 @@ export default function WeatherScreen() {
         {farmLocation && (
           <View style={styles.locationRow}>
             <Text style={{ fontSize: 13 }}>📍</Text>
-            <Text style={styles.locationText}>
+            <Text style={[styles.locationText, dynamicStyles.locationText]}>
               {farmLocation.name} ({farmLocation.lat.toFixed(2)}, {farmLocation.lon.toFixed(2)})
             </Text>
           </View>
@@ -320,45 +339,45 @@ export default function WeatherScreen() {
             <View style={styles.currentTop}>
               <Text style={styles.currentIcon}>{weatherEmoji(weather.icon)}</Text>
               <View>
-                <Text style={styles.currentTemp}>{Math.round(weather.temperature)}°C</Text>
-                <Text style={styles.currentDescription}>{weather.description}</Text>
+                <Text style={[styles.currentTemp, dynamicStyles.currentTemp]}>{Math.round(weather.temperature)}°C</Text>
+                <Text style={[styles.currentDescription, dynamicStyles.currentDescription]}>{weather.description}</Text>
               </View>
             </View>
             <View style={styles.metricsRow}>
               <View style={styles.metricBox}>
-                <Text style={styles.metricValue}>{Math.round(weather.humidity)}%</Text>
-                <Text style={styles.metricLabel}>Humidity</Text>
+                <Text style={[styles.metricValue, dynamicStyles.metricValue]}>{Math.round(weather.humidity)}%</Text>
+                <Text style={[styles.metricLabel, dynamicStyles.metricLabel]}>Humidity</Text>
               </View>
               <View style={styles.metricBox}>
-                <Text style={styles.metricValue}>{Math.round(weather.windSpeed)} km/h</Text>
-                <Text style={styles.metricLabel}>Wind</Text>
+                <Text style={[styles.metricValue, dynamicStyles.metricValue]}>{Math.round(weather.windSpeed)} km/h</Text>
+                <Text style={[styles.metricLabel, dynamicStyles.metricLabel]}>Wind</Text>
               </View>
               {weather.feelsLike != null && (
                 <View style={styles.metricBox}>
-                  <Text style={styles.metricValue}>{Math.round(weather.feelsLike)}°C</Text>
-                  <Text style={styles.metricLabel}>Feels Like</Text>
+                  <Text style={[styles.metricValue, dynamicStyles.metricValue]}>{Math.round(weather.feelsLike)}°C</Text>
+                  <Text style={[styles.metricLabel, dynamicStyles.metricLabel]}>Feels Like</Text>
                 </View>
               )}
             </View>
           </Card>
         )}
 
-        <Text style={styles.sectionTitle}>7-Day Forecast</Text>
+        <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>7-Day Forecast</Text>
         {forecast.length === 0 ? (
-          <Text style={styles.noForecast}>No forecast data available.</Text>
+          <Text style={[styles.noForecast, dynamicStyles.noForecast]}>No forecast data available.</Text>
         ) : (
           forecast.map((day, i) => (
-            <View key={`${day.date}-${i}`} style={styles.forecastRow}>
+            <View key={`${day.date}-${i}`} style={[styles.forecastRow, dynamicStyles.forecastRow]}>
               <View style={styles.forecastLeft}>
                 <Text style={styles.forecastIcon}>{weatherEmoji(day.icon)}</Text>
                 <View>
-                  <Text style={styles.forecastDay}>{dayName(day.date, i)}</Text>
-                  <Text style={styles.forecastDescription}>{day.description}</Text>
+                  <Text style={[styles.forecastDay, dynamicStyles.forecastDay]}>{dayName(day.date, i)}</Text>
+                  <Text style={[styles.forecastDescription, dynamicStyles.forecastDescription]}>{day.description}</Text>
                 </View>
               </View>
               <View style={styles.forecastTemps}>
-                <Text style={styles.forecastHigh}>{Math.round(day.tempHigh)}°</Text>
-                <Text style={styles.forecastLow}>{Math.round(day.tempLow)}°</Text>
+                <Text style={[styles.forecastHigh, dynamicStyles.forecastHigh]}>{Math.round(day.tempHigh)}°</Text>
+                <Text style={[styles.forecastLow, dynamicStyles.forecastLow]}>{Math.round(day.tempLow)}°</Text>
               </View>
             </View>
           ))

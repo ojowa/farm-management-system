@@ -19,6 +19,7 @@ import { leaveAPI } from '@/modules/hr';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -158,6 +159,106 @@ function unwrapList<T>(payload: any): T[] {
 export default function LeaveScreen() {
   const { user } = useAuth();
   const { hasPermission, hasAnyPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    balanceValue: {
+      color: tc.text,
+    },
+    balanceLabel: {
+      color: tc.textSecondary,
+    },
+    sectionTitle: {
+      color: tc.text,
+    },
+    filterBtn: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    filterBtnText: {
+      color: tc.text,
+    },
+    requesterName: {
+      color: tc.textSecondary,
+    },
+    requestType: {
+      color: tc.text,
+    },
+    requestDates: {
+      color: tc.text,
+    },
+    requestDays: {
+      color: tc.textSecondary,
+    },
+    requestReason: {
+      color: tc.textSecondary,
+    },
+    selectBox: {
+      borderColor: tc.border,
+    },
+    bulkBar: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    bulkCount: {
+      color: tc.text,
+    },
+    onLeaveName: {
+      color: tc.text,
+    },
+    onLeaveMeta: {
+      color: tc.textSecondary,
+    },
+    emptyText: {
+      color: tc.text,
+    },
+    emptySubtext: {
+      color: tc.textSecondary,
+    },
+    modalOverlay: {
+      backgroundColor: tc.overlay,
+    },
+    modalContent: {
+      backgroundColor: tc.surface,
+    },
+    modalTitle: {
+      color: tc.text,
+    },
+    input: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    label: {
+      color: tc.text,
+    },
+    helper: {
+      color: tc.textSecondary,
+    },
+    ledgerDivider: {
+      borderBottomColor: isDark ? tc.border : colors.light,
+    },
+    ledgerName: {
+      color: tc.text,
+    },
+    ledgerValue: {
+      color: tc.textSecondary,
+    },
+    inlineText: {
+      color: tc.text,
+    },
+    inlineTextLight: {
+      color: tc.textSecondary,
+    },
+  };
 
   // Server: approvals/bulk accept hr.write OR leave.approve; the org-wide
   // on-leave list and team ledger are hr.read only.
@@ -391,8 +492,8 @@ export default function LeaveScreen() {
   const totalUsed = balance.reduce((sum, b) => sum + (b.usedDays ?? 0), 0);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={[styles.headerTitle, { marginLeft: 8 }]}>Leave</Text>
         {canApprove && pendingCount > 0 && (
@@ -420,39 +521,39 @@ export default function LeaveScreen() {
           <>
             {/* Who's off today — an hr.read extra, never a blocker. */}
             {canReadOrg && onLeave.length > 0 && (
-              <Card style={styles.onLeaveCard}>
-                <Text style={styles.sectionTitle}>Off Today</Text>
+              <Card style={[styles.onLeaveCard, dynamicStyles.cardBackground]}>
+                <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Off Today</Text>
                 {onLeave.slice(0, 5).map((p: any, i: number) => (
                   <View key={`${p.name ?? i}-${i}`} style={styles.onLeaveRow}>
-                    <Text style={styles.onLeaveName}>{p.name || p.requesterName || 'Worker'}</Text>
-                    <Text style={styles.onLeaveMeta}>
+                    <Text style={[styles.onLeaveName, dynamicStyles.onLeaveName]}>{p.name || p.requesterName || 'Worker'}</Text>
+                    <Text style={[styles.onLeaveMeta, dynamicStyles.onLeaveMeta]}>
                       {[p.leaveType?.name || p.leaveType, p.position].filter(Boolean).join(' · ') || 'On leave'}
                     </Text>
                   </View>
                 ))}
                 {onLeave.length > 5 && (
-                  <Text style={styles.onLeaveMeta}>+{onLeave.length - 5} more</Text>
+                  <Text style={[styles.onLeaveMeta, dynamicStyles.onLeaveMeta]}>+{onLeave.length - 5} more</Text>
                 )}
               </Card>
             )}
 
             {balance.length > 0 && (
-              <Card style={styles.balanceCard}>
-                <Text style={styles.sectionTitle}>Balance</Text>
+              <Card style={[styles.balanceCard, dynamicStyles.cardBackground]}>
+                <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Balance</Text>
                 <View style={styles.balanceRow}>
                   <View style={styles.balanceItem}>
-                    <Text style={styles.balanceValue}>{totalRemaining}</Text>
-                    <Text style={styles.balanceLabel}>Days remaining</Text>
+                    <Text style={[styles.balanceValue, dynamicStyles.balanceValue]}>{totalRemaining}</Text>
+                    <Text style={[styles.balanceLabel, dynamicStyles.balanceLabel]}>Days remaining</Text>
                   </View>
                   <View style={styles.balanceItem}>
-                    <Text style={styles.balanceValue}>{totalUsed}</Text>
-                    <Text style={styles.balanceLabel}>Days used</Text>
+                    <Text style={[styles.balanceValue, dynamicStyles.balanceValue]}>{totalUsed}</Text>
+                    <Text style={[styles.balanceLabel, dynamicStyles.balanceLabel]}>Days used</Text>
                   </View>
                 </View>
                 {balance.map((b) => (
                   <View key={b.leaveTypeId} style={[styles.balanceRow, { marginTop: 10 }]}>
-                    <Text style={{ fontSize: 13, color: colors.text }}>{b.leaveTypeName}</Text>
-                    <Text style={{ fontSize: 13, color: colors.textLight }}>
+                    <Text style={[{ fontSize: 13, color: colors.text }, dynamicStyles.inlineText]}>{b.leaveTypeName}</Text>
+                    <Text style={[{ fontSize: 13, color: colors.textLight }, dynamicStyles.inlineTextLight]}>
                       {b.usedDays}/{b.totalDays} used
                     </Text>
                   </View>
@@ -467,16 +568,16 @@ export default function LeaveScreen() {
               </Card>
             )}
 
-            <Text style={styles.sectionTitle}>Requests</Text>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Requests</Text>
             <View style={styles.yearRow}>
               {yearOptions.map((y) => (
                 <TouchableOpacity
                   key={y}
                   onPress={() => setYear(y)}
-                  style={[styles.filterBtn, year === y && styles.filterBtnActive]}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, year === y && styles.filterBtnActive]}
                   accessibilityLabel={`Show ${y}`}
                 >
-                  <Text style={[styles.filterBtnText, year === y && styles.filterBtnTextActive]}>{y}</Text>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, year === y && styles.filterBtnTextActive]}>{y}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -485,10 +586,10 @@ export default function LeaveScreen() {
                 <TouchableOpacity
                   key={f}
                   onPress={() => setFilter(f)}
-                  style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, filter === f && styles.filterBtnActive]}
                   accessibilityLabel={`Filter by ${f === 'all' ? 'all requests' : f}`}
                 >
-                  <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
                     {f.charAt(0).toUpperCase() + f.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -496,8 +597,8 @@ export default function LeaveScreen() {
             </View>
 
             {bulkMode && (
-              <View style={styles.bulkBar}>
-                <Text style={styles.bulkCount}>
+              <View style={[styles.bulkBar, dynamicStyles.bulkBar]}>
+                <Text style={[styles.bulkCount, dynamicStyles.bulkCount]}>
                   {selected.size} of {pendingCount} pending selected
                 </Text>
                 <TouchableOpacity
@@ -540,10 +641,10 @@ export default function LeaveScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🏖️</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
                 {filter !== 'all' || year !== THIS_YEAR ? 'No matching leave requests' : 'No leave requests'}
               </Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
                 {filter !== 'all' || year !== THIS_YEAR
                   ? 'Try a different year or filter.'
                   : 'Tap + to request time off'}
@@ -557,33 +658,33 @@ export default function LeaveScreen() {
           const requester = request.requesterName;
           return (
             <Card
-              style={styles.requestCard}
+              style={[styles.requestCard, dynamicStyles.cardBackground]}
               onPress={bulkMode && request.status === 'PENDING' && canApprove ? () => toggleSelected(request.id) : undefined}
             >
               {bulkMode && request.status === 'PENDING' && canApprove && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <View style={[styles.selectBox, selectedRow && styles.selectBoxOn]}>
+                  <View style={[styles.selectBox, dynamicStyles.selectBox, selectedRow && styles.selectBoxOn]}>
                     {selectedRow && <Text style={styles.selectCheck}>✓</Text>}
                   </View>
-                  <Text style={styles.requesterName}>Select {requester || 'this request'}</Text>
+                  <Text style={[styles.requesterName, dynamicStyles.requesterName]}>Select {requester || 'this request'}</Text>
                 </View>
               )}
               {requester && !own && (
-                <Text style={styles.requesterName}>{requester}</Text>
+                <Text style={[styles.requesterName, dynamicStyles.requesterName]}>{requester}</Text>
               )}
               <View style={styles.requestHeader}>
-                <Text style={styles.requestType}>{request.leaveType?.name || 'Leave'}</Text>
+                <Text style={[styles.requestType, dynamicStyles.requestType]}>{request.leaveType?.name || 'Leave'}</Text>
                 <View style={[styles.badge, { backgroundColor: STATUS_COLORS[request.status] || '#9CA3AF' }]}>
                   <Text style={styles.badgeText}>{request.status}</Text>
                 </View>
               </View>
-              <Text style={styles.requestDates}>
+              <Text style={[styles.requestDates, dynamicStyles.requestDates]}>
                 {new Date(request.startDate).toLocaleDateString()} — {new Date(request.endDate).toLocaleDateString()}
               </Text>
-              <Text style={styles.requestDays}>
+              <Text style={[styles.requestDays, dynamicStyles.requestDays]}>
                 {request.days} day{request.days !== 1 ? 's' : ''}
               </Text>
-              {request.reason ? <Text style={styles.requestReason}>&ldquo;{request.reason}&rdquo;</Text> : null}
+              {request.reason ? <Text style={[styles.requestReason, dynamicStyles.requestReason]}>&ldquo;{request.reason}&rdquo;</Text> : null}
               {request.status === 'REJECTED' && request.rejectionReason ? (
                 <Text style={[styles.requestReason, { color: '#DC2626', marginTop: 4 }]}>
                   Rejected: {request.rejectionReason}
@@ -643,18 +744,18 @@ export default function LeaveScreen() {
 
       {/* Request / edit modal */}
       <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{editingId ? 'Edit Leave Request' : 'Request Leave'}</Text>
-            <Text style={styles.label}>Leave Type</Text>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{editingId ? 'Edit Leave Request' : 'Request Leave'}</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Leave Type</Text>
             <View style={styles.pickerChipRow}>
               {leaveTypes.map((t) => (
                 <TouchableOpacity
                   key={t.id}
                   onPress={() => setLeaveTypeId(t.id)}
-                  style={[styles.filterBtn, leaveTypeId === t.id && styles.filterBtnActive]}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, leaveTypeId === t.id && styles.filterBtnActive]}
                 >
-                  <Text style={[styles.filterBtnText, leaveTypeId === t.id && styles.filterBtnTextActive]}>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, leaveTypeId === t.id && styles.filterBtnTextActive]}>
                     {t.name}
                   </Text>
                 </TouchableOpacity>
@@ -664,20 +765,23 @@ export default function LeaveScreen() {
               value={startDate}
               onChangeText={setStartDate}
               placeholder="Start date (YYYY-MM-DD)"
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
+              placeholderTextColor={tc.placeholder}
             />
             <TextInput
               value={endDate}
               onChangeText={setEndDate}
               placeholder="End date (YYYY-MM-DD)"
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
+              placeholderTextColor={tc.placeholder}
             />
-            <Text style={styles.helper}>Weekends are not counted as leave days.</Text>
+            <Text style={[styles.helper, dynamicStyles.helper]}>Weekends are not counted as leave days.</Text>
             <TextInput
               value={reason}
               onChangeText={setReason}
               placeholder="Reason (optional)"
-              style={styles.input}
+              style={[styles.input, dynamicStyles.input]}
+              placeholderTextColor={tc.placeholder}
               multiline
             />
             <View style={styles.modalActions}>
@@ -690,20 +794,20 @@ export default function LeaveScreen() {
 
       {/* Team balances ledger (hr.read) */}
       <Modal visible={ledgerOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Team Balances — {year}</Text>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Team Balances — {year}</Text>
             {ledgerLoading ? (
               <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 24 }} />
             ) : !ledger || ledger.length === 0 ? (
-              <Text style={styles.emptySubtext}>No balance rows for {year}.</Text>
+              <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>No balance rows for {year}.</Text>
             ) : (
               ledger.map((row: any, i: number) => (
-                <View key={row.userId || row.id || i} style={styles.ledgerRow}>
-                  <Text style={styles.ledgerName}>
+                <View key={row.userId || row.id || i} style={[styles.ledgerRow, dynamicStyles.ledgerDivider]}>
+                  <Text style={[styles.ledgerName, dynamicStyles.ledgerName]}>
                     {row.userName || row.workerName || row.name || row.userId || 'Worker'}
                   </Text>
-                  <Text style={styles.ledgerValue}>
+                  <Text style={[styles.ledgerValue, dynamicStyles.ledgerValue]}>
                     {row.leaveTypeName ? `${row.leaveTypeName} · ` : ''}
                     {row.usedDays ?? 0}/{row.totalDays ?? 0} used
                   </Text>

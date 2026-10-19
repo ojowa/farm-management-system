@@ -19,6 +19,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 import { MenuButton } from '@/core/ui/MenuButton';
 
 const styles = StyleSheet.create({
@@ -129,6 +130,7 @@ export default function PoultryScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Flock actions mirror the server's FlocksController checks: poultry.read
   // sees the list, poultry.write adds, poultry.delete deletes. Missing
@@ -228,17 +230,17 @@ export default function PoultryScreen() {
     return (
       <View style={{ paddingVertical: 20, alignItems: 'center' }}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={{ fontSize: 12, color: colors.textLight }}>Loading more…</Text>
+        <Text style={{ fontSize: 12, color: tc.textSecondary }}>Loading more…</Text>
       </View>
     );
-  }, [refreshing]);
+  }, [refreshing, tc]);
 
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>🥚</Text>
-        <Text style={styles.emptyText}>No Flocks Yet</Text>
-        <Text style={styles.emptySubtext}>
+        <Text style={[styles.emptyText, { color: tc.text }]}>No Flocks Yet</Text>
+        <Text style={[styles.emptySubtext, { color: tc.textSecondary }]}>
           Create your first flock to start tracking birds, feeding, vaccination, mortality and egg
           production
         </Text>
@@ -251,12 +253,12 @@ export default function PoultryScreen() {
         )}
       </View>
     ),
-    [router, canWrite]
+    [router, canWrite, tc]
   );
 
   const renderItem = useCallback(
     ({ item: flock }: { item: Flock }) => (
-      <Card style={styles.flockCard}>
+      <Card style={[styles.flockCard, { backgroundColor: tc.card }]}>
         <TouchableOpacity onPress={() => router.push(`/poultry/${flock.id}`)} activeOpacity={0.7}>
           <View style={styles.flockCardContent}>
             <View
@@ -268,7 +270,7 @@ export default function PoultryScreen() {
                 marginBottom: 4,
               }}
             >
-              <Text style={styles.flockCode}>{flock.batchCode}</Text>
+              <Text style={[styles.flockCode, { color: tc.text }]}>{flock.batchCode}</Text>
               <View
                 style={{
                   backgroundColor: FLOCK_STATUS_COLORS[flock.status]?.bg || '#F3F4F6',
@@ -288,22 +290,22 @@ export default function PoultryScreen() {
                 </Text>
               </View>
             </View>
-            <Text style={styles.flockBreed}>
+            <Text style={[styles.flockBreed, { color: tc.textSecondary }]}>
               🐔 {flock.breed?.name || 'Breed'} · {farmNames[flock.farmId] || 'Farm'}
             </Text>
-            <View style={styles.flockStats}>
+            <View style={[styles.flockStats, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
               <View style={styles.flockStat}>
-                <Text style={styles.flockStatLabel}>Birds</Text>
+                <Text style={[styles.flockStatLabel, { color: tc.textSecondary }]}>Birds</Text>
                 <Text style={styles.flockStatValue}>
                   {flock.currentCount ?? '—'}/{flock.birdCount ?? '—'}
                 </Text>
               </View>
               <View style={styles.flockStat}>
-                <Text style={styles.flockStatLabel}>Age</Text>
+                <Text style={[styles.flockStatLabel, { color: tc.textSecondary }]}>Age</Text>
                 <Text style={styles.flockStatValue}>{flock.currentAgeDays ?? '—'} d</Text>
               </View>
               <View style={styles.flockStat}>
-                <Text style={styles.flockStatLabel}>Arrived</Text>
+                <Text style={[styles.flockStatLabel, { color: tc.textSecondary }]}>Arrived</Text>
                 <Text style={styles.flockStatValue}>
                   {flock.arrivalDate ? new Date(flock.arrivalDate).toLocaleDateString() : '—'}
                 </Text>
@@ -311,14 +313,14 @@ export default function PoultryScreen() {
             </View>
           </View>
         </TouchableOpacity>
-        <View style={styles.flockActions}>
+        <View style={[styles.flockActions, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => router.push(`/poultry/${flock.id}`)}
             accessibilityRole="button"
             accessibilityLabel={`View details of ${flock.batchCode}`}
           >
-            <Text style={styles.actionButtonText}>View Details</Text>
+            <Text style={[styles.actionButtonText, { color: tc.primary }]}>View Details</Text>
           </TouchableOpacity>
           {canDelete && (
             <TouchableOpacity
@@ -333,13 +335,13 @@ export default function PoultryScreen() {
         </View>
       </Card>
     ),
-    [farmNames, router, handleDeleteFlock, canDelete]
+    [farmNames, router, handleDeleteFlock, canDelete, tc, isDark]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Poultry</Text>
         </View>
@@ -350,8 +352,8 @@ export default function PoultryScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Poultry</Text>
         </View>
@@ -367,8 +369,8 @@ export default function PoultryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Poultry</Text>
         {canWrite && (
@@ -396,14 +398,14 @@ export default function PoultryScreen() {
           {STATUS_FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive]}
+              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive, statusFilter === f ? undefined : { backgroundColor: tc.card, borderColor: tc.border }]}
               onPress={() => setStatusFilter(f)}
               accessibilityRole="button"
               accessibilityLabel={f === 'all' ? 'Filter all flocks' : `Filter ${f.toLowerCase()} flocks`}
               accessibilityState={{ selected: statusFilter === f }}
             >
               <Text
-                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}
+                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive, statusFilter === f ? undefined : { color: tc.textSecondary }]}
               >
                 {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
               </Text>

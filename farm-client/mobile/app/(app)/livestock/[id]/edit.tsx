@@ -19,6 +19,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -155,6 +156,7 @@ export default function EditAnimalScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [animal, setAnimal] = useState<AnimalData | null>(null);
@@ -323,8 +325,8 @@ export default function EditAnimalScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -338,8 +340,8 @@ export default function EditAnimalScreen() {
 
   if (loadError || !animal) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -358,8 +360,8 @@ export default function EditAnimalScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -404,15 +406,15 @@ export default function EditAnimalScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Farm *</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Farm *</Text>
             <TouchableOpacity
-              style={[styles.selectButton, errors.farmId && styles.selectError]}
+              style={[styles.selectButton, errors.farmId && styles.selectError, { backgroundColor: tc.card }, errors.farmId ? undefined : { borderColor: tc.border }]}
               onPress={() => setShowFarmModal(true)}
             >
-              <Text style={selectedFarm ? styles.selectButtonText : styles.selectPlaceholder}>
+              <Text style={[selectedFarm ? styles.selectButtonText : styles.selectPlaceholder, { color: selectedFarm ? tc.text : tc.textSecondary }]}>
                 {selectedFarm ? selectedFarm.name : 'Select a farm'}
               </Text>
-              <Text style={styles.selectArrow}>▼</Text>
+              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
             </TouchableOpacity>
             {errors.farmId && <Text style={styles.errorText}>{errors.farmId}</Text>}
           </View>
@@ -424,16 +426,16 @@ export default function EditAnimalScreen() {
             onRequestClose={() => setShowFarmModal(false)}
           >
             <TouchableOpacity
-              style={styles.modalOverlay}
+              style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
               activeOpacity={1}
               onPress={() => setShowFarmModal(false)}
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Select Farm</Text>
+                <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
+                  <Text style={[styles.modalTitle, { color: tc.text }]}>Select Farm</Text>
                   {farms.length === 0 ? (
                     <View style={styles.modalItemEmpty}>
-                      <Text style={styles.modalItemEmptyText}>No farms available</Text>
+                      <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No farms available</Text>
                     </View>
                   ) : (
                     <FlatList
@@ -441,7 +443,7 @@ export default function EditAnimalScreen() {
                       keyExtractor={(item) => item.id}
                       renderItem={({ item }) => (
                         <TouchableOpacity
-                          style={styles.modalItem}
+                          style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
                           onPress={() => {
                             updateFormData('farmId', item.id);
                             setShowFarmModal(false);
@@ -454,6 +456,7 @@ export default function EditAnimalScreen() {
                                 color: colors.primary,
                                 fontWeight: '600',
                               },
+                              item.id === formData.farmId ? undefined : { color: tc.text },
                             ]}
                           >
                             {item.name}
@@ -476,15 +479,15 @@ export default function EditAnimalScreen() {
           {animal?.type === 'poultry' && (
             <>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Pen</Text>
+                <Text style={[styles.label, { color: tc.text }]}>Pen</Text>
                 <TouchableOpacity
-                  style={styles.selectButton}
+                  style={[styles.selectButton, { backgroundColor: tc.card, borderColor: tc.border }]}
                   onPress={() => setShowPenModal(true)}
                 >
-                  <Text style={formData.penId ? styles.selectButtonText : styles.selectPlaceholder}>
+                  <Text style={[formData.penId ? styles.selectButtonText : styles.selectPlaceholder, { color: formData.penId ? tc.text : tc.textSecondary }]}>
                     {pens.find((p) => p.id === formData.penId)?.name || 'Select a pen'}
                   </Text>
-                  <Text style={styles.selectArrow}>▼</Text>
+                  <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
                 </TouchableOpacity>
               </View>
 
@@ -495,16 +498,16 @@ export default function EditAnimalScreen() {
                 onRequestClose={() => setShowPenModal(false)}
               >
                 <TouchableOpacity
-                  style={styles.modalOverlay}
+                  style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
                   activeOpacity={1}
                   onPress={() => setShowPenModal(false)}
                 >
                   <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-                    <View style={styles.modalContent}>
-                      <Text style={styles.modalTitle}>Select Pen</Text>
+                    <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
+                      <Text style={[styles.modalTitle, { color: tc.text }]}>Select Pen</Text>
                       {pens.length === 0 ? (
                         <View style={styles.modalItemEmpty}>
-                          <Text style={styles.modalItemEmptyText}>No pens available</Text>
+                          <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No pens available</Text>
                         </View>
                       ) : (
                         <FlatList
@@ -512,7 +515,7 @@ export default function EditAnimalScreen() {
                           keyExtractor={(item) => item.id}
                           renderItem={({ item }) => (
                             <TouchableOpacity
-                              style={styles.modalItem}
+                              style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
                               onPress={() => {
                                 updateFormData('penId', item.id);
                                 setShowPenModal(false);
@@ -522,6 +525,7 @@ export default function EditAnimalScreen() {
                                 style={[
                                   styles.modalItemText,
                                   item.id === formData.penId && { color: colors.primary, fontWeight: '600' },
+                                  item.id === formData.penId ? undefined : { color: tc.text },
                                 ]}
                               >
                                 {item.name}
@@ -539,12 +543,12 @@ export default function EditAnimalScreen() {
               </Modal>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Breed</Text>
+                <Text style={[styles.label, { color: tc.text }]}>Breed</Text>
                 <TouchableOpacity
-                  style={styles.selectButton}
+                  style={[styles.selectButton, { backgroundColor: tc.card, borderColor: tc.border }]}
                   onPress={() => setShowBreedModal(true)}
                 >
-                  <Text style={formData.breedId ? styles.selectButtonText : styles.selectPlaceholder}>
+                  <Text style={[formData.breedId ? styles.selectButtonText : styles.selectPlaceholder, { color: formData.breedId ? tc.text : tc.textSecondary }]}>
                     {breeds.find((b) => b.id === formData.breedId)
                       ? `${breeds.find((b) => b.id === formData.breedId)!.name} (${breeds.find((b) => b.id === formData.breedId)!.birdType})`
                       : 'Select a breed'}
@@ -560,16 +564,16 @@ export default function EditAnimalScreen() {
                 onRequestClose={() => setShowBreedModal(false)}
               >
                 <TouchableOpacity
-                  style={styles.modalOverlay}
+                  style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
                   activeOpacity={1}
                   onPress={() => setShowBreedModal(false)}
                 >
                   <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-                    <View style={styles.modalContent}>
-                      <Text style={styles.modalTitle}>Select Breed</Text>
+                    <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
+                      <Text style={[styles.modalTitle, { color: tc.text }]}>Select Breed</Text>
                       {breeds.length === 0 ? (
                         <View style={styles.modalItemEmpty}>
-                          <Text style={styles.modalItemEmptyText}>No breeds available</Text>
+                          <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No breeds available</Text>
                         </View>
                       ) : (
                         <FlatList
@@ -577,7 +581,7 @@ export default function EditAnimalScreen() {
                           keyExtractor={(item) => item.id}
                           renderItem={({ item }) => (
                             <TouchableOpacity
-                              style={styles.modalItem}
+                              style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
                               onPress={() => {
                                 updateFormData('breedId', item.id);
                                 setShowBreedModal(false);
@@ -587,6 +591,7 @@ export default function EditAnimalScreen() {
                                 style={[
                                   styles.modalItemText,
                                   item.id === formData.breedId && { color: colors.primary, fontWeight: '600' },
+                                  item.id === formData.breedId ? undefined : { color: tc.text },
                                 ]}
                               >
                                 {item.name} ({item.birdType})
@@ -606,7 +611,7 @@ export default function EditAnimalScreen() {
           )}
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Health</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Health</Text>
             <View style={styles.healthContainer}>
               {(['healthy', 'sick', 'treatment'] as const).map((h) => (
                 <TouchableOpacity
@@ -617,6 +622,7 @@ export default function EditAnimalScreen() {
                     formData.health === 'healthy' && h === 'healthy' && styles.healthOptionHealthy,
                     formData.health === 'sick' && h === 'sick' && styles.healthOptionSick,
                     formData.health === 'treatment' && h === 'treatment' && styles.healthOptionTreatment,
+                    formData.health !== h && { backgroundColor: tc.card, borderColor: tc.border },
                   ]}
                   onPress={() => updateFormData('health', h)}
                 >
@@ -626,6 +632,7 @@ export default function EditAnimalScreen() {
                       formData.health === h && {
                         color: h === 'healthy' ? colors.success : h === 'sick' ? colors.error : colors.warning,
                       },
+                      formData.health !== h && { color: tc.text },
                     ]}
                   >
                     {h.charAt(0).toUpperCase() + h.slice(1)}
@@ -636,7 +643,7 @@ export default function EditAnimalScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Gender</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Gender</Text>
             <View style={styles.healthContainer}>
               {(['MALE', 'FEMALE'] as const).map((g) => (
                 <TouchableOpacity
@@ -644,10 +651,11 @@ export default function EditAnimalScreen() {
                   style={[
                     styles.healthOption,
                     formData.gender === g && styles.healthOptionActive,
+                    formData.gender !== g && { backgroundColor: tc.card, borderColor: tc.border },
                   ]}
                   onPress={() => updateFormData('gender', g)}
                 >
-                  <Text style={styles.healthOptionText}>
+                  <Text style={[styles.healthOptionText, formData.gender !== g ? { color: tc.text } : undefined]}>
                     {g === 'MALE' ? 'Male' : 'Female'}
                   </Text>
                 </TouchableOpacity>

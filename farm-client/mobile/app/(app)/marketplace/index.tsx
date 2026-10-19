@@ -10,6 +10,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -137,12 +138,13 @@ function ListingCard({
   canDelete: boolean;
   onDelete: (item: MarketListing) => void;
 }) {
+  const { colors: tc, isDark } = useAppTheme();
   const status = (item as any).status as string | undefined;
   const listedDate = (item as any).listedDate as string | undefined;
   return (
-    <Card style={styles.card}>
+    <Card style={[styles.card, { backgroundColor: tc.card, borderColor: isDark ? tc.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
       <View style={styles.topRow}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={[styles.cardTitle, { color: tc.text }]}>{item.title}</Text>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{item.entityType || '—'}</Text>
         </View>
@@ -155,12 +157,12 @@ function ListingCard({
       <Text style={styles.priceText}>
         {Number(item.price).toLocaleString()} / {item.unit || 'unit'}
       </Text>
-      <Text style={styles.metaText}>
+      <Text style={[styles.metaText, { color: tc.textSecondary }]}>
         {Number(item.quantity).toLocaleString()} {item.unit || 'units'} available
         {formatDate(listedDate ?? item.createdAt) ? ` · Listed ${formatDate(listedDate ?? item.createdAt)}` : ''}
       </Text>
       {canDelete && (
-        <View style={styles.cardFooter}>
+        <View style={[styles.cardFooter, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => onDelete(item)}
@@ -184,22 +186,23 @@ function BuyerCard({
   canDelete: boolean;
   onDelete: (item: BuyerRecord) => void;
 }) {
+  const { colors: tc, isDark } = useAppTheme();
   const contact = [item.email, item.phone].filter(Boolean).join(' · ');
   return (
-    <Card style={styles.card}>
+    <Card style={[styles.card, { backgroundColor: tc.card, borderColor: isDark ? tc.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
       <View style={styles.topRow}>
-        <Text style={styles.cardTitle}>{item.name}</Text>
+        <Text style={[styles.cardTitle, { color: tc.text }]}>{item.name}</Text>
         {!!item.type && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{item.type}</Text>
           </View>
         )}
       </View>
-      {!!item.contactPerson && <Text style={styles.metaText}>Contact: {item.contactPerson}</Text>}
-      {!!contact && <Text style={styles.metaText}>{contact}</Text>}
-      {!!item.address && <Text style={styles.metaText}>{item.address}</Text>}
+      {!!item.contactPerson && <Text style={[styles.metaText, { color: tc.textSecondary }]}>Contact: {item.contactPerson}</Text>}
+      {!!contact && <Text style={[styles.metaText, { color: tc.textSecondary }]}>{contact}</Text>}
+      {!!item.address && <Text style={[styles.metaText, { color: tc.textSecondary }]}>{item.address}</Text>}
       {canDelete && (
-        <View style={styles.cardFooter}>
+        <View style={[styles.cardFooter, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => onDelete(item)}
@@ -217,6 +220,17 @@ function BuyerCard({
 export default function MarketplaceScreen() {
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    segmentRow: { backgroundColor: tc.card, borderColor: tc.border },
+    segmentText: { color: tc.textSecondary },
+    filterButton: { backgroundColor: tc.card, borderColor: tc.border },
+    filterButtonText: { color: tc.textSecondary },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+  };
 
   // Server: GET /marketplace/* is finance.read; writes finance.write/delete.
   const canWrite = hasPermission('finance.write');
@@ -436,7 +450,7 @@ export default function MarketplaceScreen() {
 
   const renderHeader = () => (
     <>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Marketplace</Text>
         {canWrite && (
@@ -450,7 +464,7 @@ export default function MarketplaceScreen() {
           </TouchableOpacity>
         )}
       </View>
-      <View style={styles.segmentRow}>
+      <View style={[styles.segmentRow, dynamicStyles.segmentRow]}>
         <TouchableOpacity
           style={[styles.segmentButton, segment === 'listings' && styles.segmentButtonActive]}
           onPress={() => setSegment('listings')}
@@ -458,7 +472,7 @@ export default function MarketplaceScreen() {
           accessibilityLabel="Show listings"
           accessibilityState={{ selected: segment === 'listings' }}
         >
-          <Text style={[styles.segmentText, segment === 'listings' && styles.segmentTextActive]}>
+          <Text style={[styles.segmentText, dynamicStyles.segmentText, segment === 'listings' && styles.segmentTextActive]}>
             Listings
           </Text>
         </TouchableOpacity>
@@ -469,7 +483,7 @@ export default function MarketplaceScreen() {
           accessibilityLabel="Show buyers"
           accessibilityState={{ selected: segment === 'buyers' }}
         >
-          <Text style={[styles.segmentText, segment === 'buyers' && styles.segmentTextActive]}>Buyers</Text>
+          <Text style={[styles.segmentText, dynamicStyles.segmentText, segment === 'buyers' && styles.segmentTextActive]}>Buyers</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -477,7 +491,7 @@ export default function MarketplaceScreen() {
 
   if (listingsLoading && buyersLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         {renderHeader()}
         <ScreenLoading message="Loading marketplace…" />
       </SafeAreaView>
@@ -485,7 +499,7 @@ export default function MarketplaceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       {renderHeader()}
 
       {segment === 'listings' ? (
@@ -512,13 +526,13 @@ export default function MarketplaceScreen() {
                 {statusFilters.map((f) => (
                   <TouchableOpacity
                     key={f}
-                    style={[styles.filterButton, statusFilter === f && styles.filterButtonActive]}
+                    style={[styles.filterButton, dynamicStyles.filterButton, statusFilter === f && styles.filterButtonActive]}
                     onPress={() => setStatusFilter(f)}
                     accessibilityRole="button"
                     accessibilityLabel={f === 'all' ? 'Filter all listings' : `Filter ${f.toLowerCase()} listings`}
                     accessibilityState={{ selected: statusFilter === f }}
                   >
-                    <Text style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}>
+                    <Text style={[styles.filterButtonText, dynamicStyles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}>
                       {f === 'all' ? 'All' : f}
                     </Text>
                   </TouchableOpacity>
@@ -535,8 +549,8 @@ export default function MarketplaceScreen() {
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyIcon}>🛒</Text>
-                  <Text style={styles.emptyText}>No Listings Found</Text>
-                  <Text style={styles.emptySubtext}>
+                  <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Listings Found</Text>
+                  <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
                     {listingSearch || statusFilter !== 'all'
                       ? 'Nothing matches the current filters'
                       : 'List your crops, livestock or poultry produce for sale'}
@@ -581,8 +595,8 @@ export default function MarketplaceScreen() {
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>🤝</Text>
-                <Text style={styles.emptyText}>No Buyers Found</Text>
-                <Text style={styles.emptySubtext}>
+                <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Buyers Found</Text>
+                <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
                   {buyerSearch ? 'Nothing matches the current search' : 'Add the buyers you sell produce to'}
                 </Text>
                 {!buyerSearch && canWrite && (

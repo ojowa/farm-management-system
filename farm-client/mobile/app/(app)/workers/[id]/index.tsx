@@ -10,6 +10,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -82,6 +83,7 @@ export default function WorkerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   const canDelete = hasPermission('hr.delete');
   const canWrite = hasPermission('hr.write');
@@ -90,6 +92,27 @@ export default function WorkerDetailScreen() {
   const [worker, setWorker] = useState<Worker | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [farmName, setFarmName] = useState<string>('');
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    workerName: {
+      color: tc.text,
+    },
+    statLabel: {
+      color: tc.textSecondary,
+    },
+    divider: {
+      borderTopColor: isDark ? tc.border : colors.light,
+    },
+    detailLabel: {
+      color: tc.text,
+    },
+    detailValue: {
+      color: tc.text,
+    },
+  };
 
   useEffect(() => {
     fetchWorker();
@@ -178,8 +201,8 @@ export default function WorkerDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -193,8 +216,8 @@ export default function WorkerDetailScreen() {
 
   if (loadError || !worker) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -215,8 +238,8 @@ export default function WorkerDetailScreen() {
   const statusColors = WORKER_STATUS_COLORS[worker.status] || { bg: '#F3F4F6', text: '#6B7280' };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -226,7 +249,7 @@ export default function WorkerDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
-          <Text style={styles.workerName}>{fullName(worker)}</Text>
+          <Text style={[styles.workerName, dynamicStyles.workerName]}>{fullName(worker)}</Text>
           <View style={styles.badgeRow}>
             <View
               style={{
@@ -242,61 +265,61 @@ export default function WorkerDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, dynamicStyles.divider]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Position</Text>
-              <Text style={styles.statValue}>{worker.position || '—'}</Text>
+              <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Position</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{worker.position || '—'}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Hired</Text>
-              <Text style={styles.statValue}>{formatDate(worker.hireDate)}</Text>
+              <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Hired</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{formatDate(worker.hireDate)}</Text>
             </View>
           </View>
 
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Department</Text>
-              <Text style={styles.detailValue}>{worker.department || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Department</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.department || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Email</Text>
-              <Text style={styles.detailValue}>{worker.email || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Email</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.email || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Phone</Text>
-              <Text style={styles.detailValue}>{worker.phone || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Phone</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.phone || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Farm</Text>
-              <Text style={styles.detailValue}>{farmName || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Farm</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{farmName || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Hire Date</Text>
-              <Text style={styles.detailValue}>{formatDate(worker.hireDate)}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Hire Date</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{formatDate(worker.hireDate)}</Text>
             </View>
           </View>
 
           {/* Employment / payroll */}
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Pay</Text>
-              <Text style={styles.detailValue}>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Pay</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>
                 {worker.payRate != null
                   ? `${worker.payRate}${worker.payType ? ` (${worker.payType})` : ''}`
                   : worker.payType || '—'}
               </Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Skills</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Skills</Text>
               {worker.skills && worker.skills.length > 0 ? (
-                <Text style={styles.detailValue}>{worker.skills.length} listed</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.skills.length} listed</Text>
               ) : (
-                <Text style={styles.detailValue}>—</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>—</Text>
               )}
             </View>
             {worker.terminationDate && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Termination Date</Text>
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Termination Date</Text>
                 <Text style={[styles.detailValue, { color: '#DC2626' }]}>{formatDate(worker.terminationDate)}</Text>
               </View>
             )}
@@ -313,18 +336,18 @@ export default function WorkerDetailScreen() {
 
           {/* Emergency contact */}
           {(worker.emergencyContactName || worker.emergencyContactPhone || worker.emergencyContactRelation) && (
-            <View style={styles.detailSection}>
+            <View style={[styles.detailSection, dynamicStyles.divider]}>
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Emergency Contact</Text>
-                <Text style={styles.detailValue}>{worker.emergencyContactName || '—'}</Text>
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Emergency Contact</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.emergencyContactName || '—'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Contact Phone</Text>
-                <Text style={styles.detailValue}>{worker.emergencyContactPhone || '—'}</Text>
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Contact Phone</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.emergencyContactPhone || '—'}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Relationship</Text>
-                <Text style={styles.detailValue}>{worker.emergencyContactRelation || '—'}</Text>
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Relationship</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.emergencyContactRelation || '—'}</Text>
               </View>
             </View>
           )}

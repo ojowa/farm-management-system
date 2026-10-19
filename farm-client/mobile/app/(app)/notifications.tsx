@@ -16,6 +16,7 @@ import { notificationsAPI } from '@/modules/notification';
 import { socketService, RealtimePayload } from '@/services/socketService';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const PAGE_SIZE = 20;
 
@@ -104,6 +105,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id;
+  const { colors: tc, isDark } = useAppTheme();
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +121,22 @@ export default function NotificationsScreen() {
   const filterRef = useRef(unreadOnly);
   useEffect(() => { itemsRef.current = items; }, [items]);
   useEffect(() => { filterRef.current = unreadOnly; }, [unreadOnly]);
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    filterBtn: { backgroundColor: tc.card, borderColor: tc.border },
+    filterBtnText: { color: tc.text },
+    itemTitle: { color: tc.text },
+    itemMessage: { color: tc.textSecondary },
+    itemTime: { color: tc.textSecondary },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+  };
 
   const refreshUnread = useCallback(async () => {
     if (!userId) return;
@@ -281,8 +299,8 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <Text style={styles.headerTitle}>
           Notifications{unreadCount > 0 ? ` (${unreadCount})` : ''}
         </Text>
@@ -313,12 +331,13 @@ export default function NotificationsScreen() {
               <TouchableOpacity
                 key={f}
                 onPress={() => setUnreadOnly(f === 'unread')}
-                style={[styles.filterBtn, (f === 'unread') === unreadOnly && styles.filterBtnActive]}
+                style={[styles.filterBtn, dynamicStyles.filterBtn, (f === 'unread') === unreadOnly && styles.filterBtnActive]}
                 accessibilityLabel={`Filter: ${f}`}
               >
                 <Text
                   style={[
                     styles.filterBtnText,
+                    dynamicStyles.filterBtnText,
                     (f === 'unread') === unreadOnly && styles.filterBtnTextActive,
                   ]}
                 >
@@ -334,10 +353,10 @@ export default function NotificationsScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🔔</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
                 {unreadOnly ? 'No unread notifications' : 'No notifications yet'}
               </Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
                 {unreadOnly
                   ? 'You are all caught up'
                   : 'Task assignments, approvals and messages will appear here'}
@@ -356,23 +375,23 @@ export default function NotificationsScreen() {
         }
         renderItem={({ item }) => (
           <Card
-            style={[styles.itemCard, !item.read && styles.itemUnread]}
+            style={[styles.itemCard, dynamicStyles.cardBackground, !item.read && styles.itemUnread]}
             accessibilityLabel={`Notification: ${item.title}`}
           >
             <TouchableOpacity onPress={() => openItem(item)} activeOpacity={0.7}>
               <View style={styles.itemHeader}>
                 <View style={styles.itemTitleRow}>
                   {!item.read && <View style={styles.unreadDot} />}
-                  <Text style={styles.itemTitle} numberOfLines={1}>
+                  <Text style={[styles.itemTitle, dynamicStyles.itemTitle]} numberOfLines={1}>
                     {TYPE_ICONS[item.type] ?? 'ℹ️'} {item.title}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.itemMessage} numberOfLines={4}>
+              <Text style={[styles.itemMessage, dynamicStyles.itemMessage]} numberOfLines={4}>
                 {item.message}
               </Text>
               <View style={styles.itemFooter}>
-                <Text style={styles.itemTime}>{formatTime(item.createdAt)}</Text>
+                <Text style={[styles.itemTime, dynamicStyles.itemTime]}>{formatTime(item.createdAt)}</Text>
                 <TouchableOpacity
                   onPress={() => removeItem(item)}
                   style={styles.deleteBtn}

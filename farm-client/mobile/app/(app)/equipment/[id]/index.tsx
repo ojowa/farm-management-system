@@ -10,6 +10,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -75,6 +76,7 @@ export default function EquipmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   const canDelete = hasPermission('farm.delete');
   const canWrite = hasPermission('farm.write');
@@ -147,8 +149,8 @@ export default function EquipmentDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -162,8 +164,8 @@ export default function EquipmentDetailScreen() {
 
   if (loadError || !item) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -184,8 +186,8 @@ export default function EquipmentDetailScreen() {
   const statusColors = EQUIP_STATUS_COLORS[item.status] || { bg: '#F3F4F6', text: '#6B7280' };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -194,8 +196,8 @@ export default function EquipmentDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.equipName}>{item.name}</Text>
+        <View style={[styles.card, { backgroundColor: tc.card }]}>
+          <Text style={[styles.equipName, { color: tc.text }]}>{item.name}</Text>
           <View style={styles.badgeRow}>
             <View
               style={{
@@ -211,44 +213,44 @@ export default function EquipmentDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Cost</Text>
-              <Text style={styles.statValue}>{formatCost(item.purchaseCost)}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Cost</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{formatCost(item.purchaseCost)}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Purchased</Text>
-              <Text style={styles.statValue}>{formatDate(item.purchaseDate)}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Purchased</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{formatDate(item.purchaseDate)}</Text>
             </View>
           </View>
 
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Type</Text>
-              <Text style={styles.detailValue}>{item.type || '—'}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Type</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{item.type || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Model</Text>
-              <Text style={styles.detailValue}>{item.model || '—'}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Model</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{item.model || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Serial Number</Text>
-              <Text style={styles.detailValue}>{item.serialNumber || '—'}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Serial Number</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{item.serialNumber || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Farm</Text>
-              <Text style={styles.detailValue}>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Farm</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>
                 {item.farmId ? farmName || '—' : 'Unassigned'}
               </Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Purchase Date</Text>
-              <Text style={styles.detailValue}>{formatDate(item.purchaseDate)}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Purchase Date</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{formatDate(item.purchaseDate)}</Text>
             </View>
             {item.notes ? (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Notes</Text>
-                <Text style={styles.detailValue}>{item.notes}</Text>
+                <Text style={[styles.detailLabel, { color: tc.text }]}>Notes</Text>
+                <Text style={[styles.detailValue, { color: tc.text }]}>{item.notes}</Text>
               </View>
             ) : null}
           </View>

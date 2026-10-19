@@ -17,6 +17,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -92,6 +93,36 @@ export default function UsersScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    emptyText: {
+      color: tc.text,
+    },
+    emptySubtext: {
+      color: tc.textSecondary,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    userName: {
+      color: tc.text,
+    },
+    userEmail: {
+      color: tc.textSecondary,
+    },
+    roleBadge: {
+      backgroundColor: isDark ? tc.surface : '#F5F5F5',
+    },
+    divider: {
+      borderTopColor: isDark ? tc.border : colors.light,
+    },
+  };
 
   // Server: POST/PUT/DELETE /org-admin/users require users.manage; reads use
   // users.read. Missing permissions default to hidden — the API would 403.
@@ -206,20 +237,20 @@ export default function UsersScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: User }) => (
-      <Card style={styles.userCard}>
+      <Card style={[styles.userCard, dynamicStyles.cardBackground]}>
         <TouchableOpacity onPress={() => router.push(`/users/${item.id}`)} activeOpacity={0.7}>
           <View style={styles.userRow}>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{displayName(item)}</Text>
-              <Text style={styles.userEmail}>{item.email}</Text>
+              <Text style={[styles.userName, dynamicStyles.userName]}>{displayName(item)}</Text>
+              <Text style={[styles.userEmail, dynamicStyles.userEmail]}>{item.email}</Text>
             </View>
-            <View style={styles.roleBadge}>
+            <View style={[styles.roleBadge, dynamicStyles.roleBadge]}>
               <Text style={styles.roleBadgeText}>{roleLabel(item.role) || 'Member'}</Text>
             </View>
           </View>
         </TouchableOpacity>
         {canManage && (
-          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.light, flexDirection: 'row', gap: 8 }}>
+          <View style={[{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, flexDirection: 'row', gap: 8 }, dynamicStyles.divider]}>
             <Button
               title="View"
               variant="secondary"
@@ -238,13 +269,13 @@ export default function UsersScreen() {
         )}
       </Card>
     ),
-    [router, canManage, removeUser]
+    [router, canManage, removeUser, dynamicStyles]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Users</Text>
         </View>
@@ -255,8 +286,8 @@ export default function UsersScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Users</Text>
         </View>
@@ -272,8 +303,8 @@ export default function UsersScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Users</Text>
         {canManage && (
@@ -307,8 +338,8 @@ export default function UsersScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>👤</Text>
-            <Text style={styles.emptyText}>No Users Found</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Users Found</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
               {search ? 'No users match your search' : 'Invite teammates to collaborate on your farms'}
             </Text>
             {!search && canManage && (
@@ -358,8 +389,8 @@ export default function UsersScreen() {
                     paddingHorizontal: 12,
                     borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: selected ? colors.primary : colors.border,
-                    backgroundColor: selected ? colors.light : '#FFFFFF',
+                    borderColor: selected ? colors.primary : tc.border,
+                    backgroundColor: selected ? (isDark ? tc.surface : '#F5F5F5') : tc.card,
                     marginBottom: 8,
                   }}
                   onPress={() => updateForm('roleId', selected ? '' : role.id)}
@@ -367,7 +398,7 @@ export default function UsersScreen() {
                   accessibilityLabel={`Role ${role.name}`}
                   accessibilityState={{ selected }}
                 >
-                  <Text style={{ fontSize: 14, color: colors.text, fontWeight: selected ? '600' : '400' }}>
+                  <Text style={{ fontSize: 14, color: tc.text, fontWeight: selected ? '600' : '400' }}>
                     {role.name}
                   </Text>
                 </TouchableOpacity>

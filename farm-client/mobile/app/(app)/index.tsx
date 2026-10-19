@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   View,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
-import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { useAppSelector, useAuth } from '@/modules/auth/hooks/useAuth';
 import { farmsAPI } from '@/modules/farm';
 import { cropsAPI } from '@/modules/crop';
 import { livestockAPI } from '@/modules/livestock';
@@ -41,6 +42,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   const isOnline = useAppSelector((state) => state.sync.isOnline);
+  const { logout } = useAuth();
   const { colors: themeColors, isDark } = useAppTheme();
   const { error: showError } = useToasts();
   const [loading, setLoading] = useState(true);
@@ -233,6 +235,21 @@ export default function DashboardScreen() {
 
   const firstName = user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
 
+  // Same confirm-then-sign-out flow as the sidebar footer and settings screen.
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logout?.();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  };
+
   const formatDueDate = (dateStr?: string) => {
     if (!dateStr) return '';
     try {
@@ -378,6 +395,14 @@ export default function DashboardScreen() {
               accessibilityLabel="Settings"
             >
               <Text style={styles.headerGearText}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={styles.headerGear}
+              accessibilityRole="button"
+              accessibilityLabel="Log out"
+            >
+              <Text style={styles.headerGearText}>🚪</Text>
             </TouchableOpacity>
           </View>
         </View>

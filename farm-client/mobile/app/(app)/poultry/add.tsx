@@ -19,6 +19,7 @@ import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
 import { useToasts } from '@/core/hooks/useToasts';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -141,16 +142,19 @@ function PickerField({
   disabledHint?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { colors: tc, isDark } = useAppTheme();
   const selected = options.find((o) => o.id === selectedId);
 
   return (
     <View style={styles.formGroup}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: tc.text }]}>{label}</Text>
       <TouchableOpacity
         style={[
           styles.selectButton,
           error && styles.selectError,
           disabled && styles.selectButtonDisabled,
+          { backgroundColor: tc.card },
+          error ? undefined : { borderColor: tc.border },
         ]}
         disabled={disabled}
         onPress={() => setOpen(true)}
@@ -158,26 +162,26 @@ function PickerField({
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled, expanded: open }}
       >
-        <Text style={selected ? styles.selectButtonText : styles.selectPlaceholder}>
+        <Text style={[selected ? styles.selectButtonText : styles.selectPlaceholder, { color: selected ? tc.text : tc.textSecondary }]}>
           {selected ? selected.name : placeholder}
         </Text>
         <Text style={styles.selectArrow}>▼</Text>
       </TouchableOpacity>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {!error && disabled && disabledHint ? <Text style={styles.hint}>{disabledHint}</Text> : null}
+      {!error && disabled && disabledHint ? <Text style={[styles.hint, { color: tc.textSecondary }]}>{disabledHint}</Text> : null}
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
           activeOpacity={1}
           onPress={() => setOpen(false)}
         >
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{label}</Text>
+            <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
+              <Text style={[styles.modalTitle, { color: tc.text }]}>{label}</Text>
               {options.length === 0 ? (
                 <View style={styles.modalItemEmpty}>
-                  <Text style={styles.modalItemEmptyText}>No options available</Text>
+                  <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No options available</Text>
                 </View>
               ) : (
                 <FlatList
@@ -185,7 +189,7 @@ function PickerField({
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <TouchableOpacity
-                      style={styles.modalItem}
+                      style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
                       onPress={() => {
                         onSelect(item.id);
                         setOpen(false);
@@ -195,6 +199,7 @@ function PickerField({
                         style={[
                           styles.modalItemText,
                           item.id === selectedId && { color: colors.primary, fontWeight: '600' },
+                          item.id === selectedId ? undefined : { color: tc.text },
                         ]}
                       >
                         {item.name}
@@ -217,6 +222,7 @@ function PickerField({
 export default function AddFlockScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const organizationId = useAppSelector((state) => state.auth.user?.organizationId ?? '');
 
   const [loading, setLoading] = useState(false);
@@ -335,8 +341,8 @@ export default function AddFlockScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>

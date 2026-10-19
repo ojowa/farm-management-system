@@ -23,6 +23,7 @@ import { tasksAPI } from '@/modules/worker';
 import { workersAPI } from '@/modules/hr';
 import { offlineTasksAPI } from '@/modules/worker';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -170,6 +171,62 @@ export default function TasksScreen() {
   const [recurrenceRule, setRecurrenceRule] = useState('WEEKLY');
   const [saving, setSaving] = useState(false);
   const [workers, setWorkers] = useState<any[]>([]);
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    searchInput: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    filterBtn: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    filterBtnText: {
+      color: tc.text,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    taskTitle: {
+      color: tc.text,
+    },
+    taskDesc: {
+      color: tc.textSecondary,
+    },
+    taskMetaText: {
+      color: tc.textSecondary,
+    },
+    emptyText: {
+      color: tc.text,
+    },
+    emptySubtext: {
+      color: tc.textSecondary,
+    },
+    modalOverlay: {
+      backgroundColor: tc.overlay,
+    },
+    modalContent: {
+      backgroundColor: tc.surface,
+    },
+    modalTitle: {
+      color: tc.text,
+    },
+    input: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    label: {
+      color: tc.text,
+    },
+  };
 
   const loadTasks = useCallback(async () => {
     setLoadError(null);
@@ -306,8 +363,8 @@ export default function TasksScreen() {
     !!user?.id && (task.assignedToId === user.id);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={[styles.headerTitle, { flex: 1 }]}>{canManageTasks ? 'Tasks' : 'My Tasks'}</Text>
         {canManageTasks && (
@@ -328,7 +385,8 @@ export default function TasksScreen() {
               value={search}
               onChangeText={setSearch}
               placeholder="Search tasks…"
-              style={styles.searchInput}
+              style={[styles.searchInput, dynamicStyles.searchInput]}
+              placeholderTextColor={tc.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
               accessibilityLabel="Search tasks"
@@ -338,20 +396,20 @@ export default function TasksScreen() {
                 <TouchableOpacity
                   key={f}
                   onPress={() => setFilter(f)}
-                  style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, filter === f && styles.filterBtnActive]}
                   accessibilityLabel={`Filter by ${f === 'all' ? 'all tasks' : f.replace('_', ' ')}`}
                 >
-                  <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
                     {f === 'all' ? 'All' : f.replace('_', ' ')}
                   </Text>
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
                 onPress={() => setRecurringOnly((v) => !v)}
-                style={[styles.filterBtn, recurringOnly && styles.filterBtnActive]}
+                style={[styles.filterBtn, dynamicStyles.filterBtn, recurringOnly && styles.filterBtnActive]}
                 accessibilityLabel="Filter by recurring tasks"
               >
-                <Text style={[styles.filterBtnText, recurringOnly && styles.filterBtnTextActive]}>
+                <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, recurringOnly && styles.filterBtnTextActive]}>
                   ⟳ Recurring
                 </Text>
               </TouchableOpacity>
@@ -372,10 +430,10 @@ export default function TasksScreen() {
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>✅</Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
                 {searchTerm || filter !== 'all' || recurringOnly ? 'No matching tasks' : 'No tasks'}
               </Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
                 {searchTerm || filter !== 'all' || recurringOnly
                   ? 'Try a different search or filter.'
                   : canManageTasks
@@ -388,9 +446,9 @@ export default function TasksScreen() {
         renderItem={({ item: task }) => {
           const overdue = isOverdue(task);
           return (
-            <Card style={styles.taskCard} onPress={() => router.push(`/tasks/${task.id}`)} accessibilityLabel={`Open task ${task.title}`}>
+            <Card style={[styles.taskCard, dynamicStyles.cardBackground]} onPress={() => router.push(`/tasks/${task.id}`)} accessibilityLabel={`Open task ${task.title}`}>
               <View style={styles.taskHeader}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
+                <Text style={[styles.taskTitle, dynamicStyles.taskTitle]}>{task.title}</Text>
                 <View style={[styles.badge, { backgroundColor: PRIORITY_COLORS[task.priority] || '#9CA3AF' }]}>
                   <Text style={styles.badgeText}>{task.priority}</Text>
                 </View>
@@ -410,17 +468,17 @@ export default function TasksScreen() {
                   </View>
                 )}
               </View>
-              {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
+              {task.description ? <Text style={[styles.taskDesc, dynamicStyles.taskDesc]}>{task.description}</Text> : null}
               <View style={styles.taskMeta}>
-                {task.assignedToName && <Text style={styles.taskMetaText}>To: {task.assignedToName}</Text>}
+                {task.assignedToName && <Text style={[styles.taskMetaText, dynamicStyles.taskMetaText]}>To: {task.assignedToName}</Text>}
                 {task.dueDate && (
-                  <Text style={overdue ? styles.overdueText : styles.taskMetaText}>
+                  <Text style={overdue ? styles.overdueText : [styles.taskMetaText, dynamicStyles.taskMetaText]}>
                     Due: {new Date(task.dueDate).toLocaleDateString()}
                   </Text>
                 )}
-                {task.completedAt && <Text style={styles.taskMetaText}>Done: {new Date(task.completedAt).toLocaleDateString()}</Text>}
+                {task.completedAt && <Text style={[styles.taskMetaText, dynamicStyles.taskMetaText]}>Done: {new Date(task.completedAt).toLocaleDateString()}</Text>}
                 {task.isRecurring && task.nextDueAt && (
-                  <Text style={styles.taskMetaText}>Next: {new Date(task.nextDueAt).toLocaleDateString()}</Text>
+                  <Text style={[styles.taskMetaText, dynamicStyles.taskMetaText]}>Next: {new Date(task.nextDueAt).toLocaleDateString()}</Text>
                 )}
               </View>
 
@@ -463,40 +521,40 @@ export default function TasksScreen() {
       />
 
       <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{editingTask ? 'Edit Task' : 'New Task'}</Text>
-            <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={styles.input} />
-            <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={styles.input} multiline />
-            <Text style={styles.label}>Priority</Text>
+        <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{editingTask ? 'Edit Task' : 'New Task'}</Text>
+            <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
+            <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} multiline />
+            <Text style={[styles.label, dynamicStyles.label]}>Priority</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
                 <TouchableOpacity
                   key={p}
                   onPress={() => setPriority(p)}
-                  style={[styles.filterBtn, priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] }]}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] }]}
                 >
-                  <Text style={[styles.filterBtnText, priority === p && { color: '#FFFFFF' }]}>{p}</Text>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, priority === p && { color: '#FFFFFF' }]}>{p}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             {canManageTasks && workers.length > 0 && (
               <>
-                <Text style={styles.label}>Assign To</Text>
+                <Text style={[styles.label, dynamicStyles.label]}>Assign To</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                   <TouchableOpacity
                     onPress={() => setAssignedToId('')}
-                    style={[styles.filterBtn, !assignedToId && styles.filterBtnActive, { marginRight: 8 }]}
+                    style={[styles.filterBtn, dynamicStyles.filterBtn, !assignedToId && styles.filterBtnActive, { marginRight: 8 }]}
                   >
-                    <Text style={[styles.filterBtnText, !assignedToId && styles.filterBtnTextActive]}>None</Text>
+                    <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, !assignedToId && styles.filterBtnTextActive]}>None</Text>
                   </TouchableOpacity>
                   {workers.map((w) => (
                     <TouchableOpacity
                       key={w.id}
                       onPress={() => setAssignedToId(w.id)}
-                      style={[styles.filterBtn, assignedToId === w.id && styles.filterBtnActive, { marginRight: 8 }]}
+                      style={[styles.filterBtn, dynamicStyles.filterBtn, assignedToId === w.id && styles.filterBtnActive, { marginRight: 8 }]}
                     >
-                      <Text style={[styles.filterBtnText, assignedToId === w.id && styles.filterBtnTextActive]}>
+                      <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, assignedToId === w.id && styles.filterBtnTextActive]}>
                         {w.firstName} {w.lastName}
                       </Text>
                     </TouchableOpacity>
@@ -504,24 +562,24 @@ export default function TasksScreen() {
                 </ScrollView>
               </>
             )}
-            <TextInput value={dueDate} onChangeText={setDueDate} placeholder="Due date (YYYY-MM-DD)" style={styles.input} />
-            <Text style={styles.label}>Repeats</Text>
+            <TextInput value={dueDate} onChangeText={setDueDate} placeholder="Due date (YYYY-MM-DD)" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
+            <Text style={[styles.label, dynamicStyles.label]}>Repeats</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               <TouchableOpacity
                 onPress={() => setIsRecurring(false)}
-                style={[styles.filterBtn, !isRecurring && styles.filterBtnActive]}
+                style={[styles.filterBtn, dynamicStyles.filterBtn, !isRecurring && styles.filterBtnActive]}
                 accessibilityLabel="Does not repeat"
               >
-                <Text style={[styles.filterBtnText, !isRecurring && styles.filterBtnTextActive]}>Never</Text>
+                <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, !isRecurring && styles.filterBtnTextActive]}>Never</Text>
               </TouchableOpacity>
               {RECURRENCE_RULES.map((r) => (
                 <TouchableOpacity
                   key={r}
                   onPress={() => { setIsRecurring(true); setRecurrenceRule(r); }}
-                  style={[styles.filterBtn, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
                   accessibilityLabel={`Repeat ${r.toLowerCase()}`}
                 >
-                  <Text style={[styles.filterBtnText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
                 </TouchableOpacity>
               ))}
             </View>

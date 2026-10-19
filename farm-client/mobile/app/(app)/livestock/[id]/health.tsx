@@ -16,6 +16,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -114,6 +115,7 @@ export default function AnimalHealthScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [animal, setAnimal] = useState<AnimalData | null>(null);
@@ -201,8 +203,8 @@ export default function AnimalHealthScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -216,8 +218,8 @@ export default function AnimalHealthScreen() {
 
   if (loadError || !animal) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -238,8 +240,8 @@ export default function AnimalHealthScreen() {
   const currentHealthColor = getHealthColor(healthData.health);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -252,15 +254,15 @@ export default function AnimalHealthScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.currentHealth}>
-            <Text style={styles.currentHealthLabel}>Animal</Text>
-            <Text style={[styles.currentHealthValue, { color: colors.text }]}>
+          <View style={[styles.currentHealth, { backgroundColor: tc.card, borderColor: tc.border }]}>
+            <Text style={[styles.currentHealthLabel, { color: tc.textSecondary }]}>Animal</Text>
+            <Text style={[styles.currentHealthValue, { color: tc.text }]}>
               {animal.name}
             </Text>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Health Status *</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Health Status *</Text>
             <View style={styles.healthContainer}>
               {(['healthy', 'sick', 'treatment'] as const).map((h) => {
                 const isSelected = healthData.health === h;
@@ -277,6 +279,7 @@ export default function AnimalHealthScreen() {
                       styles.healthOption,
                       isSelected && styles.healthOptionSelected,
                       isSelected && { borderColor: color },
+                      isSelected ? undefined : { backgroundColor: tc.card, borderColor: tc.border },
                     ]}
                     onPress={() => setHealthData((prev) => ({ ...prev, health: h }))}
                   >
@@ -286,6 +289,7 @@ export default function AnimalHealthScreen() {
                         styles.healthOptionText,
                         isSelected && styles.healthOptionTextSelected,
                         isSelected && { color },
+                        isSelected ? undefined : { color: tc.text },
                       ]}
                     >
                       {h.charAt(0).toUpperCase() + h.slice(1)}
@@ -309,17 +313,17 @@ export default function AnimalHealthScreen() {
             />
           </View>
 
-          <View style={styles.previewCard}>
-            <Text style={styles.previewTitle}>Summary</Text>
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Health</Text>
+          <View style={[styles.previewCard, { backgroundColor: tc.card, borderColor: tc.border }]}>
+            <Text style={[styles.previewTitle, { color: tc.text }]}>Summary</Text>
+            <View style={[styles.previewRow, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
+              <Text style={[styles.previewLabel, { color: tc.textSecondary }]}>Health</Text>
               <Text style={[styles.previewValue, { color: currentHealthColor }]}>
                 {healthData.health.charAt(0).toUpperCase() + healthData.health.slice(1)}
               </Text>
             </View>
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Last Checkup</Text>
-              <Text style={styles.previewValue}>
+            <View style={[styles.previewRow, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
+              <Text style={[styles.previewLabel, { color: tc.textSecondary }]}>Last Checkup</Text>
+              <Text style={[styles.previewValue, { color: tc.text }]}>
                 {healthData.lastCheckup || 'Not set'}
               </Text>
             </View>

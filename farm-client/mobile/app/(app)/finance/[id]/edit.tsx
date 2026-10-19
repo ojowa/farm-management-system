@@ -15,6 +15,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -98,6 +99,7 @@ export default function EditTransactionScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [transaction, setTransaction] = useState<TransactionData | null>(null);
@@ -220,10 +222,19 @@ export default function EditTransactionScreen() {
     if (errors.category) setErrors((prev) => ({ ...prev, category: undefined }));
   };
 
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    label: { color: tc.text },
+    typeOption: { backgroundColor: tc.card, borderColor: tc.border },
+    typeLabel: { color: tc.text },
+    categoryOption: { backgroundColor: tc.card, borderColor: tc.border },
+    categoryText: { color: tc.text },
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -237,8 +248,8 @@ export default function EditTransactionScreen() {
 
   if (loadError || !transaction) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -257,8 +268,8 @@ export default function EditTransactionScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -272,11 +283,12 @@ export default function EditTransactionScreen() {
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Type *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Type *</Text>
             <View style={styles.typeContainer}>
               <TouchableOpacity
                 style={[
                   styles.typeOption,
+                  dynamicStyles.typeOption,
                   formData.type === 'income' && styles.typeOptionIncome,
                 ]}
                 onPress={() => handleTypeChange('income')}
@@ -285,6 +297,7 @@ export default function EditTransactionScreen() {
                 <Text
                   style={[
                     styles.typeLabel,
+                    dynamicStyles.typeLabel,
                     formData.type === 'income' && styles.typeLabelIncome,
                   ]}
                 >
@@ -294,6 +307,7 @@ export default function EditTransactionScreen() {
               <TouchableOpacity
                 style={[
                   styles.typeOption,
+                  dynamicStyles.typeOption,
                   formData.type === 'expense' && styles.typeOptionExpense,
                 ]}
                 onPress={() => handleTypeChange('expense')}
@@ -302,6 +316,7 @@ export default function EditTransactionScreen() {
                 <Text
                   style={[
                     styles.typeLabel,
+                    dynamicStyles.typeLabel,
                     formData.type === 'expense' && styles.typeLabelExpense,
                   ]}
                 >
@@ -331,13 +346,14 @@ export default function EditTransactionScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Category *</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Category *</Text>
             <View style={styles.categoryContainer}>
               {categories.map((cat) => (
                 <TouchableOpacity
                   key={cat}
                   style={[
                     styles.categoryOption,
+                    dynamicStyles.categoryOption,
                     formData.category === cat && styles.categoryOptionActive,
                   ]}
                   onPress={() => updateFormData('category', cat)}
@@ -345,6 +361,7 @@ export default function EditTransactionScreen() {
                   <Text
                     style={[
                       styles.categoryText,
+                      dynamicStyles.categoryText,
                       formData.category === cat && styles.categoryTextActive,
                     ]}
                   >

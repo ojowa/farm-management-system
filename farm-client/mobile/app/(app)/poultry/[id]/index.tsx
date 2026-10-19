@@ -10,6 +10,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -65,6 +66,7 @@ export default function FlockDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   const canDelete = hasPermission('poultry.delete');
   const canWrite = hasPermission('poultry.write');
@@ -140,8 +142,8 @@ export default function FlockDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -155,8 +157,8 @@ export default function FlockDetailScreen() {
 
   if (loadError || !flock) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -177,8 +179,8 @@ export default function FlockDetailScreen() {
   const statusColors = FLOCK_STATUS_COLORS[flock.status] || { bg: '#F3F4F6', text: '#6B7280' };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -187,8 +189,8 @@ export default function FlockDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.flockCode}>{flock.batchCode}</Text>
+        <View style={[styles.card, { backgroundColor: tc.card }]}>
+          <Text style={[styles.flockCode, { color: tc.text }]}>{flock.batchCode}</Text>
           <View style={styles.badgeRow}>
             <View style={{ backgroundColor: statusColors.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
               <Text style={{ fontSize: 11, fontWeight: '600', color: statusColors.text }}>
@@ -197,39 +199,39 @@ export default function FlockDetailScreen() {
             </View>
           </View>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Birds</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Birds</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>
                 {flock.currentCount ?? '—'}/{flock.birdCount ?? '—'}
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Age</Text>
-              <Text style={styles.statValue}>{flock.currentAgeDays ?? '—'} d</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Age</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{flock.currentAgeDays ?? '—'} d</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Arrived</Text>
-              <Text style={styles.statValue}>{formatDate(flock.arrivalDate)}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Arrived</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{formatDate(flock.arrivalDate)}</Text>
             </View>
           </View>
 
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Breed</Text>
-              <Text style={styles.detailValue}>{flock.breed?.name || '—'}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Breed</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{flock.breed?.name || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Pen</Text>
-              <Text style={styles.detailValue}>{flock.pen?.name || '—'}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Pen</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{flock.pen?.name || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Farm</Text>
-              <Text style={styles.detailValue}>{farmName || '—'}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Farm</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{farmName || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Arrival Date</Text>
-              <Text style={styles.detailValue}>{formatDate(flock.arrivalDate)}</Text>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Arrival Date</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>{formatDate(flock.arrivalDate)}</Text>
             </View>
           </View>
         </View>

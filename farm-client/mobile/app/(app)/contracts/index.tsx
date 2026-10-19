@@ -10,6 +10,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -120,6 +121,7 @@ export default function ContractsScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Server: GET /contracts is finance.read; create/update finance.write.
   const canWrite = hasPermission('finance.write');
@@ -141,6 +143,22 @@ export default function ContractsScreen() {
     terms: '',
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreateForm, string>>>({});
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+    filterButton: { backgroundColor: tc.card, borderColor: tc.border },
+    filterButtonText: { color: tc.textSecondary },
+    contractName: { color: tc.text },
+    statusBadge: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    contractMeta: { color: tc.textSecondary },
+  };
 
   useEffect(() => {
     loadContracts();
@@ -226,34 +244,34 @@ export default function ContractsScreen() {
       const start = formatDate(item.startDate);
       const end = formatDate(item.endDate);
       return (
-        <Card style={styles.contractCard}>
+        <Card style={[styles.contractCard, dynamicStyles.cardBackground]}>
           <TouchableOpacity onPress={() => router.push(`/contracts/${item.id}`)} activeOpacity={0.7}>
             <View style={styles.contractTopRow}>
-              <Text style={styles.contractName}>{partyOf(item)}</Text>
+              <Text style={[styles.contractName, dynamicStyles.contractName]}>{partyOf(item)}</Text>
               <View style={styles.typeBadge}>
                 <Text style={styles.typeBadgeText}>{item.type || '—'}</Text>
               </View>
               {!!item.status && (
-                <View style={styles.statusBadge}>
+                <View style={[styles.statusBadge, dynamicStyles.statusBadge]}>
                   <Text style={styles.statusBadgeText}>{item.status}</Text>
                 </View>
               )}
             </View>
             {value && <Text style={styles.contractValue}>{value}</Text>}
-            <Text style={styles.contractMeta}>
+            <Text style={[styles.contractMeta, dynamicStyles.contractMeta]}>
               {start ? `${start}${end ? ` – ${end}` : ''}` : 'No dates set'}
             </Text>
           </TouchableOpacity>
         </Card>
       );
     },
-    [router]
+    [router, dynamicStyles]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Contracts</Text>
         </View>
@@ -264,8 +282,8 @@ export default function ContractsScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Contracts</Text>
         </View>
@@ -281,8 +299,8 @@ export default function ContractsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Contracts</Text>
         {canWrite && (
@@ -311,13 +329,13 @@ export default function ContractsScreen() {
             {statusFilters.map((f) => (
               <TouchableOpacity
                 key={f}
-                style={[styles.filterButton, statusFilter === f && styles.filterButtonActive]}
+                style={[styles.filterButton, dynamicStyles.filterButton, statusFilter === f && styles.filterButtonActive]}
                 onPress={() => setStatusFilter(f)}
                 accessibilityRole="button"
                 accessibilityLabel={f === 'all' ? 'Filter all contracts' : `Filter ${f.toLowerCase()} contracts`}
                 accessibilityState={{ selected: statusFilter === f }}
               >
-                <Text style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}>
+                <Text style={[styles.filterButtonText, dynamicStyles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}>
                   {f === 'all' ? 'All' : f}
                 </Text>
               </TouchableOpacity>
@@ -334,8 +352,8 @@ export default function ContractsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📝</Text>
-            <Text style={styles.emptyText}>No Contracts Found</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Contracts Found</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
               {search || statusFilter !== 'all'
                 ? 'Nothing matches the current filters'
                 : 'Record buy and sell agreements with your buyers and suppliers'}

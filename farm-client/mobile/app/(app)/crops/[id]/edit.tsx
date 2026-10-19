@@ -18,6 +18,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: {
@@ -233,6 +234,7 @@ export default function EditCropScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [crop, setCrop] = useState<CropData | null>(null);
@@ -380,8 +382,8 @@ export default function EditCropScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -395,8 +397,8 @@ export default function EditCropScreen() {
 
   if (loadError || !crop) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -415,8 +417,8 @@ export default function EditCropScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -453,22 +455,26 @@ export default function EditCropScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Farm *</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Farm *</Text>
             <TouchableOpacity
               style={[
                 styles.selectButton,
                 errors.farmId && styles.selectError,
+                { backgroundColor: tc.card },
+                errors.farmId ? undefined : { borderColor: tc.border },
               ]}
               onPress={() => setShowFarmModal(true)}
             >
               <Text
                 style={
-                  selectedFarm ? styles.selectButtonText : styles.selectPlaceholder
+                  selectedFarm
+                    ? [styles.selectButtonText, { color: tc.text }]
+                    : [styles.selectPlaceholder, { color: tc.textSecondary }]
                 }
               >
                 {selectedFarm ? selectedFarm.name : 'Select a farm'}
               </Text>
-              <Text style={styles.selectArrow}>▼</Text>
+              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
             </TouchableOpacity>
             {errors.farmId && (
               <Text style={styles.errorText}>{errors.farmId}</Text>
@@ -482,16 +488,16 @@ export default function EditCropScreen() {
             onRequestClose={() => setShowFarmModal(false)}
           >
             <TouchableOpacity
-              style={styles.modalOverlay}
+              style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
               activeOpacity={1}
               onPress={() => setShowFarmModal(false)}
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-                <View style={styles.modalContent}>
-                  <Text style={styles.modalTitle}>Select Farm</Text>
+                <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
+                  <Text style={[styles.modalTitle, { color: tc.text }]}>Select Farm</Text>
                   {farms.length === 0 ? (
                     <View style={styles.modalItemEmpty}>
-                      <Text style={styles.modalItemEmptyText}>No farms available</Text>
+                      <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No farms available</Text>
                     </View>
                   ) : (
                     <FlatList
@@ -499,7 +505,7 @@ export default function EditCropScreen() {
                       keyExtractor={(item) => item.id}
                       renderItem={({ item }) => (
                         <TouchableOpacity
-                          style={styles.modalItem}
+                          style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
                           onPress={() => {
                             updateFormData('farmId', item.id);
                             setShowFarmModal(false);
@@ -509,6 +515,7 @@ export default function EditCropScreen() {
                             style={[
                               styles.modalItemText,
                               item.id === formData.farmId && { color: colors.primary, fontWeight: '600' },
+                              item.id === formData.farmId ? undefined : { color: tc.text },
                             ]}
                           >
                             {item.name}
@@ -550,7 +557,7 @@ export default function EditCropScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Health (0-100)</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Health (0-100)</Text>
             <View style={styles.healthContainer}>
               <TextInputField
                 value={formData.health}
@@ -564,7 +571,7 @@ export default function EditCropScreen() {
                 containerStyle={styles.healthInput}
                 error={errors.health}
               />
-              <View style={styles.healthBar}>
+              <View style={[styles.healthBar, { backgroundColor: isDark ? tc.surface : '#F5F5F5' }]}>
                 <View
                   style={[
                     styles.healthFill,
@@ -575,12 +582,12 @@ export default function EditCropScreen() {
                   ]}
                 />
               </View>
-              <Text style={styles.healthValue}>{formData.health || 0}%</Text>
+              <Text style={[styles.healthValue, { color: tc.text }]}>{formData.health || 0}%</Text>
             </View>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Status</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Status</Text>
             <View style={styles.statusContainer}>
               {(['growing', 'harvesting', 'completed'] as const).map((s) => (
                 <TouchableOpacity
@@ -588,6 +595,7 @@ export default function EditCropScreen() {
                   style={[
                     styles.statusOption,
                     formData.status === s && styles.statusOptionActive,
+                    formData.status === s ? undefined : { backgroundColor: tc.card, borderColor: tc.border },
                   ]}
                   onPress={() => updateFormData('status', s)}
                 >
@@ -595,6 +603,7 @@ export default function EditCropScreen() {
                     style={[
                       styles.statusOptionText,
                       formData.status === s && styles.statusOptionTextActive,
+                      formData.status === s ? undefined : { color: tc.text },
                     ]}
                   >
                     {s.charAt(0).toUpperCase() + s.slice(1)}

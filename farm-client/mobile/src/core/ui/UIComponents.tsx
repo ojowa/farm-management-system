@@ -12,6 +12,7 @@ import {
   TextStyle,
   StyleProp,
 } from 'react-native';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 // ─── Colors ────────────────────────────────────────────────────────────────────
 
@@ -223,21 +224,23 @@ export const TextInputField: React.FC<InputProps> = ({
   rightIcon,
 }) => {
   const [focused, setFocused] = React.useState(false);
+  const { colors: tc } = useAppTheme();
 
   return (
     <View style={[styles.inputContainer, containerStyle]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, { color: tc.text }]}>{label}</Text> : null}
       <View
         style={[
           styles.input,
           { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 },
+          { backgroundColor: tc.inputBg, borderColor: tc.inputBorder },
           focused ? styles.inputFocused : null,
-          !editable ? { backgroundColor: palette.light } : null,
+          !editable ? { backgroundColor: tc.disabled } : null,
         ]}
       >
         <TextInput
           style={[
-            { flex: 1, paddingVertical: 10, fontSize: 16, color: palette.text },
+            { flex: 1, paddingVertical: 10, fontSize: 16, color: tc.inputText },
             style,
           ]}
           placeholder={placeholder}
@@ -254,7 +257,7 @@ export const TextInputField: React.FC<InputProps> = ({
           editable={editable}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholderTextColor={palette.textLight}
+          placeholderTextColor={tc.placeholder}
           accessibilityLabel={accessibilityLabel || label || placeholder}
           accessibilityRole="text"
           accessibilityState={{ disabled: !editable }}
@@ -292,14 +295,15 @@ export const Button: React.FC<ButtonProps> = ({
   accessibilityLabel,
 }) => {
   const isDisabled = disabled || loading;
+  const { colors: tc } = useAppTheme();
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        variant === 'primary' ? styles.buttonPrimary : null,
+        variant === 'primary' ? { backgroundColor: tc.primary } : null,
         variant === 'secondary' ? styles.buttonSecondary : null,
-        isDisabled ? styles.buttonDisabled : null,
+        isDisabled ? { backgroundColor: tc.disabled } : null,
         style,
       ]}
       onPress={onPress}
@@ -312,7 +316,7 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={isDisabled ? palette.textLight : '#FFFFFF'}
+          color={isDisabled ? tc.textSecondary : '#FFFFFF'}
           accessibilityLabel="Loading"
         />
       ) : (
@@ -321,7 +325,7 @@ export const Button: React.FC<ButtonProps> = ({
           <Text
             style={[
               styles.buttonText,
-              isDisabled ? styles.buttonTextDisabled : null,
+              isDisabled ? { color: tc.textSecondary } : null,
               textStyle,
               icon ? { marginLeft: 8 } : null,
             ]}
@@ -344,10 +348,18 @@ export interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, style, onPress, accessibilityLabel }) => {
+  const { colors: tc, isDark } = useAppTheme();
+  const themed = {
+    backgroundColor: tc.card,
+    // Dark surfaces need an edge to separate them from the themed background.
+    borderWidth: isDark ? 1 : 0,
+    borderColor: tc.borderLight,
+  };
+
   if (onPress) {
     return (
       <TouchableOpacity
-        style={[styles.card, style]}
+        style={[styles.card, themed, style]}
         onPress={onPress}
         activeOpacity={0.7}
         accessibilityRole="button"
@@ -359,7 +371,7 @@ export const Card: React.FC<CardProps> = ({ children, style, onPress, accessibil
   }
 
   return (
-    <View style={[styles.card, style]} accessibilityRole="summary" accessibilityLabel={accessibilityLabel}>
+    <View style={[styles.card, themed, style]} accessibilityRole="summary" accessibilityLabel={accessibilityLabel}>
       {children}
     </View>
   );
@@ -398,12 +410,13 @@ export interface BadgeProps {
 }
 
 export const Badge: React.FC<BadgeProps> = ({ label, variant = 'default', style }) => {
+  const { colors: tc } = useAppTheme();
   const variantStyles = {
     success: { backgroundColor: '#E8F5E9', color: colors.success },
     error: { backgroundColor: '#FFEBEE', color: colors.error },
     warning: { backgroundColor: '#FFF3E0', color: colors.warning },
     info: { backgroundColor: '#E3F2FD', color: colors.info },
-    default: { backgroundColor: colors.light, color: colors.text },
+    default: { backgroundColor: tc.disabled, color: tc.text },
   };
 
   return (
@@ -424,15 +437,16 @@ export interface ModalProps {
 }
 
 export const Modal: React.FC<ModalProps> = ({ visible, onClose, title, children, footer }) => {
+  const { colors: tc } = useAppTheme();
   return (
     <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
+      <TouchableOpacity style={[styles.modalOverlay, { backgroundColor: tc.overlay }]} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.modalContent, { backgroundColor: tc.surface }]} onStartShouldSetResponder={() => true}>
+          <View style={[styles.modalHeader, { borderBottomColor: tc.borderLight }]}>
+            <Text style={[styles.modalTitle, { color: tc.text }]}>{title}</Text>
           </View>
           <ScrollView style={styles.modalBody}>{children}</ScrollView>
-          {footer && <View style={styles.modalFooter}>{footer}</View>}
+          {footer && <View style={[styles.modalFooter, { borderTopColor: tc.borderLight }]}>{footer}</View>}
         </View>
       </TouchableOpacity>
     </RNModal>
@@ -449,11 +463,12 @@ export interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description, action }) => {
+  const { colors: tc } = useAppTheme();
   return (
     <View style={styles.emptyContainer}>
       {icon && <Text style={styles.emptyIcon}>{icon}</Text>}
-      <Text style={styles.emptyTitle}>{title}</Text>
-      {description && <Text style={styles.emptyDescription}>{description}</Text>}
+      <Text style={[styles.emptyTitle, { color: tc.text }]}>{title}</Text>
+      {description && <Text style={[styles.emptyDescription, { color: tc.textSecondary }]}>{description}</Text>}
       {action}
     </View>
   );
@@ -482,16 +497,17 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 }) => {
   const trendColors = { up: colors.success, down: colors.error, neutral: colors.textLight };
   const trendIcons = { up: '↑', down: '↓', neutral: '→' };
+  const { colors: tc, isDark } = useAppTheme();
 
   return (
-    <View style={[styles.statsCard, style]}>
+    <View style={[styles.statsCard, { backgroundColor: tc.card, borderWidth: isDark ? 1 : 0, borderColor: tc.borderLight }, style]}>
       <View style={[styles.statsIconContainer, { backgroundColor: iconBackgroundColor }]}>
         {icon}
       </View>
-      <Text style={styles.statsLabel}>{label}</Text>
-      <Text style={styles.statsValue}>{value}</Text>
+      <Text style={[styles.statsLabel, { color: tc.textSecondary }]}>{label}</Text>
+      <Text style={[styles.statsValue, { color: tc.text }]}>{value}</Text>
       {trend && trendValue && (
-        <Text style={[styles.statsTrend, { color: trendColors[trend] }]}>
+        <Text style={[styles.statsTrend, { color: trendColors[trend] === colors.textLight ? tc.textSecondary : trendColors[trend] }]}>
           {trendIcons[trend]} {trendValue}
         </Text>
       )}
@@ -511,17 +527,18 @@ export interface BreadcrumbProps {
 }
 
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
+  const { colors: tc } = useAppTheme();
   return (
     <View style={styles.breadcrumb} accessibilityRole="none" accessibilityLabel="Breadcrumb">
       {items.map((item, index) => (
         <React.Fragment key={index}>
-          {index > 0 && <Text style={styles.breadcrumbSeparator}>/</Text>}
+          {index > 0 && <Text style={[styles.breadcrumbSeparator, { color: tc.border }]}>/</Text>}
           {item.onPress ? (
             <TouchableOpacity onPress={item.onPress}>
-              <Text style={styles.breadcrumbItem}>{item.label}</Text>
+              <Text style={[styles.breadcrumbItem, { color: tc.textSecondary }]}>{item.label}</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={[styles.breadcrumbItem, styles.breadcrumbActive]}>{item.label}</Text>
+            <Text style={[styles.breadcrumbItem, styles.breadcrumbActive, { color: tc.text }]}>{item.label}</Text>
           )}
         </React.Fragment>
       ))}
@@ -538,10 +555,11 @@ export interface PageHeaderProps {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, description, actions }) => {
+  const { colors: tc } = useAppTheme();
   return (
     <View style={styles.pageHeader}>
-      <Text style={styles.pageTitle}>{title}</Text>
-      {description && <Text style={styles.pageDescription}>{description}</Text>}
+      <Text style={[styles.pageTitle, { color: tc.text }]}>{title}</Text>
+      {description && <Text style={[styles.pageDescription, { color: tc.textSecondary }]}>{description}</Text>}
       {actions && <View style={styles.pageActions}>{actions}</View>}
     </View>
   );
@@ -569,13 +587,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   variant = 'danger',
 }) => {
   const confirmColor = variant === 'danger' ? colors.error : colors.warning;
+  const { colors: tc } = useAppTheme();
 
   return (
     <Modal visible={visible} onClose={onClose} title={title}>
-      <Text style={{ fontSize: 14, color: colors.text, marginBottom: 16 }}>{message}</Text>
+      <Text style={{ fontSize: 14, color: tc.text, marginBottom: 16 }}>{message}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+        <TouchableOpacity style={[styles.cancelButton, { backgroundColor: tc.disabled }]} onPress={onClose}>
+          <Text style={[styles.cancelButtonText, { color: tc.text }]}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.confirmButton, { backgroundColor: confirmColor }]}
@@ -636,10 +655,11 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   color = colors.primary,
   label,
 }) => {
+  const { colors: tc } = useAppTheme();
   return (
     <View style={{ alignItems: 'center', padding: 20 }}>
       <ActivityIndicator size={size} color={color} accessibilityLabel={label || 'Loading'} />
-      {label && <Text style={{ marginTop: 8, fontSize: 14, color: colors.textLight }}>{label}</Text>}
+      {label && <Text style={{ marginTop: 8, fontSize: 14, color: tc.textSecondary }}>{label}</Text>}
     </View>
   );
 };

@@ -14,6 +14,7 @@ import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -113,6 +114,7 @@ export default function TransactionDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [transaction, setTransaction] = useState<TransactionData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -160,10 +162,27 @@ export default function TransactionDetailScreen() {
     }
   };
 
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    title: { color: tc.text },
+    category: { color: tc.textSecondary },
+    amountLabel: { color: tc.textSecondary },
+    detailLabel: { color: tc.textSecondary },
+    detailValue: { color: tc.text },
+    divider: { borderTopColor: isDark ? tc.border : '#F5F5F5' },
+    descriptionLabel: { color: tc.text },
+    descriptionText: { color: tc.text },
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -177,8 +196,8 @@ export default function TransactionDetailScreen() {
 
   if (loadError || !transaction) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -200,8 +219,8 @@ export default function TransactionDetailScreen() {
   const absAmount = Math.abs(transaction.amount);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -210,7 +229,7 @@ export default function TransactionDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Card style={styles.card}>
+        <Card style={[styles.card, dynamicStyles.cardBackground]}>
           <View style={styles.iconRow}>
             <View
               style={[
@@ -221,8 +240,8 @@ export default function TransactionDetailScreen() {
               <Text style={styles.iconText}>{transaction.icon}</Text>
             </View>
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>{transaction.title}</Text>
-              <Text style={styles.category}>{transaction.category}</Text>
+              <Text style={[styles.title, dynamicStyles.title]}>{transaction.title}</Text>
+              <Text style={[styles.category, dynamicStyles.category]}>{transaction.category}</Text>
             </View>
           </View>
 
@@ -238,7 +257,7 @@ export default function TransactionDetailScreen() {
           </View>
 
           <View style={styles.amountContainer}>
-            <Text style={styles.amountLabel}>Amount</Text>
+            <Text style={[styles.amountLabel, dynamicStyles.amountLabel]}>Amount</Text>
             <Text
               style={[
                 styles.amountValue,
@@ -249,25 +268,25 @@ export default function TransactionDetailScreen() {
             </Text>
           </View>
 
-          <View style={styles.detailsSection}>
+          <View style={[styles.detailsSection, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Date</Text>
-              <Text style={styles.detailValue}>{transaction.date}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Date</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{transaction.date}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Type</Text>
-              <Text style={styles.detailValue}>{isIncome ? 'Income' : 'Expense'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Type</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{isIncome ? 'Income' : 'Expense'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Category</Text>
-              <Text style={styles.detailValue}>{transaction.category}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Category</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{transaction.category}</Text>
             </View>
           </View>
 
           {transaction.description ? (
-            <View style={styles.descriptionSection}>
-              <Text style={styles.descriptionLabel}>Description</Text>
-              <Text style={styles.descriptionText}>{transaction.description}</Text>
+            <View style={[styles.descriptionSection, dynamicStyles.divider]}>
+              <Text style={[styles.descriptionLabel, dynamicStyles.descriptionLabel]}>Description</Text>
+              <Text style={[styles.descriptionText, dynamicStyles.descriptionText]}>{transaction.description}</Text>
             </View>
           ) : null}
         </Card>

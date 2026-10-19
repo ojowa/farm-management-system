@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { inventoryAPI } from '@/modules/inventory';
 import { formatCurrencyFixed } from '../../../src/core/utils/currency';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -20,6 +21,7 @@ export default function LowStockScreen() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { colors: tc, isDark } = useAppTheme();
 
   const loadItems = useCallback(async () => {
     try {
@@ -39,8 +41,8 @@ export default function LowStockScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <Text style={styles.headerTitle}>Low Stock Alerts</Text>
         </View>
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -49,8 +51,8 @@ export default function LowStockScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <Text style={styles.headerTitle}>Low Stock Alerts</Text>
         <Text style={styles.headerSubtext}>Items that need restocking</Text>
       </View>
@@ -59,54 +61,54 @@ export default function LowStockScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Card style={styles.summaryCard}>
-          <Text style={styles.summaryText}>Items below minimum quantity</Text>
+        <Card style={[styles.summaryCard, { backgroundColor: tc.card }]}>
+          <Text style={[styles.summaryText, { color: tc.textSecondary }]}>Items below minimum quantity</Text>
           <Text style={styles.summaryCount}>{items.length}</Text>
         </Card>
 
         {items.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>✅</Text>
-            <Text style={styles.emptyText}>All stocked up</Text>
-            <Text style={styles.emptySubtext}>No inventory items are below minimum quantity</Text>
+            <Text style={[styles.emptyText, { color: tc.text }]}>All stocked up</Text>
+            <Text style={[styles.emptySubtext, { color: tc.textSecondary }]}>No inventory items are below minimum quantity</Text>
           </View>
         ) : (
           items.map((item) => (
-            <Card key={item.id} style={styles.itemCard}>
+            <Card key={item.id} style={[styles.itemCard, { backgroundColor: tc.card }]}>
               <View style={styles.itemHeader}>
-                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={[styles.itemName, { color: tc.text }]}>{item.name}</Text>
                 <View style={styles.lowBadge}>
                   <Text style={styles.lowBadgeText}>Low Stock</Text>
                 </View>
               </View>
               <View style={styles.itemRow}>
-                <Text style={styles.itemLabel}>Category</Text>
-                <Text style={styles.itemValue}>{item.category}</Text>
+                <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Category</Text>
+                <Text style={[styles.itemValue, { color: tc.text }]}>{item.category}</Text>
               </View>
               <View style={styles.itemRow}>
-                <Text style={styles.itemLabel}>Quantity</Text>
+                <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Quantity</Text>
                 <Text style={[styles.itemValue, { color: '#F44336' }]}>
                   {item.quantity} {item.unit || ''}
                 </Text>
               </View>
               {item.minQuantity !== undefined && (
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Min Required</Text>
-                  <Text style={styles.itemValue}>
+                  <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Min Required</Text>
+                  <Text style={[styles.itemValue, { color: tc.text }]}>
                     {item.minQuantity} {item.unit || ''}
                   </Text>
                 </View>
               )}
               {item.farmName && (
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Farm</Text>
-                  <Text style={styles.itemValue}>{item.farmName}</Text>
+                  <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Farm</Text>
+                  <Text style={[styles.itemValue, { color: tc.text }]}>{item.farmName}</Text>
                 </View>
               )}
               {item.costPerUnit !== undefined && (
                 <View style={styles.itemRow}>
-                  <Text style={styles.itemLabel}>Cost/Unit</Text>
-                  <Text style={styles.itemValue}>{formatCurrencyFixed(item.costPerUnit, 2)}</Text>
+                  <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Cost/Unit</Text>
+                  <Text style={[styles.itemValue, { color: tc.text }]}>{formatCurrencyFixed(item.costPerUnit, 2)}</Text>
                 </View>
               )}
             </Card>

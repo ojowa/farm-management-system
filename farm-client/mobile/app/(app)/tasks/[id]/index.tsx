@@ -18,6 +18,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -150,6 +151,7 @@ export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission, hasAnyPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Mirrors the API: create/edit are hr.write, delete is hr.delete, comments
   // and attachments accept hr.write / worker.write.
@@ -165,6 +167,52 @@ export default function TaskDetailScreen() {
   const [attachmentName, setAttachmentName] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [addingAttachment, setAddingAttachment] = useState(false);
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    title: {
+      color: tc.text,
+    },
+    detailLabel: {
+      color: tc.text,
+    },
+    detailValue: {
+      color: tc.text,
+    },
+    sectionTitle: {
+      color: tc.textSecondary,
+    },
+    bodyText: {
+      color: tc.text,
+    },
+    insetRow: {
+      backgroundColor: isDark ? tc.surface : '#F5F5F5',
+    },
+    commentMeta: {
+      color: tc.textSecondary,
+    },
+    commentBody: {
+      color: tc.text,
+    },
+    attachName: {
+      color: tc.text,
+    },
+    input: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    emptyNote: {
+      color: tc.textSecondary,
+    },
+  };
 
   const loadTask = useCallback(async () => {
     if (!id) {
@@ -304,8 +352,8 @@ export default function TaskDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -319,8 +367,8 @@ export default function TaskDetailScreen() {
 
   if (loadError || !task) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -350,8 +398,8 @@ export default function TaskDetailScreen() {
   const attachments = task.attachments || [];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -365,7 +413,7 @@ export default function TaskDetailScreen() {
         keyboardVerticalOffset={90}
       >
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>{task.title}</Text>
+          <Text style={[styles.title, dynamicStyles.title]}>{task.title}</Text>
           <View style={styles.badgeRow}>
             <View style={[styles.badge, { backgroundColor: PRIORITY_COLORS[task.priority] || '#9CA3AF' }]}>
               <Text style={styles.badgeText}>{task.priority}</Text>
@@ -385,34 +433,34 @@ export default function TaskDetailScreen() {
             )}
           </View>
 
-          <Card>
+          <Card style={dynamicStyles.cardBackground}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Assigned To</Text>
-              <Text style={styles.detailValue}>{task.assignedToName || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Assigned To</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{task.assignedToName || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Due Date</Text>
-              <Text style={[styles.detailValue, overdue && { color: '#DC2626', fontWeight: '700' }]}>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Due Date</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue, overdue && { color: '#DC2626', fontWeight: '700' }]}>
                 {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}
                 {overdue ? ' · Overdue' : ''}
               </Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Completed</Text>
-              <Text style={styles.detailValue}>{task.completedAt ? new Date(task.completedAt).toLocaleDateString() : '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Completed</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{task.completedAt ? new Date(task.completedAt).toLocaleDateString() : '—'}</Text>
             </View>
             {task.isRecurring && task.nextDueAt && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Next Occurrence</Text>
-                <Text style={styles.detailValue}>{new Date(task.nextDueAt).toLocaleDateString()}</Text>
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Next Occurrence</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{new Date(task.nextDueAt).toLocaleDateString()}</Text>
               </View>
             )}
           </Card>
 
           {task.description && (
             <>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.bodyText}>{task.description}</Text>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Description</Text>
+              <Text style={[styles.bodyText, dynamicStyles.bodyText]}>{task.description}</Text>
             </>
           )}
 
@@ -451,16 +499,16 @@ export default function TaskDetailScreen() {
           </View>
 
           {/* Comments */}
-          <Text style={styles.sectionTitle}>Comments ({comments.length})</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Comments ({comments.length})</Text>
           {comments.length === 0 ? (
-            <Text style={styles.emptyNote}>No comments yet.</Text>
+            <Text style={[styles.emptyNote, dynamicStyles.emptyNote]}>No comments yet.</Text>
           ) : (
             comments.map((c) => (
-              <View key={c.id} style={styles.commentRow}>
-                <Text style={styles.commentMeta}>
+              <View key={c.id} style={[styles.commentRow, dynamicStyles.insetRow]}>
+                <Text style={[styles.commentMeta, dynamicStyles.commentMeta]}>
                   {c.authorName || 'Unknown'} · {formatDateTime(c.createdAt)}
                 </Text>
-                <Text style={styles.commentBody}>{c.body}</Text>
+                <Text style={[styles.commentBody, dynamicStyles.commentBody]}>{c.body}</Text>
                 {canComment && (
                   <TouchableOpacity onPress={() => handleDeleteComment(c.id)} accessibilityLabel="Delete comment">
                     <Text style={styles.deleteLink}>Delete</Text>
@@ -475,7 +523,8 @@ export default function TaskDetailScreen() {
                 value={commentBody}
                 onChangeText={setCommentBody}
                 placeholder="Write a comment…"
-                style={[styles.input, { marginTop: 8 }]}
+                style={[styles.input, dynamicStyles.input, { marginTop: 8 }]}
+                placeholderTextColor={tc.placeholder}
                 multiline
                 accessibilityLabel="Comment body"
               />
@@ -488,13 +537,13 @@ export default function TaskDetailScreen() {
           )}
 
           {/* Attachments */}
-          <Text style={styles.sectionTitle}>Attachments ({attachments.length})</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Attachments ({attachments.length})</Text>
           {attachments.length === 0 ? (
-            <Text style={styles.emptyNote}>No attachments yet.</Text>
+            <Text style={[styles.emptyNote, dynamicStyles.emptyNote]}>No attachments yet.</Text>
           ) : (
             attachments.map((a) => (
-              <View key={a.id} style={styles.attachRow}>
-                <Text style={styles.attachName}>📎 {a.fileName}</Text>
+              <View key={a.id} style={[styles.attachRow, dynamicStyles.insetRow]}>
+                <Text style={[styles.attachName, dynamicStyles.attachName]}>📎 {a.fileName}</Text>
                 {canComment && (
                   <TouchableOpacity onPress={() => handleRemoveAttachment(a.id)} accessibilityLabel={`Remove attachment ${a.fileName}`}>
                     <Text style={styles.deleteLink}>Remove</Text>
@@ -509,14 +558,16 @@ export default function TaskDetailScreen() {
                 value={attachmentName}
                 onChangeText={setAttachmentName}
                 placeholder="File name"
-                style={styles.input}
+                style={[styles.input, dynamicStyles.input]}
+                placeholderTextColor={tc.placeholder}
                 accessibilityLabel="Attachment file name"
               />
               <TextInput
                 value={attachmentUrl}
                 onChangeText={setAttachmentUrl}
                 placeholder="File URL"
-                style={styles.input}
+                style={[styles.input, dynamicStyles.input]}
+                placeholderTextColor={tc.placeholder}
                 autoCapitalize="none"
                 keyboardType="url"
                 accessibilityLabel="Attachment file URL"

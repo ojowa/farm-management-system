@@ -15,6 +15,7 @@ import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 import { useAppDispatch } from '../../../../src/modules/auth/hooks/useAuth';
 import { setSelectedLivestockId } from '../../../../src/store/slices/uiSlice';
 
@@ -100,6 +101,7 @@ export default function AnimalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [animal, setAnimal] = useState<AnimalData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -162,8 +164,8 @@ export default function AnimalDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -177,8 +179,8 @@ export default function AnimalDetailScreen() {
 
   if (loadError || !animal) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -199,8 +201,8 @@ export default function AnimalDetailScreen() {
   const healthColor = getHealthColor(animal.health);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -209,34 +211,34 @@ export default function AnimalDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Card style={styles.card}>
-          <Text style={styles.name}>{animal.name}</Text>
-          <Text style={styles.typeText}>
+        <Card style={[styles.card, { backgroundColor: tc.card }]}>
+          <Text style={[styles.name, { color: tc.text }]}>{animal.name}</Text>
+          <Text style={[styles.typeText, { color: tc.textSecondary }]}>
             {animal.type === 'livestock' ? '🐄' : '🐔'} {animal.type.charAt(0).toUpperCase() + animal.type.slice(1)} · {animal.breed}
           </Text>
 
-          <View style={styles.healthContainer}>
+          <View style={[styles.healthContainer, { backgroundColor: tc.card, borderColor: tc.border }]}>
             <View style={[styles.healthDot, { backgroundColor: healthColor }]} />
-            <Text style={styles.healthLabel}>Health Status</Text>
+            <Text style={[styles.healthLabel, { color: tc.text }]}>Health Status</Text>
             <Text style={[styles.healthValue, { color: healthColor }]}>
               {animal.health.charAt(0).toUpperCase() + animal.health.slice(1)}
             </Text>
           </View>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Quantity</Text>
-              <Text style={styles.statValue}>{animal.quantity}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Quantity</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{animal.quantity}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Farm</Text>
-              <Text style={styles.statValue}>{animal.farm}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Farm</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{animal.farm}</Text>
             </View>
           </View>
 
-          <View style={styles.checkupSection}>
-            <Text style={styles.checkupLabel}>Last Checkup</Text>
-            <Text style={styles.checkupValue}>{animal.lastCheckup || 'No checkup recorded'}</Text>
+          <View style={[styles.checkupSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
+            <Text style={[styles.checkupLabel, { color: tc.text }]}>Last Checkup</Text>
+            <Text style={[styles.checkupValue, { color: tc.text }]}>{animal.lastCheckup || 'No checkup recorded'}</Text>
           </View>
         </Card>
 

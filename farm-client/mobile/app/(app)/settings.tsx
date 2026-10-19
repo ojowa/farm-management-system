@@ -93,6 +93,24 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   offlineQueueText: { fontSize: 10, color: '#FFFFFF', fontWeight: '700' },
+  themeSelector: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   actionContainer: { flexDirection: 'row', gap: 12, marginTop: 20, marginBottom: 32 },
   actionButton: { flex: 1 },
 });
@@ -100,7 +118,7 @@ const styles = StyleSheet.create({
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { mode, setMode, isDark } = useAppTheme();
+  const { mode, setMode, colors: themeColors } = useAppTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const offlineQueueCount = useAppSelector((s: any) => s.sync?.offlineQueue?.length ?? 0);
@@ -214,10 +232,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleDarkModeToggle = (value: boolean) => {
-    setMode(value ? 'dark' : 'light');
-  };
-
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', onPress: () => {} },
@@ -232,6 +246,15 @@ export default function SettingsScreen() {
     ]);
   };
 
+  // Inline overrides that keep the screen readable in dark mode; the static
+  // StyleSheet values below stay as the light-mode baseline.
+  const themed = {
+    container: { backgroundColor: themeColors.background },
+    text: { color: themeColors.text },
+    textSecondary: { color: themeColors.textSecondary },
+    divider: { backgroundColor: themeColors.borderLight },
+  };
+
   const getInitials = () => {
     if (!user?.fullName) return '?';
     const parts = user.fullName.split(' ');
@@ -239,8 +262,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, themed.container]}>
+      <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           accessibilityRole="button"
@@ -261,11 +284,11 @@ export default function SettingsScreen() {
               <Text style={styles.avatarText}>{getInitials()}</Text>
             </View>
           )}
-          <Text style={styles.userName}>{user?.fullName || 'User'}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
+          <Text style={[styles.userName, themed.text]}>{user?.fullName || 'User'}</Text>
+          <Text style={[styles.userEmail, themed.textSecondary]}>{user?.email}</Text>
           <Text style={styles.userRole}>{user?.role || 'Farmer'}</Text>
           {user?.organizationName && (
-            <Text style={styles.userOrg}>{user.organizationName}</Text>
+            <Text style={[styles.userOrg, themed.textSecondary]}>{user.organizationName}</Text>
           )}
         </View>
 
@@ -275,9 +298,9 @@ export default function SettingsScreen() {
           variant="secondary"
         />
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, themed.divider]} />
 
-        <Text style={styles.sectionTitle}>Account</Text>
+        <Text style={[styles.sectionTitle, themed.text]}>Account</Text>
 
         <Card style={styles.settingItem}>
           <TouchableOpacity
@@ -291,18 +314,18 @@ export default function SettingsScreen() {
             accessibilityLabel="Change Password"
           >
             <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Change Password</Text>
-              <Text style={styles.settingItemDescription}>Update your account password</Text>
+              <Text style={[styles.settingItemTitle, themed.text]}>Change Password</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>Update your account password</Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
         </Card>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, themed.divider]} />
 
         {canManageBilling && (
           <>
-            <Text style={styles.sectionTitle}>Billing</Text>
+            <Text style={[styles.sectionTitle, themed.text]}>Billing</Text>
             <Card style={styles.settingItem}>
               <TouchableOpacity
                 style={styles.settingItemRow}
@@ -311,8 +334,8 @@ export default function SettingsScreen() {
                 accessibilityLabel="Subscription"
               >
                 <View style={styles.settingItemText}>
-                  <Text style={styles.settingItemTitle}>Subscription</Text>
-                  <Text style={styles.settingItemDescription}>
+                  <Text style={[styles.settingItemTitle, themed.text]}>Subscription</Text>
+                  <Text style={[styles.settingItemDescription, themed.textSecondary]}>
                     View your plan, usage, and switch plans
                   </Text>
                 </View>
@@ -322,16 +345,16 @@ export default function SettingsScreen() {
           </>
         )}
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, themed.divider]} />
 
         {canManageRoles && (
           <>
-            <Text style={styles.sectionTitle}>Role Management</Text>
+            <Text style={[styles.sectionTitle, themed.text]}>Role Management</Text>
             <Card style={styles.settingItem}>
               <View style={styles.settingItemRow}>
                 <View style={styles.settingItemText}>
-                  <Text style={styles.settingItemTitle}>Custom Roles</Text>
-                  <Text style={styles.settingItemDescription}>
+                  <Text style={[styles.settingItemTitle, themed.text]}>Custom Roles</Text>
+                  <Text style={[styles.settingItemDescription, themed.textSecondary]}>
                     {rolesLoading ? 'Loading...' : `${roles.length} roles (${roles.filter(r => !r.isSystem).length} custom)`}
                   </Text>
                 </View>
@@ -346,8 +369,8 @@ export default function SettingsScreen() {
                   <View key={role.id}>
                     <View style={styles.settingItemRow}>
                       <View style={styles.settingItemText}>
-                        <Text style={styles.settingItemTitle}>{role.name}</Text>
-                        <Text style={styles.settingItemDescription}>
+                        <Text style={[styles.settingItemTitle, themed.text]}>{role.name}</Text>
+                        <Text style={[styles.settingItemDescription, themed.textSecondary]}>
                           {role._count?.users || 0} users · {role.permissions?.length || 0} permissions
                         </Text>
                       </View>
@@ -364,17 +387,17 @@ export default function SettingsScreen() {
                 ))}
               </Card>
             )}
-            <View style={styles.divider} />
+            <View style={[styles.divider, themed.divider]} />
           </>
         )}
 
-        <Text style={styles.sectionTitle}>Preferences</Text>
+        <Text style={[styles.sectionTitle, themed.text]}>Preferences</Text>
 
         <Card style={styles.settingItem}>
           <View style={styles.settingItemRow}>
             <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Push Notifications</Text>
-              <Text style={styles.settingItemDescription}>Receive farm alerts and updates</Text>
+              <Text style={[styles.settingItemTitle, themed.text]}>Push Notifications</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>Receive farm alerts and updates</Text>
             </View>
             <View style={styles.settingItemRight}>
               <Switch
@@ -392,18 +415,48 @@ export default function SettingsScreen() {
         <Card style={styles.settingItem}>
           <View style={styles.settingItemRow}>
             <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Dark Mode</Text>
-              <Text style={styles.settingItemDescription}>Switch between light and dark themes</Text>
+              <Text style={[styles.settingItemTitle, themed.text]}>Appearance</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>
+                {mode === 'system' ? 'Match your device setting' : mode === 'dark' ? 'Dark theme' : 'Light theme'}
+              </Text>
             </View>
-            <View style={styles.settingItemRight}>
-              <Switch
-                value={isDark}
-                onValueChange={handleDarkModeToggle}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={isDark ? colors.success : colors.light}
-                accessibilityLabel="Toggle dark mode"
-              />
-            </View>
+          </View>
+          {/* Three-way selector: Light / Dark / System — the switch could only
+              express light|dark and silently ignored the persisted 'system'. */}
+          <View style={[styles.themeSelector, { backgroundColor: themeColors.inputBg, borderColor: themeColors.borderLight }]}>
+            {(
+              [
+                { value: 'light', label: '☀️ Light', a11y: 'Use light theme' },
+                { value: 'dark', label: '🌙 Dark', a11y: 'Use dark theme' },
+                { value: 'system', label: '⚙️ System', a11y: 'Match system theme' },
+              ] as const
+            ).map((option, index) => {
+              const selected = mode === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => setMode(option.value)}
+                  style={[
+                    styles.themeOption,
+                    index > 0 && { borderLeftWidth: 1, borderLeftColor: themeColors.borderLight },
+                    selected && { backgroundColor: themeColors.primary },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={option.a11y}
+                >
+                  <Text
+                    style={[
+                      styles.themeOptionText,
+                      { color: themeColors.text },
+                      selected && { color: themeColors.textInverse },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </Card>
 
@@ -411,8 +464,8 @@ export default function SettingsScreen() {
           <Card style={styles.settingItem}>
             <View style={styles.settingItemRow}>
               <View style={styles.settingItemText}>
-                <Text style={styles.settingItemTitle}>Offline Changes</Text>
-                <Text style={styles.settingItemDescription}>
+                <Text style={[styles.settingItemTitle, themed.text]}>Offline Changes</Text>
+                <Text style={[styles.settingItemDescription, themed.textSecondary]}>
                   Pending changes will sync when online
                 </Text>
               </View>
@@ -423,9 +476,9 @@ export default function SettingsScreen() {
           </Card>
         )}
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, themed.divider]} />
 
-        <Text style={styles.sectionTitle}>Support</Text>
+        <Text style={[styles.sectionTitle, themed.text]}>Support</Text>
 
         <Card style={styles.settingItem}>
           <TouchableOpacity
@@ -439,8 +492,8 @@ export default function SettingsScreen() {
             accessibilityLabel="Help Center"
           >
             <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Help Center</Text>
-              <Text style={styles.settingItemDescription}>FAQs and troubleshooting</Text>
+              <Text style={[styles.settingItemTitle, themed.text]}>Help Center</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>FAQs and troubleshooting</Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
@@ -458,8 +511,8 @@ export default function SettingsScreen() {
             accessibilityLabel="Contact Support"
           >
             <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Contact Support</Text>
-              <Text style={styles.settingItemDescription}>Send us a message</Text>
+              <Text style={[styles.settingItemTitle, themed.text]}>Contact Support</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>Send us a message</Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
@@ -473,15 +526,15 @@ export default function SettingsScreen() {
             accessibilityLabel="About Farm Management System"
           >
             <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>About</Text>
-              <Text style={styles.settingItemDescription}>App version and credits</Text>
+              <Text style={[styles.settingItemTitle, themed.text]}>About</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>App version and credits</Text>
             </View>
             <Text style={styles.settingItemValue}>v{Constants.expoConfig?.version || '1.0.0'}</Text>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
         </Card>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, themed.divider]} />
 
         <View style={styles.actionContainer}>
           <Button
@@ -494,20 +547,22 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <Modal visible={showRoleModal} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '60%' }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16 }}>{editingRole ? 'Edit Role' : 'New Role'}</Text>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: themeColors.overlay }}>
+          <View style={{ backgroundColor: themeColors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '60%' }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16, color: themeColors.text }}>{editingRole ? 'Edit Role' : 'New Role'}</Text>
             <TextInput
               value={roleName}
               onChangeText={setRoleName}
               placeholder="Role name (e.g. Farm Supervisor)"
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 }}
+              placeholderTextColor={themeColors.placeholder}
+              style={{ borderWidth: 1, borderColor: themeColors.inputBorder, backgroundColor: themeColors.inputBg, color: themeColors.inputText, borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 14 }}
             />
             <TextInput
               value={roleDesc}
               onChangeText={setRoleDesc}
               placeholder="Description (optional)"
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 14 }}
+              placeholderTextColor={themeColors.placeholder}
+              style={{ borderWidth: 1, borderColor: themeColors.inputBorder, backgroundColor: themeColors.inputBg, color: themeColors.inputText, borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 14 }}
             />
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <Button

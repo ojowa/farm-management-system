@@ -6,6 +6,7 @@ import { messagesAPI } from '@/modules/communication';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 interface Message {
   id: string;
@@ -55,6 +56,40 @@ export default function MessagesScreen() {
   const [recipientsList, setRecipientsList] = useState<RecipientOption[]>([]);
   const [recipientsLoading, setRecipientsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    title: { color: tc.text },
+    unreadBadge: { color: tc.textSecondary },
+    tab: { backgroundColor: tc.card },
+    tabText: { color: tc.textSecondary },
+    loadingText: { color: tc.textSecondary },
+    sectionTitle: { color: tc.text },
+    input: { backgroundColor: tc.inputBg, borderColor: tc.inputBorder, color: tc.inputText },
+    label: { color: tc.text },
+    composeLabel: { color: tc.text },
+    chip: { backgroundColor: tc.card },
+    chipText: { color: tc.text },
+    recipientsHint: { color: tc.textSecondary },
+    priorityBtn: { backgroundColor: tc.card },
+    priorityBtnText: { color: tc.textSecondary },
+    messageSubject: { color: tc.text },
+    messageFrom: { color: tc.textSecondary },
+    messageDate: { color: tc.textSecondary },
+    messageBody: { color: tc.text },
+    recipientsSection: { borderTopColor: tc.border },
+    recipientsLabel: { color: tc.textSecondary },
+    emptyText: { color: tc.textSecondary },
+    messageCard: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    messageListSubject: { color: tc.text },
+    messageListMeta: { color: tc.textSecondary },
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -151,14 +186,14 @@ export default function MessagesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top']}>
     <ScrollView
       contentContainerStyle={styles.scrollContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          Messages {unreadCount > 0 && <Text style={styles.unreadBadge}>({unreadCount})</Text>}
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
+        <Text style={[styles.title, dynamicStyles.title]}>
+          Messages {unreadCount > 0 && <Text style={[styles.unreadBadge, dynamicStyles.unreadBadge]}>({unreadCount})</Text>}
         </Text>
         {canSend && view !== 'compose' && (
           <TouchableOpacity
@@ -179,9 +214,9 @@ export default function MessagesScreen() {
             <TouchableOpacity
               key={v}
               onPress={() => { setView(v); setSelected(null); }}
-              style={[styles.tab, view === v && styles.activeTab]}
+              style={[styles.tab, dynamicStyles.tab, view === v && styles.activeTab]}
             >
-              <Text style={[styles.tabText, view === v && styles.activeTabText]}>
+              <Text style={[styles.tabText, dynamicStyles.tabText, view === v && styles.activeTabText]}>
                 {v === 'inbox' ? `Inbox${unreadCount > 0 ? ` (${unreadCount})` : ''}` : 'Sent'}
               </Text>
             </TouchableOpacity>
@@ -190,16 +225,16 @@ export default function MessagesScreen() {
       )}
 
       {loading ? (
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading...</Text>
       ) : view === 'compose' ? (
         /* Compose */
-        <Card>
-          <Text style={styles.sectionTitle}>New Message</Text>
-          <Text style={styles.composeLabel}>To:</Text>
+        <Card style={dynamicStyles.messageCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>New Message</Text>
+          <Text style={[styles.composeLabel, dynamicStyles.composeLabel]}>To:</Text>
           {recipientsLoading ? (
-            <Text style={styles.recipientsHint}>Loading people...</Text>
+            <Text style={[styles.recipientsHint, dynamicStyles.recipientsHint]}>Loading people...</Text>
           ) : recipientsList.length === 0 ? (
-            <Text style={styles.recipientsHint}>No one else in your organization yet</Text>
+            <Text style={[styles.recipientsHint, dynamicStyles.recipientsHint]}>No one else in your organization yet</Text>
           ) : (
             <View style={styles.chipWrap}>
               {recipientsList.map((r) => {
@@ -208,11 +243,11 @@ export default function MessagesScreen() {
                   <TouchableOpacity
                     key={r.id}
                     onPress={() => toggleRecipient(r.id)}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    style={[styles.chip, dynamicStyles.chip, isSelected && styles.chipSelected]}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: isSelected }}
                   >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                    <Text style={[styles.chipText, dynamicStyles.chipText, isSelected && styles.chipTextSelected]}>
                       {r.firstName} {r.lastName}{r.role ? ` · ${r.role}` : ''}
                     </Text>
                   </TouchableOpacity>
@@ -221,34 +256,36 @@ export default function MessagesScreen() {
             </View>
           )}
           {recipientIds.length > 0 && (
-            <Text style={styles.recipientsHint}>
+            <Text style={[styles.recipientsHint, dynamicStyles.recipientsHint]}>
               {recipientIds.length} recipient{recipientIds.length > 1 ? 's' : ''} selected
             </Text>
           )}
           <TextInput
-            style={styles.input}
+            style={[styles.input, dynamicStyles.input]}
             value={subject}
             onChangeText={setSubject}
             placeholder="Subject"
+            placeholderTextColor={tc.placeholder}
           />
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, dynamicStyles.input]}
             value={body}
             onChangeText={setBody}
             placeholder="Type your message..."
+            placeholderTextColor={tc.placeholder}
             multiline
             numberOfLines={6}
             textAlignVertical="top"
           />
           <View style={styles.priorityRow}>
-            <Text style={styles.label}>Priority:</Text>
+            <Text style={[styles.label, dynamicStyles.label]}>Priority:</Text>
             {['LOW', 'NORMAL', 'HIGH', 'URGENT'].map((p) => (
               <TouchableOpacity
                 key={p}
                 onPress={() => setPriority(p)}
-                style={[styles.priorityBtn, priority === p && { backgroundColor: PRIORITY_COLORS[p] + '20' }]}
+                style={[styles.priorityBtn, dynamicStyles.priorityBtn, priority === p && { backgroundColor: PRIORITY_COLORS[p] + '20' }]}
               >
-                <Text style={[styles.priorityBtnText, priority === p && { color: PRIORITY_COLORS[p] }]}>{p}</Text>
+                <Text style={[styles.priorityBtnText, dynamicStyles.priorityBtnText, priority === p && { color: PRIORITY_COLORS[p] }]}>{p}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -259,7 +296,7 @@ export default function MessagesScreen() {
         </Card>
       ) : view === 'message' && selected ? (
         /* View Message */
-        <Card>
+        <Card style={dynamicStyles.messageCard}>
           <View style={styles.messageHeader}>
             <TouchableOpacity onPress={() => setView('inbox')}>
               <Text style={styles.backBtn}>← Back</Text>
@@ -270,18 +307,18 @@ export default function MessagesScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.messageSubject}>{selected.subject}</Text>
+          <Text style={[styles.messageSubject, dynamicStyles.messageSubject]}>{selected.subject}</Text>
           <View style={styles.messageMeta}>
-            <Text style={styles.messageFrom}>From: {selected.senderName}</Text>
-            <Text style={styles.messageDate}>{formatDate(selected.createdAt)}</Text>
+            <Text style={[styles.messageFrom, dynamicStyles.messageFrom]}>From: {selected.senderName}</Text>
+            <Text style={[styles.messageDate, dynamicStyles.messageDate]}>{formatDate(selected.createdAt)}</Text>
             <View style={[styles.priorityBadge, { backgroundColor: PRIORITY_COLORS[selected.priority] + '20' }]}>
               <Text style={[styles.priorityBadgeText, { color: PRIORITY_COLORS[selected.priority] }]}>{selected.priority}</Text>
             </View>
           </View>
-          <Text style={styles.messageBody}>{selected.body}</Text>
+          <Text style={[styles.messageBody, dynamicStyles.messageBody]}>{selected.body}</Text>
           {selected.recipients && selected.recipients.length > 0 && (
-            <View style={styles.recipientsSection}>
-              <Text style={styles.recipientsLabel}>
+            <View style={[styles.recipientsSection, dynamicStyles.recipientsSection]}>
+              <Text style={[styles.recipientsLabel, dynamicStyles.recipientsLabel]}>
                 Sent to: {selected.recipients.map((r) => r.recipientName).join(', ')}
               </Text>
             </View>
@@ -291,25 +328,25 @@ export default function MessagesScreen() {
         /* Message List */
         <View>
           {(view === 'inbox' ? inbox : sent).length === 0 ? (
-            <Card>
-              <Text style={styles.emptyText}>{view === 'inbox' ? 'No messages yet' : 'No sent messages'}</Text>
+            <Card style={dynamicStyles.messageCard}>
+              <Text style={[styles.emptyText, dynamicStyles.emptyText]}>{view === 'inbox' ? 'No messages yet' : 'No sent messages'}</Text>
             </Card>
           ) : (
             (view === 'inbox' ? inbox : sent).map((msg) => (
               <TouchableOpacity key={msg.id} onPress={() => openMessage(msg)}>
-                <Card style={styles.messageCard}>
+                <Card style={[styles.messageCard, dynamicStyles.messageCard]}>
                   <View style={styles.messageListItem}>
                     <View style={styles.messageListContent}>
                       <View style={styles.messageListHeader}>
                         {!msg.isRead && <View style={styles.unreadDot} />}
-                        <Text style={[styles.messageListSubject, !msg.isRead && styles.unreadSubject]} numberOfLines={1}>
+                        <Text style={[styles.messageListSubject, dynamicStyles.messageListSubject, !msg.isRead && styles.unreadSubject]} numberOfLines={1}>
                           {msg.subject}
                         </Text>
                         <View style={[styles.priorityBadge, { backgroundColor: PRIORITY_COLORS[msg.priority] + '20' }]}>
                           <Text style={[styles.priorityBadgeText, { color: PRIORITY_COLORS[msg.priority] }]}>{msg.priority}</Text>
                         </View>
                       </View>
-                      <Text style={styles.messageListMeta}>
+                      <Text style={[styles.messageListMeta, dynamicStyles.messageListMeta]}>
                         {view === 'inbox' ? `From: ${msg.senderName}` : `To: ${msg.recipients?.map((r) => r.recipientName).join(', ') || '—'}`}
                         {' · '}{formatDate(msg.createdAt)}
                       </Text>

@@ -10,6 +10,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -140,6 +141,7 @@ export default function CorrespondenceScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Server: GET /correspondence is hr.read; create/update hr.write.
   const canWrite = hasPermission('hr.write');
@@ -162,6 +164,23 @@ export default function CorrespondenceScreen() {
     content: '',
   });
   const [titleError, setTitleError] = useState<string | undefined>();
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+    filterButton: { backgroundColor: tc.card, borderColor: tc.border },
+    filterButtonText: { color: tc.textSecondary },
+    corrTitle: { color: tc.text },
+    typeBadge: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    corrMeta: { color: tc.textSecondary },
+    corrRef: { color: tc.textSecondary },
+  };
 
   useEffect(() => {
     loadItems();
@@ -228,21 +247,21 @@ export default function CorrespondenceScreen() {
     ({ item }: { item: CorrespondenceRecord }) => {
       const date = formatDate(item.receivedDate ?? item.createdAt);
       return (
-        <Card style={styles.corrCard}>
+        <Card style={[styles.corrCard, dynamicStyles.cardBackground]}>
           <TouchableOpacity onPress={() => router.push(`/correspondence/${item.id}`)} activeOpacity={0.7}>
             <View style={styles.corrTopRow}>
-              <Text style={styles.corrTitle}>{subjectOf(item)}</Text>
-              <View style={styles.typeBadge}>
+              <Text style={[styles.corrTitle, dynamicStyles.corrTitle]}>{subjectOf(item)}</Text>
+              <View style={[styles.typeBadge, dynamicStyles.typeBadge]}>
                 <Text style={styles.typeBadgeText}>{item.type || '—'}</Text>
               </View>
               {isArchived(item) && (
-                <View style={[styles.typeBadge, { backgroundColor: '#F3F4F6' }]}>
+                <View style={[styles.typeBadge, dynamicStyles.typeBadge, { backgroundColor: '#F3F4F6' }]}>
                   <Text style={[styles.typeBadgeText, { color: '#6B7280' }]}>Archived</Text>
                 </View>
               )}
             </View>
-            {!!item.referenceNumber && <Text style={styles.corrRef}>Ref: {item.referenceNumber}</Text>}
-            <Text style={styles.corrMeta}>
+            {!!item.referenceNumber && <Text style={[styles.corrRef, dynamicStyles.corrRef]}>Ref: {item.referenceNumber}</Text>}
+            <Text style={[styles.corrMeta, dynamicStyles.corrMeta]}>
               {[item.from, item.to].filter(Boolean).join(' → ') || 'No parties listed'}
               {date ? ` · ${date}` : ''}
             </Text>
@@ -250,13 +269,13 @@ export default function CorrespondenceScreen() {
         </Card>
       );
     },
-    [router]
+    [router, dynamicStyles]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Correspondence</Text>
         </View>
@@ -267,8 +286,8 @@ export default function CorrespondenceScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Correspondence</Text>
         </View>
@@ -284,8 +303,8 @@ export default function CorrespondenceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Correspondence</Text>
         {canWrite && (
@@ -313,13 +332,13 @@ export default function CorrespondenceScreen() {
           {ARCHIVE_FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, archiveFilter === f && styles.filterButtonActive]}
+              style={[styles.filterButton, dynamicStyles.filterButton, archiveFilter === f && styles.filterButtonActive]}
               onPress={() => setArchiveFilter(f)}
               accessibilityRole="button"
               accessibilityLabel={`Filter ${f} correspondence`}
               accessibilityState={{ selected: archiveFilter === f }}
             >
-              <Text style={[styles.filterButtonText, archiveFilter === f && styles.filterButtonTextActive]}>
+              <Text style={[styles.filterButtonText, dynamicStyles.filterButtonText, archiveFilter === f && styles.filterButtonTextActive]}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
             </TouchableOpacity>
@@ -335,8 +354,8 @@ export default function CorrespondenceScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>✉️</Text>
-            <Text style={styles.emptyText}>No Correspondence Found</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Correspondence Found</Text>
+            <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
               {search || archiveFilter !== 'all'
                 ? 'Nothing matches the current filters'
                 : 'Record incoming and outgoing letters, memos and notices'}

@@ -20,6 +20,7 @@ import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { MenuButton } from '@/core/ui/MenuButton';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -126,6 +127,7 @@ export default function WorkersScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   // Worker actions mirror the server's HR controller: hr.write creates/edits,
   // hr.delete removes. Missing permissions default to hidden — the API would 403.
@@ -139,6 +141,45 @@ export default function WorkersScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('all');
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    emptyText: {
+      color: tc.text,
+    },
+    emptySubtext: {
+      color: tc.textSecondary,
+    },
+    filterButton: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    filterButtonText: {
+      color: tc.textSecondary,
+    },
+    workerName: {
+      color: tc.text,
+    },
+    workerMeta: {
+      color: tc.textSecondary,
+    },
+    divider: {
+      borderTopColor: isDark ? tc.border : colors.light,
+    },
+    workerStatLabel: {
+      color: tc.textSecondary,
+    },
+    footerText: {
+      color: tc.textSecondary,
+    },
+  };
 
   useEffect(() => {
     fetchWorkers();
@@ -220,19 +261,19 @@ export default function WorkersScreen() {
     () =>
       refreshing ? (
         <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={{ fontSize: 12, color: colors.textLight }}>Loading more…</Text>
+          <ActivityIndicator size="small" color={tc.primary} />
+          <Text style={[{ fontSize: 12, color: colors.textLight }, dynamicStyles.footerText]}>Loading more…</Text>
         </View>
       ) : null,
-    [refreshing]
+    [refreshing, tc.primary, dynamicStyles]
   );
 
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>👷</Text>
-        <Text style={styles.emptyText}>No Workers Yet</Text>
-        <Text style={styles.emptySubtext}>
+        <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Workers Yet</Text>
+        <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
           Add your first worker to start tracking your farm team, roles and attendance
         </Text>
         {canWrite && (
@@ -244,14 +285,14 @@ export default function WorkersScreen() {
         )}
       </View>
     ),
-    [router, canWrite]
+    [router, canWrite, dynamicStyles]
   );
 
   const renderItem = useCallback(
     ({ item: worker }: { item: Worker }) => {
       const statusColors = WORKER_STATUS_COLORS[worker.status] || { bg: '#F3F4F6', text: '#6B7280' };
       return (
-        <Card style={styles.workerCard}>
+        <Card style={[styles.workerCard, dynamicStyles.cardBackground]}>
           <TouchableOpacity onPress={() => router.push(`/workers/${worker.id}`)} activeOpacity={0.7}>
             <View style={styles.workerCardContent}>
               <View
@@ -263,7 +304,7 @@ export default function WorkersScreen() {
                   marginBottom: 2,
                 }}
               >
-                <Text style={styles.workerName}>{fullName(worker)}</Text>
+                <Text style={[styles.workerName, dynamicStyles.workerName]}>{fullName(worker)}</Text>
                 <View
                   style={{
                     backgroundColor: statusColors.bg,
@@ -277,18 +318,18 @@ export default function WorkersScreen() {
                   </Text>
                 </View>
               </View>
-              <Text style={styles.workerMeta}>
+              <Text style={[styles.workerMeta, dynamicStyles.workerMeta]}>
                 {worker.position || 'Worker'}
                 {worker.department ? ` · ${worker.department}` : ''} ·{' '}
                 {farmNames[worker.farmId] || 'Farm'}
               </Text>
-              <View style={styles.workerStats}>
+              <View style={[styles.workerStats, dynamicStyles.divider]}>
                 <View style={styles.workerStat}>
-                  <Text style={styles.workerStatLabel}>Phone</Text>
+                  <Text style={[styles.workerStatLabel, dynamicStyles.workerStatLabel]}>Phone</Text>
                   <Text style={styles.workerStatValue}>{worker.phone || '—'}</Text>
                 </View>
                 <View style={styles.workerStat}>
-                  <Text style={styles.workerStatLabel}>Hired</Text>
+                  <Text style={[styles.workerStatLabel, dynamicStyles.workerStatLabel]}>Hired</Text>
                   <Text style={styles.workerStatValue}>
                     {worker.hireDate ? new Date(worker.hireDate).toLocaleDateString() : '—'}
                   </Text>
@@ -296,14 +337,14 @@ export default function WorkersScreen() {
               </View>
             </View>
           </TouchableOpacity>
-          <View style={styles.workerActions}>
+          <View style={[styles.workerActions, dynamicStyles.divider]}>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push(`/workers/${worker.id}`)}
               accessibilityRole="button"
               accessibilityLabel={`View details of ${fullName(worker)}`}
             >
-              <Text style={styles.actionButtonText}>View Details</Text>
+              <Text style={[styles.actionButtonText, { color: tc.primary }]}>View Details</Text>
             </TouchableOpacity>
             {canDelete && (
               <TouchableOpacity
@@ -319,13 +360,13 @@ export default function WorkersScreen() {
         </Card>
       );
     },
-    [farmNames, router, handleDeleteWorker, canDelete]
+    [farmNames, router, handleDeleteWorker, canDelete, dynamicStyles]
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Workers</Text>
         </View>
@@ -336,8 +377,8 @@ export default function WorkersScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <MenuButton />
           <Text style={styles.headerTitle}>Workers</Text>
         </View>
@@ -353,8 +394,8 @@ export default function WorkersScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <MenuButton />
         <Text style={styles.headerTitle}>Workers</Text>
         {canWrite && (
@@ -382,14 +423,22 @@ export default function WorkersScreen() {
           {STATUS_FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, statusFilter === f && styles.filterButtonActive]}
+              style={[
+                styles.filterButton,
+                dynamicStyles.filterButton,
+                statusFilter === f && styles.filterButtonActive,
+              ]}
               onPress={() => setStatusFilter(f)}
               accessibilityRole="button"
               accessibilityLabel={f === 'all' ? 'Filter all workers' : `Filter ${f.toLowerCase()} workers`}
               accessibilityState={{ selected: statusFilter === f }}
             >
               <Text
-                style={[styles.filterButtonText, statusFilter === f && styles.filterButtonTextActive]}
+                style={[
+                  styles.filterButtonText,
+                  dynamicStyles.filterButtonText,
+                  statusFilter === f && styles.filterButtonTextActive,
+                ]}
               >
                 {f === 'all' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase().replace('_', ' ')}
               </Text>

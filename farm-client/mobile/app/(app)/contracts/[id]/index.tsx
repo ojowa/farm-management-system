@@ -8,6 +8,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -77,12 +78,29 @@ export default function ContractDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
+  const { colors: tc, isDark } = useAppTheme();
 
   const canDelete = hasPermission('finance.delete');
 
   const [loading, setLoading] = useState(true);
   const [contract, setContract] = useState<ContractRecord | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardSurface: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    partyName: { color: tc.text },
+    badge: { backgroundColor: isDark ? tc.surface : '#F5F5F5' },
+    divider: { borderTopColor: isDark ? tc.border : '#F5F5F5' },
+    detailLabel: { color: tc.text },
+    detailValue: { color: tc.text },
+    sectionTitle: { color: tc.textSecondary },
+    termsText: { color: tc.text },
+  };
 
   useEffect(() => {
     loadContract();
@@ -136,8 +154,8 @@ export default function ContractDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -151,8 +169,8 @@ export default function ContractDetailScreen() {
 
   if (loadError || !contract) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -171,8 +189,8 @@ export default function ContractDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -181,14 +199,14 @@ export default function ContractDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <Text style={styles.partyName}>{partyOf(contract)}</Text>
+        <View style={[styles.card, dynamicStyles.cardSurface]}>
+          <Text style={[styles.partyName, dynamicStyles.partyName]}>{partyOf(contract)}</Text>
           <View style={styles.badgeRow}>
-            <View style={styles.badge}>
+            <View style={[styles.badge, dynamicStyles.badge]}>
               <Text style={styles.badgeText}>{contract.type || '—'}</Text>
             </View>
             {!!contract.status && (
-              <View style={styles.badge}>
+              <View style={[styles.badge, dynamicStyles.badge]}>
                 <Text style={styles.badgeText}>{contract.status}</Text>
               </View>
             )}
@@ -197,29 +215,29 @@ export default function ContractDetailScreen() {
             <Text style={styles.valueText}>{Number(contract.value).toLocaleString()}</Text>
           )}
 
-          <View style={styles.detailSection}>
+          <View style={[styles.detailSection, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Start Date</Text>
-              <Text style={styles.detailValue}>{formatDate(contract.startDate)}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Start Date</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{formatDate(contract.startDate)}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>End Date</Text>
-              <Text style={styles.detailValue}>{formatDate(contract.endDate)}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>End Date</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{formatDate(contract.endDate)}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Type</Text>
-              <Text style={styles.detailValue}>{contract.type || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Type</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{contract.type || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Status</Text>
-              <Text style={styles.detailValue}>{contract.status || '—'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Status</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{contract.status || '—'}</Text>
             </View>
           </View>
 
           {!!contract.terms && (
             <>
-              <Text style={styles.sectionTitle}>Terms</Text>
-              <Text style={styles.termsText}>{contract.terms}</Text>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Terms</Text>
+              <Text style={[styles.termsText, dynamicStyles.termsText]}>{contract.terms}</Text>
             </>
           )}
         </View>

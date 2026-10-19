@@ -18,6 +18,7 @@ import { SelectField, SelectOption } from '@/core/ui/SelectField';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -108,6 +109,7 @@ export default function EditWorkerScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,6 +136,15 @@ export default function EditWorkerScreen() {
     emergencyContactRelation: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    sectionTitle: {
+      color: tc.textSecondary,
+    },
+  };
 
   useEffect(() => {
     loadAll();
@@ -263,8 +274,8 @@ export default function EditWorkerScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -278,8 +289,8 @@ export default function EditWorkerScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -298,8 +309,8 @@ export default function EditWorkerScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -393,7 +404,7 @@ export default function EditWorkerScreen() {
             onSelect={(v) => updateFormData('status', v)}
           />
 
-          <Text style={styles.sectionTitle}>Employment</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Employment</Text>
 
           <TextInputField
             label="Pay Rate"
@@ -427,7 +438,7 @@ export default function EditWorkerScreen() {
             error={errors.terminationDate}
           />
 
-          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Emergency Contact</Text>
 
           <TextInputField
             label="Contact Name"

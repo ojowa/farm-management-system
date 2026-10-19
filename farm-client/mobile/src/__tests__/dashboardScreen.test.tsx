@@ -62,6 +62,7 @@ jest.mock('@/modules/notification', () => ({
 
 jest.mock('@/modules/auth/hooks/useAuth', () => ({
   useAppSelector: (selector: any) => selector(mockRootState),
+  useAuth: () => ({ logout: jest.fn() }),
 }));
 
 jest.mock('@/core/hooks/useToasts', () => ({

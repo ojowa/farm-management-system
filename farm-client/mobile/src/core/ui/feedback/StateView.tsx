@@ -8,6 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { colors } from '../UIComponents';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 export interface StateViewProps {
   variant: 'loading' | 'error' | 'empty';
@@ -26,12 +27,16 @@ export const StateView: React.FC<StateViewProps> = ({
   retryLabel = 'Try Again',
   style,
 }) => {
+  const { colors: tc } = useAppTheme();
+  const titleStyle = [styles.title, { color: tc.text }];
+  const messageStyle = [styles.message, { color: tc.textSecondary }];
+
   if (variant === 'loading') {
     return (
       <View style={[styles.container, style]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        {title ? <Text style={styles.title}>{title}</Text> : null}
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        {title ? <Text style={titleStyle}>{title}</Text> : null}
+        {message ? <Text style={messageStyle}>{message}</Text> : null}
       </View>
     );
   }
@@ -40,10 +45,10 @@ export const StateView: React.FC<StateViewProps> = ({
     return (
       <View style={[styles.container, style]}>
         <Text style={styles.icon}>!</Text>
-        <Text style={styles.title}>{title ?? 'Something went wrong'}</Text>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+        <Text style={titleStyle}>{title ?? 'Something went wrong'}</Text>
+        {message ? <Text style={messageStyle}>{message}</Text> : null}
         {onRetry ? (
-          <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.7}>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: tc.primary }]} onPress={onRetry} activeOpacity={0.7}>
             <Text style={styles.retryButtonText}>{retryLabel}</Text>
           </TouchableOpacity>
         ) : null}
@@ -53,10 +58,10 @@ export const StateView: React.FC<StateViewProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      <Text style={styles.title}>{title ?? 'Nothing here yet'}</Text>
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      <Text style={titleStyle}>{title ?? 'Nothing here yet'}</Text>
+      {message ? <Text style={messageStyle}>{message}</Text> : null}
       {onRetry ? (
-        <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: tc.primary }]} onPress={onRetry} activeOpacity={0.7}>
           <Text style={styles.retryButtonText}>{retryLabel}</Text>
         </TouchableOpacity>
       ) : null}
@@ -74,6 +79,7 @@ export interface SkeletonRowProps {
 // thread trick that can fight ScrollView virtualization.
 export const SkeletonRow: React.FC<SkeletonRowProps> = ({ rows = 1, style }) => {
   const [pulse, setPulse] = React.useState(0);
+  const { colors: tc } = useAppTheme();
   React.useEffect(() => {
     const id = setInterval(() => setPulse((p) => (p + 1) % 2), 650);
     return () => clearInterval(id);
@@ -86,15 +92,15 @@ export const SkeletonRow: React.FC<SkeletonRowProps> = ({ rows = 1, style }) => 
         key={i}
         style={[
           styles.skeletonRow,
-          { opacity: pulse ? 0.55 : 1 },
+          { backgroundColor: tc.card, opacity: pulse ? 0.55 : 1 },
           i > 0 && { marginTop: 12 },
           style,
         ]}
       >
-        <View style={styles.skeletonAvatar} />
+        <View style={[styles.skeletonAvatar, { backgroundColor: tc.skeleton }]} />
         <View style={styles.skeletonLines}>
-          <View style={[styles.skeletonLine, { width: '70%' }]} />
-          <View style={[styles.skeletonLine, { width: '40%', marginTop: 8 }]} />
+          <View style={[styles.skeletonLine, { backgroundColor: tc.skeleton, width: '70%' }]} />
+          <View style={[styles.skeletonLine, { backgroundColor: tc.skeleton, width: '40%', marginTop: 8 }]} />
         </View>
       </View>
     );
@@ -111,12 +117,15 @@ export interface ScreenLoadingProps {
 // approaching its eventual shape.
 export const ScreenLoading: React.FC<ScreenLoadingProps> = ({
   message = 'Loading…',
-}) => (
-  <View style={styles.screenLoading}>
-    <SkeletonRow rows={3} />
-    <Text style={styles.screenLoadingLabel}>{message}</Text>
-  </View>
-);
+}) => {
+  const { colors: tc } = useAppTheme();
+  return (
+    <View style={styles.screenLoading}>
+      <SkeletonRow rows={3} />
+      <Text style={[styles.screenLoadingLabel, { color: tc.textSecondary }]}>{message}</Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {

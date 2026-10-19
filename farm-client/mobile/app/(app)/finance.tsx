@@ -23,6 +23,7 @@ import { describeApiError } from '@/core/utils/apiError';
 import { transformExpense, transformSale, RawExpense, RawSale } from '@/core/utils/entityTransformers';
 import { setFinanceFilter } from '@/store/slices/uiSlice';
 import { formatCurrencyFixed } from '@/core/utils/currency';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -169,6 +170,7 @@ export default function FinanceScreen() {
   const dispatch = useAppDispatch();
   const financeFilter = useAppSelector((s) => s.ui.filters.finance);
   const { error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,6 +183,29 @@ export default function FinanceScreen() {
 
   const [dateFromDraft, setDateFromDraft] = useState(financeFilter.dateFrom || '');
   const [dateToDraft, setDateToDraft] = useState(financeFilter.dateTo || '');
+
+  const dynamicStyles = {
+    container: { backgroundColor: tc.background },
+    cardBackground: {
+      backgroundColor: tc.card,
+      borderColor: isDark ? tc.border : 'transparent',
+      borderWidth: isDark ? 1 : 0,
+    },
+    filterButton: { backgroundColor: tc.card, borderColor: tc.border },
+    filterButtonText: { color: tc.textSecondary },
+    dateInput: { backgroundColor: tc.inputBg, borderColor: tc.inputBorder, color: tc.inputText },
+    transactionTitle: { color: tc.text },
+    transactionDescription: { color: tc.textSecondary },
+    transactionDate: { color: tc.textSecondary },
+    emptyText: { color: tc.text },
+    emptySubtext: { color: tc.textSecondary },
+    footerText: { color: tc.textSecondary },
+    modalOverlay: { backgroundColor: tc.overlay },
+    modalContent: { backgroundColor: tc.surface },
+    modalTitle: { color: tc.text },
+    modalItem: { borderBottomColor: isDark ? tc.surface : '#F5F5F5' },
+    modalItemText: { color: tc.text },
+  };
 
   const fetchTransactions = useCallback(
     async (pageNum: number = 1, append: boolean = false) => {
@@ -281,7 +306,7 @@ export default function FinanceScreen() {
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={colors.primary} />
-        <Text style={styles.footerText}>Loading more…</Text>
+        <Text style={[styles.footerText, dynamicStyles.footerText]}>Loading more…</Text>
       </View>
     );
   };
@@ -289,8 +314,8 @@ export default function FinanceScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyIcon}>💰</Text>
-      <Text style={styles.emptyText}>No Transactions</Text>
-      <Text style={styles.emptySubtext}>
+      <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Transactions</Text>
+      <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
         Start recording your farm income and expenses
       </Text>
       <Button title="Add Transaction" onPress={() => router.push('/finance/add')} />
@@ -298,13 +323,13 @@ export default function FinanceScreen() {
   );
 
   const renderItem = useCallback(({ item: transaction }: { item: Transaction }) => (
-    <Card style={styles.transactionCard}>
+    <Card style={[styles.transactionCard, dynamicStyles.cardBackground]}>
       <TouchableOpacity onPress={() => router.push(`/finance/${transaction.id}`)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${transaction.title}, ${transaction.type === 'income' ? 'income' : 'expense'} of ${formatCurrencyFixed(transaction.amount)}`}>
         <View style={styles.transactionRow}>
           <Text style={styles.transactionIcon}>{transaction.icon}</Text>
           <View style={styles.transactionInfo}>
-            <Text style={styles.transactionTitle}>{transaction.title}</Text>
-            <Text style={styles.transactionDescription}>{transaction.description}</Text>
+            <Text style={[styles.transactionTitle, dynamicStyles.transactionTitle]}>{transaction.title}</Text>
+            <Text style={[styles.transactionDescription, dynamicStyles.transactionDescription]}>{transaction.description}</Text>
           </View>
           <View style={styles.transactionAmount}>
             <Text
@@ -317,17 +342,17 @@ export default function FinanceScreen() {
             >
               {transaction.type === 'income' ? '+' : '-'}{formatCurrencyFixed(transaction.amount)}
             </Text>
-            <Text style={styles.transactionDate}>{transaction.date}</Text>
+            <Text style={[styles.transactionDate, dynamicStyles.transactionDate]}>{transaction.date}</Text>
           </View>
         </View>
       </TouchableOpacity>
     </Card>
-  ), [router]);
+  ), [router, dynamicStyles]);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <View style={styles.headerTitleRow}>
             <MenuButton />
             <Text style={styles.headerTitle}>Finance</Text>
@@ -340,8 +365,8 @@ export default function FinanceScreen() {
 
   if (loadError && transactions.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <View style={styles.headerTitleRow}>
             <MenuButton />
             <Text style={styles.headerTitle}>Finance</Text>
@@ -359,8 +384,8 @@ export default function FinanceScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <View style={styles.headerTitleRow}>
           <MenuButton />
           <Text style={styles.headerTitle}>Finance</Text>
@@ -386,44 +411,44 @@ export default function FinanceScreen() {
           {(['all', 'income', 'expense'] as const).map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterButton, financeFilter.type === f && styles.filterButtonActive]}
+              style={[styles.filterButton, dynamicStyles.filterButton, financeFilter.type === f && styles.filterButtonActive]}
               onPress={() => dispatch(setFinanceFilter({ type: f }))}
               accessibilityRole="button"
               accessibilityLabel={f}
               accessibilityState={{ selected: financeFilter.type === f }}
             >
-              <Text style={[styles.filterButtonText, financeFilter.type === f && styles.filterButtonTextActive]}>
+              <Text style={[styles.filterButtonText, dynamicStyles.filterButtonText, financeFilter.type === f && styles.filterButtonTextActive]}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity
-            style={[styles.categoryFilterButton, financeFilter.category && styles.categoryFilterActive]}
+            style={[styles.categoryFilterButton, dynamicStyles.filterButton, financeFilter.category && styles.categoryFilterActive]}
             onPress={() => setShowCategoryModal(true)}
             accessibilityRole="button"
             accessibilityLabel={financeFilter.category ? `Category: ${financeFilter.category}` : 'Filter by category'}
           >
-            <Text style={[styles.categoryFilterText, financeFilter.category && styles.categoryFilterTextActive]}>
+            <Text style={[styles.categoryFilterText, dynamicStyles.filterButtonText, financeFilter.category && styles.categoryFilterTextActive]}>
               {financeFilter.category || 'Category'}
             </Text>
-            <Text style={[styles.categoryFilterText, financeFilter.category && styles.categoryFilterTextActive]}>▼</Text>
+            <Text style={[styles.categoryFilterText, dynamicStyles.filterButtonText, financeFilter.category && styles.categoryFilterTextActive]}>▼</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.filterRow}>
           <View style={styles.dateFilterContainer}>
             <TextInput
-              style={[styles.dateInput, dateFromDraft ? styles.dateInputFocused : null]}
+              style={[styles.dateInput, dynamicStyles.dateInput, dateFromDraft ? styles.dateInputFocused : null]}
               placeholder="From YYYY-MM-DD"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={tc.placeholder}
               value={dateFromDraft}
               onChangeText={setDateFromDraft}
               accessibilityLabel="Start date"
             />
             <TextInput
-              style={[styles.dateInput, dateToDraft ? styles.dateInputFocused : null]}
+              style={[styles.dateInput, dynamicStyles.dateInput, dateToDraft ? styles.dateInputFocused : null]}
               placeholder="To YYYY-MM-DD"
-              placeholderTextColor={colors.textLight}
+              placeholderTextColor={tc.placeholder}
               value={dateToDraft}
               onChangeText={setDateToDraft}
               accessibilityLabel="End date"
@@ -449,13 +474,13 @@ export default function FinanceScreen() {
         animationType="slide"
         onRequestClose={() => setShowCategoryModal(false)}
       >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCategoryModal(false)}>
+        <TouchableOpacity style={[styles.modalOverlay, dynamicStyles.modalOverlay]} activeOpacity={1} onPress={() => setShowCategoryModal(false)}>
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Filter by Category</Text>
+            <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Filter by Category</Text>
               <ScrollView>
                 <TouchableOpacity
-                  style={styles.modalItem}
+                  style={[styles.modalItem, dynamicStyles.modalItem]}
                   onPress={() => {
                     dispatch(setFinanceFilter({ category: null }));
                     setShowCategoryModal(false);
@@ -463,21 +488,21 @@ export default function FinanceScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="All Categories"
                 >
-                  <Text style={[styles.modalItemText, !financeFilter.category && styles.modalItemActive]}>
+                  <Text style={[styles.modalItemText, dynamicStyles.modalItemText, !financeFilter.category && styles.modalItemActive]}>
                     All Categories
                   </Text>
                 </TouchableOpacity>
                 {ALL_CATEGORIES.map((cat) => (
                   <TouchableOpacity
                     key={cat}
-                    style={styles.modalItem}
+                    style={[styles.modalItem, dynamicStyles.modalItem]}
                     onPress={() => {
                       dispatch(setFinanceFilter({ category: cat }));
                       setShowCategoryModal(false);
                     }}
                     accessibilityRole="button"
                   >
-                    <Text style={[styles.modalItemText, financeFilter.category === cat && styles.modalItemActive]}>
+                    <Text style={[styles.modalItemText, dynamicStyles.modalItemText, financeFilter.category === cat && styles.modalItemActive]}>
                       {cat}
                     </Text>
                   </TouchableOpacity>

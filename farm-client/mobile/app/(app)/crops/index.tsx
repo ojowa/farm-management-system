@@ -175,7 +175,7 @@ export default function CropsScreen() {
   ), [router, dynamicStyles]);
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }]}>
       {/* Tab root: the hamburger opens the navigation sidebar (replaces the old
           "← Back" affordance, which made no sense on a top-level tab). */}
       <MenuButton />

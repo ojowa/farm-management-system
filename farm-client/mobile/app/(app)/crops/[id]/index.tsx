@@ -14,6 +14,7 @@ import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 import { useAppDispatch } from '../../../../src/modules/auth/hooks/useAuth';
 import { setSelectedCropId } from '../../../../src/store/slices/uiSlice';
 
@@ -258,6 +259,7 @@ export default function CropDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const { success, error: showError } = useToasts();
+  const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [crop, setCrop] = useState<CropData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -351,8 +353,8 @@ export default function CropDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -366,8 +368,8 @@ export default function CropDetailScreen() {
 
   if (loadError || !crop) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -389,8 +391,8 @@ export default function CropDetailScreen() {
   const healthColor = getHealthColor(crop.health);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -399,13 +401,13 @@ export default function CropDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Card style={styles.cropCard}>
-          <Text style={styles.cropName}>{crop.name}</Text>
-          <Text style={styles.cropType}>{crop.type}</Text>
+        <Card style={[styles.cropCard, { backgroundColor: tc.card }]}>
+          <Text style={[styles.cropName, { color: tc.text }]}>{crop.name}</Text>
+          <Text style={[styles.cropType, { color: tc.textSecondary }]}>{crop.type}</Text>
 
           <View style={styles.farmInfo}>
-            <Text style={styles.farmLabel}>Farm:</Text>
-            <Text style={styles.farmValue}>{crop.farm}</Text>
+            <Text style={[styles.farmLabel, { color: tc.textSecondary }]}>Farm:</Text>
+            <Text style={[styles.farmValue, { color: tc.text }]}>{crop.farm}</Text>
           </View>
 
           <View style={[styles.statusBadge, statusStyle.badge]}>
@@ -414,26 +416,26 @@ export default function CropDetailScreen() {
             </Text>
           </View>
 
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Area</Text>
-              <Text style={styles.statValue}>{crop.area} ha</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Area</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{crop.area} ha</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Planted</Text>
-              <Text style={styles.statValue}>{crop.plantedDate}</Text>
+              <Text style={[styles.statLabel, { color: tc.textSecondary }]}>Planted</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>{crop.plantedDate}</Text>
             </View>
           </View>
 
           {/* Health Section */}
-          <View style={styles.healthSection}>
+          <View style={[styles.healthSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.healthHeader}>
-              <Text style={styles.healthLabel}>Health</Text>
+              <Text style={[styles.healthLabel, { color: tc.text }]}>Health</Text>
               <Text style={[styles.healthValueText, { color: healthColor }]}>
                 {crop.health}%
               </Text>
             </View>
-            <View style={styles.healthBar}>
+            <View style={[styles.healthBar, { backgroundColor: isDark ? tc.surface : '#F5F5F5' }]}>
               <View
                 style={[
                   styles.healthFill,
@@ -447,10 +449,10 @@ export default function CropDetailScreen() {
                 return (
                   <TouchableOpacity
                     key={delta}
-                    style={styles.healthButton}
+                    style={[styles.healthButton, { backgroundColor: tc.card, borderColor: tc.border }]}
                     onPress={() => handleUpdateHealth(newValue)}
                   >
-                    <Text style={styles.healthButtonText}>
+                    <Text style={[styles.healthButtonText, { color: tc.text }]}>
                       {delta > 0 ? `+${delta}` : delta}
                     </Text>
                   </TouchableOpacity>
@@ -460,8 +462,8 @@ export default function CropDetailScreen() {
           </View>
 
           {/* Status Section */}
-          <View style={styles.statusSection}>
-            <Text style={styles.statusLabel}>Status</Text>
+          <View style={[styles.statusSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
+            <Text style={[styles.statusLabel, { color: tc.text }]}>Status</Text>
             <View style={styles.statusActions}>
               {(['growing', 'harvesting', 'completed'] as const).map((s) => (
                 <TouchableOpacity
@@ -469,6 +471,7 @@ export default function CropDetailScreen() {
                   style={[
                     styles.statusButton,
                     crop.status === s && styles.statusButtonActive,
+                    crop.status === s ? undefined : { backgroundColor: tc.card, borderColor: tc.border },
                   ]}
                   onPress={() => handleUpdateStatus(s)}
                 >
@@ -476,6 +479,7 @@ export default function CropDetailScreen() {
                     style={[
                       styles.statusButtonText,
                       crop.status === s && styles.statusButtonTextActive,
+                      crop.status === s ? undefined : { color: tc.text },
                     ]}
                   >
                     {s.charAt(0).toUpperCase() + s.slice(1)}

@@ -18,6 +18,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -80,6 +81,28 @@ export default function TaskEditScreen() {
   const { success, error: showError } = useToasts();
   const { canCreate } = usePermission();
   const canManage = canCreate('hr');
+  const { colors: tc, isDark } = useAppTheme();
+
+  const dynamicStyles = {
+    container: {
+      backgroundColor: tc.background,
+    },
+    label: {
+      color: tc.text,
+    },
+    input: {
+      backgroundColor: tc.inputBg,
+      borderColor: tc.inputBorder,
+      color: tc.inputText,
+    },
+    chip: {
+      backgroundColor: tc.card,
+      borderColor: tc.border,
+    },
+    chipText: {
+      color: tc.text,
+    },
+  };
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -168,8 +191,8 @@ export default function TaskEditScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -183,8 +206,8 @@ export default function TaskEditScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -204,8 +227,8 @@ export default function TaskEditScreen() {
 
   if (!canManage) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -218,8 +241,8 @@ export default function TaskEditScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -233,13 +256,13 @@ export default function TaskEditScreen() {
         keyboardVerticalOffset={90}
       >
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.label}>Title *</Text>
-          <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={styles.input} />
+          <Text style={[styles.label, dynamicStyles.label]}>Title *</Text>
+          <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
 
-          <Text style={styles.label}>Description</Text>
-          <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={[styles.input, { minHeight: 90 }]} multiline />
+          <Text style={[styles.label, dynamicStyles.label]}>Description</Text>
+          <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={[styles.input, dynamicStyles.input, { minHeight: 90 }]} placeholderTextColor={tc.placeholder} multiline />
 
-          <Text style={styles.label}>Priority</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>Priority</Text>
           <View style={styles.chipRow}>
             {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
               <TouchableOpacity
@@ -247,32 +270,33 @@ export default function TaskEditScreen() {
                 onPress={() => setPriority(p)}
                 style={[
                   styles.chip,
+                  dynamicStyles.chip,
                   priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] },
                 ]}
                 accessibilityLabel={`Priority ${p}`}
               >
-                <Text style={[styles.chipText, priority === p && { color: '#FFFFFF' }]}>{p}</Text>
+                <Text style={[styles.chipText, dynamicStyles.chipText, priority === p && { color: '#FFFFFF' }]}>{p}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {workers.length > 0 && (
             <>
-              <Text style={styles.label}>Assign To</Text>
+              <Text style={[styles.label, dynamicStyles.label]}>Assign To</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
                 <TouchableOpacity
                   onPress={() => setAssignedToId('')}
-                  style={[styles.chip, !assignedToId && styles.chipActive, { marginRight: 8 }]}
+                  style={[styles.chip, dynamicStyles.chip, !assignedToId && styles.chipActive, { marginRight: 8 }]}
                 >
-                  <Text style={[styles.chipText, !assignedToId && styles.chipTextActive]}>None</Text>
+                  <Text style={[styles.chipText, dynamicStyles.chipText, !assignedToId && styles.chipTextActive]}>None</Text>
                 </TouchableOpacity>
                 {workers.map((w) => (
                   <TouchableOpacity
                     key={w.id}
                     onPress={() => setAssignedToId(w.id)}
-                    style={[styles.chip, assignedToId === w.id && styles.chipActive, { marginRight: 8 }]}
+                    style={[styles.chip, dynamicStyles.chip, assignedToId === w.id && styles.chipActive, { marginRight: 8 }]}
                   >
-                    <Text style={[styles.chipText, assignedToId === w.id && styles.chipTextActive]}>
+                    <Text style={[styles.chipText, dynamicStyles.chipText, assignedToId === w.id && styles.chipTextActive]}>
                       {w.firstName} {w.lastName}
                     </Text>
                   </TouchableOpacity>
@@ -281,26 +305,26 @@ export default function TaskEditScreen() {
             </>
           )}
 
-          <Text style={styles.label}>Due Date</Text>
-          <TextInput value={dueDate} onChangeText={setDueDate} placeholder="YYYY-MM-DD" style={styles.input} />
+          <Text style={[styles.label, dynamicStyles.label]}>Due Date</Text>
+          <TextInput value={dueDate} onChangeText={setDueDate} placeholder="YYYY-MM-DD" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
 
-          <Text style={styles.label}>Repeats</Text>
+          <Text style={[styles.label, dynamicStyles.label]}>Repeats</Text>
           <View style={styles.chipRow}>
             <TouchableOpacity
               onPress={() => setIsRecurring(false)}
-              style={[styles.chip, !isRecurring && styles.chipActive]}
+              style={[styles.chip, dynamicStyles.chip, !isRecurring && styles.chipActive]}
               accessibilityLabel="Does not repeat"
             >
-              <Text style={[styles.chipText, !isRecurring && styles.chipTextActive]}>Never</Text>
+              <Text style={[styles.chipText, dynamicStyles.chipText, !isRecurring && styles.chipTextActive]}>Never</Text>
             </TouchableOpacity>
             {RECURRENCE_RULES.map((r) => (
               <TouchableOpacity
                 key={r}
                 onPress={() => { setIsRecurring(true); setRecurrenceRule(r); }}
-                style={[styles.chip, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
+                style={[styles.chip, dynamicStyles.chip, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
                 accessibilityLabel={`Repeat ${r.toLowerCase()}`}
               >
-                <Text style={[styles.chipText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
+                <Text style={[styles.chipText, dynamicStyles.chipText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
               </TouchableOpacity>
             ))}
           </View>

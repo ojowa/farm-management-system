@@ -19,6 +19,7 @@ import { useToasts } from '../../../src/core/hooks/useToasts';
 import { useAppDispatch } from '../../../src/modules/auth/hooks/useAuth';
 import { describeApiError } from '../../../src/core/utils/apiError';
 import { apiClient } from '../../../src/modules/auth';
+import { useAppTheme } from '../../../src/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -88,6 +89,7 @@ interface FormErrors {
 export default function EditProfileScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
+  const { colors: tc } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -205,8 +207,8 @@ export default function EditProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -220,8 +222,8 @@ export default function EditProfileScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
@@ -247,8 +249,8 @@ export default function EditProfileScreen() {
     .slice(0, 2);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -276,14 +278,14 @@ export default function EditProfileScreen() {
             </View>
 
             <View style={styles.avatarActions}>
-              <TouchableOpacity style={styles.avatarAction} onPress={pickImage}>
-                <Text style={styles.avatarActionText}>Gallery</Text>
+              <TouchableOpacity style={[styles.avatarAction, { backgroundColor: tc.surface, borderColor: tc.border }]} onPress={pickImage}>
+                <Text style={[styles.avatarActionText, { color: tc.text }]}>Gallery</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.avatarAction} onPress={takePhoto}>
-                <Text style={styles.avatarActionText}>Camera</Text>
+              <TouchableOpacity style={[styles.avatarAction, { backgroundColor: tc.surface, borderColor: tc.border }]} onPress={takePhoto}>
+                <Text style={[styles.avatarActionText, { color: tc.text }]}>Camera</Text>
               </TouchableOpacity>
               {formData.avatar && (
-                <TouchableOpacity style={styles.avatarAction} onPress={removeAvatar}>
+                <TouchableOpacity style={[styles.avatarAction, { backgroundColor: tc.surface, borderColor: tc.border }]} onPress={removeAvatar}>
                   <Text style={[styles.avatarActionText, { color: colors.error }]}>Remove</Text>
                 </TouchableOpacity>
               )}
