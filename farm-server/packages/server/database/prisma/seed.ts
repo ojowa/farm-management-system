@@ -90,8 +90,8 @@ async function main() {
     { name: 'finance.read', description: 'View expenses, sales, and financial data', category: 'Finance' },
     { name: 'finance.write', description: 'Create and edit financial records', category: 'Finance' },
     { name: 'finance.delete', description: 'Delete financial records', category: 'Finance' },
-    { name: 'worker.read', description: 'View worker profiles', category: 'Worker' },
-    { name: 'worker.write', description: 'Create and edit workers', category: 'Worker' },
+    { name: 'worker.read', description: 'View worker profiles, tasks and attendance', category: 'Worker' },
+    { name: 'worker.write', description: 'Edit worker data and record own attendance', category: 'Worker' },
     { name: 'worker.delete', description: 'Delete worker records', category: 'Worker' },
     { name: 'communication.read', description: 'View messages and correspondence', category: 'Communication' },
     { name: 'communication.write', description: 'Send messages and correspondence', category: 'Communication' },
@@ -179,7 +179,7 @@ async function main() {
       'hr.read', 'leave.read', 'leave.write',
     ],
     VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'aquaculture.read', 'aquaculture.write', 'farm.read', 'hr.read', 'notification.read'],
-    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'aquaculture.read', 'inventory.read', 'worker.read', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
+    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'aquaculture.read', 'inventory.read', 'worker.read', 'worker.write', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
   }
 
   for (const [roleName, perms] of Object.entries(rolePermissions)) {
