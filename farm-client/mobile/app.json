@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Farm Management System",
-    "slug": "farm-management-mobile",
+    "slug": "fms",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -35,7 +35,7 @@
       "favicon": "./assets/favicon.png"
     },
     "updates": {
-      "url": "https://u.expo.dev/farm-management-mobile",
+      "url": "https://u.expo.dev/4996eb68-c0aa-4ac4-8dbf-e0f9d3f3546f",
       "fallbackToCacheTimeout": 0
     },
     "runtimeVersion": {
@@ -43,7 +43,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "farm-management-mobile"
+        "projectId": "4996eb68-c0aa-4ac4-8dbf-e0f9d3f3546f"
       }
     },
     "plugins": [
