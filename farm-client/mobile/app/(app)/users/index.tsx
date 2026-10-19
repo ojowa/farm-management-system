@@ -73,6 +73,14 @@ function unwrapList<T>(payload: any): T[] {
 
 const displayName = (u: User) => u.fullName || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || 'User';
 
+// GET /org-admin/users serialises Prisma's `select: { role: true }`, so `role`
+// arrives as the related Role object ({ id, name }) or null — unlike the
+// session user's role, which is a plain string. Rendering the object inside
+// <Text> crashes, so normalise to its name here (the admin portal reads
+// user.role?.name for the same reason).
+const roleLabel = (role: unknown): string =>
+  typeof role === 'string' ? role : ((role as any)?.name ?? '');
+
 interface InviteForm {
   firstName: string;
   lastName: string;
@@ -130,7 +138,7 @@ export default function UsersScreen() {
     const query = search.trim().toLowerCase();
     if (!query) return users;
     return users.filter((u) =>
-      `${displayName(u)} ${u.email} ${u.role}`.toLowerCase().includes(query)
+      `${displayName(u)} ${u.email} ${roleLabel(u.role)}`.toLowerCase().includes(query)
     );
   }, [users, search]);
 
@@ -206,7 +214,7 @@ export default function UsersScreen() {
               <Text style={styles.userEmail}>{item.email}</Text>
             </View>
             <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>{item.role || 'Member'}</Text>
+              <Text style={styles.roleBadgeText}>{roleLabel(item.role) || 'Member'}</Text>
             </View>
           </View>
         </TouchableOpacity>

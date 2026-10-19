@@ -58,6 +58,14 @@ const initials = (u: User) =>
   `${(u.firstName ?? '').charAt(0)}${(u.lastName ?? '').charAt(0)}`.toUpperCase() ||
   (u.email ?? '?').charAt(0).toUpperCase();
 
+// GET /org-admin/users serialises Prisma's `select: { role: true }`, so `role`
+// arrives as the related Role object ({ id, name }) or null — unlike the
+// session user's role, which is a plain string. Rendering the object inside
+// <Text> crashes, so normalise to its name here (the admin portal reads
+// user.role?.name for the same reason).
+const roleLabel = (role: unknown): string =>
+  typeof role === 'string' ? role : ((role as any)?.name ?? '');
+
 export default function UserDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -169,7 +177,7 @@ export default function UserDetailScreen() {
             <Text style={styles.avatarText}>{initials(user)}</Text>
           </View>
           <Text style={styles.userName}>{displayName(user)}</Text>
-          <Text style={styles.userRole}>{user.role || 'Member'}</Text>
+          <Text style={styles.userRole}>{roleLabel(user.role) || 'Member'}</Text>
 
           <View style={styles.detailSection}>
             <View style={styles.detailRow}>
@@ -182,7 +190,7 @@ export default function UserDetailScreen() {
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Role</Text>
-              <Text style={styles.detailValue}>{user.role || '—'}</Text>
+              <Text style={styles.detailValue}>{roleLabel(user.role) || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Platform Admin</Text>

@@ -64,6 +64,9 @@ export interface User {
   firstName: string;
   lastName: string;
   fullName: string;
+  /** The session user's role is a plain string (auth maps role.name); the
+   * org-admin list returns the Role relation object instead — see roleLabel()
+   * in the users screens before rendering it. */
   role: string;
   roleId: string;
   organizationId: string;
