@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { rosterAPI } from '@/modules/hr';
-import type { Shift } from '@/modules/hr';
+import { rosterAPI, workersAPI } from '@/modules/hr';
+import type { Shift, ShiftAssignment } from '@/modules/hr';
 import { Card, Button, TextInputField, Modal, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
@@ -42,8 +42,11 @@ const styles = StyleSheet.create({
   shiftCard: { marginBottom: 12 },
   shiftRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   shiftInfo: { flex: 1, paddingRight: 8 },
+  shiftNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  colorDot: { width: 10, height: 10, borderRadius: 5 },
   shiftName: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
   shiftTime: { fontSize: 13, color: colors.textLight },
+  shiftDays: { fontSize: 12, color: colors.textLight, marginTop: 2 },
   activeBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   activeBadgeText: { fontSize: 11, fontWeight: '600', color: '#166534' },
   inactiveBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -57,15 +60,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  assignmentActions: { flexDirection: 'row', gap: 8 },
   assignmentText: { fontSize: 13, color: colors.text },
+  outlineButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 6,
+    borderColor: colors.border,
+  },
+  outlineButtonText: { fontSize: 12, fontWeight: '600', color: colors.text },
   deleteButton: { paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: colors.error, borderRadius: 6 },
   deleteButtonText: { color: colors.error, fontSize: 12, fontWeight: '600' },
   listContent: { paddingHorizontal: 20, paddingBottom: 20 },
   modalActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
   modalActionButton: { flex: 1 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 12, color: colors.text },
+  chipTextActive: { color: '#FFFFFF' },
+  colorSwatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    marginRight: 8,
+  },
+  colorSwatchActive: { borderColor: colors.text },
+  assigneeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.light,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  assigneeName: { fontSize: 14, fontWeight: '600', color: colors.text, flex: 1 },
+  assigneeDate: { fontSize: 11, color: colors.textLight, marginTop: 2 },
+  emptyNote: { fontSize: 13, color: colors.textLight, fontStyle: 'italic', marginBottom: 8 },
 });
 
 const TIME_RE = /^\d{2}:\d{2}$/;
+
+/** Admin parity: shift day tokens are MON…SUN (3 chars max). */
+const DAY_TOKENS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
+const DAY_LABELS: Record<string, string> = {
+  MON: 'Mon', TUE: 'Tue', WED: 'Wed', THU: 'Thu', FRI: 'Fri', SAT: 'Sat', SUN: 'Sun',
+};
+
+/** Admin parity colour swatches. */
+const SHIFT_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 function unwrapList<T>(payload: any): T[] {
   if (Array.isArray(payload)) return payload;
@@ -74,23 +135,47 @@ function unwrapList<T>(payload: any): T[] {
   return [];
 }
 
+/** "Mon, Tue" — or "Every day" when daysOfWeek is empty/absent (all week). */
+function describeDays(days?: string[] | null): string {
+  if (!days || days.length === 0 || days.length === 7) return 'Every day';
+  return days.map((d) => DAY_LABELS[d] ?? d).join(', ');
+}
+
+interface ShiftForm {
+  name: string;
+  startTime: string;
+  endTime: string;
+  daysOfWeek: string[];
+  color: string;
+}
+
+const EMPTY_FORM: ShiftForm = { name: '', startTime: '', endTime: '', daysOfWeek: [], color: SHIFT_COLORS[0] };
+
 export default function RosterScreen() {
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
 
-  // Server: GET /shifts is hr.read, POST/PUT hr.write, DELETE hr.delete.
+  // Server: GET /shifts is hr.read|worker.read, POST/PUT hr.write, DELETE
+  // hr.delete; assignments create is hr.write and delete is hr.delete.
   const canWrite = hasPermission('hr.write');
   const canDelete = hasPermission('hr.delete');
 
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [assignmentCounts, setAssignmentCounts] = useState<Record<string, number>>({});
+  const [assignments, setAssignments] = useState<ShiftAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', startTime: '', endTime: '' });
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<ShiftForm>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<{ name?: string; startTime?: string; endTime?: string }>({});
+
+  // Per-shift assignment manager.
+  const [manageShift, setManageShift] = useState<Shift | null>(null);
+  const [availableWorkers, setAvailableWorkers] = useState<any[] | null>(null);
+  const [workersLoading, setWorkersLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -108,12 +193,9 @@ export default function RosterScreen() {
       } else {
         throw shiftsRes.reason;
       }
+      // The assignments feed failing must not blank the shift list.
       if (assignmentsRes.status === 'fulfilled') {
-        const counts: Record<string, number> = {};
-        unwrapList<any>(assignmentsRes.value.data).forEach((a) => {
-          if (a?.shiftId) counts[a.shiftId] = (counts[a.shiftId] ?? 0) + 1;
-        });
-        setAssignmentCounts(counts);
+        setAssignments(unwrapList<ShiftAssignment>(assignmentsRes.value.data));
       }
     } catch (error: any) {
       setLoadError(describeApiError(error, "Couldn't load the roster."));
@@ -121,6 +203,15 @@ export default function RosterScreen() {
       setLoading(false);
     }
   };
+
+  const assignmentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    assignments.forEach((a) => {
+      const shiftId = (a as any)?.shiftId;
+      if (shiftId) counts[shiftId] = (counts[shiftId] ?? 0) + 1;
+    });
+    return counts;
+  }, [assignments]);
 
   const validate = (): boolean => {
     const errors: typeof formErrors = {};
@@ -133,23 +224,36 @@ export default function RosterScreen() {
     return Object.keys(errors).length === 0;
   };
 
-  const submitCreate = async () => {
+  const payloadFromForm = () => ({
+    name: form.name.trim(),
+    startTime: form.startTime.trim(),
+    endTime: form.endTime.trim(),
+    daysOfWeek: form.daysOfWeek,
+    color: form.color,
+  });
+
+  const submitForm = async () => {
     if (!validate()) return;
-    setCreating(true);
+    setSaving(true);
     try {
-      await rosterAPI.createShift({
-        name: form.name.trim(),
-        startTime: form.startTime.trim(),
-        endTime: form.endTime.trim(),
-      });
-      success('Shift created successfully');
-      setCreateOpen(false);
-      setForm({ name: '', startTime: '', endTime: '' });
+      if (editingShift) {
+        await rosterAPI.updateShift(editingShift.id, payloadFromForm());
+        success('Shift updated successfully');
+      } else {
+        await rosterAPI.createShift(payloadFromForm());
+        success('Shift created successfully');
+      }
+      closeForm();
       loadAll();
     } catch (error: any) {
-      showError(describeApiError(error, 'Failed to create shift. Please try again.'));
+      showError(
+        describeApiError(
+          error,
+          editingShift ? 'Failed to update shift. Please try again.' : 'Failed to create shift. Please try again.'
+        )
+      );
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
   };
 
@@ -179,28 +283,137 @@ export default function RosterScreen() {
     [success, showError]
   );
 
-  const updateForm = (field: 'name' | 'startTime' | 'endTime', value: string) => {
+  const updateForm = (field: keyof ShiftForm, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (formErrors[field]) setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (formErrors[field as keyof typeof formErrors]) {
+      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
-  const closeCreate = () => {
-    setCreateOpen(false);
+  const toggleDay = (token: string) => {
+    setForm((prev) => ({
+      ...prev,
+      daysOfWeek: prev.daysOfWeek.includes(token)
+        ? prev.daysOfWeek.filter((d) => d !== token)
+        : [...prev.daysOfWeek, token],
+    }));
+  };
+
+  const openCreate = () => {
+    setEditingShift(null);
+    setForm(EMPTY_FORM);
     setFormErrors({});
+    setCreateOpen(true);
+  };
+
+  const openEdit = (shift: Shift) => {
+    setEditingShift(shift);
+    setForm({
+      name: shift.name ?? '',
+      startTime: shift.startTime ?? '',
+      endTime: shift.endTime ?? '',
+      daysOfWeek: (shift as any).daysOfWeek ?? (shift as any).days ?? [],
+      color: (shift as any).color ?? SHIFT_COLORS[0],
+    });
+    setFormErrors({});
+    setCreateOpen(true);
+  };
+
+  const closeForm = () => {
+    setCreateOpen(false);
+    setEditingShift(null);
+    setFormErrors({});
+  };
+
+  // ── Assignment manager ───────────────────────────────────────────────────────
+  const openManage = (shift: Shift) => {
+    setManageShift(shift);
+    setAvailableWorkers(null);
+  };
+
+  /** Load the roster picker lazily — only when someone asks to add a worker. */
+  const loadWorkers = async () => {
+    if (availableWorkers || workersLoading) return;
+    setWorkersLoading(true);
+    try {
+      const res = await workersAPI.list({ limit: 500 });
+      setAvailableWorkers(unwrapList<any>(res.data));
+    } catch (error: any) {
+      showError(describeApiError(error, "Couldn't load workers."));
+      setAvailableWorkers([]);
+    } finally {
+      setWorkersLoading(false);
+    }
+  };
+
+  const managedAssignments = useMemo(
+    () => (manageShift ? assignments.filter((a: any) => a.shiftId === manageShift.id) : []),
+    [assignments, manageShift]
+  );
+
+  const assignedUserIds = useMemo(
+    () => new Set(managedAssignments.map((a: any) => a.userId).filter(Boolean)),
+    [managedAssignments]
+  );
+
+  const handleAssign = async (worker: any) => {
+    if (!manageShift) return;
+    setAssigning(true);
+    try {
+      const workerName = `${worker.firstName ?? ''} ${worker.lastName ?? ''}`.trim();
+      await rosterAPI.createAssignment({
+        shiftId: manageShift.id,
+        userId: worker.id,
+        date: new Date().toISOString().split('T')[0],
+        userName: workerName || undefined,
+      });
+      success(`${workerName || 'Worker'} assigned to ${manageShift.name}`);
+      // Refresh just the assignments feed so the counts stay truthful.
+      const res = await rosterAPI.listAssignments();
+      setAssignments(unwrapList<ShiftAssignment>(res.data));
+    } catch (error: any) {
+      showError(describeApiError(error, 'Failed to assign worker.'));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleUnassign = (assignment: any) => {
+    Alert.alert('Remove Assignment', 'Remove this worker from the shift?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await rosterAPI.deleteAssignment(assignment.id);
+            setAssignments((prev) => prev.filter((a: any) => a.id !== assignment.id));
+          } catch (error: any) {
+            showError(describeApiError(error, 'Failed to remove the assignment.'));
+          }
+        },
+      },
+    ]);
   };
 
   const renderItem = useCallback(
     ({ item }: { item: Shift }) => {
       const isActive = (item as any).isActive !== false;
+      const days = (item as any).daysOfWeek ?? (item as any).days ?? [];
+      const color = (item as any).color;
       const count = assignmentCounts[item.id] ?? 0;
       return (
         <Card style={styles.shiftCard}>
           <View style={styles.shiftRow}>
             <View style={styles.shiftInfo}>
-              <Text style={styles.shiftName}>{item.name}</Text>
+              <View style={styles.shiftNameRow}>
+                {color ? <View style={[styles.colorDot, { backgroundColor: color }]} /> : null}
+                <Text style={styles.shiftName}>{item.name}</Text>
+              </View>
               <Text style={styles.shiftTime}>
                 {item.startTime} – {item.endTime}
               </Text>
+              <Text style={styles.shiftDays}>{describeDays(days)}</Text>
             </View>
             <View style={isActive ? styles.activeBadge : styles.inactiveBadge}>
               <Text style={isActive ? styles.activeBadgeText : styles.inactiveBadgeText}>
@@ -212,21 +425,43 @@ export default function RosterScreen() {
             <Text style={styles.assignmentText}>
               {count} {count === 1 ? 'assignment' : 'assignments'}
             </Text>
-            {canDelete && (
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => deleteShift(item)}
-                accessibilityRole="button"
-                accessibilityLabel={`Delete ${item.name}`}
-              >
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.assignmentActions}>
+              {canWrite && (
+                <TouchableOpacity
+                  style={styles.outlineButton}
+                  onPress={() => openManage(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Manage assignments for ${item.name}`}
+                >
+                  <Text style={styles.outlineButtonText}>Assign</Text>
+                </TouchableOpacity>
+              )}
+              {canWrite && (
+                <TouchableOpacity
+                  style={styles.outlineButton}
+                  onPress={() => openEdit(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit ${item.name}`}
+                >
+                  <Text style={styles.outlineButtonText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+              {canDelete && (
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => deleteShift(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${item.name}`}
+                >
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </Card>
       );
     },
-    [assignmentCounts, canDelete, deleteShift]
+    [assignmentCounts, canWrite, canDelete, deleteShift]
   );
 
   if (loading) {
@@ -267,7 +502,7 @@ export default function RosterScreen() {
         {canWrite && (
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => setCreateOpen(true)}
+            onPress={openCreate}
             accessibilityRole="button"
             accessibilityLabel="Create new shift"
           >
@@ -291,7 +526,7 @@ export default function RosterScreen() {
             {canWrite && (
               <Button
                 title="Create Shift"
-                onPress={() => setCreateOpen(true)}
+                onPress={openCreate}
                 accessibilityLabel="Create your first shift"
               />
             )}
@@ -299,7 +534,12 @@ export default function RosterScreen() {
         }
       />
 
-      <Modal visible={createOpen} onClose={closeCreate} title="Create Shift">
+      {/* Create / Edit shift */}
+      <Modal
+        visible={createOpen}
+        onClose={closeForm}
+        title={editingShift ? 'Edit Shift' : 'Create Shift'}
+      >
         <TextInputField
           label="Shift Name *"
           placeholder="e.g. Morning"
@@ -321,14 +561,127 @@ export default function RosterScreen() {
           onChangeText={(v) => updateForm('endTime', v)}
           error={formErrors.endTime}
         />
+        <Text style={styles.label}>Repeating days (none = every day)</Text>
+        <View style={styles.chipRow}>
+          {DAY_TOKENS.map((token) => {
+            const active = form.daysOfWeek.includes(token);
+            return (
+              <TouchableOpacity
+                key={token}
+                onPress={() => toggleDay(token)}
+                style={[styles.chip, active && styles.chipActive]}
+                accessibilityRole="button"
+                accessibilityLabel={`Day ${token}`}
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {DAY_LABELS[token]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.label}>Colour</Text>
+        <View style={styles.chipRow}>
+          {SHIFT_COLORS.map((c) => (
+            <TouchableOpacity
+              key={c}
+              onPress={() => updateForm('color', c)}
+              style={[styles.colorSwatch, { backgroundColor: c }, form.color === c && styles.colorSwatchActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Colour ${c}`}
+              accessibilityState={{ selected: form.color === c }}
+            />
+          ))}
+        </View>
         <View style={styles.modalActions}>
-          <Button title="Cancel" variant="secondary" style={styles.modalActionButton} onPress={closeCreate} />
+          <Button title="Cancel" variant="secondary" style={styles.modalActionButton} onPress={closeForm} />
           <Button
-            title="Create Shift"
+            title={editingShift ? 'Save Changes' : 'Create Shift'}
             style={styles.modalActionButton}
-            loading={creating}
-            disabled={creating}
-            onPress={submitCreate}
+            loading={saving}
+            disabled={saving}
+            onPress={submitForm}
+          />
+        </View>
+      </Modal>
+
+      {/* Assignment manager */}
+      <Modal
+        visible={!!manageShift}
+        onClose={() => setManageShift(null)}
+        title={manageShift ? `Assignments — ${manageShift.name}` : 'Assignments'}
+      >
+        <ScrollView style={{ maxHeight: 360 }}>
+          {managedAssignments.length === 0 ? (
+            <Text style={styles.emptyNote}>No workers assigned to this shift yet.</Text>
+          ) : (
+            managedAssignments.map((a: any) => (
+              <View key={a.id} style={styles.assigneeRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.assigneeName}>{a.userName || a.userId || 'Worker'}</Text>
+                  <Text style={styles.assigneeDate}>{a.date ? String(a.date).slice(0, 10) : ''}</Text>
+                </View>
+                {canDelete && (
+                  <TouchableOpacity
+                    onPress={() => handleUnassign(a)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${a.userName || a.userId} from shift`}
+                  >
+                    <Text style={styles.deleteButtonText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))
+          )}
+
+          {canWrite && (
+            <View style={{ marginTop: 8 }}>
+              {availableWorkers === null ? (
+                <Button
+                  title={workersLoading ? 'Loading workers…' : 'Add Worker'}
+                  variant="secondary"
+                  loading={workersLoading}
+                  disabled={workersLoading}
+                  onPress={loadWorkers}
+                  accessibilityLabel="Add worker to shift"
+                />
+              ) : (
+                <>
+                  <Text style={styles.label}>Pick a worker</Text>
+                  {availableWorkers.length === 0 ? (
+                    <Text style={styles.emptyNote}>No workers available.</Text>
+                  ) : (
+                    <View style={styles.chipRow}>
+                      {availableWorkers.map((w) => {
+                        const already = assignedUserIds.has(w.id);
+                        const name = `${w.firstName ?? ''} ${w.lastName ?? ''}`.trim() || w.email || 'Worker';
+                        return (
+                          <TouchableOpacity
+                            key={w.id}
+                            disabled={already || assigning}
+                            onPress={() => handleAssign(w)}
+                            style={[styles.chip, already && { opacity: 0.4 }]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Assign ${name}`}
+                          >
+                            <Text style={styles.chipText}>{already ? `✓ ${name}` : name}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          )}
+        </ScrollView>
+        <View style={styles.modalActions}>
+          <Button
+            title="Close"
+            variant="secondary"
+            style={styles.modalActionButton}
+            onPress={() => setManageShift(null)}
           />
         </View>
       </Modal>

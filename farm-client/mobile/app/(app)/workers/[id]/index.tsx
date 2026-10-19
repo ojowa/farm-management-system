@@ -43,13 +43,23 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   detailLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
   detailValue: { fontSize: 14, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  skillsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  skillChip: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  skillChipText: { fontSize: 11, color: '#1D4ED8', fontWeight: '600' },
   actions: { marginTop: 20, gap: 12 },
 });
 
 const WORKER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   ACTIVE: { bg: '#DCFCE7', text: '#166534' },
   INACTIVE: { bg: '#F3F4F6', text: '#6B7280' },
-  ON_LEAVE: { bg: '#FEF3C7', text: '#92400E' },
+  PROBATION: { bg: '#FEF3C7', text: '#92400E' },
   TERMINATED: { bg: '#FEE2E2', text: '#991B1B' },
 };
 
@@ -142,6 +152,29 @@ export default function WorkerDetailScreen() {
       ]
     );
   }, [worker, success, showError, router]);
+
+  // Rotate the linked login's password and resend the invitation email.
+  const handleResendInvite = useCallback(() => {
+    if (!worker) return;
+    Alert.alert(
+      'Resend Invitation',
+      `Send a fresh invitation email to ${worker.email || fullName(worker)}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            try {
+              await workersAPI.reinvite(worker.id);
+              success('Invitation sent');
+            } catch (error: any) {
+              showError(describeApiError(error, 'Failed to resend the invitation.'));
+            }
+          },
+        },
+      ]
+    );
+  }, [worker, success, showError]);
 
   if (loading) {
     return (
@@ -242,27 +275,92 @@ export default function WorkerDetailScreen() {
               <Text style={styles.detailValue}>{formatDate(worker.hireDate)}</Text>
             </View>
           </View>
-        </View>
 
-        {(canWrite || canDelete) && (
-          <View style={styles.actions}>
-            {canWrite && (
-              <Button
-                title="Edit Worker"
-                onPress={() => router.push(`/workers/${id}/edit`)}
-                accessibilityLabel="Edit this worker"
-              />
+          {/* Employment / payroll */}
+          <View style={styles.detailSection}>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Pay</Text>
+              <Text style={styles.detailValue}>
+                {worker.payRate != null
+                  ? `${worker.payRate}${worker.payType ? ` (${worker.payType})` : ''}`
+                  : worker.payType || '—'}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Skills</Text>
+              {worker.skills && worker.skills.length > 0 ? (
+                <Text style={styles.detailValue}>{worker.skills.length} listed</Text>
+              ) : (
+                <Text style={styles.detailValue}>—</Text>
+              )}
+            </View>
+            {worker.terminationDate && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Termination Date</Text>
+                <Text style={[styles.detailValue, { color: '#DC2626' }]}>{formatDate(worker.terminationDate)}</Text>
+              </View>
             )}
-            {canDelete && (
-              <Button
-                title="Delete Worker"
-                variant="secondary"
-                onPress={handleDelete}
-                accessibilityLabel="Delete this worker"
-              />
+            {worker.skills && worker.skills.length > 0 && (
+              <View style={styles.skillsRow}>
+                {worker.skills.map((skill) => (
+                  <View key={skill} style={styles.skillChip}>
+                    <Text style={styles.skillChipText}>{skill}</Text>
+                  </View>
+                ))}
+              </View>
             )}
           </View>
-        )}
+
+          {/* Emergency contact */}
+          {(worker.emergencyContactName || worker.emergencyContactPhone || worker.emergencyContactRelation) && (
+            <View style={styles.detailSection}>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Emergency Contact</Text>
+                <Text style={styles.detailValue}>{worker.emergencyContactName || '—'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Contact Phone</Text>
+                <Text style={styles.detailValue}>{worker.emergencyContactPhone || '—'}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Relationship</Text>
+                <Text style={styles.detailValue}>{worker.emergencyContactRelation || '—'}</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.actions}>
+          <Button
+            title="View Attendance"
+            variant="secondary"
+            onPress={() => router.push(`/attendance?workerId=${id}`)}
+            accessibilityLabel="View this worker's attendance history"
+          />
+          {canWrite && (
+            <Button
+              title="Edit Worker"
+              onPress={() => router.push(`/workers/${id}/edit`)}
+              accessibilityLabel="Edit this worker"
+            />
+          )}
+          {canWrite && worker.email && (
+            <Button
+              title="Resend Invitation"
+              variant="secondary"
+              onPress={handleResendInvite}
+              accessibilityLabel="Resend invitation email"
+            />
+          )}
+          {canDelete && (
+            <Button
+              title="Delete Worker"
+              variant="secondary"
+              onPress={handleDelete}
+              accessibilityLabel="Delete this worker"
+            />
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

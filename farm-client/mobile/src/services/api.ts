@@ -33,8 +33,11 @@ import type {
   Worker,
   CreateWorkerRequest,
   Attendance,
+  AttendanceSummary,
   ClockInRequest,
   Task,
+  TaskComment,
+  TaskAttachment,
   Shift,
   ShiftAssignment,
   LeaveRequest,
@@ -654,6 +657,9 @@ export const workersAPI = {
     http.put<Worker>(`/workers/${id}`, data),
   delete: (id: string) =>
     http.delete(`/workers/${id}`),
+  // Rotate the linked login's password and resend the invitation email.
+  reinvite: (id: string) =>
+    http.post(`/workers/${id}/reinvite`),
 };
 
 // ─── Attendance ────────────────────────────────────────────────────────────────
@@ -661,10 +667,12 @@ export const workersAPI = {
 export const attendanceAPI = {
   list: (params?: any) =>
     http.get<Attendance[]>('/attendance', { params }),
+  /** → `{ records, summary }` (the dashboard also tolerates a bare array). */
   getToday: () =>
-    http.get<Attendance[]>('/attendance/today'),
-  getSummary: (params: { workerId: string; month?: number; year?: number }) =>
-    http.get('/attendance/summary', { params }),
+    http.get<{ records: Attendance[]; summary: AttendanceSummary }>('/attendance/today'),
+  /** workerId omitted → org-wide summary (managers); workers are pinned. */
+  getSummary: (params?: { workerId?: string; month?: number; year?: number }) =>
+    http.get<{ records: Attendance[]; summary: AttendanceSummary }>('/attendance/summary', { params }),
   create: (data: any) =>
     http.post<Attendance>('/attendance', data),
   clockIn: (data: ClockInRequest) =>
@@ -680,7 +688,7 @@ export const attendanceAPI = {
 // ─── Tasks ─────────────────────────────────────────────────────────────────────
 
 export const tasksAPI = {
-  list: (params?: ListParams & { status?: string; assignedTo?: string }) =>
+  list: (params?: ListParams & { status?: string; priority?: string; assignedTo?: string; assignedToId?: string; search?: string }) =>
     http.get<Task[]>('/tasks', { params }),
   get: (id: string) =>
     http.get<Task>(`/tasks/${id}`),
@@ -692,6 +700,20 @@ export const tasksAPI = {
     http.put<Task>(`/tasks/${id}/status`, { status }),
   delete: (id: string) =>
     http.delete(`/tasks/${id}`),
+  // ── Comments ────────────────────────────────────────────────────────────────
+  comments: (id: string) =>
+    http.get<TaskComment[]>(`/tasks/${id}/comments`),
+  addComment: (id: string, body: string) =>
+    http.post<TaskComment>(`/tasks/${id}/comments`, { body }),
+  deleteComment: (commentId: string) =>
+    http.delete(`/tasks/comments/${commentId}`),
+  // ── Attachments (link-style metadata; no file upload) ────────────────────────
+  attachments: (id: string) =>
+    http.get<TaskAttachment[]>(`/tasks/${id}/attachments`),
+  addAttachment: (id: string, data: { fileName: string; fileUrl: string; fileSize?: number }) =>
+    http.post<TaskAttachment>(`/tasks/${id}/attachments`, data),
+  removeAttachment: (attachmentId: string) =>
+    http.delete(`/tasks/attachments/${attachmentId}`),
 };
 
 // ─── Shifts ────────────────────────────────────────────────────────────────────
@@ -709,6 +731,9 @@ export const rosterAPI = {
     http.get<ShiftAssignment[]>('/shift-assignments', { params }),
   createAssignment: (data: any) =>
     http.post<ShiftAssignment>('/shift-assignments', data),
+  // Re-assign: move someone to a different shift/date or edit notes.
+  updateAssignment: (id: string, data: any) =>
+    http.put<ShiftAssignment>(`/shift-assignments/${id}`, data),
   bulkAssign: (data: any[]) =>
     http.post('/shift-assignments/bulk', { records: data }),
   deleteAssignment: (id: string) =>
@@ -742,6 +767,15 @@ export const leaveAPI = {
     http.get('/leave/balance', { params }),
   upsertBalance: (data: any) =>
     http.put('/leave/balance', data),
+  /** Everyone's balance for the year — the admin "leave ledger" (hr.read). */
+  allBalances: (params?: { year?: number }) =>
+    http.get('/leave/balance/all', { params }),
+  /** Who's off today (hr.read): `{ name, position, leaveType, startDate, … }[]`. */
+  onLeave: (params?: { date?: string }) =>
+    http.get('/leave/requests/on-leave', { params }),
+  /** One call to clear the pending queue → `{ succeeded, failed, failures? }`. */
+  bulkDecide: (data: { ids: string[]; action: 'approve' | 'reject'; rejectionReason?: string }) =>
+    http.put('/leave/requests/bulk', data),
 };
 
 // ─── Messages ──────────────────────────────────────────────────────────────────

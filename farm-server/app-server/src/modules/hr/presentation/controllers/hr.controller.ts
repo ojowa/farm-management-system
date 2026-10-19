@@ -263,7 +263,10 @@ export class TasksController {
     return this.hrService.createTask(getOrgId(req), getUserPermissions(req), (req as any).user, body);
   }
 
-  @Permission('hr.write')
+  // Managers edit the task in full; the assigned worker may still push their
+  // own task through statuses — the service's self-service branch (below)
+  // restricts non-hr.write callers to status-only updates on their own tasks.
+  @PermissionAny('hr.write', 'worker.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateTaskSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {

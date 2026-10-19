@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -13,10 +13,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
+import { StateView } from '@/core/ui/feedback';
 import { tasksAPI } from '@/modules/worker';
 import { workersAPI } from '@/modules/hr';
 import { offlineTasksAPI } from '@/modules/worker';
@@ -41,7 +43,18 @@ const styles = StyleSheet.create({
   },
   addButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
   content: { paddingHorizontal: 16, paddingVertical: 12 },
-  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 12,
+  },
+  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   filterBtn: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -61,10 +74,12 @@ const styles = StyleSheet.create({
   taskTitle: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { fontSize: 10, fontWeight: '600', color: '#FFFFFF' },
+  badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
   taskDesc: { fontSize: 13, color: colors.textLight, marginBottom: 8 },
   taskMeta: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   taskMetaText: { fontSize: 11, color: colors.textLight },
-  taskActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  overdueText: { fontSize: 11, color: '#DC2626', fontWeight: '600' },
+  taskActions: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   actionBtnText: { fontSize: 12, fontWeight: '600' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 },
@@ -117,15 +132,33 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: '#EF4444',
 };
 
+const RECURRENCE_RULES = ['DAILY', 'WEEKLY', 'MONTHLY'];
+
+/** Is this task past due (and still open)? */
+function isOverdue(task: any): boolean {
+  if (!task?.dueDate) return false;
+  if (task.status === 'COMPLETED' || task.status === 'CANCELLED') return false;
+  const due = new Date(task.dueDate);
+  if (Number.isNaN(due.getTime())) return false;
+  return due.getTime() < Date.now();
+}
+
 export default function TasksScreen() {
   const { user } = useAuth();
-  const { canCreate } = usePermission();
-  const canManageTasks = canCreate('task');
+  const { canCreate, canDelete } = usePermission();
+  const router = useRouter();
+  // Tasks live under the HR module — the API enforces hr.write / hr.delete
+  // (there are no task.* permissions).
+  const canManageTasks = canCreate('hr');
+  const canRemoveTasks = canDelete('hr');
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<string>('all');
+  const [recurringOnly, setRecurringOnly] = useState(false);
+  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [title, setTitle] = useState('');
@@ -133,20 +166,28 @@ export default function TasksScreen() {
   const [priority, setPriority] = useState('MEDIUM');
   const [assignedToId, setAssignedToId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceRule, setRecurrenceRule] = useState('WEEKLY');
   const [saving, setSaving] = useState(false);
   const [workers, setWorkers] = useState<any[]>([]);
 
   const loadTasks = useCallback(async () => {
+    setLoadError(null);
     try {
       const params: any = {};
       if (filter !== 'all') params.status = filter.toUpperCase();
+      if (recurringOnly) params.isRecurring = true;
       const res = await offlineTasksAPI.list(params);
-      setTasks(res.data);
-    } catch {
+      setTasks(res.data || []);
+    } catch (err: any) {
+      // Surface the failure — a silent catch renders as a false "No tasks".
+      setLoadError(describeApiError(err, "Couldn't load tasks"));
       if (__DEV__) console.warn('[TasksScreen] Failed to load tasks');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    finally { setLoading(false); setRefreshing(false); }
-  }, [filter]);
+  }, [filter, recurringOnly]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
@@ -156,6 +197,7 @@ export default function TasksScreen() {
         if (__DEV__) console.warn('[TasksScreen] Failed to load workers');
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = () => { setRefreshing(true); loadTasks(); };
@@ -168,6 +210,8 @@ export default function TasksScreen() {
       setPriority(task.priority);
       setAssignedToId(task.assignedToId || '');
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
+      setIsRecurring(!!task.isRecurring);
+      setRecurrenceRule(task.recurrenceRule || 'WEEKLY');
     } else {
       setEditingTask(null);
       setTitle('');
@@ -175,6 +219,8 @@ export default function TasksScreen() {
       setPriority('MEDIUM');
       setAssignedToId('');
       setDueDate('');
+      setIsRecurring(false);
+      setRecurrenceRule('WEEKLY');
     }
     setShowModal(true);
   };
@@ -188,6 +234,8 @@ export default function TasksScreen() {
         description: desc.trim() || undefined,
         priority,
         dueDate: dueDate || undefined,
+        isRecurring,
+        recurrenceRule: isRecurring ? recurrenceRule : null,
       };
       if (assignedToId) {
         payload.assignedToId = assignedToId;
@@ -215,6 +263,17 @@ export default function TasksScreen() {
     }
   };
 
+  const handleCancelTask = (task: any) => {
+    Alert.alert('Cancel Task', `Mark "${task.title}" as cancelled?`, [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Cancel Task',
+        style: 'destructive',
+        onPress: () => handleStatusChange(task, 'CANCELLED'),
+      },
+    ]);
+  };
+
   const handleDelete = (task: any) => {
     Alert.alert('Delete Task', `Delete "${task.title}"?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -233,7 +292,18 @@ export default function TasksScreen() {
     ]);
   };
 
-  const filteredTasks = tasks;
+  const searchTerm = search.trim().toLowerCase();
+  const filteredTasks = useMemo(() => {
+    if (!searchTerm) return tasks;
+    return tasks.filter((t) =>
+      [t.title, t.description, t.assignedToName]
+        .filter(Boolean)
+        .some((s: string) => String(s).toLowerCase().includes(searchTerm)),
+    );
+  }, [tasks, searchTerm]);
+
+  const isSelfAssigned = (task: any) =>
+    !!user?.id && (task.assignedToId === user.id);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -241,7 +311,7 @@ export default function TasksScreen() {
         <MenuButton />
         <Text style={[styles.headerTitle, { flex: 1 }]}>{canManageTasks ? 'Tasks' : 'My Tasks'}</Text>
         {canManageTasks && (
-          <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>
+          <TouchableOpacity style={styles.addButton} onPress={() => openModal()} accessibilityLabel="Create task">
             <Text style={styles.addButtonText}>+</Text>
           </TouchableOpacity>
         )}
@@ -253,80 +323,143 @@ export default function TasksScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
-          <View style={styles.filterRow}>
-            {['all', 'pending', 'in_progress', 'completed'].map((f) => (
+          <View>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search tasks…"
+              style={styles.searchInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Search tasks"
+            />
+            <View style={styles.filterRow}>
+              {['all', 'pending', 'in_progress', 'completed', 'cancelled'].map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+                  accessibilityLabel={`Filter by ${f === 'all' ? 'all tasks' : f.replace('_', ' ')}`}
+                >
+                  <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
+                    {f === 'all' ? 'All' : f.replace('_', ' ')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
               <TouchableOpacity
-                key={f}
-                onPress={() => setFilter(f)}
-                style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-                accessibilityLabel={`Filter by ${f === 'all' ? 'all tasks' : f.replace('_', ' ')}`}
+                onPress={() => setRecurringOnly((v) => !v)}
+                style={[styles.filterBtn, recurringOnly && styles.filterBtnActive]}
+                accessibilityLabel="Filter by recurring tasks"
               >
-                <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>
-                  {f === 'all' ? 'All' : f.replace('_', ' ')}
+                <Text style={[styles.filterBtnText, recurringOnly && styles.filterBtnTextActive]}>
+                  ⟳ Recurring
                 </Text>
               </TouchableOpacity>
-            ))}
+            </View>
           </View>
         }
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+          ) : loadError ? (
+            <StateView
+              variant="error"
+              title="Couldn't load tasks"
+              message={loadError}
+              onRetry={() => { setLoading(true); loadTasks(); }}
+              retryLabel="Try Again"
+            />
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>✅</Text>
-              <Text style={styles.emptyText}>No tasks</Text>
+              <Text style={styles.emptyText}>
+                {searchTerm || filter !== 'all' || recurringOnly ? 'No matching tasks' : 'No tasks'}
+              </Text>
               <Text style={styles.emptySubtext}>
-                {canManageTasks ? 'Tap + to create a task' : 'No tasks assigned to you yet'}
+                {searchTerm || filter !== 'all' || recurringOnly
+                  ? 'Try a different search or filter.'
+                  : canManageTasks
+                  ? 'Tap + to create a task'
+                  : 'No tasks assigned to you yet'}
               </Text>
             </View>
           )
         }
-        renderItem={({ item: task }) => (
-          <Card style={styles.taskCard}>
-            <View style={styles.taskHeader}>
-              <Text style={styles.taskTitle}>{task.title}</Text>
-              <View style={[styles.badge, { backgroundColor: PRIORITY_COLORS[task.priority] || '#9CA3AF' }]}>
-                <Text style={styles.badgeText}>{task.priority}</Text>
+        renderItem={({ item: task }) => {
+          const overdue = isOverdue(task);
+          return (
+            <Card style={styles.taskCard} onPress={() => router.push(`/tasks/${task.id}`)} accessibilityLabel={`Open task ${task.title}`}>
+              <View style={styles.taskHeader}>
+                <Text style={styles.taskTitle}>{task.title}</Text>
+                <View style={[styles.badge, { backgroundColor: PRIORITY_COLORS[task.priority] || '#9CA3AF' }]}>
+                  <Text style={styles.badgeText}>{task.priority}</Text>
+                </View>
               </View>
-            </View>
-            <View style={[styles.badge, { backgroundColor: STATUS_COLORS[task.status] || '#9CA3AF', alignSelf: 'flex-start', marginBottom: 8 }]}>
-              <Text style={styles.badgeText}>{task.status.replace('_', ' ')}</Text>
-            </View>
-            {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
-            <View style={styles.taskMeta}>
-              {task.assignedToName && <Text style={styles.taskMetaText}>To: {task.assignedToName}</Text>}
-              {task.dueDate && <Text style={styles.taskMetaText}>Due: {new Date(task.dueDate).toLocaleDateString()}</Text>}
-              {task.completedAt && <Text style={styles.taskMetaText}>Done: {new Date(task.completedAt).toLocaleDateString()}</Text>}
-            </View>
+              <View style={styles.badgeRow}>
+                <View style={[styles.badge, { backgroundColor: STATUS_COLORS[task.status] || '#9CA3AF' }]}>
+                  <Text style={styles.badgeText}>{task.status.replace('_', ' ')}</Text>
+                </View>
+                {overdue && (
+                  <View style={[styles.badge, { backgroundColor: '#DC2626' }]}>
+                    <Text style={styles.badgeText}>OVERDUE</Text>
+                  </View>
+                )}
+                {task.isRecurring && (
+                  <View style={[styles.badge, { backgroundColor: '#8B5CF6' }]}>
+                    <Text style={styles.badgeText}>⟳ {task.recurrenceRule || 'RECURRING'}</Text>
+                  </View>
+                )}
+              </View>
+              {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
+              <View style={styles.taskMeta}>
+                {task.assignedToName && <Text style={styles.taskMetaText}>To: {task.assignedToName}</Text>}
+                {task.dueDate && (
+                  <Text style={overdue ? styles.overdueText : styles.taskMetaText}>
+                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                  </Text>
+                )}
+                {task.completedAt && <Text style={styles.taskMetaText}>Done: {new Date(task.completedAt).toLocaleDateString()}</Text>}
+                {task.isRecurring && task.nextDueAt && (
+                  <Text style={styles.taskMetaText}>Next: {new Date(task.nextDueAt).toLocaleDateString()}</Text>
+                )}
+              </View>
 
-            <View style={styles.taskActions}>
-              {!canManageTasks && task.assignedToId === user?.id && task.status !== 'COMPLETED' && (
-                <>
-                  {task.status === 'PENDING' && (
-                    <TouchableOpacity onPress={() => handleStatusChange(task, 'IN_PROGRESS')} style={[styles.actionBtn, { backgroundColor: '#DBEAFE' }]} accessibilityLabel="Start task">
-                      <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Start</Text>
-                    </TouchableOpacity>
-                  )}
-                  {task.status === 'IN_PROGRESS' && (
-                    <TouchableOpacity onPress={() => handleStatusChange(task, 'COMPLETED')} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]} accessibilityLabel="Complete task">
-                      <Text style={[styles.actionBtnText, { color: '#059669' }]}>Complete</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-              {canManageTasks && (
-                <>
-                  <TouchableOpacity onPress={() => openModal(task)} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]} accessibilityLabel="Edit task">
-                    <Text style={[styles.actionBtnText, { color: '#059669' }]}>Edit</Text>
+              <View style={styles.taskActions}>
+                {canManageTasks && task.status !== 'CANCELLED' && task.status !== 'COMPLETED' && (
+                  <TouchableOpacity onPress={() => handleCancelTask(task)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]} accessibilityLabel="Cancel task">
+                    <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDelete(task)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]} accessibilityLabel="Delete task">
-                    <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Delete</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </Card>
-        )}
+                )}
+                {canManageTasks && (
+                  <>
+                    <TouchableOpacity onPress={() => openModal(task)} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]} accessibilityLabel="Edit task">
+                      <Text style={[styles.actionBtnText, { color: '#059669' }]}>Edit</Text>
+                    </TouchableOpacity>
+                    {canRemoveTasks && (
+                      <TouchableOpacity onPress={() => handleDelete(task)} style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]} accessibilityLabel="Delete task">
+                        <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Delete</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+                {!canManageTasks && isSelfAssigned(task) && task.status !== 'COMPLETED' && task.status !== 'CANCELLED' && (
+                  <>
+                    {task.status === 'PENDING' && (
+                      <TouchableOpacity onPress={() => handleStatusChange(task, 'IN_PROGRESS')} style={[styles.actionBtn, { backgroundColor: '#DBEAFE' }]} accessibilityLabel="Start task">
+                        <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Start</Text>
+                      </TouchableOpacity>
+                    )}
+                    {task.status === 'IN_PROGRESS' && (
+                      <TouchableOpacity onPress={() => handleStatusChange(task, 'COMPLETED')} style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]} accessibilityLabel="Complete task">
+                        <Text style={[styles.actionBtnText, { color: '#059669' }]}>Complete</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+              </View>
+            </Card>
+          );
+        }}
       />
 
       <Modal visible={showModal} animationType="slide" transparent>
@@ -336,7 +469,7 @@ export default function TasksScreen() {
             <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={styles.input} />
             <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={styles.input} multiline />
             <Text style={styles.label}>Priority</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
                 <TouchableOpacity
                   key={p}
@@ -350,13 +483,6 @@ export default function TasksScreen() {
             {canManageTasks && workers.length > 0 && (
               <>
                 <Text style={styles.label}>Assign To</Text>
-                <View style={styles.select}>
-                  <TouchableOpacity onPress={() => {}}>
-                    <Text style={{ color: assignedToId ? colors.text : colors.textLight }}>
-                      {assignedToId ? workers.find((w) => w.id === assignedToId) ? `${workers.find((w) => w.id === assignedToId)?.firstName} ${workers.find((w) => w.id === assignedToId)?.lastName}` : 'Select worker' : 'Select worker'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                   <TouchableOpacity
                     onPress={() => setAssignedToId('')}
@@ -379,6 +505,26 @@ export default function TasksScreen() {
               </>
             )}
             <TextInput value={dueDate} onChangeText={setDueDate} placeholder="Due date (YYYY-MM-DD)" style={styles.input} />
+            <Text style={styles.label}>Repeats</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+              <TouchableOpacity
+                onPress={() => setIsRecurring(false)}
+                style={[styles.filterBtn, !isRecurring && styles.filterBtnActive]}
+                accessibilityLabel="Does not repeat"
+              >
+                <Text style={[styles.filterBtnText, !isRecurring && styles.filterBtnTextActive]}>Never</Text>
+              </TouchableOpacity>
+              {RECURRENCE_RULES.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => { setIsRecurring(true); setRecurrenceRule(r); }}
+                  style={[styles.filterBtn, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
+                  accessibilityLabel={`Repeat ${r.toLowerCase()}`}
+                >
+                  <Text style={[styles.filterBtnText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={styles.modalActions}>
               <Button title="Cancel" onPress={() => setShowModal(false)} variant="secondary" style={{ flex: 1 }} />
               <Button title={saving ? 'Saving...' : editingTask ? 'Update' : 'Create'} onPress={handleSave} disabled={saving} style={{ flex: 1 }} />

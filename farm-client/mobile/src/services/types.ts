@@ -629,6 +629,8 @@ export interface Worker {
   id: string;
   farmId: string;
   farm?: Farm;
+  /** Login account linked to this worker (null for legacy workers). */
+  userId?: string | null;
   firstName: string;
   middleName?: string;
   lastName: string;
@@ -637,7 +639,17 @@ export interface Worker {
   position: string;
   department?: string;
   hireDate?: string;
+  /** Server enum: ACTIVE | INACTIVE | PROBATION | TERMINATED. */
   status: string;
+  // Employment / payroll (20261019 HR schema migration)
+  payRate?: number | null;
+  payType?: string | null;
+  terminationDate?: string | null;
+  skills?: string[];
+  // Emergency contact
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -647,11 +659,19 @@ export interface CreateWorkerRequest {
   firstName: string;
   lastName: string;
   middleName?: string;
-  email?: string;
+  /** Required by createWorkerSchema — it is the worker's login. */
+  email: string;
   phone?: string;
   position: string;
   department?: string;
   hireDate?: string;
+  payRate?: number | null;
+  payType?: string | null;
+  terminationDate?: string | null;
+  skills?: string[];
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
 }
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'ON_LEAVE';
@@ -659,14 +679,30 @@ export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'ON_
 export interface Attendance {
   id: string;
   workerId: string;
+  workerName?: string;
   worker?: Worker;
   date: string;
+  /** Serialized "HH:MM" on the wire (full DateTime in the DB). */
   clockIn?: string;
   clockOut?: string;
+  hoursWorked?: number | null;
   status: AttendanceStatus;
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** GET /attendance/today and /attendance/summary respond with this envelope. */
+export interface AttendanceSummary {
+  total?: number;
+  totalDays?: number;
+  present: number;
+  absent: number;
+  late: number;
+  halfDay: number;
+  onLeave: number;
+  totalHours?: number;
+  attendanceRate?: number;
 }
 
 export interface ClockInRequest {
@@ -682,14 +718,42 @@ export interface Task {
   title: string;
   description?: string;
   assignedTo?: string;
+  assignedToId?: string | null;
+  assignedToName?: string | null;
+  createdById?: string | null;
+  createdByName?: string | null;
   assignee?: Worker;
   farmId?: string;
   status: TaskStatus;
   priority: TaskPriority;
   dueDate?: string;
   completedAt?: string;
+  /** Recurring tasks spawn their next occurrence on COMPLETED. */
+  isRecurring?: boolean;
+  recurrenceRule?: string | null; // DAILY | WEEKLY | MONTHLY
+  nextDueAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId?: string | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize?: number | null;
+  uploadedById?: string | null;
+  uploadedByName?: string | null;
+  createdAt: string;
 }
 
 export interface Shift {
@@ -697,7 +761,12 @@ export interface Shift {
   name: string;
   startTime: string;
   endTime: string;
-  days: string[];
+  /** Days the shift runs (["MON","TUE",…]); empty/omitted = every day. */
+  daysOfWeek?: string[];
+  /** Legacy DTO field — same content as daysOfWeek. */
+  days?: string[];
+  color?: string | null;
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -705,8 +774,11 @@ export interface Shift {
 export interface ShiftAssignment {
   id: string;
   shiftId: string;
-  workerId: string;
+  /** The assigned user's login id (enriched with `userName` server-side). */
+  userId: string;
+  userName?: string | null;
   date: string;
+  notes?: string | null;
   createdAt: string;
 }
 
@@ -714,14 +786,22 @@ export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface LeaveRequest {
   id: string;
-  workerId: string;
-  worker?: Worker;
+  /** The requesting user's login id. */
+  userId: string;
+  /** Linked worker profile of the requester (null when none). */
+  workerId?: string | null;
+  /** Display name of the requester (attached for hr.read viewers). */
+  requesterName?: string | null;
   leaveTypeId: string;
+  leaveType?: LeaveType;
   startDate: string;
   endDate: string;
+  days?: number;
   reason?: string;
   status: LeaveStatus;
-  approvedBy?: string;
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  rejectionReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -730,6 +810,8 @@ export interface LeaveType {
   id: string;
   name: string;
   daysPerYear: number;
+  isPaid?: boolean;
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }

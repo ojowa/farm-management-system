@@ -16,4 +16,4 @@ export {
   useUpdateTaskStatusMutation,
   useDeleteTaskMutation,
 } from '../../store/api';
-export type { Task, TaskStatus, TaskPriority } from '../../services/types';
+export type { Task, TaskStatus, TaskPriority, TaskComment, TaskAttachment } from '../../services/types';

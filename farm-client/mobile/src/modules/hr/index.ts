@@ -19,5 +19,6 @@ export type {
   LeaveStatus,
   Attendance,
   AttendanceStatus,
+  AttendanceSummary,
   ClockInRequest,
 } from '../../services/types';

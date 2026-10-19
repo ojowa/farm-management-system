@@ -32,9 +32,24 @@ const styles = StyleSheet.create({
   backButtonText: { color: '#FFFFFF', fontSize: 16 },
   content: { paddingHorizontal: 20, paddingVertical: 16 },
   submitButton: { marginTop: 20 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textLight,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 16,
+    marginBottom: 10,
+  },
 });
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const PAY_TYPE_OPTIONS: SelectOption[] = [
+  { id: 'HOURLY', label: 'Hourly' },
+  { id: 'SALARY', label: 'Salary' },
+  { id: 'PIECE', label: 'Piece rate' },
+];
 
 function unwrapList<T>(payload: any): T[] {
   if (Array.isArray(payload)) return payload;
@@ -53,6 +68,12 @@ interface FormData {
   email: string;
   phone: string;
   hireDate: string;
+  payRate: string;
+  payType: string;
+  skills: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelation: string;
 }
 
 interface FormErrors {
@@ -62,6 +83,7 @@ interface FormErrors {
   position?: string;
   email?: string;
   hireDate?: string;
+  payRate?: string;
 }
 
 export default function AddWorkerScreen() {
@@ -80,6 +102,12 @@ export default function AddWorkerScreen() {
     email: '',
     phone: '',
     hireDate: '',
+    payRate: '',
+    payType: '',
+    skills: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -102,13 +130,20 @@ export default function AddWorkerScreen() {
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.position.trim()) newErrors.position = 'Position is required';
-    if (formData.email.trim() && !/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
+    // The server treats email as the worker's login — it is required on create.
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required — it is the worker login';
+    } else if (!/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
       newErrors.email = 'Enter a valid email address';
     }
     if (formData.hireDate.trim()) {
       if (!DATE_RE.test(formData.hireDate.trim()) || isNaN(Date.parse(formData.hireDate.trim()))) {
         newErrors.hireDate = 'Use YYYY-MM-DD';
       }
+    }
+    if (formData.payRate.trim()) {
+      const rate = Number(formData.payRate.trim());
+      if (!Number.isFinite(rate) || rate < 0) newErrors.payRate = 'Enter a number ≥ 0';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -125,9 +160,18 @@ export default function AddWorkerScreen() {
         middleName: formData.middleName.trim() || undefined,
         position: formData.position.trim(),
         department: formData.department.trim() || undefined,
-        email: formData.email.trim() || undefined,
+        email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
         hireDate: formData.hireDate.trim() || undefined,
+        payRate: formData.payRate.trim() ? Number(formData.payRate.trim()) : undefined,
+        payType: formData.payType || undefined,
+        skills: formData.skills
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        emergencyContactName: formData.emergencyContactName.trim() || undefined,
+        emergencyContactPhone: formData.emergencyContactPhone.trim() || undefined,
+        emergencyContactRelation: formData.emergencyContactRelation.trim() || undefined,
       });
       success('Worker created successfully');
       router.back();
@@ -206,7 +250,7 @@ export default function AddWorkerScreen() {
           />
 
           <TextInputField
-            label="Email"
+            label="Email *"
             placeholder="e.g. john@example.com"
             value={formData.email}
             onChangeText={(v) => updateFormData('email', v)}
@@ -229,6 +273,56 @@ export default function AddWorkerScreen() {
             value={formData.hireDate}
             onChangeText={(v) => updateFormData('hireDate', v)}
             error={errors.hireDate}
+          />
+
+          <Text style={styles.sectionTitle}>Employment</Text>
+
+          <TextInputField
+            label="Pay Rate"
+            placeholder="e.g. 15.50"
+            value={formData.payRate}
+            onChangeText={(v) => updateFormData('payRate', v)}
+            keyboardType="numeric"
+            error={errors.payRate}
+          />
+
+          <SelectField
+            label="Pay Type"
+            placeholder="Select a pay type"
+            value={formData.payType}
+            options={PAY_TYPE_OPTIONS}
+            onSelect={(v) => updateFormData('payType', v)}
+          />
+
+          <TextInputField
+            label="Skills"
+            placeholder="Comma-separated, e.g. Milking, Tractor"
+            value={formData.skills}
+            onChangeText={(v) => updateFormData('skills', v)}
+          />
+
+          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+
+          <TextInputField
+            label="Contact Name"
+            placeholder="e.g. Jane Doe"
+            value={formData.emergencyContactName}
+            onChangeText={(v) => updateFormData('emergencyContactName', v)}
+          />
+
+          <TextInputField
+            label="Contact Phone"
+            placeholder="e.g. +1 555 0101"
+            value={formData.emergencyContactPhone}
+            onChangeText={(v) => updateFormData('emergencyContactPhone', v)}
+            keyboardType="phone-pad"
+          />
+
+          <TextInputField
+            label="Relationship"
+            placeholder="e.g. Spouse"
+            value={formData.emergencyContactRelation}
+            onChangeText={(v) => updateFormData('emergencyContactRelation', v)}
           />
 
           <Button

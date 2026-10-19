@@ -101,11 +101,13 @@ const styles = StyleSheet.create({
 const WORKER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   ACTIVE: { bg: '#DCFCE7', text: '#166534' },
   INACTIVE: { bg: '#F3F4F6', text: '#6B7280' },
-  ON_LEAVE: { bg: '#FEF3C7', text: '#92400E' },
+  PROBATION: { bg: '#FEF3C7', text: '#92400E' },
   TERMINATED: { bg: '#FEE2E2', text: '#991B1B' },
 };
 
-const STATUS_FILTERS = ['all', 'ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED'] as const;
+// WorkerStatus is ACTIVE | INACTIVE | PROBATION | TERMINATED — there is no
+// ON_LEAVE member (leave lives on LeaveRequest), so never filter on it.
+const STATUS_FILTERS = ['all', 'ACTIVE', 'INACTIVE', 'PROBATION', 'TERMINATED'] as const;
 type WorkerStatusFilter = (typeof STATUS_FILTERS)[number];
 
 /** The workers endpoint returns either a bare array or a `{ data: [...] }` page

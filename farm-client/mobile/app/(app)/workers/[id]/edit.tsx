@@ -34,13 +34,28 @@ const styles = StyleSheet.create({
   backButtonText: { color: '#FFFFFF', fontSize: 16 },
   content: { paddingHorizontal: 20, paddingVertical: 16 },
   submitButton: { marginTop: 20 },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textLight,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 16,
+    marginBottom: 10,
+  },
 });
 
 const WORKER_STATUS_OPTIONS: SelectOption[] = [
   { id: 'ACTIVE', label: 'Active' },
   { id: 'INACTIVE', label: 'Inactive' },
-  { id: 'ON_LEAVE', label: 'On Leave' },
+  { id: 'PROBATION', label: 'Probation' },
   { id: 'TERMINATED', label: 'Terminated' },
+];
+
+const PAY_TYPE_OPTIONS: SelectOption[] = [
+  { id: 'HOURLY', label: 'Hourly' },
+  { id: 'SALARY', label: 'Salary' },
+  { id: 'PIECE', label: 'Piece rate' },
 ];
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -69,6 +84,13 @@ interface FormData {
   phone: string;
   hireDate: string;
   status: string;
+  payRate: string;
+  payType: string;
+  skills: string;
+  terminationDate: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelation: string;
 }
 
 interface FormErrors {
@@ -78,6 +100,8 @@ interface FormErrors {
   position?: string;
   email?: string;
   hireDate?: string;
+  payRate?: string;
+  terminationDate?: string;
 }
 
 export default function EditWorkerScreen() {
@@ -101,6 +125,13 @@ export default function EditWorkerScreen() {
     phone: '',
     hireDate: '',
     status: 'ACTIVE',
+    payRate: '',
+    payType: '',
+    skills: '',
+    terminationDate: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -133,6 +164,15 @@ export default function EditWorkerScreen() {
         phone: record.phone ?? '',
         hireDate: record.hireDate ? String(record.hireDate).slice(0, 10) : '',
         status: record.status ?? 'ACTIVE',
+        payRate: record.payRate != null ? String(record.payRate) : '',
+        payType: record.payType ?? '',
+        skills: (record.skills ?? []).join(', '),
+        terminationDate: record.terminationDate
+          ? String(record.terminationDate).slice(0, 10)
+          : '',
+        emergencyContactName: record.emergencyContactName ?? '',
+        emergencyContactPhone: record.emergencyContactPhone ?? '',
+        emergencyContactRelation: record.emergencyContactRelation ?? '',
       });
       loadFarms();
     } catch (error: any) {
@@ -165,6 +205,18 @@ export default function EditWorkerScreen() {
         newErrors.hireDate = 'Use YYYY-MM-DD';
       }
     }
+    if (formData.payRate.trim()) {
+      const rate = Number(formData.payRate.trim());
+      if (!Number.isFinite(rate) || rate < 0) newErrors.payRate = 'Enter a number ≥ 0';
+    }
+    if (formData.terminationDate.trim()) {
+      if (
+        !DATE_RE.test(formData.terminationDate.trim()) ||
+        isNaN(Date.parse(formData.terminationDate.trim()))
+      ) {
+        newErrors.terminationDate = 'Use YYYY-MM-DD';
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -182,8 +234,18 @@ export default function EditWorkerScreen() {
         department: formData.department.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
-        hireDate: formData.hireDate.trim(),
+        hireDate: formData.hireDate.trim() || null,
         status: formData.status,
+        payRate: formData.payRate.trim() ? Number(formData.payRate.trim()) : null,
+        payType: formData.payType || null,
+        skills: formData.skills
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        terminationDate: formData.terminationDate.trim() || null,
+        emergencyContactName: formData.emergencyContactName.trim() || null,
+        emergencyContactPhone: formData.emergencyContactPhone.trim() || null,
+        emergencyContactRelation: formData.emergencyContactRelation.trim() || null,
       });
       success('Worker updated successfully');
       router.back();
@@ -329,6 +391,64 @@ export default function EditWorkerScreen() {
             value={formData.status}
             options={WORKER_STATUS_OPTIONS}
             onSelect={(v) => updateFormData('status', v)}
+          />
+
+          <Text style={styles.sectionTitle}>Employment</Text>
+
+          <TextInputField
+            label="Pay Rate"
+            placeholder="e.g. 15.50"
+            value={formData.payRate}
+            onChangeText={(v) => updateFormData('payRate', v)}
+            keyboardType="numeric"
+            error={errors.payRate}
+          />
+
+          <SelectField
+            label="Pay Type"
+            placeholder="Select a pay type"
+            value={formData.payType}
+            options={PAY_TYPE_OPTIONS}
+            onSelect={(v) => updateFormData('payType', v)}
+          />
+
+          <TextInputField
+            label="Skills"
+            placeholder="Comma-separated, e.g. Milking, Tractor"
+            value={formData.skills}
+            onChangeText={(v) => updateFormData('skills', v)}
+          />
+
+          <TextInputField
+            label="Termination Date"
+            placeholder="YYYY-MM-DD"
+            value={formData.terminationDate}
+            onChangeText={(v) => updateFormData('terminationDate', v)}
+            error={errors.terminationDate}
+          />
+
+          <Text style={styles.sectionTitle}>Emergency Contact</Text>
+
+          <TextInputField
+            label="Contact Name"
+            placeholder="e.g. Jane Doe"
+            value={formData.emergencyContactName}
+            onChangeText={(v) => updateFormData('emergencyContactName', v)}
+          />
+
+          <TextInputField
+            label="Contact Phone"
+            placeholder="e.g. +1 555 0101"
+            value={formData.emergencyContactPhone}
+            onChangeText={(v) => updateFormData('emergencyContactPhone', v)}
+            keyboardType="phone-pad"
+          />
+
+          <TextInputField
+            label="Relationship"
+            placeholder="e.g. Spouse"
+            value={formData.emergencyContactRelation}
+            onChangeText={(v) => updateFormData('emergencyContactRelation', v)}
           />
 
           <Button

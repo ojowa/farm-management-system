@@ -28,12 +28,15 @@ const TAB_CONFIG = [
 // with `href: null` keeps them reachable via in-app navigation while removing
 // them from the bar. Add any new non-tab route to this list.
 const HIDDEN_ROUTES = [
+  'attendance',
   'leave',
   'messages',
   'notifications',
   'settings',
   'settings/edit-profile',
   'subscription',
+  'tasks/[id]',
+  'tasks/[id]/edit',
   'aquaculture',
   'aquaculture/add',
   'aquaculture/[id]',

@@ -132,10 +132,29 @@ export default function DashboardScreen() {
       });
 
       const tasks = tasksRes.status === 'fulfilled' ? (tasksRes.value?.data || []) : [];
-      const attendanceList = attendanceRes.status === 'fulfilled' ? (attendanceRes.value?.data || []) : [];
       const notifs = notifsRes.status === 'fulfilled' ? (notifsRes.value?.data || []) : [];
 
-      const attendanceSummary = attendanceList.length > 0
+      // GET /attendance/today answers `{ records, summary }`; older callers (and
+      // this screen's tests) still hand back a bare array — accept both so a
+      // shape change can never masquerade as "No attendance data".
+      const todayPayload: any =
+        attendanceRes.status === 'fulfilled' ? attendanceRes.value?.data : null;
+      const attendanceList: any[] = Array.isArray(todayPayload)
+        ? todayPayload
+        : Array.isArray(todayPayload?.records)
+        ? todayPayload.records
+        : [];
+      const serverSummary =
+        !Array.isArray(todayPayload) && todayPayload?.summary ? todayPayload.summary : null;
+
+      const attendanceSummary = serverSummary
+        ? {
+            total: serverSummary.total ?? attendanceList.length,
+            present: serverSummary.present ?? 0,
+            absent: serverSummary.absent ?? 0,
+            late: serverSummary.late ?? 0,
+          }
+        : attendanceList.length > 0
         ? {
             total: attendanceList.length,
             present: attendanceList.filter((a: any) => a.status === 'PRESENT').length,
