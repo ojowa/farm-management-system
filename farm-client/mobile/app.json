@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "farmapp",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2E7D32"
-    },
     "icon": "./assets/icon.png",
     "assetBundlePatterns": [
       "**/*"
@@ -63,6 +58,14 @@
       "expo-image-picker",
       [
         "./plugins/withCertificatePinning"
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#2E7D32",
+          "image": "./assets/splash.png",
+          "resizeMode": "contain"
+        }
       ]
     ]
   }
