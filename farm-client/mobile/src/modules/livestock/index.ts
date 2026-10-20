@@ -24,7 +24,9 @@ export type {
   LivestockStatus,
   Gender,
   HealthRecord,
+  CreateHealthRecordRequest,
   VaccinationSchedule,
   BreedingRecord,
+  CreateBreedingRecordRequest,
   WeightRecord,
 } from '../../services/types';

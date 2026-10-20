@@ -40,8 +40,7 @@ interface FeedingRecord {
   flockId: string;
   flockName?: string;
   feedType: string;
-  quantity: number;
-  unit?: string;
+  quantityKg: number;
   date: string;
   createdAt: string;
 }
@@ -64,7 +63,7 @@ export default function FeedingPage() {
   const [form, setForm] = useState({
     flockId: '',
     feedType: '',
-    quantity: '',
+    quantityKg: '',
     date: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -133,12 +132,12 @@ export default function FeedingPage() {
       await feedingRecordsAPI.create({
         flockId: form.flockId,
         feedType: form.feedType,
-        quantity: Number(form.quantity),
+        quantityKg: Number(form.quantityKg),
         date: form.date,
       });
       toast({ type: 'success', title: 'Feeding record created successfully' });
       setShowAdd(false);
-      setForm({ flockId: '', feedType: '', quantity: '', date: '' });
+      setForm({ flockId: '', feedType: '', quantityKg: '', date: '' });
       clearFetchCache('feeding-records');
       refetch();
     } catch (err: any) {
@@ -254,7 +253,7 @@ export default function FeedingPage() {
                         <span className="font-medium">{record.flockName || '—'}</span>
                       </TableCell>
                       <TableCell>{record.feedType}</TableCell>
-                      <TableCell>{record.quantity} {record.unit || 'kg'}</TableCell>
+                      <TableCell>{record.quantityKg.toLocaleString()} kg</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground text-sm">
                           <Calendar className="h-3 w-3" />
@@ -348,11 +347,11 @@ export default function FeedingPage() {
             <Input
               type="number"
               placeholder="50"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              value={form.quantityKg}
+              onChange={(e) => setForm({ ...form, quantityKg: e.target.value })}
             />
-            {formErrors.quantity && (
-              <p className="text-sm text-destructive mt-1">{formErrors.quantity}</p>
+            {formErrors.quantityKg && (
+              <p className="text-sm text-destructive mt-1">{formErrors.quantityKg}</p>
             )}
           </div>
           <div>

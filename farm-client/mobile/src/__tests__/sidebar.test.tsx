@@ -161,9 +161,9 @@ describe('Sidebar', () => {
     expect(mockPush).toHaveBeenCalledWith('/farms');
     expect(mockClose).toHaveBeenCalled();
 
-    // Inventory is only a sub-view on mobile; it routes there.
+    // Inventory opens its mobile section hub.
     fireEvent.press(screen.getByLabelText('Inventory'));
-    expect(mockPush).toHaveBeenCalledWith('/inventory/low-stock');
+    expect(mockPush).toHaveBeenCalledWith('/inventory');
     expect(mockClose).toHaveBeenCalled();
   });
 

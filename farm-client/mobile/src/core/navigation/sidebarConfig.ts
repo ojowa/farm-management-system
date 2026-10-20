@@ -4,8 +4,7 @@
  * same order, with the same plan-module + permission gating rules.
  *
  * `route` is the in-app destination. Every admin item now has a mobile screen,
- * so no entry is null anymore. Inventory and Reports only exist as sub-views
- * on mobile, so they route to those. Poultry, Workers and Equipment have full
+ * so no entry is null anymore. Poultry, Workers and Equipment have full
  * CRUD screens (`/poultry`, `/workers`, `/equipment` — list + add + detail +
  * edit); Users, Roles, Correspondence and Contracts have list + detail screens
  * (create lives in the list's inline modal), Roster and Marketplace are single
@@ -82,7 +81,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
       {
         label: 'Inventory',
         icon: '📦',
-        route: '/inventory/low-stock',
+        route: '/inventory',
         permissions: ['farm.read', 'inventory.read'],
         module: 'inventory',
       },
@@ -158,7 +157,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
       {
         label: 'Reports',
         icon: '📊',
-        route: '/reports/scheduled',
+        route: '/reports',
         permissions: ['reporting.read'],
         module: 'reporting',
       },

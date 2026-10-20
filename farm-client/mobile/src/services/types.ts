@@ -227,13 +227,25 @@ export interface UpdateLivestockRequest {
 export interface HealthRecord {
   id: string;
   livestockId: string;
-  condition: string;
-  diagnosis?: string;
-  treatment?: string;
-  veterinarian?: string;
+  type: string;
+  description: string;
+  veterinarian?: string | null;
+  medications?: string | null;
+  cost?: number | null;
+  nextCheckupDate?: string | null;
   date: string;
   notes?: string;
   createdAt: string;
+}
+
+export interface CreateHealthRecordRequest {
+  type: string;
+  date: string;
+  description: string;
+  veterinarian?: string;
+  medications?: string;
+  cost?: number;
+  nextCheckupDate?: string;
 }
 
 export interface VaccinationSchedule {
@@ -250,14 +262,25 @@ export interface VaccinationSchedule {
 export interface BreedingRecord {
   id: string;
   sireId: string;
+  sireName?: string | null;
+  damId: string;
+  damName?: string | null;
+  breedingDate: string;
+  expectedDueDate?: string;
+  actualBirthDate?: string | null;
+  offspringCount?: number | null;
+  status: 'BRED' | 'PLANNED' | 'PREGNANT' | 'COMPLETED' | 'FAILED';
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBreedingRecordRequest {
+  sireId: string;
   damId: string;
   breedingDate: string;
   expectedDueDate?: string;
-  actualDueDate?: string;
-  status: 'PLANNED' | 'PREGNANT' | 'COMPLETED' | 'FAILED';
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface WeightRecord {
@@ -368,6 +391,35 @@ export interface Medication {
   startDate: string;
   endDate?: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EggProductionRecord {
+  id: string;
+  flockId: string;
+  date: string;
+  totalEggs: number;
+  goodEggs: number;
+  brokenEggs: number;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PoultrySale {
+  id: string;
+  farmId?: string | null;
+  flockId?: string | null;
+  date: string;
+  buyerName?: string | null;
+  birdType: string;
+  quantity: number;
+  weight?: number | null;
+  pricePerBird?: number | null;
+  totalAmount: number;
+  paymentMethod?: string | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 }

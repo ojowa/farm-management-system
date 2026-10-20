@@ -12,7 +12,7 @@ import {
   Trash2,
   Activity,
 } from 'lucide-react';
-import { flocksAPI } from '@/lib/api';
+import { breedsAPI, flocksAPI, farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,9 +26,10 @@ interface Flock {
   id: string;
   batchCode: string;
   farmId: string;
-  farmName?: string;
-  breed: string;
+  breedId: string;
   birdCount: number;
+  currentCount: number;
+  currentAgeDays: number;
   status: string;
   arrivalDate: string;
   description?: string;
@@ -37,8 +38,7 @@ interface Flock {
 }
 
 export default function FlockDetailPage() {
-  const { canCreate } = usePermission();
-  const readOnly = !canCreate('poultry');
+  const { canUpdate, canDelete } = usePermission();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
@@ -50,8 +50,20 @@ export default function FlockDetailPage() {
   } = useFetch<{ data: Flock }>(`flock-${id}`, () => flocksAPI.get(id), {
     cacheTime: 30_000,
   });
+  const { data: farmsData } = useFetch<{ data: { id: string; name: string }[] }>(
+    'farms-list',
+    () => farmsAPI.list({ limit: 100 }),
+    { cacheTime: 60_000 }
+  );
+  const { data: breedsData } = useFetch<{ data: { id: string; name: string }[] }>(
+    'poultry-flock-breeds',
+    () => breedsAPI.list({ limit: 1000 }),
+    { cacheTime: 60_000 }
+  );
 
   const flock = flockData?.data;
+  const farmName = farmsData?.data?.find((farm) => farm.id === flock?.farmId)?.name;
+  const breedName = breedsData?.data?.find((breed) => breed.id === flock?.breedId)?.name;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -89,12 +101,12 @@ export default function FlockDetailPage() {
   };
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'active':
+    switch (status.toUpperCase()) {
+      case 'ACTIVE':
         return 'success';
-      case 'completed':
+      case 'COMPLETED':
         return 'secondary';
-      case 'depleted':
+      case 'DECEASED':
         return 'destructive';
       default:
         return 'secondary';
@@ -133,26 +145,26 @@ export default function FlockDetailPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{flock.batchCode}</h1>
-            <p className="text-muted-foreground mt-1">{flock.breed}</p>
+            <p className="text-muted-foreground mt-1">{breedName || 'Breed not available'}</p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant={getStatusVariant(flock.status)}>
               {flock.status}
             </Badge>
-            {!readOnly && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/poultry/flocks/${id}/edit`)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
+            {canUpdate('poultry') && (
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/poultry/flocks/${id}/edit`)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
+            {canDelete('poultry') && (
                 <Button variant="destructive" onClick={handleDelete}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
-              </>
             )}
           </div>
         </div>
@@ -180,7 +192,9 @@ export default function FlockDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Bird Count</p>
-                <p className="text-lg font-semibold">{flock.birdCount.toLocaleString()}</p>
+                <p className="text-lg font-semibold">
+                  {flock.currentCount.toLocaleString()} / {flock.birdCount.toLocaleString()}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -193,7 +207,7 @@ export default function FlockDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Age (Days)</p>
-                <p className="text-lg font-semibold">{getAge(flock.arrivalDate)}</p>
+                <p className="text-lg font-semibold">{flock.currentAgeDays ?? getAge(flock.arrivalDate)}</p>
               </div>
             </div>
           </CardContent>
@@ -214,6 +228,13 @@ export default function FlockDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">Farm</p>
+          <p className="font-medium">{farmName || 'Farm not available'}</p>
+        </CardContent>
+      </Card>
 
       {flock.description && (
         <Card>

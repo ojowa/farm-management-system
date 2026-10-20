@@ -161,6 +161,8 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     if (filter.search) {
       where.OR = [
         { batchCode: { contains: filter.search, mode: 'insensitive' } },
+        { breed: { is: { name: { contains: filter.search, mode: 'insensitive' } } } },
+        { farm: { is: { name: { contains: filter.search, mode: 'insensitive' } } } },
       ];
     }
 

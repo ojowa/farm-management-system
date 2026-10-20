@@ -1,254 +1,115 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
-import { useListCropsQuery } from '@/modules/crop';
-import { Card, Button } from '@/core/ui/UIComponents';
-import { ScreenLoading, StateView } from '@/core/ui/feedback';
-import { describeApiError } from '@/core/utils/apiError';
-import { usePermission } from '@/core/hooks/usePermission';
 import { useAppTheme } from '@/core/theme/ThemeContext';
+
+const sections = [
+  {
+    title: 'Crops',
+    description: 'View and manage your crop records',
+    icon: '🌱',
+    route: '/crops/list',
+  },
+  {
+    title: 'Calendar',
+    description: 'Review crop stages and upcoming field activities',
+    icon: '📅',
+    route: '/crops/calendar',
+  },
+  {
+    title: 'Pest & Disease',
+    description: 'Track crop pests, diseases, and treatments',
+    icon: '🐛',
+    route: '/crops/pest-disease',
+  },
+  {
+    title: 'Irrigation',
+    description: 'Review irrigation schedules and recent logs',
+    icon: '💧',
+    route: '/crops/irrigation',
+  },
+];
+
+export default function CropsHubScreen() {
+  const router = useRouter();
+  const { farmId } = useLocalSearchParams<{ farmId?: string }>();
+  const { colors: themeColors } = useAppTheme();
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }]}>
+        <MenuButton />
+        <View style={styles.headerCopy}>
+          <Text style={styles.title}>Crops</Text>
+          <Text style={styles.subtitle}>Manage crops, calendar, plant health, and irrigation</Text>
+        </View>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        {sections.map((section) => (
+          <TouchableOpacity
+            key={section.route}
+            accessibilityRole="button"
+            accessibilityLabel={section.title}
+            onPress={() =>
+              router.push(
+                farmId
+                  ? (`${section.route}?farmId=${encodeURIComponent(farmId)}` as never)
+                  : (section.route as never)
+              )
+            }
+            style={[
+              styles.card,
+              { backgroundColor: themeColors.card, borderColor: themeColors.border },
+            ]}
+          >
+            <Text style={styles.icon}>{section.icon}</Text>
+            <View style={styles.cardCopy}>
+              <Text style={[styles.cardTitle, { color: themeColors.text }]}>{section.title}</Text>
+              <Text style={[styles.description, { color: themeColors.textSecondary }]}>
+                {section.description}
+              </Text>
+            </View>
+            <Text style={[styles.arrow, { color: themeColors.textSecondary }]}>›</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
+    gap: 16,
+  },
+  headerCopy: { flex: 1 },
+  title: { color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
+  subtitle: { color: '#FFFFFF', fontSize: 13, marginTop: 3, opacity: 0.85 },
+  content: { padding: 16, paddingBottom: 30, gap: 12 },
+  card: {
+    minHeight: 82,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 14,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF' },
-  backButton: { padding: 8 },
-  backButtonText: { color: '#FFFFFF', fontSize: 16 },
-  addButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  addButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  chipRow: { paddingHorizontal: 20, paddingBottom: 4 },
-  chip: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  chipText: { fontSize: 12, fontWeight: '600' },
-  cropCard: { marginBottom: 12 },
-  cropRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cropEmoji: { fontSize: 24 },
-  cropName: { fontSize: 16, fontWeight: '700', flex: 1 },
-  chevron: { fontSize: 16 },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-    minHeight: 300,
-  },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  emptySubtext: { fontSize: 14, marginBottom: 20, textAlign: 'center' },
-  listContent: { paddingHorizontal: 20, paddingBottom: 20 },
+  icon: { fontSize: 28, width: 38, textAlign: 'center' },
+  cardCopy: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  description: { fontSize: 13 },
+  arrow: { fontSize: 28, fontWeight: '300' },
 });
-
-const keyExtractor = (item: any) => item.id;
-
-export default function CropsScreen() {
-  const router = useRouter();
-  // Land here from a CROP farm's "Related" card as /crops?farmId=<id>.
-  const { farmId } = useLocalSearchParams<{ farmId?: string }>();
-  const { colors: themeColors, isDark } = useAppTheme();
-  const { canCreate } = usePermission();
-  const canWrite = canCreate('crop');
-  const [refreshing, setRefreshing] = useState(false);
-
-  const { data, isLoading, isFetching, error, refetch } = useListCropsQuery({
-    limit: 100,
-    // Forward-compatible farm scoping: today's GET /crops ignores farmId
-    // (the crop catalog is organization-wide with no per-farm association),
-    // but rows that DO carry a farmId are filtered below.
-    ...(farmId ? { farmId } : {}),
-  });
-
-  const crops = useMemo(() => {
-    if (!data) return [];
-    // `crops` is the server's legacy key, `data` the current one; plain
-    // arrays pass through untouched.
-    const items = Array.isArray(data) ? data : data.crops || data.data || data.items || [];
-    return Array.isArray(items) ? items : [];
-  }, [data]);
-
-  const filteredCrops = useMemo(
-    () => crops.filter((crop: any) => !farmId || !crop.farmId || crop.farmId === farmId),
-    [crops, farmId]
-  );
-
-  // Only claim the filter when it actually narrowed the list — the current
-  // server's crop rows carry no farmId, so the chip stays hidden there.
-  const isFarmFiltered = !!farmId && filteredCrops.length < crops.length;
-
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    refetch();
-  }, [refetch]);
-
-  useEffect(() => {
-    if (refreshing && !isFetching) setRefreshing(false);
-  }, [refreshing, isFetching]);
-
-  const dynamicStyles = useMemo(() => ({
-    container: {
-      backgroundColor: themeColors.background,
-    },
-    header: {
-      backgroundColor: themeColors.headerBg || themeColors.primary,
-    },
-    cardBackground: {
-      backgroundColor: themeColors.card,
-      borderColor: isDark ? themeColors.border : 'transparent',
-      borderWidth: isDark ? 1 : 0,
-    },
-    chip: {
-      backgroundColor: isDark ? themeColors.surface : '#DCFCE7',
-      borderColor: isDark ? themeColors.border : '#86EFAC',
-    },
-    chipText: {
-      color: isDark ? themeColors.textSecondary : '#166534',
-    },
-    cropName: {
-      color: themeColors.text,
-    },
-    chevron: {
-      color: themeColors.textSecondary,
-    },
-    emptyText: {
-      color: themeColors.text,
-    },
-    emptySubtext: {
-      color: themeColors.textSecondary,
-    },
-  }), [themeColors, isDark]);
-
-  const renderEmpty = useCallback(() => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>🌱</Text>
-      <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No crops yet</Text>
-      <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
-        Add your first crop to start tracking plantings and harvests
-      </Text>
-      {canWrite && (
-        <Button
-          title="Add Crop"
-          onPress={() => router.push('/crops/add')}
-          accessibilityLabel="Add your first crop"
-        />
-      )}
-    </View>
-  ), [router, canWrite, dynamicStyles]);
-
-  const renderItem = useCallback(({ item: crop }: { item: any }) => (
-    <Card
-      style={[styles.cropCard, dynamicStyles.cardBackground]}
-      onPress={() => router.push(`/crops/${crop.id}`)}
-      accessibilityLabel={`Crop: ${crop.name}`}
-    >
-      <View style={styles.cropRow}>
-        <Text style={styles.cropEmoji}>🌱</Text>
-        <Text style={[styles.cropName, dynamicStyles.cropName]} numberOfLines={1}>
-          {crop.name}
-        </Text>
-        <Text style={[styles.chevron, dynamicStyles.chevron]}>→</Text>
-      </View>
-    </Card>
-  ), [router, dynamicStyles]);
-
-  const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }]}>
-      {/* Tab root: the hamburger opens the navigation sidebar (replaces the old
-          "← Back" affordance, which made no sense on a top-level tab). */}
-      <MenuButton />
-      <Text style={[styles.headerTitle, { flex: 1 }]}>Crops</Text>
-      {canWrite ? (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/crops/add')}
-          accessibilityRole="button"
-          accessibilityLabel="Add new crop"
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      ) : (
-        <View style={{ width: 60 }} />
-      )}
-    </View>
-  );
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        {renderHeader()}
-        <ScreenLoading message="Loading crops…" />
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        {renderHeader()}
-        <StateView
-          variant="error"
-          title="Couldn't load crops"
-          message={describeApiError(error, 'Failed to load crops. Please try again.')}
-          onRetry={refetch}
-          retryLabel="Retry"
-        />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-      {renderHeader()}
-
-      {isFarmFiltered && (
-        <View style={styles.chipRow}>
-          <View style={[styles.chip, dynamicStyles.chip]}>
-            <Text style={[styles.chipText, dynamicStyles.chipText]}>Filtered to farm</Text>
-          </View>
-        </View>
-      )}
-
-      <FlatList
-        data={filteredCrops}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmpty}
-        renderItem={renderItem}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[themeColors.primary]}
-            tintColor={themeColors.primary}
-          />
-        }
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-      />
-    </SafeAreaView>
-  );
-}

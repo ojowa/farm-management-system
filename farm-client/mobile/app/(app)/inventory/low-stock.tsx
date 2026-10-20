@@ -10,22 +10,29 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { inventoryAPI } from '@/modules/inventory';
 import { formatCurrencyFixed } from '../../../src/core/utils/currency';
 import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
+import { MenuButton } from '@/core/ui/MenuButton';
+import { ScreenLoading, StateView } from '@/core/ui/feedback';
+import { describeApiError } from '@/core/utils/apiError';
 
 const LOW_STOCK_THRESHOLD = 10;
 
 export default function LowStockScreen() {
+  const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const { colors: tc, isDark } = useAppTheme();
 
   const loadItems = useCallback(async () => {
     try {
+      setLoadError(null);
       const res = await inventoryAPI.list();
       // GET /inventory answers `{ data, total, page, totalPages }`. The old
       // `res.data.items || res.data || []` fell through both object branches
@@ -37,7 +44,9 @@ export default function LowStockScreen() {
         (item: any) => item.quantity <= (item.minQuantity ?? LOW_STOCK_THRESHOLD)
       );
       setItems(lowStock);
-    } catch { /* ignore */ }
+    } catch (error) {
+      setLoadError(describeApiError(error, 'Failed to load low-stock inventory.'));
+    }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
@@ -48,20 +57,30 @@ export default function LowStockScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
-        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
-          <Text style={styles.headerTitle}>Low Stock Alerts</Text>
-        </View>
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+        <Header onBack={() => router.push('/inventory')} />
+        <ScreenLoading message="Loading low-stock items…" />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
+        <Header onBack={() => router.push('/inventory')} />
+        <StateView
+          variant="error"
+          title="Couldn't load low-stock items"
+          message={loadError}
+          onRetry={() => void loadItems()}
+          retryLabel="Retry"
+        />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
-      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
-        <Text style={styles.headerTitle}>Low Stock Alerts</Text>
-        <Text style={styles.headerSubtext}>Items that need restocking</Text>
-      </View>
+      <Header onBack={() => router.push('/inventory')} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -129,13 +148,33 @@ export default function LowStockScreen() {
   );
 }
 
+function Header({ onBack }: { onBack: () => void }) {
+  const { colors: tc } = useAppTheme();
+  return (
+    <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
+      <TouchableOpacity onPress={onBack} accessibilityRole="button" accessibilityLabel="Back to inventory">
+        <Text style={styles.back}>‹</Text>
+      </TouchableOpacity>
+      <MenuButton />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.headerTitle}>Low Stock</Text>
+        <Text style={styles.headerSubtext}>Items that need restocking</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
+  back: { color: '#FFFFFF', fontSize: 32, lineHeight: 34 },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF' },
   headerSubtext: { fontSize: 14, color: '#FFFFFF', opacity: 0.8, marginTop: 4 },
   content: { paddingHorizontal: 16, paddingVertical: 12 },

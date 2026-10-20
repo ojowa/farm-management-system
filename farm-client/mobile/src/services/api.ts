@@ -22,6 +22,10 @@ import type {
   CropCycle,
   CreateCropCycleRequest,
   Livestock,
+  HealthRecord,
+  CreateHealthRecordRequest,
+  BreedingRecord,
+  CreateBreedingRecordRequest,
   CreateLivestockRequest,
   UpdateLivestockRequest,
   Flock,
@@ -52,9 +56,7 @@ import type {
   MarketListing,
   ProfitabilitySummary,
   FarmProfitability,
-  HealthRecord,
   VaccinationSchedule,
-  BreedingRecord,
   WeightRecord,
   PoultryHouse,
   Pen,
@@ -63,6 +65,8 @@ import type {
   VaccinationRecord,
   MortalityRecord,
   Medication,
+  EggProductionRecord,
+  PoultrySale,
   Organization,
   ListParams,
   Pond,
@@ -338,7 +342,7 @@ export const livestockAPI = {
 export const livestockHealthAPI = {
   listByAnimal: (livestockId: string) =>
     http.get<HealthRecord[]>(`/health/livestock/${livestockId}`),
-  create: (livestockId: string, data: any) =>
+  create: (livestockId: string, data: CreateHealthRecordRequest) =>
     http.post<HealthRecord>(`/health/livestock/${livestockId}`, data),
   listVaccinations: (livestockId: string) =>
     http.get<VaccinationSchedule[]>(`/health/vaccinations/${livestockId}`),
@@ -396,9 +400,9 @@ export const aquacultureAPI = {
 export const breedingAPI = {
   list: (params?: { status?: string }) =>
     http.get<BreedingRecord[]>('/breeding', { params }),
-  create: (data: any) =>
+  create: (data: CreateBreedingRecordRequest) =>
     http.post<BreedingRecord>('/breeding', data),
-  update: (id: string, data: any) =>
+  update: (id: string, data: Partial<Pick<BreedingRecord, 'status' | 'actualBirthDate' | 'offspringCount' | 'notes'>>) =>
     http.put<BreedingRecord>(`/breeding/${id}`, data),
   upcoming: () =>
     http.get<BreedingRecord[]>('/breeding/upcoming'),
@@ -1027,15 +1031,28 @@ export const equipmentAPI = {
 
 export const eggProductionAPI = {
   list: (params?: any) =>
-    http.get('/egg-production', { params }),
+    http.get<EggProductionRecord[]>('/egg-production', { params }),
   get: (id: string) =>
-    http.get(`/egg-production/${id}`),
-  create: (data: any) =>
-    http.post('/egg-production', data),
-  update: (id: string, data: any) =>
-    http.put(`/egg-production/${id}`, data),
+    http.get<EggProductionRecord>(`/egg-production/${id}`),
+  create: (data: Omit<EggProductionRecord, 'id' | 'createdAt' | 'updatedAt'>) =>
+    http.post<EggProductionRecord>('/egg-production', data),
+  update: (id: string, data: Partial<Omit<EggProductionRecord, 'id' | 'createdAt' | 'updatedAt'>>) =>
+    http.put<EggProductionRecord>(`/egg-production/${id}`, data),
   delete: (id: string) =>
     http.delete(`/egg-production/${id}`),
+};
+
+export const poultrySalesAPI = {
+  list: (params?: any) =>
+    http.get<PoultrySale[]>('/poultry-sales', { params }),
+  get: (id: string) =>
+    http.get<PoultrySale>(`/poultry-sales/${id}`),
+  create: (data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>) =>
+    http.post<PoultrySale>('/poultry-sales', data),
+  update: (id: string, data: Partial<Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>>) =>
+    http.put<PoultrySale>(`/poultry-sales/${id}`, data),
+  delete: (id: string) =>
+    http.delete(`/poultry-sales/${id}`),
 };
 
 // ─── Weather ────────────────────────────────────────────────────────────────────

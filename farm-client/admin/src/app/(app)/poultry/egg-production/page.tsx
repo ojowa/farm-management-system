@@ -39,8 +39,10 @@ interface EggProductionRecord {
   id: string;
   flockId: string;
   flockName?: string;
-  count: number;
-  grade: string;
+  totalEggs: number;
+  goodEggs: number;
+  brokenEggs: number;
+  notes?: string | null;
   date: string;
   createdAt: string;
 }
@@ -62,9 +64,11 @@ export default function EggProductionPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
     flockId: '',
-    count: '',
-    grade: '',
+    totalEggs: '',
+    goodEggs: '',
+    brokenEggs: '',
     date: '',
+    notes: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -105,7 +109,7 @@ export default function EggProductionPage() {
       const q = search.toLowerCase();
       result = result.filter(
         (r) =>
-          r.grade.toLowerCase().includes(q) ||
+          r.notes?.toLowerCase().includes(q) ||
           r.flockName?.toLowerCase().includes(q)
       );
     }
@@ -131,13 +135,15 @@ export default function EggProductionPage() {
     try {
       await eggProductionAPI.create({
         flockId: form.flockId,
-        count: Number(form.count),
-        grade: form.grade,
+        totalEggs: Number(form.totalEggs),
+        goodEggs: Number(form.goodEggs),
+        brokenEggs: Number(form.brokenEggs),
         date: form.date,
+        notes: form.notes || null,
       });
       toast({ type: 'success', title: 'Egg production record created successfully' });
       setShowAdd(false);
-      setForm({ flockId: '', count: '', grade: '', date: '' });
+      setForm({ flockId: '', totalEggs: '', goodEggs: '', brokenEggs: '', date: '', notes: '' });
       clearFetchCache('egg-production');
       refetch();
     } catch (err: any) {
@@ -240,8 +246,9 @@ export default function EggProductionPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Flock</TableHead>
-                    <TableHead>Count</TableHead>
-                    <TableHead>Grade</TableHead>
+                    <TableHead>Total Eggs</TableHead>
+                    <TableHead>Good</TableHead>
+                    <TableHead>Broken</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
@@ -252,10 +259,9 @@ export default function EggProductionPage() {
                       <TableCell>
                         <span className="font-medium">{record.flockName || '—'}</span>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="success">{record.count}</Badge>
-                      </TableCell>
-                      <TableCell>{record.grade}</TableCell>
+                      <TableCell><Badge variant="success">{record.totalEggs}</Badge></TableCell>
+                      <TableCell>{record.goodEggs}</TableCell>
+                      <TableCell>{record.brokenEggs}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground text-sm">
                           <Calendar className="h-3 w-3" />
@@ -331,35 +337,41 @@ export default function EggProductionPage() {
           </div>
           <div>
             <label className="text-sm font-medium mb-1 block">
-              Count <span className="text-destructive">*</span>
+              Total Eggs <span className="text-destructive">*</span>
             </label>
             <Input
               type="number"
               placeholder="500"
-              value={form.count}
-              onChange={(e) => setForm({ ...form, count: e.target.value })}
+              value={form.totalEggs}
+              min="0"
+              step="1"
+              onChange={(e) => setForm({ ...form, totalEggs: e.target.value })}
             />
-            {formErrors.count && (
-              <p className="text-sm text-destructive mt-1">{formErrors.count}</p>
+            {formErrors.totalEggs && (
+              <p className="text-sm text-destructive mt-1">{formErrors.totalEggs}</p>
             )}
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">
-              Grade <span className="text-destructive">*</span>
-            </label>
-            <Select
-              placeholder="Select grade"
-              options={[
-                { value: 'A', label: 'Grade A' },
-                { value: 'B', label: 'Grade B' },
-                { value: 'C', label: 'Grade C' },
-              ]}
-              value={form.grade}
-              onChange={(e) => setForm({ ...form, grade: e.target.value })}
+            <label className="text-sm font-medium mb-1 block">Good Eggs *</label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={form.goodEggs}
+              onChange={(e) => setForm({ ...form, goodEggs: e.target.value })}
             />
-            {formErrors.grade && (
-              <p className="text-sm text-destructive mt-1">{formErrors.grade}</p>
-            )}
+            {formErrors.goodEggs && <p className="text-sm text-destructive mt-1">{formErrors.goodEggs}</p>}
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Broken Eggs *</label>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              value={form.brokenEggs}
+              onChange={(e) => setForm({ ...form, brokenEggs: e.target.value })}
+            />
+            {formErrors.brokenEggs && <p className="text-sm text-destructive mt-1">{formErrors.brokenEggs}</p>}
           </div>
           <div>
             <label className="text-sm font-medium mb-1 block">

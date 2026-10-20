@@ -14,7 +14,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.farmmanagement.mobile",
       "buildNumber": "1",
-      "icon": "./assets/icon.png"
+      "icon": "./assets/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +25,10 @@
         "backgroundColor": "#2E7D32"
       },
       "package": "com.farmmanagement.mobile",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",

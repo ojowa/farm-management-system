@@ -8,11 +8,10 @@ import {
   Search,
   Egg,
   Calendar,
-  Pencil,
   Trash2,
   Eye,
 } from 'lucide-react';
-import { flocksAPI, farmsAPI } from '@/lib/api';
+import { breedsAPI, flocksAPI, farmsAPI, pensAPI, poultryHousesAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,9 +38,10 @@ interface Flock {
   id: string;
   batchCode: string;
   farmId: string;
-  farmName?: string;
-  breed: string;
+  penId: string;
+  breedId: string;
   birdCount: number;
+  currentCount?: number;
   status: string;
   arrivalDate: string;
   createdAt: string;
@@ -52,10 +52,28 @@ interface Farm {
   name: string;
 }
 
+interface PoultryHouse {
+  id: string;
+  farmId: string;
+  name: string;
+}
+
+interface Pen {
+  id: string;
+  poultryHouseId: string;
+  name: string;
+}
+
+interface Breed {
+  id: string;
+  name: string;
+  birdType: string;
+}
+
 const PAGE_SIZE = 10;
 
 export default function FlocksPage() {
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('poultry');
   const router = useRouter();
   const { toast } = useToast();
@@ -66,7 +84,8 @@ export default function FlocksPage() {
   const [form, setForm] = useState({
     batchCode: '',
     farmId: '',
-    breed: '',
+    penId: '',
+    breedId: '',
     birdCount: '',
     arrivalDate: '',
   });
@@ -76,10 +95,17 @@ export default function FlocksPage() {
   const {
     data: flocksData,
     loading,
+    error: flocksError,
     refetch,
   } = useFetch<{ data: Flock[]; total: number; page: number; totalPages: number }>(
-    'flocks-list',
-    () => flocksAPI.list({ page, limit: PAGE_SIZE }),
+    `flocks-list-${page}-${statusFilter}-${search.trim()}`,
+    () =>
+      flocksAPI.list({
+        page,
+        limit: PAGE_SIZE,
+        search: search.trim() || undefined,
+        status: statusFilter || undefined,
+      }),
     { cacheTime: 30_000 }
   );
 
@@ -89,8 +115,39 @@ export default function FlocksPage() {
     cacheTime: 60_000,
   });
 
+  const { data: housesData } = useFetch<{ data: PoultryHouse[] }>(
+    'poultry-flock-houses',
+    () => poultryHousesAPI.list({ limit: 1000 }),
+    { cacheTime: 60_000 }
+  );
+
+  const { data: pensData } = useFetch<{ data: Pen[] }>(
+    'poultry-flock-pens',
+    () => pensAPI.list({ limit: 1000 }),
+    { cacheTime: 60_000 }
+  );
+
+  const { data: breedsData } = useFetch<{ data: Breed[] }>(
+    'poultry-flock-breeds',
+    () => breedsAPI.list({ limit: 1000 }),
+    { cacheTime: 60_000 }
+  );
+
   const flocks = flocksData?.data || [];
   const farms = farmsData?.data || [];
+  const houses = housesData?.data || [];
+  const pens = pensData?.data || [];
+  const breeds = breedsData?.data || [];
+  const farmNames = useMemo(() => new Map(farms.map((farm) => [farm.id, farm.name])), [farms]);
+  const breedNames = useMemo(() => new Map(breeds.map((breed) => [breed.id, breed.name])), [breeds]);
+  const houseFarms = useMemo(
+    () => new Map(houses.map((house) => [house.id, house.farmId])),
+    [houses]
+  );
+  const availablePens = useMemo(
+    () => pens.filter((pen) => houseFarms.get(pen.poultryHouseId) === form.farmId),
+    [pens, houseFarms, form.farmId]
+  );
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -103,25 +160,7 @@ export default function FlocksPage() {
   );
   useRealtime('flock', handleRealtimeEvent);
 
-  const filtered = useMemo(() => {
-    let result = flocks;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (f) =>
-          f.batchCode.toLowerCase().includes(q) ||
-          f.breed.toLowerCase().includes(q) ||
-          f.farmName?.toLowerCase().includes(q)
-      );
-    }
-    if (statusFilter) {
-      result = result.filter((f) => f.status === statusFilter);
-    }
-    return result;
-  }, [flocks, search, statusFilter]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = flocksData?.totalPages || 1;
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,15 +177,19 @@ export default function FlocksPage() {
     setSaving(true);
     try {
       await flocksAPI.create({
-        batchCode: form.batchCode,
+        batchCode: form.batchCode.trim(),
         farmId: form.farmId,
-        breed: form.breed,
+        penId: form.penId,
+        breedId: form.breedId,
         birdCount: Number(form.birdCount),
+        currentCount: Number(form.birdCount),
         arrivalDate: form.arrivalDate,
+        currentAgeDays: 0,
+        status: 'ACTIVE',
       });
       toast({ type: 'success', title: 'Flock created successfully' });
       setShowAdd(false);
-      setForm({ batchCode: '', farmId: '', breed: '', birdCount: '', arrivalDate: '' });
+      setForm({ batchCode: '', farmId: '', penId: '', breedId: '', birdCount: '', arrivalDate: '' });
       clearFetchCache('flocks');
       refetch();
     } catch (err: any) {
@@ -177,12 +220,12 @@ export default function FlocksPage() {
   };
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
-      case 'active':
+    switch (status.toUpperCase()) {
+      case 'ACTIVE':
         return 'success';
-      case 'completed':
+      case 'COMPLETED':
         return 'secondary';
-      case 'depleted':
+      case 'DECEASED':
         return 'destructive';
       default:
         return 'secondary';
@@ -222,9 +265,10 @@ export default function FlocksPage() {
             <Select
               placeholder="All statuses"
               options={[
-                { value: 'active', label: 'Active' },
-                { value: 'completed', label: 'Completed' },
-                { value: 'depleted', label: 'Depleted' },
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'SOLD', label: 'Sold' },
+                { value: 'DECEASED', label: 'Deceased' },
+                { value: 'COMPLETED', label: 'Completed' },
               ]}
               value={statusFilter}
               onChange={(e) => {
@@ -254,7 +298,14 @@ export default function FlocksPage() {
           <CardContent className="p-8 flex items-center justify-center">
             <LoadingSpinner className="h-8 w-8" />
           </CardContent>
-        ) : paginated.length === 0 ? (
+        ) : flocksError ? (
+          <CardContent className="p-8 text-center">
+            <p className="text-sm text-destructive">{flocksError}</p>
+            <Button className="mt-4" variant="outline" onClick={refetch}>
+              Retry
+            </Button>
+          </CardContent>
+        ) : flocks.length === 0 ? (
           <CardContent className="p-12 text-center">
             <Egg className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
@@ -278,14 +329,14 @@ export default function FlocksPage() {
                     <TableHead>Batch Code</TableHead>
                     <TableHead>Farm</TableHead>
                     <TableHead>Breed</TableHead>
-                    <TableHead>Bird Count</TableHead>
+                    <TableHead>Birds (Current / Placed)</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Arrival Date</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((flock) => (
+                  {flocks.map((flock) => (
                     <TableRow
                       key={flock.id}
                       className="cursor-pointer"
@@ -295,10 +346,12 @@ export default function FlocksPage() {
                         <span className="font-medium">{flock.batchCode}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-muted-foreground">{flock.farmName || '—'}</span>
+                        <span className="text-muted-foreground">{farmNames.get(flock.farmId) || '—'}</span>
                       </TableCell>
-                      <TableCell>{flock.breed}</TableCell>
-                      <TableCell>{flock.birdCount.toLocaleString()}</TableCell>
+                      <TableCell>{breedNames.get(flock.breedId) || '—'}</TableCell>
+                      <TableCell>
+                        {(flock.currentCount ?? flock.birdCount).toLocaleString()} / {flock.birdCount.toLocaleString()}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getStatusVariant(flock.status)}>
                           {flock.status}
@@ -323,16 +376,8 @@ export default function FlocksPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {!readOnly && (
+                          {canDelete('poultry') && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => router.push(`/poultry/flocks/${flock.id}/edit`)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -387,7 +432,7 @@ export default function FlocksPage() {
               placeholder="Select a farm"
               options={farms.map((f) => ({ value: f.id, label: f.name }))}
               value={form.farmId}
-              onChange={(e) => setForm({ ...form, farmId: e.target.value })}
+              onChange={(e) => setForm({ ...form, farmId: e.target.value, penId: '' })}
             />
             {formErrors.farmId && (
               <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
@@ -397,13 +442,32 @@ export default function FlocksPage() {
             <label className="text-sm font-medium mb-1 block">
               Breed <span className="text-destructive">*</span>
             </label>
-            <Input
-              placeholder="Broiler"
-              value={form.breed}
-              onChange={(e) => setForm({ ...form, breed: e.target.value })}
+            <Select
+              placeholder="Select a breed"
+              options={breeds.map((breed) => ({
+                value: breed.id,
+                label: `${breed.name}${breed.birdType ? ` · ${breed.birdType}` : ''}`,
+              }))}
+              value={form.breedId}
+              onChange={(e) => setForm({ ...form, breedId: e.target.value })}
             />
-            {formErrors.breed && (
-              <p className="text-sm text-destructive mt-1">{formErrors.breed}</p>
+            {formErrors.breedId && (
+              <p className="text-sm text-destructive mt-1">{formErrors.breedId}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Pen <span className="text-destructive">*</span>
+            </label>
+            <Select
+              placeholder={form.farmId ? 'Select a pen' : 'Select a farm first'}
+              options={availablePens.map((pen) => ({ value: pen.id, label: pen.name }))}
+              value={form.penId}
+              disabled={!form.farmId || availablePens.length === 0}
+              onChange={(e) => setForm({ ...form, penId: e.target.value })}
+            />
+            {formErrors.penId && (
+              <p className="text-sm text-destructive mt-1">{formErrors.penId}</p>
             )}
           </div>
           <div>
@@ -414,6 +478,8 @@ export default function FlocksPage() {
               type="number"
               placeholder="5000"
               value={form.birdCount}
+              min="1"
+              step="1"
               onChange={(e) => setForm({ ...form, birdCount: e.target.value })}
             />
             {formErrors.birdCount && (

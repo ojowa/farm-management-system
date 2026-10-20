@@ -164,16 +164,23 @@ export const poultryHouseFormSchema = z.object({
 export type PoultryHouseFormInput = z.infer<typeof poultryHouseFormSchema>;
 
 export const flockFormSchema = z.object({
-  batchCode: z.string().min(1, 'Batch code is required'),
-  farmId: z.string().min(1, 'Farm is required'),
-  penId: z.string().min(1, 'Pen is required'),
-  breedId: z.string().min(1, 'Breed is required'),
-  birdCount: z.string().min(1, 'Bird count is required'),
-  arrivalDate: z.string().min(1, 'Arrival date is required'),
-  status: z.string().optional(),
+  batchCode: z.string().min(2, 'Batch code must be at least 2 characters'),
+  farmId: z.string().uuid('Select a valid farm'),
+  penId: z.string().uuid('Select a valid pen'),
+  breedId: z.string().uuid('Select a valid breed'),
+  birdCount: z.string().regex(/^[1-9]\d*$/, 'Bird count must be a positive whole number'),
+  arrivalDate: z.string().date('Use YYYY-MM-DD'),
 });
 
 export type FlockFormInput = z.infer<typeof flockFormSchema>;
+
+export const flockEditFormSchema = flockFormSchema.extend({
+  currentCount: z.string().regex(/^(0|[1-9]\d*)$/, 'Current count must be a whole number'),
+  currentAgeDays: z.string().regex(/^(0|[1-9]\d*)$/, 'Age must be a whole number'),
+  status: z.enum(['ACTIVE', 'SOLD', 'DECEASED', 'COMPLETED']),
+});
+
+export type FlockEditFormInput = z.infer<typeof flockEditFormSchema>;
 
 export const feedingRecordFormSchema = z.object({
   flockId: z.string().min(1, 'Flock is required'),
@@ -204,9 +211,11 @@ export type MortalityRecordFormInput = z.infer<typeof mortalityRecordFormSchema>
 
 export const eggProductionFormSchema = z.object({
   flockId: z.string().min(1, 'Flock is required'),
-  count: z.string().min(1, 'Egg count is required'),
-  grade: z.string().optional(),
+  totalEggs: z.string().regex(/^(0|[1-9]\d*)$/, 'Enter a whole number of eggs'),
+  goodEggs: z.string().regex(/^(0|[1-9]\d*)$/, 'Enter a whole number of good eggs'),
+  brokenEggs: z.string().regex(/^(0|[1-9]\d*)$/, 'Enter a whole number of broken eggs'),
   date: z.string().min(1, 'Date is required'),
+  notes: z.string().optional(),
 });
 
 export type EggProductionFormInput = z.infer<typeof eggProductionFormSchema>;

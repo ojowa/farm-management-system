@@ -36,12 +36,12 @@ import { usePermission } from '@/lib/usePermission';
 
 interface Sale {
   id: string;
-  item: string;
+  birdType: string;
   quantity: number;
-  price: number;
-  total: number;
+  pricePerBird: number | null;
+  totalAmount: number;
   date: string;
-  buyer?: string;
+  buyerName?: string | null;
   notes?: string;
   createdAt: string;
 }
@@ -95,8 +95,8 @@ export default function SalesPage() {
       const q = search.toLowerCase();
       result = result.filter(
         (s) =>
-          s.item.toLowerCase().includes(q) ||
-          s.buyer?.toLowerCase().includes(q)
+          s.birdType.toLowerCase().includes(q) ||
+          s.buyerName?.toLowerCase().includes(q)
       );
     }
     return result;
@@ -106,7 +106,7 @@ export default function SalesPage() {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const totalRevenue = useMemo(() => {
-    return filtered.reduce((sum, s) => sum + (s.total || s.quantity * s.price), 0);
+    return filtered.reduce((sum, sale) => sum + sale.totalAmount, 0);
   }, [filtered]);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -124,11 +124,12 @@ export default function SalesPage() {
     setSaving(true);
     try {
       await poultrySalesAPI.create({
-        item: form.item,
+        birdType: form.item,
         quantity: Number(form.quantity),
-        price: Number(form.price),
+        pricePerBird: Number(form.price),
+        totalAmount: Number(form.quantity) * Number(form.price),
         date: form.date,
-        buyer: form.buyer,
+        buyerName: form.buyer || null,
       });
       toast({ type: 'success', title: 'Sale recorded successfully' });
       setShowAdd(false);
@@ -280,9 +281,9 @@ export default function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
+                    <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
-                    <TableHead>Price</TableHead>
+                    <TableHead>Price per Bird</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
@@ -292,13 +293,13 @@ export default function SalesPage() {
                   {paginated.map((sale) => (
                     <TableRow key={sale.id}>
                       <TableCell>
-                        <span className="font-medium">{sale.item}</span>
+                        <span className="font-medium">{sale.birdType}</span>
                       </TableCell>
                       <TableCell>{sale.quantity}</TableCell>
-                      <TableCell>₦{sale.price.toLocaleString()}</TableCell>
+                      <TableCell>₦{(sale.pricePerBird ?? 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge variant="success">
-                          ₦{(sale.total || sale.quantity * sale.price).toLocaleString()}
+                          ₦{sale.totalAmount.toLocaleString()}
                         </Badge>
                       </TableCell>
                       <TableCell>

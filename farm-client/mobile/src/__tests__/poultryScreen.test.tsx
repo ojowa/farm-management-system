@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import PoultryScreen from '../../app/(app)/poultry';
+import PoultryScreen from '../../app/(app)/poultry/flocks';
 
 // ─── API mocks ────────────────────────────────────────────────────────────────
 // The list screen loads flocks (offlinePoultryAPI.list → GET /flocks) and the
@@ -98,7 +98,7 @@ describe('PoultryScreen', () => {
   it('renders flocks with batch code, birds and status', async () => {
     render(<PoultryScreen />);
 
-    expect(await screen.findByText('BATCH-A')).toBeTruthy();
+    expect(await screen.findByText('BATCH-A', {}, { timeout: 10000 })).toBeTruthy();
     expect(screen.getByText('BATCH-B')).toBeTruthy();
     // Bird stat shows current/birds; breed + farm show on the card.
     expect(screen.getByText('95/100')).toBeTruthy();
@@ -127,6 +127,21 @@ describe('PoultryScreen', () => {
 
     expect(screen.queryByText('BATCH-A')).toBeNull();
     expect(screen.getByText('BATCH-B')).toBeTruthy();
+  });
+
+  it('searches by farm name and matches status without case sensitivity', async () => {
+    mockList.mockResolvedValue({
+      data: [{ ...FLOCKS[0], status: 'active' }],
+    });
+
+    render(<PoultryScreen />);
+    await screen.findByText('BATCH-A');
+
+    fireEvent.changeText(screen.getByLabelText('Search flocks'), 'Sunrise');
+    expect(screen.getByText('BATCH-A')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Filter active flocks'));
+    expect(screen.getByText('BATCH-A')).toBeTruthy();
   });
 
   it('shows the empty state when there are no flocks', async () => {

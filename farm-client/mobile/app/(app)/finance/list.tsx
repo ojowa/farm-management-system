@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 20 },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
+  backButton: { color: '#FFFFFF', fontSize: 28, lineHeight: 32, marginRight: 8 },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 16 },
   summaryContainer: { flexDirection: 'row', gap: 12 },
   summaryCard: {
@@ -358,6 +359,13 @@ export default function FinanceScreen() {
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <View style={styles.headerTitleRow}>
+            <TouchableOpacity
+              onPress={() => router.push('/finance')}
+              accessibilityRole="button"
+              accessibilityLabel="Back to finance"
+            >
+              <Text style={styles.backButton}>‹</Text>
+            </TouchableOpacity>
             <MenuButton />
             <Text style={styles.headerTitle}>Finance</Text>
           </View>
@@ -372,6 +380,13 @@ export default function FinanceScreen() {
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <View style={styles.headerTitleRow}>
+            <TouchableOpacity
+              onPress={() => router.push('/finance')}
+              accessibilityRole="button"
+              accessibilityLabel="Back to finance"
+            >
+              <Text style={styles.backButton}>‹</Text>
+            </TouchableOpacity>
             <MenuButton />
             <Text style={styles.headerTitle}>Finance</Text>
           </View>
@@ -391,6 +406,13 @@ export default function FinanceScreen() {
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
         <View style={styles.headerTitleRow}>
+          <TouchableOpacity
+            onPress={() => router.push('/finance')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to finance"
+          >
+            <Text style={styles.backButton}>‹</Text>
+          </TouchableOpacity>
           <MenuButton />
           <Text style={styles.headerTitle}>Finance</Text>
         </View>

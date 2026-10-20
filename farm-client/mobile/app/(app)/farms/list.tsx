@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   addButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  backButton: { color: '#FFFFFF', fontSize: 28, lineHeight: 32 },
   content: { paddingHorizontal: 20, paddingVertical: 16 },
   emptyContainer: {
     flex: 1,
@@ -371,6 +372,13 @@ export default function FarmsScreen() {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
+          <TouchableOpacity
+            onPress={() => router.push('/farms')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farms"
+          >
+            <Text style={styles.backButton}>‹</Text>
+          </TouchableOpacity>
           <MenuButton />
           <Text style={[styles.headerTitle, { flex: 1 }]}>My Farms</Text>
         </View>
@@ -383,6 +391,13 @@ export default function FarmsScreen() {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
+          <TouchableOpacity
+            onPress={() => router.push('/farms')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farms"
+          >
+            <Text style={styles.backButton}>‹</Text>
+          </TouchableOpacity>
           <MenuButton />
           <Text style={[styles.headerTitle, { flex: 1 }]}>My Farms</Text>
         </View>
@@ -400,6 +415,13 @@ export default function FarmsScreen() {
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <View style={[styles.header, dynamicStyles.header]}>
+        <TouchableOpacity
+          onPress={() => router.push('/farms')}
+          accessibilityRole="button"
+          accessibilityLabel="Back to farms"
+        >
+          <Text style={styles.backButton}>‹</Text>
+        </TouchableOpacity>
         <MenuButton />
         <Text style={[styles.headerTitle, { flex: 1 }]}>My Farms</Text>
         {canWrite && (

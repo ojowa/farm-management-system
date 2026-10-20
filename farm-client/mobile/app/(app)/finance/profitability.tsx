@@ -6,8 +6,10 @@ import {
   Text,
   RefreshControl,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { financeAPI } from '@/modules/finance';
 import { farmsAPI } from '@/modules/farm';
@@ -16,6 +18,7 @@ import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 export default function ProfitabilityScreen() {
+  const router = useRouter();
   const { colors: tc, isDark } = useAppTheme();
   const [farms, setFarms] = useState<any[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -104,7 +107,10 @@ export default function ProfitabilityScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
+        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+          <TouchableOpacity onPress={() => router.push('/finance')} accessibilityRole="button" accessibilityLabel="Back to finance">
+            <Text style={styles.backButton}>‹</Text>
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>Profitability</Text>
         </View>
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -115,8 +121,13 @@ export default function ProfitabilityScreen() {
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <TouchableOpacity onPress={() => router.push('/finance')} accessibilityRole="button" accessibilityLabel="Back to finance">
+          <Text style={styles.backButton}>‹</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Profitability</Text>
-        <Text style={styles.headerSubtext}>Revenue, expenses, and profit overview</Text>
+      </View>
+      <Text style={styles.headerSubtext}>Revenue, expenses, and profit overview</Text>
       </View>
 
       <ScrollView
@@ -174,6 +185,7 @@ export default function ProfitabilityScreen() {
 }
 
 const styles = StyleSheet.create({
+  backButton: { color: '#FFFFFF', fontSize: 30, lineHeight: 34 },
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
     backgroundColor: colors.primary,

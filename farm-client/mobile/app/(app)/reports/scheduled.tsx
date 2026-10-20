@@ -11,8 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
-import { reportsAPI } from '@/modules/reporting';
+import { useRouter } from 'expo-router';
+import { scheduledReportsAPI } from '@/modules/reporting';
+import type { ScheduledReport } from '@/modules/reporting';
 import { unwrapList } from '@/core/utils/listPayload';
+import { MenuButton } from '@/core/ui/MenuButton';
+import { describeApiError } from '@/core/utils/apiError';
+import { StateView } from '@/core/ui/feedback';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -32,25 +37,21 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export default function ScheduledReportsScreen() {
+  const router = useRouter();
   const { colors: tc, isDark } = useAppTheme();
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<ScheduledReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadReports = useCallback(async () => {
     try {
-      const res = await reportsAPI.list();
-      // GET /reports answers `{ data: { reports, total, page, totalPages } }`
-      // (report.controller.ts:60 → prisma-report.repository.ts:51) — the rows
-      // are TWO levels down and wrapped again. `res.data || []` yielded the
-      // `{ reports }` object and `.filter` threw. unwrapList recurses to find
-      // the array under `.data.reports`.
-      const list = unwrapList(res?.data);
-      const scheduled = list.filter((r: any) =>
-        r.frequency || r.status === 'active' || r.status === 'paused' || r.scheduled
-      );
-      setReports(scheduled.length > 0 ? scheduled : list);
-    } catch { /* ignore */ }
+      setLoadError(null);
+      const response = await scheduledReportsAPI.list();
+      setReports(unwrapList<ScheduledReport>(response.data));
+    } catch (error) {
+      setLoadError(describeApiError(error, 'Failed to load scheduled reports.'));
+    }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
@@ -75,20 +76,30 @@ export default function ScheduledReportsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
-          <Text style={styles.headerTitle}>Scheduled Reports</Text>
-        </View>
+        <Header onBack={() => router.push('/reports')} />
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+        <Header onBack={() => router.push('/reports')} />
+        <StateView
+          variant="error"
+          title="Couldn't load scheduled reports"
+          message={loadError}
+          onRetry={() => void loadReports()}
+          retryLabel="Retry"
+        />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-      <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
-        <Text style={styles.headerTitle}>Scheduled Reports</Text>
-        <Text style={styles.headerSubtext}>Automated reports scheduled for generation</Text>
-      </View>
+      <Header onBack={() => router.push('/reports')} />
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -151,13 +162,34 @@ export default function ScheduledReportsScreen() {
   );
 }
 
+function Header({ onBack }: { onBack: () => void }) {
+  const { colors: tc } = useAppTheme();
+  return (
+    <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
+      <TouchableOpacity onPress={onBack} accessibilityRole="button" accessibilityLabel="Back to reports">
+        <Text style={styles.back}>‹</Text>
+      </TouchableOpacity>
+      <MenuButton />
+      <View style={styles.headerCopy}>
+        <Text style={styles.headerTitle}>Scheduled Reports</Text>
+        <Text style={styles.headerSubtext}>Automated reports scheduled for generation</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
+  back: { color: '#FFFFFF', fontSize: 32, lineHeight: 34 },
+  headerCopy: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF' },
   headerSubtext: { fontSize: 14, color: '#FFFFFF', opacity: 0.8, marginTop: 4 },
   content: { paddingHorizontal: 16, paddingVertical: 12 },

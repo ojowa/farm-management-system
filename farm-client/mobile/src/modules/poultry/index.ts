@@ -17,6 +17,7 @@ export {
   mortalityRecordsAPI,
   medicationAPI,
   eggProductionAPI,
+  poultrySalesAPI,
 } from '../../services/api';
 export { offlinePoultryAPI } from '../../services/offlineApi';
 export type {
@@ -30,4 +31,6 @@ export type {
   VaccinationRecord,
   MortalityRecord,
   Medication,
+  EggProductionRecord,
+  PoultrySale,
 } from '../../services/types';
