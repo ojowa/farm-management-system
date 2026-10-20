@@ -30,7 +30,7 @@ const BOOTSTRAP_TIMEOUT_MS = Number(process.env.BOOTSTRAP_TIMEOUT_MS) || 120000;
 // (app-server/src/modules/api/proxy/http-proxy.service.ts). Point every service
 // at the in-process domains app unless the environment already overrides them.
 for (const key of [
-  'AUTH', 'FARM', 'CROP', 'LIVESTOCK', 'POULTRY', 'FINANCE', 'HR',
+  'AUTH', 'FARM', 'CROP', 'LIVESTOCK', 'AQUACULTURE', 'POULTRY', 'FINANCE', 'HR',
   'NOTIFICATION', 'ORGANIZATION', 'PLATFORM', 'REPORTING',
 ]) {
   if (!process.env[`${key}_SERVICE_URL`]) {
