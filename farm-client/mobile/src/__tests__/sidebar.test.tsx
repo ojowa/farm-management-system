@@ -95,24 +95,26 @@ beforeEach(() => {
 });
 
 describe('Sidebar', () => {
-  it('mirrors the admin portal: all 8 section headings and 23 items', () => {
+  it('mirrors the admin portal: all 8 section headings plus Attendance (24 items)', () => {
     renderSidebar();
 
     for (const label of ADMIN_SECTION_LABELS) {
       expect(screen.getByText(label)).toBeTruthy();
     }
 
-    // Every admin nav item is represented — all now backed by real screens.
+    // Every admin nav item is represented — all now backed by real screens —
+    // plus Attendance, which admin exposes as a child of Workers but mobile
+    // promotes to its own row (clocking in is a worker's daily action).
     const allItems = [
       'Dashboard', 'Users', 'Roles',
       'Farms', 'Crops', 'Livestock', 'Poultry', 'Aquaculture',
       'Inventory', 'Equipment',
-      'Workers', 'Roster', 'Tasks', 'Leave', 'Messages', 'Correspondence',
+      'Workers', 'Roster', 'Tasks', 'Attendance', 'Leave', 'Messages', 'Correspondence',
       'Finance', 'Contracts', 'Marketplace',
       'Reports', 'Weather',
       'Subscription', 'Settings',
     ];
-    expect(allItems).toHaveLength(23);
+    expect(allItems).toHaveLength(24);
     for (const item of allItems) {
       expect(screen.getByLabelText(item)).toBeTruthy();
     }
@@ -121,8 +123,8 @@ describe('Sidebar', () => {
   it('displays every item as enabled now that all admin items have screens', () => {
     renderSidebar();
 
-    // A fully-permitted owner sees every section. All 23 admin items now have
-    // a mobile screen, so nothing renders the "Not on mobile" badge …
+    // A fully-permitted owner sees every section. All items now have a mobile
+    // screen, so nothing renders the "Not on mobile" badge …
     expect(screen.queryByText('Not on mobile')).toBeNull();
 
     // … and every item stays tappable.
@@ -130,7 +132,7 @@ describe('Sidebar', () => {
       'Dashboard', 'Users', 'Roles',
       'Farms', 'Crops', 'Livestock', 'Poultry', 'Aquaculture',
       'Inventory', 'Equipment',
-      'Workers', 'Roster', 'Tasks', 'Leave', 'Messages', 'Correspondence',
+      'Workers', 'Roster', 'Tasks', 'Attendance', 'Leave', 'Messages', 'Correspondence',
       'Finance', 'Contracts', 'Marketplace',
       'Reports', 'Weather',
       'Subscription', 'Settings',

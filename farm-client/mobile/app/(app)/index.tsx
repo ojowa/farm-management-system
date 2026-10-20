@@ -17,6 +17,7 @@ import { farmsAPI } from '@/modules/farm';
 import { cropsAPI } from '@/modules/crop';
 import { livestockAPI } from '@/modules/livestock';
 import { poultryAPI } from '@/modules/poultry';
+import { aquacultureAPI } from '@/modules/aquaculture';
 import { financeAPI, profitabilityAPI } from '@/modules/finance';
 import { tasksAPI } from '@/modules/worker';
 import { attendanceAPI } from '@/modules/hr';
@@ -67,6 +68,42 @@ const QUICK_ACTIONS = [
   { key: 'worker', label: 'Add Worker', icon: '👷', route: '/workers/add', permission: 'hr.write' },
 ];
 
+/**
+ * List endpoints disagree on their answer shape, and this screen reads all of
+ * them:
+ *
+ *   - livestock / poultry  → `{ data, total }`  (PaginatedResult)
+ *   - farms / crops        → `{ farms, total, data }` / `{ crops, total, data }`
+ *   - sales / expenses     → bare array
+ *
+ * Reading `.data || []` off a `{ data, total }` body yields the OBJECT, so
+ * `farms.filter(...)` / `livestock.reduce(...)` threw a TypeError on every
+ * single load. That exception escaped into the catch block and surfaced as the
+ * full-screen "Couldn't load your dashboard" — which is why the error looked
+ * permanent even though every request had succeeded. Normalize instead.
+ */
+function unwrapList(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.farms)) return payload.farms;
+  if (Array.isArray(payload?.crops)) return payload.crops;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.records)) return payload.records;
+  return [];
+}
+
+/**
+ * Server pagination total when the body carries one, else the rows we loaded.
+ * `res.value` is the axios response, so `total` lives on `value.data.total` —
+ * reading it off `value` directly always fell through to the array length.
+ */
+function totalOf(res: PromiseSettledResult<any>, list: any[]): number {
+  if (res.status !== 'fulfilled') return list.length;
+  const body = res.value?.data;
+  const total = body?.total ?? res.value?.total;
+  return Number.isFinite(total) ? total : list.length;
+}
+
 export default function DashboardScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
@@ -83,6 +120,7 @@ export default function DashboardScreen() {
     totalCrops: 0,
     totalLivestock: 0,
     totalPoultry: 0,
+    totalPonds: 0,
   });
   const [finance, setFinance] = useState<FinanceSummary | null>(null);
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
@@ -106,6 +144,7 @@ export default function DashboardScreen() {
         cropsRes,
         livestockRes,
         poultryRes,
+        pondsRes,
         salesRes,
         expensesRes,
         profitabilityRes,
@@ -118,6 +157,11 @@ export default function DashboardScreen() {
         cropsAPI.list(),
         livestockAPI.list(),
         poultryAPI.list(),
+        // Ponds were the one farm module the landing page never asked about,
+        // so Aquaculture had no Overview presence at all. It rides the same
+        // allSettled batch as the rest: an unentitled caller (no
+        // aquaculture.read) just rejects and falls back to 0.
+        aquacultureAPI.listPonds({ page: 1, limit: 1 }),
         financeAPI.listSales(),
         financeAPI.listExpenses(),
         profitabilityAPI.summary(),
@@ -140,16 +184,10 @@ export default function DashboardScreen() {
         return;
       }
 
-      const farms = farmsRes.status === 'fulfilled' ? (farmsRes.value?.data || []) : [];
-      const crops = cropsRes.status === 'fulfilled' ? (cropsRes.value?.data || []) : [];
-      const livestock = livestockRes.status === 'fulfilled' ? (livestockRes.value?.data || []) : [];
-      const poultry = poultryRes.status === 'fulfilled' ? (poultryRes.value?.data || []) : [];
-
-      // Prefer the server's pagination total when present; fall back to the
-      // loaded array length (list endpoints only paginate when `page` is sent,
-      // so the array is normally the whole set anyway).
-      const countOf = (res: PromiseSettledResult<any>, list: any[]) =>
-        res.status === 'fulfilled' ? (res.value?.total ?? list.length) : list.length;
+      const farms = farmsRes.status === 'fulfilled' ? unwrapList(farmsRes.value?.data) : [];
+      const crops = cropsRes.status === 'fulfilled' ? unwrapList(cropsRes.value?.data) : [];
+      const livestock = livestockRes.status === 'fulfilled' ? unwrapList(livestockRes.value?.data) : [];
+      const poultry = poultryRes.status === 'fulfilled' ? unwrapList(poultryRes.value?.data) : [];
 
       const totalLivestock = livestock.reduce(
         (sum: number, item: any) => sum + (item.quantity || 0),
@@ -160,11 +198,17 @@ export default function DashboardScreen() {
         0
       );
 
+      // listPonds answers `{ data: Pond[], total }`; unwrapList already picks
+      // the rows out, so only the count needs the raw body.
+      const pondsRows = pondsRes.status === 'fulfilled' ? unwrapList(pondsRes.value?.data) : [];
+      const totalPonds = totalOf(pondsRes, pondsRows);
+
       setStats({
         activeFarms: farms.filter((f: any) => f.status === 'active').length,
-        totalCrops: countOf(cropsRes, crops),
+        totalCrops: totalOf(cropsRes, crops),
         totalLivestock,
         totalPoultry,
+        totalPonds,
       });
 
       // ── Financial summary ──────────────────────────────────────────────
@@ -174,8 +218,8 @@ export default function DashboardScreen() {
       // expenses lists client-side. Sales store their value in `total` (or
       // quantity × price) — not `amount` — so a naive `amount` filter drops
       // every row and revenue always renders $0.
-      const sales = salesRes.status === 'fulfilled' ? ((salesRes.value?.data as any[]) || []) : [];
-      const expenseRows = expensesRes.status === 'fulfilled' ? ((expensesRes.value?.data as any[]) || []) : [];
+      const sales = salesRes.status === 'fulfilled' ? unwrapList(salesRes.value?.data) : [];
+      const expenseRows = expensesRes.status === 'fulfilled' ? unwrapList(expensesRes.value?.data) : [];
       const salesSum = sales.reduce((sum: number, sale: any) => {
         const raw = sale?.total ?? (sale?.quantity || 0) * (sale?.price || 0);
         const amount = Math.abs(raw || 0);
@@ -197,8 +241,8 @@ export default function DashboardScreen() {
 
       setFinance(financeFailed ? null : { income, expenses, net });
 
-      const tasks = tasksRes.status === 'fulfilled' ? (tasksRes.value?.data || []) : [];
-      const notifs = notifsRes.status === 'fulfilled' ? (notifsRes.value?.data || []) : [];
+      const tasks = tasksRes.status === 'fulfilled' ? unwrapList(tasksRes.value?.data) : [];
+      const notifs = notifsRes.status === 'fulfilled' ? unwrapList(notifsRes.value?.data) : [];
 
       // GET /attendance/today answers `{ records, summary }`; older callers (and
       // this screen's tests) still hand back a bare array — accept both so a
@@ -250,9 +294,9 @@ export default function DashboardScreen() {
       });
 
       setPendingTasks(tasks.slice(0, 5));
-      setPendingTasksTotal(tasksRes.status === 'fulfilled' ? ((tasksRes.value as any)?.total ?? tasks.length) : 0);
+      setPendingTasksTotal(totalOf(tasksRes, tasks));
       setAttendanceSummary(attendanceSummary);
-      setRecentActivity(Array.isArray(notifs) ? notifs.slice(0, 5) : []);
+      setRecentActivity(notifs.slice(0, 5));
       setUnreadNotifs(unreadRes.status === 'fulfilled' ? (unreadRes.value?.data?.count ?? 0) : 0);
 
       // Any successful load clears the full-screen error even when silent, so
@@ -557,6 +601,21 @@ export default function DashboardScreen() {
                 <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalPoultry}</Text>
               </Card>
             </View>
+            {/* Aquaculture was missing from Overview entirely — the other four
+                farm types each had a card, ponds had none. Permission-gated on
+                aquaculture.read, same as the sidebar entry. */}
+            {hasPermission('aquaculture.read') && (
+              <View style={styles.statsRow}>
+                <Card
+                  style={[styles.statCard, dynamicStyles.cardBackground]}
+                  onPress={() => router.push('/aquaculture')}
+                  accessibilityLabel={`Ponds: ${stats.totalPonds}`}
+                >
+                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🐟 Ponds</Text>
+                  <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalPonds}</Text>
+                </Card>
+              </View>
+            )}
           </View>
 
           {/* Financial Summary */}

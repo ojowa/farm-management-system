@@ -50,6 +50,11 @@ jest.mock('@/modules/livestock', () => ({
 jest.mock('@/modules/poultry', () => ({
   poultryAPI: { list: (...args: any[]) => mockPoultryList(...args) },
 }));
+
+const mockListPonds = jest.fn();
+jest.mock('@/modules/aquaculture', () => ({
+  aquacultureAPI: { listPonds: (...args: any[]) => mockListPonds(...args) },
+}));
 jest.mock('@/modules/finance', () => ({
   financeAPI: {
     listSales: (...args: any[]) => mockListSales(...args),
@@ -129,6 +134,9 @@ describe('DashboardScreen', () => {
     mockCropsList.mockResolvedValue({ data: [{ id: 'c1' }, { id: 'c2' }] });
     mockLivestockList.mockResolvedValue({ data: [{ id: 'l1', quantity: 12 }] });
     mockPoultryList.mockResolvedValue({ data: [{ id: 'p1', quantity: 30 }] });
+    // listPonds answers `{ data: { data, total } }` — one level deeper than
+    // the plain list endpoints.
+    mockListPonds.mockResolvedValue({ data: { data: [{ id: 'pond1' }], total: 4 } });
     mockListSales.mockResolvedValue({
       data: [{ id: 's1', item: 'Maize', quantity: 10, price: 5, total: 50 }],
     });
@@ -168,6 +176,42 @@ describe('DashboardScreen', () => {
 
     // One absent worker raises an operational alert (admin parity).
     expect(screen.getByText('Workers absent today')).toBeTruthy();
+  });
+
+  it('renders the real server list shapes without blowing up', async () => {
+    // Regression: the live endpoints do NOT answer bare arrays —
+    //   livestock / poultry → `{ data, total }` (PaginatedResult)
+    //   farms               → `{ farms, total, data }`
+    //   crops               → `{ crops, total, data }`
+    // The dashboard read `.data || []` off those bodies, so `farms` and
+    // `livestock` became OBJECTS and `.filter`/`.reduce` threw a TypeError on
+    // every load — surfacing as the permanent "Couldn't load your dashboard"
+    // even though every request succeeded.
+    mockFarmsList.mockResolvedValue({
+      data: { farms: [{ id: 'f1', status: 'active' }, { id: 'f2', status: 'idle' }], total: 2 },
+    });
+    mockCropsList.mockResolvedValue({ data: { crops: [{ id: 'c1' }], total: 9 } });
+    mockLivestockList.mockResolvedValue({ data: { data: [{ id: 'l1', quantity: 5 }], total: 5 } });
+    mockPoultryList.mockResolvedValue({ data: { data: [{ id: 'p1', quantity: 7 }], total: 7 } });
+    mockListTasks.mockResolvedValue({ data: { data: [{ id: 't1', title: 'Feed' }], total: 3 } });
+
+    render(<DashboardScreen />);
+
+    // No full-screen error, and the stats read through the wrappers.
+    expect(await screen.findByLabelText('Poultry: 7')).toBeTruthy();
+    expect(screen.getByLabelText('Livestock: 5')).toBeTruthy();
+    expect(screen.queryByText(/Couldn.t load your dashboard/)).toBeNull();
+  });
+
+  it('shows a Ponds stat for aquaculture readers and omits it otherwise', async () => {    // Regression: Overview fetched farms/crops/livestock/poultry but never
+    // asked the server about ponds, so Aquaculture had no landing-page
+    // presence at all. It now renders its own card, gated on aquaculture.read.
+    mockAuthUser.permissions = ['aquaculture.read'];
+
+    render(<DashboardScreen />);
+
+    expect(await screen.findByLabelText('Ponds: 4')).toBeTruthy();
+    expect(mockListPonds).toHaveBeenCalled();
   });
 
   it('shows retryable connection errors instead of empty-state cards when sections fail', async () => {

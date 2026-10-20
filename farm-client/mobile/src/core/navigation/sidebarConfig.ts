@@ -107,6 +107,20 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
         permissions: ['hr.read', 'worker.read'],
         module: 'worker',
       },
+      // Attendance is a first-class mobile screen (`/attendance`) that the
+      // dashboard links to via "View all", but it had no sidebar entry — so
+      // the only way in was that one link. Mirrors admin, where attendance is
+      // a child of Workers; on mobile it earns its own row because clocking
+      // in/out is a worker's primary daily action. `worker.read` is included
+      // so a worker (no hr.read) still reaches their own records, matching the
+      // server's PermissionAny('hr.read', 'worker.read') on /attendance.
+      {
+        label: 'Attendance',
+        icon: '🕒',
+        route: '/attendance',
+        permissions: ['hr.read', 'worker.read'],
+        module: 'hr',
+      },
       {
         label: 'Leave',
         icon: '🗓️',
