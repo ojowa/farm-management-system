@@ -13,9 +13,9 @@ import {
 import authReducer from '../modules/auth/services/authSlice';
 import uiReducer from './slices/uiSlice';
 import syncReducer from './slices/syncSlice';
+import notificationsReducer from './slices/notificationsSlice';
 import { farmsApi, cropsApi, livestockApi, financeApi, tasksApi } from './api';
 import { secureStorageAdapter } from '../core/utils/reduxSecureStorage';
-
 
 const uiPersistConfig = {
   key: 'ui',
@@ -55,6 +55,7 @@ const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
   ui: persistReducer(uiPersistConfig, uiReducer),
   sync: persistReducer(syncPersistConfig, syncReducer),
+  notifications: notificationsReducer,
   [farmsApi.reducerPath]: farmsApi.reducer,
   [cropsApi.reducerPath]: cropsApi.reducer,
   [livestockApi.reducerPath]: livestockApi.reducer,

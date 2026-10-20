@@ -12,8 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Card, colors } from '@/core/ui/UIComponents';
-import { notificationsAPI } from '@/modules/notification';
+import { notificationsAPI, resolveNotificationRoute } from '@/modules/notification';
 import { socketService, RealtimePayload } from '@/services/socketService';
+import { syncBadgeFromServer } from '@/modules/notification';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { describeApiError } from '@/core/utils/apiError';
 import { useAppTheme } from '@/core/theme/ThemeContext';
@@ -141,8 +142,8 @@ export default function NotificationsScreen() {
   const refreshUnread = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await notificationsAPI.unreadCount(userId);
-      setUnreadCount(res.data?.count ?? 0);
+      const count = await syncBadgeFromServer(userId);
+      setUnreadCount(count);
     } catch {
       // Non-critical — badge just won't update.
     }
@@ -293,7 +294,12 @@ export default function NotificationsScreen() {
 
   const openItem = (item: NotificationItem) => {
     markAsRead(item);
-    if (item.link) {
+    // Server links are canonical (`/hr/leave`, `/messages`); resolve them to
+    // a real expo-router route so taps never land on a missing screen.
+    const linked = resolveNotificationRoute(item.link);
+    if (linked) {
+      router.push(linked as any);
+    } else if (item.link) {
       router.push(item.link as any);
     }
   };

@@ -51,7 +51,7 @@ export class NotificationApplicationService {
     const notification = await this.repository.create(createDto);
     this.gateway.sendToUser(createDto.userId, 'notification:new', notification);
 
-    this.triggerExternalNotifications(createDto).catch((error) => {
+    this.triggerExternalNotifications(createDto, notification.id).catch((error) => {
       this.logger.error('Failed to trigger external notifications:', error);
     });
 
@@ -65,7 +65,10 @@ export class NotificationApplicationService {
    * (`emailNotifications` / `pushNotifications`, default enabled) — they used
    * to be stored and never consulted.
    */
-  private async triggerExternalNotifications(dto: CreateNotificationRequest): Promise<void> {
+  private async triggerExternalNotifications(
+    dto: CreateNotificationRequest,
+    notificationId?: string
+  ): Promise<void> {
     const user = await scopedPrisma.user.findUnique({
       where: { id: dto.userId },
       select: {
@@ -94,7 +97,7 @@ export class NotificationApplicationService {
     }
 
     if (pushEnabled) {
-      await this.sendPushNotification(dto.userId, dto, context);
+      await this.sendPushNotification(dto.userId, dto, context, notificationId);
     }
   }
 
@@ -172,27 +175,31 @@ export class NotificationApplicationService {
   private async sendPushNotification(
     userId: string,
     dto: CreateNotificationRequest,
-    context: { leave?: LeaveExternalContext }
+    context: { leave?: LeaveExternalContext },
+    notificationId?: string
   ): Promise<void> {
     try {
       if (dto.entityType === 'LeaveRequest' && dto.type === 'SUCCESS') {
         await this.pushService.sendLeaveApprovalPush(
           userId,
           context.leave?.leaveTypeName ?? 'Leave',
-          context.leave?.days ?? 0
+          context.leave?.days ?? 0,
+          notificationId
         );
       } else if (dto.entityType === 'LeaveRequest' && dto.type === 'ALERT') {
         await this.pushService.sendLeaveRejectionPush(
           userId,
           context.leave?.leaveTypeName ?? 'Leave',
-          context.leave?.days ?? 0
+          context.leave?.days ?? 0,
+          notificationId
         );
       } else if (dto.entityType === 'Message') {
         await this.pushService.sendNewMessagePush(
           userId,
           'System',
           dto.title,
-          dto.type === 'ALERT' ? 'URGENT' : 'NORMAL'
+          dto.type === 'ALERT' ? 'URGENT' : 'NORMAL',
+          notificationId
         );
       } else {
         // Everything else reaches the device too — push used to fire only for
@@ -206,6 +213,9 @@ export class NotificationApplicationService {
             link: dto.link || '',
             entityType: dto.entityType || '',
             entityId: dto.entityId || '',
+            // Tap-to-mark-read keys off this id; without it a push tap left
+            // the row unread and the badge stale until a manual refetch.
+            notificationId: notificationId || '',
           },
         });
       }
@@ -269,7 +279,7 @@ export class NotificationApplicationService {
       this.gateway.sendToUser(dto.userId, 'notification:new', notification);
 
       // Bulk items get the same email/push treatment as single creates.
-      this.triggerExternalNotifications(dto).catch((error) => {
+      this.triggerExternalNotifications(dto, notification.id).catch((error) => {
         this.logger.error('Failed to trigger external notifications:', error);
       });
     }

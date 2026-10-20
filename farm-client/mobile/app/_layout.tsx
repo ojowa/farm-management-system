@@ -12,7 +12,7 @@ import { ConnectionBanner } from '../src/core/ui/layout/ConnectionBanner';
 import { useNetworkSync } from '../src/services/useNetworkSync';
 import { colors } from '../src/core/ui/UIComponents';
 import { ThemeProvider, useAppTheme } from '../src/core/theme/ThemeContext';
-import { registerForPushNotifications, sendTokenToServer, setupNotificationListeners } from '../src/modules/notification';
+import { ensurePushRegistration, setupNotificationListeners } from '../src/modules/notification';
 import { useAppSelector, useAppDispatch } from '../src/modules/auth/hooks/useAuth';
 import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/modules/auth/services/authSlice';
 import { startInactivityTracker } from '../src/core/utils/inactivity';
@@ -156,14 +156,37 @@ function RootLayoutWithSplash() {
 
 function NotificationSetup() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const dispatch = useAppDispatch();
   useEffect(() => {
     if (!isAuthenticated) return;
-    const cleanup = setupNotificationListeners();
-    registerForPushNotifications().then((token) => {
-      if (token) sendTokenToServer(token);
+    // Foreground push → toast + badge + central store; tap → deep link.
+    const cleanup = setupNotificationListeners({
+      onReceived: (data) => {
+        try {
+          const { showToast } = require('../src/store/slices/uiSlice');
+          dispatch(showToast({
+            id: `push-${Date.now()}`,
+            // `title`/`body` are lifted off the Expo content by the listener —
+            // they are siblings of `data`, not keys inside it, so reading
+            // `data.title` directly always fell back to this placeholder.
+            message: data?.title || data?.body || 'New notification',
+            type: 'info',
+          }));
+        } catch {}
+      },
     });
+    // Permission → Expo token → POST /devices/tokens, then badge sync.
+    ensurePushRegistration().then((result) => {
+      try {
+        const { setPushState, fetchUnreadCount } = require('../src/store/slices/notificationsSlice');
+        const { store: appStore } = require('../src/store/store');
+        dispatch(setPushState({ status: result.status, token: result.token }));
+        const userId = appStore?.getState?.()?.auth?.user?.id;
+        if (userId) dispatch(fetchUnreadCount(userId) as any);
+      } catch {}
+    }).catch(() => {});
     return cleanup;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, dispatch]);
   return null;
 }
 

@@ -1,12 +1,36 @@
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
-import { apiClient } from './api';
+import { apiClient, notificationsAPI } from './api';
 import {
   deleteExpoPushToken,
   getStoredExpoPushToken,
+  getPushOptOut,
   setExpoPushToken,
+  setPushOptOut,
 } from '../core/utils/secureStorage';
+
+/**
+ * Full notification stack for the mobile app:
+ *
+ *   1. `ensurePushRegistration()` — permission → Expo push token → POST
+ *      `/devices/tokens`. Called after login (see `app/_layout.tsx`
+ *      `NotificationSetup`) and from Settings when the user toggles push.
+ *   2. `setupNotificationListeners()` — foreground banner/toast, tap →
+ *      deep-link, badge sync, and cold-start handling.
+ *   3. `syncBadgeFromServer()` — keeps the OS app badge in step with the
+ *      server unread count (called after list/mark-read/socket events).
+ *
+ * Notes:
+ * - Push only works on a physical device inside a dev-client / EAS build.
+ *   Expo Go (SDK 53+) ignores `getExpoPushTokenAsync`; in-app + socket
+ *   notifications still work there.
+ * - Web has no native push module — everything no-ops and returns null.
+ * - `Platform.OS` from `Platform` is `'ios' | 'android' | 'web' | ...`; the
+ *   server Zod schema only accepts `'web' | 'ios' | 'android'`, so map
+ *   anything else to `'android'` before POSTing.
+ */
 
 const isExpoGo =
   Constants.executionEnvironment === 'storeClient';
@@ -27,7 +51,10 @@ if (!isExpoGo && Platform.OS !== 'web') {
   });
 }
 
+export const isPushSupported = (): boolean => Notifications !== null;
+
 export interface NotificationData {
+  /** Server notification type, e.g. `leave-approved`, `new-message`, `task`. */
   type?: string;
   moduleId?: string;
   module?: string;
@@ -35,6 +62,35 @@ export interface NotificationData {
   /** Server-generated deep link (e.g. `/hr/leave`, `/messages`). */
   link?: string;
   notificationId?: string;
+  entityType?: string;
+  entityId?: string;
+  unreadCount?: number;
+  /**
+   * Expo keeps `title`/`body` as SIBLINGS of `data`, not inside it. The
+   * foreground handler copies them onto the object it hands to `onReceived`,
+   * so a toast can read `data.title` instead of always rendering the
+   * "New notification" fallback.
+   */
+  title?: string;
+  body?: string;
+}
+
+export interface PushRegistrationResult {
+  status: 'registered' | 'denied' | 'unsupported' | 'no-device' | 'failed' | 'opted-out';
+  token: string | null;
+}
+
+/**
+ * User turned push off in Settings. Persisted locally AND mirrored to the
+ * server's `notificationPreferences.pushNotifications`, so the choice survives
+ * restarts and applies to the server-side fan-out.
+ */
+export async function isPushOptedOut(): Promise<boolean> {
+  return getPushOptOut();
+}
+
+export async function setPushNotificationsEnabled(enabled: boolean): Promise<void> {
+  await setPushOptOut(!enabled);
 }
 
 function resolveProjectId(): string | undefined {
@@ -45,8 +101,37 @@ function resolveProjectId(): string | undefined {
   );
 }
 
-export async function registerForPushNotifications(): Promise<string | null> {
-  if (!Notifications) return null;
+function toServerPlatform(): 'web' | 'ios' | 'android' {
+  if (Platform.OS === 'ios' || Platform.OS === 'android' || Platform.OS === 'web') {
+    return Platform.OS;
+  }
+  return 'android';
+}
+
+/**
+ * Full registration flow: permission → Expo push token → persist locally →
+ * POST `/devices/tokens`. Returns a status so callers can show the right UI
+ * instead of guessing why push is off.
+ *
+ * Honors an explicit opt-out from Settings — this used to run unconditionally
+ * on every authenticated launch, so turning push off only lasted until the
+ * next app start.
+ */
+export async function ensurePushRegistration(
+  options: { force?: boolean } = {}
+): Promise<PushRegistrationResult> {
+  if (!Notifications) {
+    return { status: 'unsupported', token: null };
+  }
+  // Simulators cannot receive remote push — skip before hitting Expo's API.
+  if (!Device.isDevice) {
+    return { status: 'no-device', token: null };
+  }
+  // The Settings toggle is a deliberate choice; re-enabling there passes
+  // `force: true`.
+  if (!options.force && (await isPushOptedOut())) {
+    return { status: 'opted-out', token: null };
+  }
   try {
     const perms = (await Notifications.getPermissionsAsync()) as { status: string };
     let finalStatus = perms.status;
@@ -57,7 +142,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     if (finalStatus !== 'granted') {
-      return null;
+      return { status: 'denied', token: null };
     }
 
     const projectId = resolveProjectId();
@@ -82,17 +167,25 @@ export async function registerForPushNotifications(): Promise<string | null> {
     // logout even if getExpoPushTokenAsync() fails (revoked permissions).
     await setExpoPushToken(token.data);
 
-    return token.data;
+    await sendTokenToServer(token.data);
+
+    return { status: 'registered', token: token.data };
   } catch {
-    return null;
+    return { status: 'failed', token: null };
   }
+}
+
+/** Legacy alias — returns just the token (or null) for existing callers. */
+export async function registerForPushNotifications(): Promise<string | null> {
+  const result = await ensurePushRegistration();
+  return result.token;
 }
 
 export async function sendTokenToServer(expoPushToken: string): Promise<void> {
   try {
-    await apiClient.client.post('/devices/tokens', {
+    await notificationsAPI.registerDevice({
       token: expoPushToken,
-      platform: Platform.OS,
+      platform: toServerPlatform(),
     });
   } catch {
     // Silent fail — will retry on next app launch
@@ -129,14 +222,22 @@ export async function getNotificationPermissions(): Promise<boolean> {
   return perms.status === 'granted';
 }
 
-function handleNotificationResponse(response: any) {
-  const data = response.notification.request.content.data as NotificationData;
+function handleNotificationResponse(response: any, hooks: NotificationListenerHooks = {}) {
+  const data = response?.notification?.request?.content?.data as NotificationData;
 
   if (!data) return;
 
+  // Mark the tapped notification read so the badge/list converge even if the
+  // user backs out before the Notifications screen mounts.
+  if (data.notificationId) {
+    void notificationsAPI.markAsRead(data.notificationId).catch(() => {});
+    void syncBadgeFromServer().catch(() => {});
+  }
+
   const route = resolveRoute(data);
   if (route) {
-    router.push(route);
+    router.push(route as any);
+    hooks.onNavigate?.(route, data);
   }
 }
 
@@ -237,21 +338,105 @@ function resolveRoute(data: NotificationData): string | null {
 }
 
 let responseListener: any = null;
+let receivedListener: any = null;
 
-export function setupNotificationListeners() {
+export interface NotificationListenerHooks {
+  /** Called with the raw push/notification data when one arrives in foreground. */
+  onReceived?: (data: NotificationData) => void;
+  /** Called with the resolved route after a tap navigates. */
+  onNavigate?: (route: string, data: NotificationData) => void;
+}
+
+/**
+ * Full listener setup:
+ * - tap (push or in-app) → resolve `screen`/`link`/`module` → `router.push`
+ * - foreground arrival → optional toast hook + app-badge sync
+ * - cold start (app killed → opened from push) → same tap navigation
+ *
+ * Returns a cleanup function. Safe to call on web/Expo Go (no-op).
+ */
+export function setupNotificationListeners(hooks: NotificationListenerHooks = {}) {
   if (!Notifications) return () => {};
-  if (responseListener) {
-    responseListener.remove();
-  }
+  teardownNotificationListeners();
 
   responseListener = Notifications.addNotificationResponseReceivedListener(
-    handleNotificationResponse
+    (response: any) => handleNotificationResponse(response, hooks)
   );
 
-  return () => {
-    if (responseListener) {
-      responseListener.remove();
-      responseListener = null;
+  receivedListener = Notifications.addNotificationReceivedListener(
+    (notification: any) => handleNotificationReceived(notification, hooks)
+  );
+
+  // Cold start: the OS delivers the tap response before React mounts.
+  // `getLastNotificationResponseAsync` replays it so the deep link still fires.
+  void Notifications.getLastNotificationResponseAsync().then((response: any) => {
+    if (response) handleNotificationResponse(response, hooks);
+  }).catch(() => {});
+
+  return () => teardownNotificationListeners();
+}
+
+/** Remove every listener this module installed (logout / unmount). */
+export function teardownNotificationListeners() {
+  if (responseListener) {
+    try { responseListener.remove(); } catch {}
+    responseListener = null;
+  }
+  if (receivedListener) {
+    try { receivedListener.remove(); } catch {}
+    receivedListener = null;
+  }
+}
+
+async function handleNotificationReceived(notification: any, hooks: NotificationListenerHooks) {
+  try {
+    const content = notification?.request?.content ?? {};
+    const data: NotificationData = {
+      ...(content.data ?? {}),
+      // Lift the display fields Expo keeps alongside `data` so consumers can
+      // render the real title instead of the generic fallback.
+      title: content.title ?? undefined,
+      body: content.body ?? undefined,
+    };
+    hooks.onReceived?.(data);
+    // Foreground push carries no server unread count, so reconcile against
+    // the source of truth instead of incrementing blindly.
+    await syncBadgeFromServer().catch(() => {});
+  } catch {}
+}
+
+/**
+ * Keep the OS app badge in step with the server unread count.
+ * Pass `userId` explicitly when calling outside an authenticated context;
+ * otherwise it is read from the redux store.
+ */
+export async function syncBadgeFromServer(userId?: string): Promise<number> {
+  if (!Notifications) return 0;
+  try {
+    let uid = userId;
+    if (!uid) {
+      try {
+        const { store } = require('../store/store');
+        uid = store?.getState?.()?.auth?.user?.id ?? undefined;
+      } catch {}
     }
-  };
+    if (!uid) {
+      await Notifications.setBadgeCountAsync(0).catch(() => {});
+      return 0;
+    }
+    const res = await notificationsAPI.unreadCount(uid);
+    const count = Number((res.data as any)?.count ?? 0) || 0;
+    await Notifications.setBadgeCountAsync(count).catch(() => {});
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+/** Clear the OS badge (logout / mark-all-read paths). */
+export async function clearBadge(): Promise<void> {
+  if (!Notifications) return;
+  try {
+    await Notifications.setBadgeCountAsync(0);
+  } catch {}
 }

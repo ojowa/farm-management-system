@@ -401,11 +401,8 @@ export class PrismaLeaveRequestRepository implements LeaveRequestRepository {
     const where: any = { organizationId };
     if (filters?.status) where.status = filters.status;
     if (filters?.userId) where.userId = filters.userId;
-    if (filters?.startDate || filters?.endDate) {
-      where.startDate = {};
-      if (filters.startDate) where.startDate.gte = filters.startDate;
-      if (filters.endDate) where.endDate.lte = filters.endDate;
-    }
+    if (filters?.startDate) where.startDate = { ...(where.startDate || {}), gte: filters.startDate };
+    if (filters?.endDate) where.endDate = { ...(where.endDate || {}), lte: filters.endDate };
 
     return prisma.leaveRequest.findMany({
       where,

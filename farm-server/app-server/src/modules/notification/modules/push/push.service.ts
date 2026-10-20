@@ -35,6 +35,12 @@ export class PushService {
 
     let successCount = 0;
     for (const device of tokens) {
+      // Skip malformed rows (e.g. web handles stored before push existed) —
+      // Expo rejects them and the old code deactivated nothing, looping 500s.
+      if (!device.token || !device.token.startsWith('ExponentPushToken[')) {
+        this.logger.debug(`Skipping non-Expo token for user ${userId} (device ${device.id})`);
+        continue;
+      }
       try {
         await this.sendToDevice(device.token, payload);
         successCount++;
@@ -50,35 +56,43 @@ export class PushService {
   }
 
   async sendToDevice(token: string, payload: PushPayload): Promise<void> {
-    if (this.expoAccessToken) {
-      const message = {
-        to: token,
-        sound: 'default',
-        title: payload.title,
-        body: payload.body,
-        icon: payload.icon,
-        badge: payload.badge ? parseInt(payload.badge, 10) : undefined,
-        data: payload.data,
-      };
+    // Expo's push API accepts unauthenticated sends for low volume; the
+    // access token only raises rate limits. Gate on nothing so push works
+    // out of the box — with or without EXPO_ACCESS_TOKEN.
+    const message = {
+      to: token,
+      sound: 'default',
+      title: payload.title,
+      body: payload.body,
+      icon: payload.icon,
+      badge: payload.badge ? parseInt(payload.badge, 10) : undefined,
+      data: payload.data,
+    };
 
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.expoAccessToken ? { Authorization: `Bearer ${this.expoAccessToken}` } : {}),
-        },
-        body: JSON.stringify(message),
-      });
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+        ...(this.expoAccessToken ? { Authorization: `Bearer ${this.expoAccessToken}` } : {}),
+      },
+      body: JSON.stringify(message),
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Expo push failed (${response.status}): ${errorText}`);
-      }
-
-      this.logger.debug(`Push notification sent to ${token.substring(0, 10)}...`);
-    } else {
-      this.logger.log(`[PUSH LOG] To: ${token.substring(0, 10)}... | Title: ${payload.title}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Expo push failed (${response.status}): ${errorText}`);
     }
+
+    const ticket: any = await response.json().catch(() => null);
+    const status = ticket?.data?.status;
+    if (status && status !== 'ok') {
+      const details = ticket?.data?.message ?? ticket?.data?.details ?? JSON.stringify(ticket?.data);
+      throw new Error(`Expo push ticket ${status}: ${details}`);
+    }
+
+    this.logger.debug(`Push notification sent to ${token.substring(0, 10)}...`);
   }
 
   async sendBulkNotifications(userIds: string[], payload: PushPayload): Promise<number> {
@@ -93,26 +107,38 @@ export class PushService {
   async sendLeaveApprovalPush(
     userId: string,
     leaveType: string,
-    days: number
+    days: number,
+    notificationId?: string
   ): Promise<number> {
     return this.sendToUser(userId, {
       title: 'Leave Approved',
       body: `Your ${leaveType} request for ${days} day(s) has been approved.`,
       icon: '/icons/success-icon.png',
-      data: { type: 'leave-approved', link: '/hr/leave' },
+      data: {
+        type: 'leave-approved',
+        link: '/hr/leave',
+        // Tap handlers mark the row read via this id — absent, the badge
+        // stayed out of step until the Notifications screen was opened.
+        notificationId: notificationId || '',
+      },
     });
   }
 
   async sendLeaveRejectionPush(
     userId: string,
     leaveType: string,
-    days: number
+    days: number,
+    notificationId?: string
   ): Promise<number> {
     return this.sendToUser(userId, {
       title: 'Leave Rejected',
       body: `Your ${leaveType} request for ${days} day(s) has been rejected.`,
       icon: '/icons/alert-icon.png',
-      data: { type: 'leave-rejected', link: '/hr/leave' },
+      data: {
+        type: 'leave-rejected',
+        link: '/hr/leave',
+        notificationId: notificationId || '',
+      },
     });
   }
 
@@ -120,21 +146,28 @@ export class PushService {
     userId: string,
     senderName: string,
     subject: string,
-    priority: string
+    priority: string,
+    notificationId?: string
   ): Promise<number> {
     const priorityPrefix = priority === 'URGENT' ? '[URGENT] ' : priority === 'HIGH' ? '[HIGH] ' : '';
     return this.sendToUser(userId, {
       title: `${priorityPrefix}New message from ${senderName}`,
       body: subject,
       icon: '/icons/message-icon.png',
-      data: { type: 'new-message', link: '/messages' },
+      data: {
+        type: 'new-message',
+        link: '/messages',
+        notificationId: notificationId || '',
+      },
     });
   }
 
   private isTokenInvalid(error: any): boolean {
-    const message = error?.message || '';
-    return message.includes('InvalidCredentials') ||
-           message.includes('DeviceNotRegistered') ||
+    const message = String(error?.message || '');
+    return message.includes('DeviceNotRegistered') ||
+           message.includes('"status":"error"') ||
+           message.includes('Expo push ticket error') ||
+           message.includes('InvalidCredentials') ||
            message.includes('MessageTooBig') ||
            message.includes('MessageRateExceeded');
   }

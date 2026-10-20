@@ -133,8 +133,10 @@ export const logout = createAsyncThunk(
   async (_, { dispatch, rejectWithValue }) => {
     try {
       try {
-        const { unregisterFromNotifications } = await import('../../../services/notifications');
+        const { unregisterFromNotifications, teardownNotificationListeners, clearBadge } = await import('../../../services/notifications');
+        teardownNotificationListeners();
         await unregisterFromNotifications();
+        await clearBadge();
       } catch {
         // Non-critical — continue with logout even if unregister fails
       }

@@ -5,6 +5,10 @@ const keys = {
   refreshToken: 'refresh_token',
   mfaSession: 'mfa_session',
   expoPushToken: 'expo_push_token',
+  // Explicit opt-out from Settings → Push Notifications. Without this the
+  // app re-registered the Expo token on every authenticated launch and push
+  // switched itself back on after the user turned it off.
+  pushOptOut: 'push_opt_out',
 } as const;
 
 // Platform-aware storage helpers
@@ -82,6 +86,22 @@ export async function getStoredExpoPushToken(): Promise<string | null> {
 
 export async function deleteExpoPushToken(): Promise<void> {
   return removeItem(keys.expoPushToken);
+}
+
+/**
+ * Push opt-out survives restarts. `null` (never set) means "not opted out", so
+ * existing users keep receiving push after this flag was introduced.
+ */
+export async function getPushOptOut(): Promise<boolean> {
+  return (await getItem(keys.pushOptOut)) === 'true';
+}
+
+export async function setPushOptOut(optedOut: boolean): Promise<void> {
+  if (optedOut) {
+    await setItem(keys.pushOptOut, 'true');
+  } else {
+    await removeItem(keys.pushOptOut);
+  }
 }
 
 export async function clearAllSecure(): Promise<void> {

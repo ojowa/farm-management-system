@@ -19,14 +19,32 @@ import { useAuth, useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import {
-  registerForPushNotifications,
-  sendTokenToServer,
+  ensurePushRegistration,
   unregisterFromNotifications,
   getNotificationPermissions,
   setupNotificationListeners,
+  syncBadgeFromServer,
+  clearBadge,
+  setPushNotificationsEnabled,
+  isPushOptedOut,
 } from '@/modules/notification';
+import { authAPI } from '@/modules/auth';
 import { orgAdminAPI } from '@/modules/settings';
 import { describeApiError } from '@/core/utils/apiError';
+
+/**
+ * Mirror the push choice onto the server's notification preferences so the
+ * fan-out side (`NotificationApplicationService.triggerExternalNotifications`)
+ * stops sending to a user who turned push off. Purely best-effort: the local
+ * opt-out already stops registration, this only keeps the server in step.
+ */
+async function mirrorPushPreference(enabled: boolean): Promise<void> {
+  try {
+    await authAPI.updatePreferences({ pushNotifications: enabled });
+  } catch {
+    // Older servers may not expose /auth/preferences — non-fatal.
+  }
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -204,7 +222,10 @@ export default function SettingsScreen() {
   };
 
   const checkNotificationStatus = async () => {
-    const enabled = await getNotificationPermissions();
+    // The switch reflects what the user chose, not just the OS grant: an
+    // opt-out keeps OS permission "granted" but push is off.
+    const optedOut = await isPushOptedOut().catch(() => false);
+    const enabled = optedOut ? false : await getNotificationPermissions();
     setNotificationsEnabled(enabled);
   };
 
@@ -212,19 +233,45 @@ export default function SettingsScreen() {
     setLoadingNotifications(true);
     try {
       if (value) {
-        const token = await registerForPushNotifications();
-        if (token) {
-          await sendTokenToServer(token);
+        // Persist the re-enable BEFORE registering: ensurePushRegistration
+        // honors an opt-out, so the flag has to flip first.
+        await setPushNotificationsEnabled(true).catch(() => {});
+        // Full flow: permission → Expo token → POST /devices/tokens. `force`
+        // re-registers even though the persisted opt-out was just cleared.
+        const result = await ensurePushRegistration({ force: true });
+        await mirrorPushPreference(true);
+        if (result.status === 'registered') {
           setNotificationsEnabled(true);
-        } else {
+          await syncBadgeFromServer().catch(() => {});
+        } else if (result.status === 'denied') {
           Alert.alert(
             'Notifications',
             'Please enable notifications in your device settings to receive farm alerts.'
           );
           setNotificationsEnabled(false);
+        } else if (result.status === 'unsupported') {
+          Alert.alert(
+            'Notifications',
+            'Push notifications need a dev-client or production build (Expo Go cannot receive them). In-app and realtime alerts still work.'
+          );
+          setNotificationsEnabled(false);
+        } else if (result.status === 'no-device') {
+          Alert.alert(
+            'Notifications',
+            'Push notifications need a physical device — simulators cannot receive them.'
+          );
+          setNotificationsEnabled(false);
+        } else {
+          Alert.alert('Notifications', 'Could not enable push notifications. Please try again.');
+          setNotificationsEnabled(false);
         }
       } else {
+        // Opt out first so the next authenticated launch does not silently
+        // re-register the token and switch push back on.
+        await setPushNotificationsEnabled(false).catch(() => {});
+        await mirrorPushPreference(false);
         await unregisterFromNotifications();
+        await clearBadge();
         setNotificationsEnabled(false);
       }
     } finally {
