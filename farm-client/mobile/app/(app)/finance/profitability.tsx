@@ -12,6 +12,7 @@ import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { financeAPI } from '@/modules/finance';
 import { farmsAPI } from '@/modules/farm';
 import { formatCurrencyValue } from '../../../src/core/utils/currency';
+import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 export default function ProfitabilityScreen() {
@@ -31,9 +32,13 @@ export default function ProfitabilityScreen() {
         financeAPI.listSales(),
       ]);
 
-      const farmsList = farmsRes.status === 'fulfilled' ? (farmsRes.value?.data || []) : [];
-      const expensesList = expensesRes.status === 'fulfilled' ? (expensesRes.value?.data || []) : [];
-      const salesList = salesRes.status === 'fulfilled' ? (salesRes.value?.data || []) : [];
+      // farms answers `{ farms, total, data }`; expenses/sales answer
+      // `{ data, total, page, totalPages }`. All three are OBJECTS, so
+      // `.data || []` yielded the object and `.forEach` below threw a
+      // TypeError on every load.
+      const farmsList = farmsRes.status === 'fulfilled' ? unwrapList(farmsRes.value?.data) : [];
+      const expensesList = expensesRes.status === 'fulfilled' ? unwrapList(expensesRes.value?.data) : [];
+      const salesList = salesRes.status === 'fulfilled' ? unwrapList(salesRes.value?.data) : [];
 
       const farmMap: Record<string, { name: string; revenue: number; expenses: number }> = {};
       farmsList.forEach((f: any) => {

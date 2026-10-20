@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { inventoryAPI } from '@/modules/inventory';
 import { formatCurrencyFixed } from '../../../src/core/utils/currency';
+import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const LOW_STOCK_THRESHOLD = 10;
@@ -26,7 +27,12 @@ export default function LowStockScreen() {
   const loadItems = useCallback(async () => {
     try {
       const res = await inventoryAPI.list();
-      const list = res.data.items || res.data || [];
+      // GET /inventory answers `{ data, total, page, totalPages }`. The old
+      // `res.data.items || res.data || []` fell through both object branches
+      // (`items` is undefined, `res.data` is the paginated object) and handed
+      // `.filter` a non-array, which threw — silently swallowed by the empty
+      // catch, rendering a permanent "No low stock items".
+      const list = unwrapList(res?.data);
       const lowStock = list.filter(
         (item: any) => item.quantity <= (item.minQuantity ?? LOW_STOCK_THRESHOLD)
       );

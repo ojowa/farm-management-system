@@ -23,6 +23,7 @@ import { tasksAPI } from '@/modules/worker';
 import { workersAPI } from '@/modules/hr';
 import { offlineTasksAPI } from '@/modules/worker';
 import { describeApiError } from '@/core/utils/apiError';
+import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
@@ -235,7 +236,10 @@ export default function TasksScreen() {
       if (filter !== 'all') params.status = filter.toUpperCase();
       if (recurringOnly) params.isRecurring = true;
       const res = await offlineTasksAPI.list(params);
-      setTasks(res.data || []);
+      // GET /tasks answers `{ data, stats }` (hr.service.ts:896) — an object,
+      // not a bare array. `res.data || []` therefore yielded the object and the
+      // FlatList renderItem crashed. Normalize.
+      setTasks(unwrapList(res?.data));
     } catch (err: any) {
       // Surface the failure — a silent catch renders as a false "No tasks".
       setLoadError(describeApiError(err, "Couldn't load tasks"));

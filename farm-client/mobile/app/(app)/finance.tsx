@@ -20,6 +20,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { unwrapList } from '@/core/utils/listPayload';
 import { transformExpense, transformSale, RawExpense, RawSale } from '@/core/utils/entityTransformers';
 import { setFinanceFilter } from '@/store/slices/uiSlice';
 import { formatCurrencyFixed } from '@/core/utils/currency';
@@ -218,7 +219,10 @@ export default function FinanceScreen() {
         if (financeFilter.dateTo) params.dateTo = financeFilter.dateTo;
 
         const response = await offlineFinanceAPI.list(params);
-        const rawItems: any[] = response?.data || [];
+        // The finance list endpoint answers `{ data, total, page, totalPages }`
+        // (prisma-finance.repository.ts:38) — an object, not a bare array.
+        // `response?.data || []` therefore yielded the object and `.map` threw.
+        const rawItems: any[] = unwrapList(response?.data);
         const items: Transaction[] = rawItems.map((item) =>
           item.item !== undefined || item.quantity !== undefined
             ? transformSale(item as RawSale)

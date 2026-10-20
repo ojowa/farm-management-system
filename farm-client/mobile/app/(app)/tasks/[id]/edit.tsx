@@ -18,6 +18,7 @@ import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
@@ -150,7 +151,10 @@ export default function TaskEditScreen() {
   useEffect(() => {
     workersAPI
       .list()
-      .then((res) => setWorkers(res.data || []))
+      // Workers currently answer a bare array, so `res.data || []` works today.
+      // unwrapList passes arrays through unchanged and shields this dropdown
+      // if the endpoint is ever paginated like the rest.
+      .then((res) => setWorkers(unwrapList<any>(res?.data)))
       .catch(() => {
         if (__DEV__) console.warn('[TaskEdit] Failed to load workers');
       });

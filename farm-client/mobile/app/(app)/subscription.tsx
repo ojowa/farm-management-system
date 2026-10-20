@@ -9,6 +9,7 @@ import { subscriptionAPI } from '@/modules/settings';
 import { Card, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
+import { unwrapList } from '@/core/utils/listPayload';
 
 interface PlanFeatures {
   modules: string[];
@@ -169,7 +170,10 @@ export default function SubscriptionScreen() {
         subscriptionAPI.payments(15).catch(() => null),
       ]);
       setSubscription(snapshot.data);
-      setPlans(((planList.data as any[]) || []).map(normalizePlan));
+      // Plans currently answer a bare array; unwrapList keeps `.map` safe if
+      // the endpoint is ever paginated like the other list endpoints.
+      setPlans(unwrapList<any>(planList?.data).map(normalizePlan));
+      // History is already read by its explicit key: `{ payments, total }`.
       setPayments(((paymentsRes?.data as any)?.payments as PaymentRow[]) || []);
     } catch (err) {
       setLoadError(describeApiError(err, 'Could not load your subscription.'));

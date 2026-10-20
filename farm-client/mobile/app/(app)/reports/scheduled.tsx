@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { reportsAPI } from '@/modules/reporting';
+import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,7 +40,12 @@ export default function ScheduledReportsScreen() {
   const loadReports = useCallback(async () => {
     try {
       const res = await reportsAPI.list();
-      const list = res.data || [];
+      // GET /reports answers `{ data: { reports, total, page, totalPages } }`
+      // (report.controller.ts:60 → prisma-report.repository.ts:51) — the rows
+      // are TWO levels down and wrapped again. `res.data || []` yielded the
+      // `{ reports }` object and `.filter` threw. unwrapList recurses to find
+      // the array under `.data.reports`.
+      const list = unwrapList(res?.data);
       const scheduled = list.filter((r: any) =>
         r.frequency || r.status === 'active' || r.status === 'paused' || r.scheduled
       );

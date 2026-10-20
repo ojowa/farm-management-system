@@ -26,6 +26,9 @@ import { Card } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+// Shared across every screen that reads a list payload — see the module doc
+// for why each endpoint answers a different shape.
+import { unwrapList, totalOf } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { formatCurrency } from '@/core/utils/currency';
 
@@ -67,42 +70,6 @@ const QUICK_ACTIONS = [
   { key: 'finance', label: 'Record Transaction', icon: '💰', route: '/finance/add', permission: 'finance.write' },
   { key: 'worker', label: 'Add Worker', icon: '👷', route: '/workers/add', permission: 'hr.write' },
 ];
-
-/**
- * List endpoints disagree on their answer shape, and this screen reads all of
- * them:
- *
- *   - livestock / poultry  → `{ data, total }`  (PaginatedResult)
- *   - farms / crops        → `{ farms, total, data }` / `{ crops, total, data }`
- *   - sales / expenses     → bare array
- *
- * Reading `.data || []` off a `{ data, total }` body yields the OBJECT, so
- * `farms.filter(...)` / `livestock.reduce(...)` threw a TypeError on every
- * single load. That exception escaped into the catch block and surfaced as the
- * full-screen "Couldn't load your dashboard" — which is why the error looked
- * permanent even though every request had succeeded. Normalize instead.
- */
-function unwrapList(payload: any): any[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.farms)) return payload.farms;
-  if (Array.isArray(payload?.crops)) return payload.crops;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.records)) return payload.records;
-  return [];
-}
-
-/**
- * Server pagination total when the body carries one, else the rows we loaded.
- * `res.value` is the axios response, so `total` lives on `value.data.total` —
- * reading it off `value` directly always fell through to the array length.
- */
-function totalOf(res: PromiseSettledResult<any>, list: any[]): number {
-  if (res.status !== 'fulfilled') return list.length;
-  const body = res.value?.data;
-  const total = body?.total ?? res.value?.total;
-  return Number.isFinite(total) ? total : list.length;
-}
 
 export default function DashboardScreen() {
   const router = useRouter();
