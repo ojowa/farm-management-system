@@ -24,7 +24,7 @@ function run(label, cmd, args, opts = {}) {
 }
 
 async function main() {
-  if (!process.env.CORS_ORIGINS) process.env.CORS_ORIGINS = 'http://localhost:4002,http://localhost:4003,http://localhost:8082';
+  if (!process.env.CORS_ORIGINS) process.env.CORS_ORIGINS = 'http://localhost:4002,http://localhost:4003,http://localhost:8081,http://localhost:8082,http://localhost:19006';
   if (!process.env.SERVICE_SECRET) {
     console.error('ERROR: SERVICE_SECRET environment variable is required. Set it in farm-server/.env');
     process.exit(1);
