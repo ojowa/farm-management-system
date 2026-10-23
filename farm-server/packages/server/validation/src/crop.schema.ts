@@ -25,3 +25,23 @@ export const updateCropCycleSchema = z.object({
   health: z.number().min(0).max(100).optional(),
   status: z.string().optional(),
 });
+
+const stageDate = z
+  .string()
+  .datetime()
+  .or(z.date())
+  .or(z.string().regex(/^\d{4}-\d{2}-\d{2}/));
+
+export const createCropStageSchema = z.object({
+  stage: z.string().min(2).max(50),
+  startDate: stageDate,
+  endDate: stageDate.nullish(),
+  notes: z.string().max(2000).nullish(),
+});
+
+export const updateCropStageSchema = z.object({
+  stage: z.string().min(2).max(50).optional(),
+  startDate: stageDate.optional(),
+  endDate: stageDate.nullish(),
+  notes: z.string().max(2000).nullish(),
+});

@@ -14,7 +14,9 @@ export interface LivestockRepository {
   delete(id: string): Promise<void>;
   // Ownership checks: the FKs only prove the parent exists, not that it is
   // inside the caller's organization.
-  getFarmById(id: string, organizationId: string): Promise<{ id: string } | null>;
+  // farmType is selected so the service can enforce the LIVESTOCK/DAIRY
+  // module boundary (L1).
+  getFarmById(id: string, organizationId: string): Promise<{ id: string; farmType: string | null } | null>;
   getFlockById(id: string, organizationId: string): Promise<{ id: string } | null>;
 }
 

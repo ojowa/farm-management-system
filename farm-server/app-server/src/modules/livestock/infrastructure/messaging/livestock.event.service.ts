@@ -6,15 +6,18 @@ import { Livestock } from '../../domain/entities/livestock.entity';
 export class LivestockEventService {
   constructor(private readonly events: EventBus) {}
 
+  // S4: every event carries the owning organizationId so realtime/websocket
+  // fan-out never crosses tenant boundaries (delete events used to omit it).
+
   emitLivestockCreatedEvent(livestock: Livestock) {
-    this.events.emitDomainEvent('livestock', 'created', livestock);
+    this.events.emitDomainEvent('livestock', 'created', livestock, livestock.organizationId);
   }
 
   emitLivestockUpdatedEvent(livestock: Livestock) {
-    this.events.emitDomainEvent('livestock', 'updated', livestock);
+    this.events.emitDomainEvent('livestock', 'updated', livestock, livestock.organizationId);
   }
 
-  emitLivestockDeletedEvent(livestockId: string) {
-    this.events.emitDomainEvent('livestock', 'deleted', { id: livestockId });
+  emitLivestockDeletedEvent(livestockId: string, organizationId?: string) {
+    this.events.emitDomainEvent('livestock', 'deleted', { id: livestockId }, organizationId);
   }
 }

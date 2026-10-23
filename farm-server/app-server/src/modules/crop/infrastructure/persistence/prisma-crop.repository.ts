@@ -4,8 +4,11 @@ import { CropRepository, CropCycleRepository } from '../../domain/repositories/c
 import { Crop, CropCycle } from '../../domain/entities/crop.entity';
 import { safeOrderBy } from '../../../../common/sort';
 
-const CROP_SORTABLE = ['id', 'name'] as const;
-const CROP_CYCLE_SORTABLE = ['id', 'status', 'startDate', 'endDate', 'createdAt'] as const;
+const CROP_SORTABLE = ['id', 'name', 'createdAt'] as const;
+// plantingDate/harvestDate are the real columns; the old list had
+// startDate/endDate (which don't exist on CropCycle) so calendar date sorts
+// silently fell back.
+const CROP_CYCLE_SORTABLE = ['id', 'status', 'health', 'plantingDate', 'harvestDate', 'createdAt', 'updatedAt'] as const;
 
 @Injectable()
 export class PrismaCropRepository implements CropRepository {
@@ -21,7 +24,9 @@ export class PrismaCropRepository implements CropRepository {
     filter?: { name?: string };
   }): Promise<{ crops: Crop[]; total: number }> {
     const { sortBy = 'name', sortOrder = 'desc', page = 1, limit = 10, filter = {} } = options || {};
-    const skip = (page - 1) * limit;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 500) : 10;
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+    const skip = (safePage - 1) * safeLimit;
 
     const where: any = {};
     if (filter.name) {
@@ -36,7 +41,7 @@ export class PrismaCropRepository implements CropRepository {
         where,
         orderBy: safeOrderBy(sortBy, sortOrder, CROP_SORTABLE, 'name'),
         skip,
-        take: limit,
+        take: safeLimit,
       }),
       prisma.crop.count({ where }),
     ]);
@@ -71,28 +76,42 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
-    filter?: { fieldId?: string; cropId?: string; status?: string };
+    filter?: { fieldId?: string; cropId?: string; status?: string; farmId?: string };
   }): Promise<{ cycles: CropCycle[]; total: number }> {
     const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 20, filter = {} } = options || {};
-    const skip = (page - 1) * limit;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 500) : 20;
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+    const skip = (safePage - 1) * safeLimit;
 
     const where: any = { organizationId };
     if (filter.fieldId) where.fieldId = filter.fieldId;
     if (filter.cropId) where.cropId = filter.cropId;
     if (filter.status) where.status = filter.status;
+    // Cycles live on a field, which lives on a farm — farm filtering happens
+    // through the relation (the calendar endpoint accepts farmId).
+    if (filter.farmId) where.field = { farmId: filter.farmId };
 
     const [cycles, total] = await Promise.all([
       prisma.cropCycle.findMany({
         where,
-        include: { crop: true, field: true },
+        // S5: relation reads are soft-delete-aware at the top level only, so
+        // filter the nested rows explicitly — a cycle on a soft-deleted field
+        // (or farm) must not resurface through an include.
+        include: {
+          crop: true,
+          field: { include: { farm: { select: { id: true, name: true, deletedAt: true } } } },
+        },
         orderBy: safeOrderBy(sortBy, sortOrder, CROP_CYCLE_SORTABLE, 'createdAt'),
         skip,
-        take: limit,
+        take: safeLimit,
       }),
       prisma.cropCycle.count({ where }),
     ]);
 
-    return { cycles, total };
+    return {
+      cycles: cycles.filter((cycle: any) => cycle.field && !cycle.field.deletedAt && !cycle.field.farm?.deletedAt),
+      total,
+    };
   }
 
   async create(data: Omit<CropCycle, 'id' | 'createdAt' | 'updatedAt'>): Promise<CropCycle> {
@@ -103,16 +122,19 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
         cropId: data.cropId,
         plantingDate: data.plantingDate,
         harvestDate: data.harvestDate,
+        // C5: the zod schema accepts `health` but the service/repository used
+        // to drop it, so every cycle was silently created at the 100 default.
+        health: data.health ?? 100,
         status: data.status,
       } as any,
       include: { crop: true, field: true },
     });
   }
 
-  async update(id: string, data: Partial<Pick<CropCycle, 'fieldId' | 'cropId' | 'plantingDate' | 'harvestDate' | 'status'>>): Promise<CropCycle> {
+  async update(id: string, data: Partial<Pick<CropCycle, 'fieldId' | 'cropId' | 'plantingDate' | 'harvestDate' | 'health' | 'status'>>): Promise<CropCycle> {
     return prisma.cropCycle.update({
       where: { id },
-      data,
+      data: data as any,
       include: { crop: true, field: true },
     });
   }

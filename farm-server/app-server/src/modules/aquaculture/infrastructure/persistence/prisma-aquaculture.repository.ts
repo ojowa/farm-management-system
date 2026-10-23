@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { scopedPrisma as prisma } from '@farm/database';
+import { safeOrderBy } from '../../../../common/sort';
 import {
   AquacultureRepository,
   PondFilter,
@@ -17,6 +18,10 @@ import {
   PondWaterQuality,
   PondHarvest,
 } from '../../domain/entities/aquaculture.entity';
+
+// S3: the pond list passed `{ [sortBy]: sortOrder }` straight into orderBy, so
+// `?sortBy=__proto__` (or any typo) crashed Prisma with a 500.
+const POND_SORTABLE = ['id', 'farmId', 'name', 'pondType', 'area', 'capacity', 'status', 'createdAt', 'updatedAt'] as const;
 
 @Injectable()
 export class PrismaAquacultureRepository implements AquacultureRepository {
@@ -43,7 +48,7 @@ export class PrismaAquacultureRepository implements AquacultureRepository {
     const [data, total] = await Promise.all([
       prisma.pond.findMany({
         where,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: safeOrderBy(sortBy, sortOrder, POND_SORTABLE, 'createdAt'),
         skip,
         take: limit,
       }),

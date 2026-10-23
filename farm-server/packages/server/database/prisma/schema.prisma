@@ -1341,7 +1341,7 @@ model VaccinationSchedule {
   vaccineName      String
   scheduledDate    DateTime
   administeredDate DateTime?
-  status           String    @default("SCHEDULED") // SCHEDULED, ADMINISTERD, MISSED, CANCELLED
+  status           String    @default("SCHEDULED") // SCHEDULED, ADMINISTERED, MISSED, CANCELLED
   notes            String?
   createdById      String?
   createdByName    String?

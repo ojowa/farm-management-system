@@ -40,7 +40,8 @@ function parsePagination(
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   return {
     page: parsedPage && parsedPage > 0 ? parsedPage : undefined,
-    limit: parsedLimit && parsedLimit > 0 ? parsedLimit : undefined,
+    // Clamp so `?limit=999999999` can't ask Postgres for a billion rows.
+    limit: parsedLimit && parsedLimit > 0 ? Math.min(parsedLimit, 500) : undefined,
     sortBy: sortBy || undefined,
     sortOrder: sortOrder === 'asc' || sortOrder === 'desc' ? sortOrder : undefined,
   };

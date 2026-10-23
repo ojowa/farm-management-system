@@ -1,7 +1,20 @@
-import { Inject,  Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { CropRepository, CropCycleRepository } from '../../domain/repositories/crop.repository';
 import { CropEventService } from '../../infrastructure/messaging/crop.event.service';
 
+function parseDate(value: Date | string | null | undefined, field: string): Date | null {
+  if (value === undefined || value === null) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(`"${field}" must be a valid date`);
+  }
+  return date;
+}
+
+/**
+ * All organization scoping is derived from the CALLER (the controller passes
+ * the JWT's organizationId). Client-supplied ids are never trusted as scope.
+ */
 @Injectable()
 export class CropApplicationService {
   constructor(@Inject('CropRepository') private readonly cropRepo: CropRepository, @Inject('CropCycleRepository') private readonly cropCycleRepo: CropCycleRepository, 
@@ -42,8 +55,19 @@ export class CropApplicationService {
 
   async deleteCrop(id: string) {
     await this.getCropById(id);
+    try {
+      await this.cropRepo.delete(id);
+    } catch (error) {
+      // Crop cycles reference the catalog row with no cascade — a crop that
+      // is planted anywhere can't be removed. Surface that as a conflict
+      // instead of a raw Prisma 500 (P2003).
+      if (error && typeof error === 'object' && (error as { code?: string }).code === 'P2003') {
+        throw new ConflictException('Crop is in use by one or more crop cycles and cannot be removed.');
+      }
+      throw error;
+    }
+    // Only announce the deletion once the row is actually gone.
     await this.eventService.emitCropDeletedEvent(id);
-    return this.cropRepo.delete(id);
   }
 
   async createCropCycle(organizationId: string, data: {
@@ -51,6 +75,7 @@ export class CropApplicationService {
     cropId: string;
     plantingDate: Date | string;
     harvestDate?: Date | string | null;
+    health?: number;
     status?: string;
   }) {
     this.requireOrg(organizationId);
@@ -59,12 +84,12 @@ export class CropApplicationService {
       throw new BadRequestException('Unknown field');
     }
 
-    const plantingDate = typeof data.plantingDate === 'string' ? new Date(data.plantingDate) : data.plantingDate;
-    const harvestDate = data.harvestDate
-      ? typeof data.harvestDate === 'string'
-        ? new Date(data.harvestDate)
-        : data.harvestDate
-      : null;
+    const plantingDate = parseDate(data.plantingDate, 'plantingDate');
+    if (!plantingDate) throw new BadRequestException('"plantingDate" is required');
+    const harvestDate = parseDate(data.harvestDate, 'harvestDate');
+    if (harvestDate && harvestDate < plantingDate) {
+      throw new BadRequestException('"harvestDate" cannot precede "plantingDate"');
+    }
 
     const cycle = await this.cropCycleRepo.create({
       organizationId,
@@ -72,7 +97,9 @@ export class CropApplicationService {
       cropId: data.cropId,
       plantingDate,
       harvestDate,
-      status: data.status || 'active',
+      // C5: honor the caller-supplied health score instead of dropping it.
+      health: data.health ?? 100,
+      status: data.status || 'growing',
     });
 
     await this.eventService.emitCropCycleCreatedEvent(cycle);
@@ -91,10 +118,93 @@ export class CropApplicationService {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
-    filter?: { fieldId?: string; cropId?: string; status?: string };
+    filter?: { fieldId?: string; cropId?: string; status?: string; farmId?: string };
   }) {
     const { organizationId, ...rest } = options;
     return this.cropCycleRepo.findAll(organizationId, rest);
+  }
+
+  /**
+   * C4: the calendar used to return the raw cycle page (`{ cycles, total }`)
+   * while both clients render `{ data: CalendarStage[] }` with
+   * `cropName`/`stageName`/`startDate`/`endDate` — so both calendars were
+   * permanently empty. Derive real calendar entries from the org's crop
+   * cycles: one bar per planting spanning plantingDate → harvestDate,
+   * filtered to the requested month/date window (overlap semantics, so
+   * ongoing plantings show up all month) and limited to a sane ceiling.
+   */
+  async getCalendarStages(organizationId: string, params: {
+    farmId?: string;
+    month?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }) {
+    this.requireOrg(organizationId);
+
+    let windowStart: Date | null = null;
+    let windowEnd: Date | null = null;
+    if (params.month) {
+      const match = /^(\d{4})-(\d{2})$/.exec(params.month);
+      if (!match) throw new BadRequestException('"month" must be formatted YYYY-MM');
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      if (month < 1 || month > 12) throw new BadRequestException('"month" must be between 01 and 12');
+      windowStart = new Date(year, month - 1, 1);
+      windowEnd = new Date(year, month, 0, 23, 59, 59, 999);
+    } else {
+      windowStart = parseDate(params.startDate, 'startDate');
+      windowEnd = parseDate(params.endDate, 'endDate');
+    }
+    if (windowStart && windowEnd && windowEnd < windowStart) {
+      throw new BadRequestException('"endDate" cannot precede "startDate"');
+    }
+
+    const requestedLimit = Number(params.limit);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.min(requestedLimit, 500) : 500;
+    const { cycles } = await this.cropCycleRepo.findAll(organizationId, {
+      page: 1,
+      limit,
+      filter: { farmId: params.farmId },
+    });
+
+    const dayString = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+    const stages = cycles
+      .filter((cycle: any) => {
+        // Overlap: the planting starts inside the window, or is still running
+        // when the window opens (open-ended harvest counts as ongoing).
+        if (windowEnd && cycle.plantingDate > windowEnd) return false;
+        if (windowStart && cycle.harvestDate && cycle.harvestDate < windowStart) return false;
+        return true;
+      })
+      .map((cycle: any) => {
+        const field = cycle.field as any;
+        const startDate = new Date(cycle.plantingDate);
+        const rawEnd = cycle.harvestDate ? new Date(cycle.harvestDate) : null;
+        // Open-ended cycles (no harvest date yet) render through the end of
+        // the requested window — or as a single-day bar when no window given.
+        const endDate = rawEnd && (!windowEnd || rawEnd <= windowEnd) ? rawEnd : (windowEnd ?? startDate);
+        return {
+          id: `cycle-${cycle.id}`,
+          cropCycleId: cycle.id,
+          cropId: cycle.cropId,
+          cropName: cycle.crop?.name ?? 'Unknown crop',
+          fieldId: cycle.fieldId,
+          fieldName: field?.name ?? null,
+          farmId: field?.farmId ?? null,
+          farmName: field?.farm?.name ?? null,
+          stageName: cycle.status ?? 'growing',
+          status: cycle.status ?? 'growing',
+          health: cycle.health ?? 100,
+          startDate: dayString(startDate),
+          endDate: dayString(endDate),
+        };
+      })
+      .sort((a: any, b: any) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0));
+
+    return { data: stages, total: stages.length };
   }
 
   async updateCropCycle(organizationId: string, id: string, data: Partial<{
@@ -102,9 +212,10 @@ export class CropApplicationService {
     cropId: string;
     plantingDate: Date | string;
     harvestDate: Date | string | null;
+    health: number;
     status: string;
   }>) {
-    await this.getCropCycleById(organizationId, id);
+    const existing = await this.getCropCycleById(organizationId, id);
 
     if (data.cropId) {
       await this.getCropById(data.cropId);
@@ -117,15 +228,20 @@ export class CropApplicationService {
     if (data.fieldId) updateData.fieldId = data.fieldId;
     if (data.cropId) updateData.cropId = data.cropId;
     if (data.status) updateData.status = data.status;
-    if (data.plantingDate) {
-      updateData.plantingDate = typeof data.plantingDate === 'string' ? new Date(data.plantingDate) : data.plantingDate;
+    // C5: the health score was accepted by the schema then silently dropped.
+    if (data.health !== undefined) updateData.health = data.health;
+    if (data.plantingDate !== undefined) {
+      const plantingDate = parseDate(data.plantingDate, 'plantingDate');
+      if (!plantingDate) throw new BadRequestException('"plantingDate" is required');
+      updateData.plantingDate = plantingDate;
     }
     if (data.harvestDate !== undefined) {
-      updateData.harvestDate = data.harvestDate === null
-        ? null
-        : typeof data.harvestDate === 'string'
-          ? new Date(data.harvestDate)
-          : data.harvestDate;
+      updateData.harvestDate = parseDate(data.harvestDate, 'harvestDate');
+    }
+    const effectivePlanting = updateData.plantingDate ?? existing.plantingDate;
+    const effectiveHarvest = 'harvestDate' in updateData ? updateData.harvestDate : existing.harvestDate;
+    if (effectiveHarvest && effectiveHarvest < effectivePlanting) {
+      throw new BadRequestException('"harvestDate" cannot precede "plantingDate"');
     }
 
     const updatedCycle = await this.cropCycleRepo.update(id, updateData);
@@ -135,7 +251,8 @@ export class CropApplicationService {
 
   async deleteCropCycle(organizationId: string, id: string) {
     await this.getCropCycleById(organizationId, id);
-    await this.eventService.emitCropCycleDeletedEvent(id);
-    return this.cropCycleRepo.delete(id);
+    await this.cropCycleRepo.delete(id);
+    // Only announce the deletion once the row is actually gone.
+    await this.eventService.emitCropCycleDeletedEvent(id, organizationId);
   }
 }

@@ -13,14 +13,42 @@ import {
   HttpStatus,
   UseGuards,
   NotFoundException,
+  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { CropApplicationService } from '../../application/services/crop.service';
 import { ZodValidationPipe } from '@farm/utils';
-import { createCropSchema, updateCropSchema, createCropCycleSchema, updateCropCycleSchema } from '@farm/validation-server';
+import {
+  createCropSchema,
+  updateCropSchema,
+  createCropCycleSchema,
+  updateCropCycleSchema,
+  createCropStageSchema,
+  updateCropStageSchema,
+} from '@farm/validation-server';
 
 function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');
+}
+
+/**
+ * S2: page/limit arrive as strings — `parseInt('abc')` produced NaN which
+ * reached Prisma as `skip: NaN` and 500'd the request. Clamp everything.
+ */
+function toPositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === '') return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseDateParam(value: string | undefined, field: string): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(`"${field}" must be a valid date`);
+  }
+  return date;
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -51,8 +79,8 @@ export class CropController {
     const result = await this.cropService.getAllCrops({
       sortBy,
       sortOrder,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 50), 500),
       filter,
     });
     // `crops` is the legacy key; `data` is what the web clients read.
@@ -66,17 +94,33 @@ export class CropController {
     return this.cropService.getCropById(id);
   }
 
+  /**
+   * C1: Crop is a SHARED global name catalog (no organizationId column), but
+   * every tenant could previously rename or delete entries — a cross-tenant
+   * write. Org-scoped callers may still ADD names (POST) but rename/delete is
+   * platform-only. The clients treat the catalog as read-only for org users.
+   */
+  private assertPlatformCatalogMutation(req: any): void {
+    if (getOrgId(req)) {
+      throw new ForbiddenException(
+        'The crop catalog is shared across all farms. Only platform administrators can rename or remove entries.',
+      );
+    }
+  }
+
   @Permission('crop.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateCropSchema))
-  async updateCrop(@Param('id') id: string, @Body() data: { name: string }) {
+  async updateCrop(@Param('id') id: string, @Req() req: any, @Body() data: { name: string }) {
+    this.assertPlatformCatalogMutation(req);
     return this.cropService.updateCrop(id, data);
   }
 
   @Permission('crop.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteCrop(@Param('id') id: string) {
+  async deleteCrop(@Param('id') id: string, @Req() req: any) {
+    this.assertPlatformCatalogMutation(req);
     return this.cropService.deleteCrop(id);
   }
 }
@@ -97,6 +141,7 @@ export class CropCycleController {
       cropId: string;
       plantingDate: Date | string;
       harvestDate?: Date | string | null;
+      health?: number;
       status?: string;
     },
   ) {
@@ -120,14 +165,16 @@ export class CropCycleController {
     if (cropId) filter.cropId = cropId;
     if (status) filter.status = status;
 
-    return this.cropService.getAllCropCycles({
+    const result = await this.cropService.getAllCropCycles({
       organizationId: getOrgId(req),
       sortBy,
       sortOrder,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       filter,
     });
+    // `cycles` is the legacy key; `data` is what the web clients read.
+    return { ...(result as any), data: (result as any)?.cycles ?? [] };
   }
 
   @Permission('crop.read')
@@ -147,6 +194,7 @@ export class CropCycleController {
       cropId: string;
       plantingDate: Date | string;
       harvestDate: Date | string | null;
+      health: number;
       status: string;
     }>,
   ) {
@@ -171,14 +219,21 @@ export class CropLifecycleController {
   async getCalendar(
     @Req() req: any,
     @Query('farmId') farmId?: string,
+    @Query('month') month?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('limit') limit?: string,
   ) {
-    const filter: Record<string, unknown> = {};
-    if (farmId) filter.farmId = farmId;
-    if (startDate) filter.startDate = startDate;
-    if (endDate) filter.endDate = endDate;
-    return this.cropService.getAllCropCycles({ organizationId: getOrgId(req), filter: filter as any });
+    // C4: returns `{ data: CalendarStage[] }` derived from the org's crop
+    // cycles (see CropApplicationService.getCalendarStages) — it used to
+    // return the raw cycle page, which neither calendar screen could render.
+    return this.cropService.getCalendarStages(getOrgId(req), {
+      farmId,
+      month,
+      startDate: parseDateParam(startDate, 'startDate')?.toISOString(),
+      endDate: parseDateParam(endDate, 'endDate')?.toISOString(),
+      limit: toPositiveInt(limit, 500),
+    });
   }
 
   @Permission('crop.read')
@@ -188,14 +243,16 @@ export class CropLifecycleController {
     // can't be read either.
     await this.cropService.getCropCycleById(getOrgId(req), cropCycleId);
     const { prisma } = await import('@farm/database');
-    return prisma.cropStage.findMany({
+    const data = await prisma.cropStage.findMany({
       where: { cropCycleId, organizationId: getOrgId(req) },
       orderBy: { startDate: 'asc' },
     });
+    return { data, total: data.length };
   }
 
   @Permission('crop.write')
   @Post('crop-cycle/:cropCycleId/stages')
+  @UsePipes(new ZodValidationPipe(createCropStageSchema))
   @HttpCode(HttpStatus.CREATED)
   async createStage(
     @Param('cropCycleId') cropCycleId: string,
@@ -204,14 +261,18 @@ export class CropLifecycleController {
   ) {
     // Reject stages attached to a cycle that isn't the caller's.
     await this.cropService.getCropCycleById(getOrgId(req), cropCycleId);
+    const startDate = parseDateParam(body.startDate as any, 'startDate');
+    if (!startDate) throw new BadRequestException('"startDate" is required');
+    const endDate = parseDateParam(body.endDate as any, 'endDate') ?? null;
+    if (endDate && endDate < startDate) throw new BadRequestException('"endDate" cannot precede "startDate"');
     const { prisma } = await import('@farm/database');
     return prisma.cropStage.create({
       data: {
         cropCycleId,
         organizationId: getOrgId(req),
         stage: body.stage,
-        startDate: typeof body.startDate === 'string' ? new Date(body.startDate) : body.startDate,
-        endDate: body.endDate ? (typeof body.endDate === 'string' ? new Date(body.endDate) : body.endDate) : null,
+        startDate,
+        endDate,
         notes: body.notes || null,
         createdById: req.user?.sub || null,
         createdByName: req.user?.email || null,
@@ -221,6 +282,7 @@ export class CropLifecycleController {
 
   @Permission('crop.write')
   @Put('stages/:id')
+  @UsePipes(new ZodValidationPipe(updateCropStageSchema))
   async updateStage(
     @Param('id') id: string,
     @Req() req: any,
@@ -231,8 +293,19 @@ export class CropLifecycleController {
     if (!existing) throw new NotFoundException(`Crop stage with ID ${id} not found`);
     const data: Record<string, unknown> = {};
     if (body.stage) data.stage = body.stage;
-    if (body.startDate) data.startDate = typeof body.startDate === 'string' ? new Date(body.startDate) : body.startDate;
-    if (body.endDate !== undefined) data.endDate = body.endDate ? (typeof body.endDate === 'string' ? new Date(body.endDate) : body.endDate) : null;
+    if (body.startDate !== undefined) {
+      const startDate = parseDateParam(body.startDate as any, 'startDate');
+      if (!startDate) throw new BadRequestException('"startDate" is required');
+      data.startDate = startDate;
+    }
+    if (body.endDate !== undefined) data.endDate = parseDateParam(body.endDate as any, 'endDate');
+    if (data.startDate || data.endDate) {
+      const effectiveStart = (data.startDate as Date) ?? existing.startDate;
+      const effectiveEnd = (data.endDate as Date | null) ?? null;
+      if (effectiveEnd && effectiveEnd < effectiveStart) {
+        throw new BadRequestException('"endDate" cannot precede "startDate"');
+      }
+    }
     if (body.notes !== undefined) data.notes = body.notes;
     return prisma.cropStage.update({ where: { id }, data });
   }
@@ -245,6 +318,7 @@ export class CropLifecycleController {
     const existing = await prisma.cropStage.findFirst({ where: { id, organizationId: getOrgId(req) } });
     if (!existing) throw new NotFoundException(`Crop stage with ID ${id} not found`);
     await prisma.cropStage.delete({ where: { id } });
-    return { deleted: true };
+    // 204 responses carry no body — returning { deleted: true } here made
+    // clients try to parse an empty payload.
   }
 }

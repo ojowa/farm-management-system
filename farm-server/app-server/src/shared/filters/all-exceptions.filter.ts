@@ -50,8 +50,20 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code = resp.code;
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
-      this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
+      // S1: every non-HttpException error goes through the shared mapper so
+      // Prisma failures become proper client errors (P2002 → 409,
+      // P2025 → 404, P2003 → 400, PrismaClientValidationError → 400) and raw
+      // database/driver text never reaches the client — unknown errors are
+      // collapsed to a sanitized "Internal Server Error" (still logged here).
+      const handled = handleError(exception);
+      status = handled.statusCode;
+      message = handled.message;
+      code = handled.code;
+      if (status >= 500) {
+        this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
+      } else {
+        this.logger.warn(`Request failed (${status}${code ? `/${code}` : ''}): ${exception.message}`);
+      }
     } else if (exception) {
       const handled = handleError(exception);
       status = handled.statusCode;

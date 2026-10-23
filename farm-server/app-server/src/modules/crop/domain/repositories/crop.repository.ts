@@ -22,7 +22,7 @@ export interface CropCycleRepository {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
-    filter?: { fieldId?: string; cropId?: string; status?: string };
+    filter?: { fieldId?: string; cropId?: string; status?: string; farmId?: string };
   }): Promise<{ cycles: CropCycle[]; total: number }>;
   create(data: Omit<CropCycle, 'id' | 'createdAt' | 'updatedAt'>): Promise<CropCycle>;
   update(id: string, data: Partial<Pick<CropCycle, 'fieldId' | 'cropId' | 'plantingDate' | 'harvestDate' | 'status'>>): Promise<CropCycle>;

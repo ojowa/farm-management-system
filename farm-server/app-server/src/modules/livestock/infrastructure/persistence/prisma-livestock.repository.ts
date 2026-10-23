@@ -15,6 +15,21 @@ import {
   WeightRecord,
   VaccinationSchedule,
 } from '../../domain/entities/livestock.entity';
+import { safeOrderBy } from '../../../../common/sort';
+
+// S3: sortBy comes straight from the query string — an unknown key used to
+// reach Prisma's orderBy and 500 the request.
+const LIVESTOCK_SORTABLE = [
+  'id',
+  'species',
+  'breed',
+  'gender',
+  'birthDate',
+  'status',
+  'farmId',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 @Injectable()
 export class PrismaLivestockRepository implements LivestockRepository {
@@ -29,7 +44,9 @@ export class PrismaLivestockRepository implements LivestockRepository {
     limit?: number;
   }): Promise<{ data: Livestock[]; total: number }> {
     const { sortBy = 'createdAt', sortOrder = 'desc', page = 1, limit = 20 } = options || {};
-    const skip = (page - 1) * limit;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 500) : 20;
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+    const skip = (safePage - 1) * safeLimit;
     const where: any = { organizationId: filter.organizationId };
 
     if (filter.farmId) where.farmId = filter.farmId;
@@ -45,9 +62,9 @@ export class PrismaLivestockRepository implements LivestockRepository {
     const [data, total] = await Promise.all([
       prisma.livestock.findMany({
         where,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: safeOrderBy(sortBy, sortOrder, LIVESTOCK_SORTABLE, 'createdAt'),
         skip,
-        take: limit,
+        take: safeLimit,
       }),
       prisma.livestock.count({ where }),
     ]);
@@ -69,7 +86,12 @@ export class PrismaLivestockRepository implements LivestockRepository {
 
   async getFarmById(id: string, organizationId: string) {
     if (!organizationId) return null;
-    return prisma.farm.findFirst({ where: { id, organizationId }, select: { id: true } });
+    // farmType is selected so the service can enforce the LIVESTOCK/DAIRY
+    // module boundary (L1).
+    return prisma.farm.findFirst({
+      where: { id, organizationId },
+      select: { id: true, farmType: true },
+    });
   }
 
   async getFlockById(id: string, organizationId: string) {
@@ -163,9 +185,19 @@ export class PrismaVaccinationScheduleRepository implements VaccinationScheduleR
   }
 
   async findOverdue(organizationId: string): Promise<VaccinationSchedule[]> {
+    // L6: the livestock table exposes no relation to schedules, so a
+    // soft-deleted animal's overdue vaccinations used to keep showing up as
+    // zombies. Resolve the org's LIVE animal ids first and scope to them.
+    const liveAnimals = await prisma.livestock.findMany({
+      where: { organizationId },
+      select: { id: true },
+    });
+    const liveIds = liveAnimals.map((animal) => animal.id);
+    if (!liveIds.length) return [];
     return prisma.vaccinationSchedule.findMany({
       where: {
         organizationId,
+        livestockId: { in: liveIds },
         status: 'SCHEDULED',
         scheduledDate: { lt: new Date() },
       },

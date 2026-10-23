@@ -1,4 +1,4 @@
-import { Inject,  Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Inject,  Injectable, NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
 import {
   LivestockRepository,
   HealthRecordRepository,
@@ -20,6 +20,21 @@ export class LivestockApplicationService {
     if (!organizationId) throw new ForbiddenException('No organization context');
   }
 
+  /** L1: livestock belongs on a livestock/dairy farm — "DAIRY" is the same module. */
+  private static readonly LIVESTOCK_FARM_TYPES = new Set(['LIVESTOCK', 'DAIRY']);
+
+  private assertLivestockFarm(farm: { farmType?: string | null } | null, farmId: string): void {
+    const farmType = String(farm?.farmType || '').toUpperCase();
+    if (!LivestockApplicationService.LIVESTOCK_FARM_TYPES.has(farmType)) {
+      throw new BadRequestException(
+        `Farm ${farmId} is a ${farmType || 'unknown'} farm; livestock requires a LIVESTOCK or DAIRY farm.`,
+      );
+    }
+  }
+
+  /** L7: SOLD/DECEASED are terminal — an animal can't be "un-sold" or resurrected. */
+  private static readonly TERMINAL_STATUSES = new Set(['SOLD', 'DECEASED']);
+
   async createLivestock(organizationId: string, data: {
     farmId: string;
     species: string;
@@ -31,6 +46,9 @@ export class LivestockApplicationService {
     this.requireOrg(organizationId);
     const farm = await this.livestockRepo.getFarmById(data.farmId, organizationId);
     if (!farm) throw new NotFoundException(`Farm with ID ${data.farmId} not found`);
+    // L1: enforce the module boundary — a crop/poultry/aquaculture farm can
+    // no longer host livestock (or dairy, which IS the livestock module).
+    this.assertLivestockFarm(farm, data.farmId);
 
     const birthDate = typeof data.birthDate === 'string' ? new Date(data.birthDate) : data.birthDate;
 
@@ -73,11 +91,20 @@ export class LivestockApplicationService {
     birthDate: Date | string;
     status: string;
   }>): Promise<Livestock> {
-    await this.getLivestockById(organizationId, id);
+    const existing = await this.getLivestockById(organizationId, id);
+
+    // L7: SOLD/DECEASED are terminal states.
+    if (LivestockApplicationService.TERMINAL_STATUSES.has(String(existing.status))) {
+      throw new ConflictException(
+        `This animal is marked ${existing.status} and can no longer be edited. Record new animals instead of reversing this status.`,
+      );
+    }
 
     if (data.farmId) {
       const farm = await this.livestockRepo.getFarmById(data.farmId, organizationId);
       if (!farm) throw new NotFoundException(`Farm with ID ${data.farmId} not found`);
+      // L1: moving an animal can't move it onto a wrong-typed farm either.
+      this.assertLivestockFarm(farm, data.farmId);
     }
 
     const updateData: any = { ...data };
@@ -95,8 +122,9 @@ export class LivestockApplicationService {
   async deleteLivestock(organizationId: string, id: string) {
     await this.getLivestockById(organizationId, id);
     await this.livestockRepo.delete(id);
-    await this.eventService.emitLivestockDeletedEvent(id);
-    return { deleted: true };
+    // S4: the delete event now carries the owning organizationId so realtime
+    // fan-out stays inside the tenant. Only announced once the row is gone.
+    await this.eventService.emitLivestockDeletedEvent(id, organizationId);
   }
 
   async getHealthHistory(livestockId: string,  organizationId: string): Promise<HealthRecord[]> {
@@ -123,7 +151,9 @@ export class LivestockApplicationService {
       date: typeof data.date === 'string' ? new Date(data.date) : data.date,
       veterinarian: data.veterinarian || null,
       medications: data.medications || null,
-      cost: data.cost || null,
+      // `cost || null` turned a legitimate 0 into null — free treatments are
+      // real data, not missing data.
+      cost: data.cost ?? null,
       nextCheckupDate: data.nextCheckupDate
         ? typeof data.nextCheckupDate === 'string'
           ? new Date(data.nextCheckupDate)
@@ -162,8 +192,15 @@ export class LivestockApplicationService {
   async administerVaccination(organizationId: string, id: string): Promise<VaccinationSchedule> {
     const schedule = await this.vaccinationRepo.findById(id, organizationId);
     if (!schedule) throw new NotFoundException(`Vaccination schedule with ID ${id} not found`);
+    // L7: a dose can't be recorded twice — re-opening an already-administered
+    // schedule silently duplicated the vaccination history. Accepts the legacy
+    // 'ADMINISTERD' spelling still present in old rows.
+    const currentStatus = String(schedule.status).toUpperCase();
+    if (currentStatus === 'ADMINISTERED' || currentStatus === 'ADMINISTERD' || schedule.administeredDate) {
+      throw new ConflictException('This vaccination has already been administered.');
+    }
     return this.vaccinationRepo.update(id, {
-      status: 'ADMINISTERD',
+      status: 'ADMINISTERED',
       administeredDate: new Date(),
     });
   }
@@ -189,8 +226,24 @@ export class LivestockApplicationService {
     createdByName?: string;
   }): Promise<BreedingRecord> {
     // Both parents must belong to the caller's organization.
-    await this.getLivestockById(data.organizationId, data.sireId);
-    await this.getLivestockById(data.organizationId, data.damId);
+    const sire = await this.getLivestockById(data.organizationId, data.sireId);
+    const dam = await this.getLivestockById(data.organizationId, data.damId);
+    // L7: the pair must be a male and a female, and neither may be SOLD or
+    // DECEASED — any two ids used to form a "breeding record".
+    if (String(sire.gender).toUpperCase() !== 'MALE') {
+      throw new BadRequestException(`Sire ${data.sireId} is ${sire.gender}; a breeding sire must be MALE.`);
+    }
+    if (String(dam.gender).toUpperCase() !== 'FEMALE') {
+      throw new BadRequestException(`Dam ${data.damId} is ${dam.gender}; a breeding dam must be FEMALE.`);
+    }
+    if (sire.id === dam.id) {
+      throw new BadRequestException('Sire and dam must be different animals.');
+    }
+    for (const [role, parent] of [['sire', sire], ['dam', dam]] as const) {
+      if (LivestockApplicationService.TERMINAL_STATUSES.has(String(parent.status).toUpperCase())) {
+        throw new ConflictException(`The ${role} is ${parent.status} and cannot be bred.`);
+      }
+    }
     return this.breedingRepo.create({
       ...data,
       sireName: data.sireName || null,
@@ -229,6 +282,18 @@ export class LivestockApplicationService {
     }
     if (data.offspringCount !== undefined) updateData.offspringCount = data.offspringCount;
     if (data.notes !== undefined) updateData.notes = data.notes?.trim() || null;
+    // L7: a birth can't predate the breeding, and a born/completed record
+    // needs a birth date — both used to be stored as given (or not given).
+    const effectiveBirth = 'actualBirthDate' in updateData ? updateData.actualBirthDate : existing.actualBirthDate;
+    if (effectiveBirth && existing.breedingDate && new Date(effectiveBirth) < new Date(existing.breedingDate)) {
+      throw new BadRequestException('"actualBirthDate" cannot precede the breeding date');
+    }
+    const effectiveStatus = String(updateData.status ?? existing.status).toUpperCase();
+    // BORN means offspring actually arrived, so it needs a date. 'COMPLETED'
+    // (mobile's softer "done" marker) is intentionally not held to this.
+    if (effectiveStatus === 'BORN' && !effectiveBirth) {
+      throw new BadRequestException('A BORN breeding record requires an actualBirthDate');
+    }
     return this.breedingRepo.update(id, updateData);
   }
 

@@ -16,10 +16,25 @@ import {
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { LivestockApplicationService } from '../../application/services/livestock.service';
 import { ZodValidationPipe } from '@farm/utils';
-import { createLivestockSchema, updateLivestockSchema } from '@farm/validation-server';
+import {
+  createLivestockSchema,
+  updateLivestockSchema,
+  createHealthRecordSchema,
+  createVaccinationScheduleSchema,
+  createBreedingRecordSchema,
+  updateBreedingRecordSchema,
+  createWeightRecordSchema,
+} from '@farm/validation-server';
 
 function getOrgIdFromRequest(req: any): string {
   return String(req.user?.organizationId || '');
+}
+
+/** S2: `parseInt('?page=abc')` produced NaN which reached Prisma (500). */
+function toPositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === '') return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -58,9 +73,9 @@ export class LivestockController {
       getOrgIdFromRequest(req),
       filter,
       sortBy || 'createdAt',
-      sortOrder || 'desc',
-      parseInt(page || '1'),
-      parseInt(limit || '20'),
+      sortOrder === 'asc' ? 'asc' : 'desc',
+      toPositiveInt(page, 1),
+      Math.min(toPositiveInt(limit, 20), 500),
     );
   }
 
@@ -101,6 +116,7 @@ export class HealthController {
 
   @Permission('livestock.write')
   @Post('livestock/:livestockId')
+  @UsePipes(new ZodValidationPipe(createHealthRecordSchema))
   @HttpCode(HttpStatus.CREATED)
   async addHealthRecord(
     @Param('livestockId') livestockId: string,
@@ -127,6 +143,7 @@ export class HealthController {
 
   @Permission('livestock.write')
   @Post('vaccinations/:livestockId')
+  @UsePipes(new ZodValidationPipe(createVaccinationScheduleSchema))
   @HttpCode(HttpStatus.CREATED)
   async scheduleVaccination(
     @Param('livestockId') livestockId: string,
@@ -168,6 +185,7 @@ export class BreedingController {
 
   @Permission('livestock.write')
   @Post()
+  @UsePipes(new ZodValidationPipe(createBreedingRecordSchema))
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() body: any, @Req() req?: any) {
     return this.livestockService.createBreedingRecord({
@@ -180,6 +198,7 @@ export class BreedingController {
 
   @Permission('livestock.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateBreedingRecordSchema))
   async update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
     return this.livestockService.updateBreedingRecord(getOrgIdFromRequest(req), id, body);
   }
@@ -207,6 +226,7 @@ export class WeightController {
 
   @Permission('livestock.write')
   @Post('livestock/:livestockId')
+  @UsePipes(new ZodValidationPipe(createWeightRecordSchema))
   @HttpCode(HttpStatus.CREATED)
   async recordLivestockWeight(
     @Param('livestockId') livestockId: string,
@@ -232,6 +252,7 @@ export class WeightController {
 
   @Permission('livestock.write')
   @Post('flock/:flockId')
+  @UsePipes(new ZodValidationPipe(createWeightRecordSchema))
   @HttpCode(HttpStatus.CREATED)
   async recordFlockWeight(
     @Param('flockId') flockId: string,

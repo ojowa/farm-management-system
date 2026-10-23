@@ -51,6 +51,13 @@ export const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set([
   'VaccinationSchedule',
   'BreedingRecord',
   'WeightRecord',
+  // Aquaculture (columns predate the hook — without these entries a pond
+  // delete hard-cascaded its stockings/feeding/water-quality/harvest history)
+  'Pond',
+  'PondStocking',
+  'PondFeeding',
+  'PondWaterQuality',
+  'PondHarvest',
   // Farm operations
   'Inventory',
   'Equipment',

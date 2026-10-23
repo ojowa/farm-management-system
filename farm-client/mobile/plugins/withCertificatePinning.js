@@ -33,8 +33,8 @@ function withCertificatePinning(config) {
         },
         '127.0.0.1': {
           NSExceptionAllowsInsecureHTTPLoads: true,
-        },
-      },
+        }
+      }
     };
     return config;
   });
@@ -50,31 +50,38 @@ function withCertificatePinning(config) {
       fs.mkdirSync(xmlDir, { recursive: true });
 
       const pinSection = CERT_PIN_SHA256
-        ? `    <pin-set expiration="2027-01-01">
-      <pin digest="SHA-256">${CERT_PIN_SHA256}</pin>
-    </pin-set>`
+        ? `    <pin-set expiration=\"2027-01-01\">\n      <pin digest=\"SHA-256\">${CERT_PIN_SHA256}</pin>\n    </pin-set>`
         : '';
 
-      const xml = `<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-  <!-- Dev: allow cleartext for localhost and local networks -->
-  <domain-config cleartextTrafficPermitted="true">
-    <domain includeSubdomains="true">localhost</domain>
-    <domain includeSubdomains="true">10.0.2.2</domain>
-    <domain includeSubdomains="true">192.168.0.0/16</domain>
-    <domain includeSubdomains="true">10.0.0.0/8</domain>
-    <trust-anchors>
-      <certificates src="system" />
-    </trust-anchors>
-  </domain-config>
-  <!-- Production: HTTPS required, certificate pinning if configured -->
-  <domain-config cleartextTrafficPermitted="false">
-${PRODUCTION_DOMAIN ? `    <domain includeSubdomains="true">${PRODUCTION_DOMAIN}</domain>` : '    <!-- Set EXPO_PUBLIC_PRODUCTION_DOMAIN in .env -->'}
+      // A <domain-config> requires at least one <domain> child, otherwise the
+      // Android network-security-config parser throws:
+      //   "No domain elements in domain-config"
+      // Only emit the production domain-config when a production domain is configured.
+      const productionDomainConfig = PRODUCTION_DOMAIN
+        ? `  <!-- Production: HTTPS required, certificate pinning if configured -->
+  <domain-config cleartextTrafficPermitted=\"false\">
+    <domain includeSubdomains=\"true\">${PRODUCTION_DOMAIN}</domain>
 ${pinSection}
     <trust-anchors>
-      <certificates src="system" />
+      <certificates src=\"system\" />
     </trust-anchors>
   </domain-config>
+`
+        : '';
+
+      const xml = `<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<network-security-config>
+  <!-- Dev: allow cleartext for localhost and local networks -->
+  <domain-config cleartextTrafficPermitted=\"true\">
+    <domain includeSubdomains=\"true\">localhost</domain>
+    <domain includeSubdomains=\"true\">10.0.2.2</domain>
+    <domain includeSubdomains=\"true\">192.168.0.0/16</domain>
+    <domain includeSubdomains=\"true\">10.0.0.0/8</domain>
+    <trust-anchors>
+      <certificates src=\"system\" />
+    </trust-anchors>
+  </domain-config>
+${productionDomainConfig}
 </network-security-config>
 `;
       fs.writeFileSync(path.join(xmlDir, 'network_security_config.xml'), xml);

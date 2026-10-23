@@ -61,7 +61,9 @@ export class IrrigationController {
     const data = await prisma.irrigationSchedule.findMany({
       where,
       orderBy: { startDate: 'desc' },
-      include: { logs: { orderBy: { date: 'desc' }, take: 1 } },
+      // S5: to-many includes bypass the soft-delete hook — filter the nested
+      // logs so a soft-deleted log can't resurface as "the latest run".
+      include: { logs: { where: { deletedAt: null }, orderBy: { date: 'desc' }, take: 1 } },
     });
     return { data, total: data.length };
   }
@@ -137,12 +139,15 @@ export class IrrigationController {
     const take = Math.min(Math.max(Number.parseInt(limit || '50', 10) || 50, 1), 200);
     const where: Record<string, unknown> = { organizationId: organizationId(req), deletedAt: null };
     if (farmId) where.farmId = farmId;
-    const data = await prisma.irrigationLog.findMany({
+    const rows = await prisma.irrigationLog.findMany({
       where,
       orderBy: { date: 'desc' },
       take,
       include: { schedule: true },
     });
+    // S5: nested include reads bypass the soft-delete hook — drop logs whose
+    // schedule was soft-deleted instead of resurfacing the deleted row.
+    const data = rows.filter((row: any) => row.schedule && !row.schedule.deletedAt);
     return { data, total: data.length };
   }
 
@@ -205,10 +210,13 @@ export class PestDiseaseController {
   @Permission('crop.read')
   @Get('active')
   async active(@Req() req: any) {
-    return prisma.pestDiseaseRecord.findMany({
+    // S6: wrapped in `{ data, total }` like every other list here — the bare
+    // array forced every client to special-case this one endpoint.
+    const data = await prisma.pestDiseaseRecord.findMany({
       where: { organizationId: organizationId(req), deletedAt: null, treatedDate: null },
       orderBy: { identifiedDate: 'desc' },
     });
+    return { data, total: data.length };
   }
 
   @Permission('crop.write')
@@ -251,9 +259,14 @@ export class PestDiseaseController {
       where: { id, organizationId: orgId, deletedAt: null },
     });
     if (!existing) throw new NotFoundException('Pest or disease record not found');
-    if (body.farmId) await assertFarm(body.farmId, orgId);
     const data: Record<string, unknown> = {};
-    for (const field of ['farmId', 'name', 'treatment', 'outcome', 'notes'] as const) {
+    if (body.farmId !== undefined && body.farmId !== null) {
+      // farmId moves through requiredString so an empty string can't wipe
+      // the relation (it used to be trimmed into '' and hit the FK).
+      data.farmId = requiredString(body.farmId, 'farmId');
+      await assertFarm(data.farmId as string, orgId);
+    }
+    for (const field of ['name', 'treatment', 'outcome', 'notes'] as const) {
       if (body[field] !== undefined) data[field] = body[field] === null ? null : String(body[field]).trim();
     }
     if (body.type !== undefined) data.type = requiredString(body.type, 'type').toUpperCase();

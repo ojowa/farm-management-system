@@ -73,6 +73,11 @@ function toNullableDate(value: Date | string | null | undefined): Date | null {
   return toDate(value);
 }
 
+/** Rounds to 2 decimal places so money doesn't accumulate float dust. */
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 @Injectable()
 export class AquacultureApplicationService {
   constructor(
@@ -216,11 +221,19 @@ export class AquacultureApplicationService {
     this.requireOrg(organizationId);
     await this.assertPond(organizationId, pondId);
     if (data.stockingId) {
+      // A4: the stocking must belong to THIS pond, not merely to the same
+      // organization — otherwise a feeding could be booked against another
+      // pond's stock in the same org.
       const stocking = await this.aquacultureRepo.findStockingById(
         data.stockingId,
         organizationId,
       );
       if (!stocking) throw new NotFoundException(`Stocking with ID ${data.stockingId} not found`);
+      if (stocking.pondId !== pondId) {
+        throw new NotFoundException(
+          `Stocking with ID ${data.stockingId} does not belong to pond ${pondId}`,
+        );
+      }
     }
 
     return this.aquacultureRepo.createFeeding({
@@ -291,12 +304,31 @@ export class AquacultureApplicationService {
   ): Promise<PondHarvest> {
     this.requireOrg(organizationId);
     await this.assertPond(organizationId, pondId);
+    let stocking: PondStocking | null = null;
     if (data.stockingId) {
-      const stocking = await this.aquacultureRepo.findStockingById(
+      // A4: the stocking must belong to THIS pond, not merely to the same
+      // organization — otherwise a harvest could be booked against another
+      // pond's stock in the same org.
+      stocking = await this.aquacultureRepo.findStockingById(
         data.stockingId,
         organizationId,
       );
       if (!stocking) throw new NotFoundException(`Stocking with ID ${data.stockingId} not found`);
+      if (stocking.pondId !== pondId) {
+        throw new NotFoundException(
+          `Stocking with ID ${data.stockingId} does not belong to pond ${pondId}`,
+        );
+      }
+    }
+
+    // A2: recompute revenue server-side when a unit price is supplied, so a
+    // client can't post a harvest with an inflated/deflated revenue figure
+    // that doesn't match quantityKg × unitPrice. Only fall back to the
+    // client-provided revenue when no unit price is given (e.g. a rough
+    // estimate recorded offline).
+    let revenue = data.revenue ?? null;
+    if (data.unitPrice != null) {
+      revenue = round2(data.quantityKg * data.unitPrice);
     }
 
     return this.aquacultureRepo.createHarvest({
@@ -306,7 +338,7 @@ export class AquacultureApplicationService {
       quantityKg: data.quantityKg,
       count: data.count ?? null,
       unitPrice: data.unitPrice ?? null,
-      revenue: data.revenue ?? null,
+      revenue,
       harvestedAt: toDate(data.harvestedAt),
       notes: data.notes ?? null,
     });

@@ -192,12 +192,22 @@ export class FarmApplicationService {
 
   async deleteFarm(id: string, organizationId: string) {
     const farm = await this.getFarmById(id, organizationId);
+    // F8: Farm is soft-deleted, so the FK-catch below can never fire — the
+    // delete always "succeeds" and orphans every child row. Count the
+    // dependents up front and surface an actionable conflict instead.
+    const children = await this.countFarmChildren(id, organizationId);
+    if (children.total > 0) {
+      throw new ConflictException(
+        `Farm has dependent records (${children.summary}). Remove or reassign them first.`,
+      );
+    }
     try {
       await this.farmRepo.delete(id, organizationId);
     } catch (error) {
       // Fields, inventory, expenses, sales, livestock and workers reference
       // the farm with required FKs and no cascade — surface that as an
-      // actionable conflict instead of a Prisma 500.
+      // actionable conflict instead of a Prisma 500. (Hard-delete path;
+      // kept for models outside the soft-delete set.)
       if (isForeignKeyViolation(error)) {
         throw new ConflictException(
           'Farm has dependent records (fields, inventory, expenses, sales, livestock or workers). Remove or reassign them first.',
@@ -207,6 +217,35 @@ export class FarmApplicationService {
     }
     // Only announce the deletion once the row is actually gone.
     await this.eventService.emitFarmDeletedEvent(farm.id, farm.organizationId);
+  }
+
+  /** Child rows that would be orphaned by deleting this farm. */
+  private async countFarmChildren(farmId: string, organizationId: string) {
+    const { prisma } = await import('@farm/database');
+    const where = { organizationId };
+    const [fields, inventory, livestock, flocks, ponds, workers, expenses, sales] = await Promise.all([
+      prisma.field.count({ where: { farmId, ...where } }),
+      prisma.inventory.count({ where: { farmId, ...where } }),
+      prisma.livestock.count({ where: { farmId, ...where } }),
+      prisma.flock.count({ where: { farmId, ...where } }),
+      prisma.pond.count({ where: { farmId, ...where } }),
+      prisma.worker.count({ where: { farmId, ...where } }),
+      prisma.expense.count({ where: { farmId, ...where } }),
+      prisma.sale.count({ where: { farmId, ...where } }),
+    ]);
+    const parts: string[] = [];
+    if (fields) parts.push(`${fields} field${fields === 1 ? '' : 's'}`);
+    if (inventory) parts.push(`${inventory} inventory item${inventory === 1 ? '' : 's'}`);
+    if (livestock) parts.push(`${livestock} livestock`);
+    if (flocks) parts.push(`${flocks} flock${flocks === 1 ? '' : 's'}`);
+    if (ponds) parts.push(`${ponds} pond${ponds === 1 ? '' : 's'}`);
+    if (workers) parts.push(`${workers} worker${workers === 1 ? '' : 's'}`);
+    if (expenses) parts.push(`${expenses} expense${expenses === 1 ? '' : 's'}`);
+    if (sales) parts.push(`${sales} sale${sales === 1 ? '' : 's'}`);
+    return {
+      total: fields + inventory + livestock + flocks + ponds + workers + expenses + sales,
+      summary: parts.join(', ') || 'fields, inventory, expenses, sales, livestock or workers',
+    };
   }
 
   async createField(data: { farmId: string; name: string; size: number }, organizationId: string) {

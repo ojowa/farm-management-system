@@ -60,6 +60,14 @@ function requireNumber(value: unknown, field: string): number {
   return n;
 }
 
+/** Validate a date field — `new Date('garbage')` used to reach Prisma as Invalid Date (500). */
+function optionalDate(value: unknown, field: string): Date | null {
+  if (value === undefined || value === null || value === '') return null;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) throw new BadRequestException(`"${field}" must be a valid date`);
+  return date;
+}
+
 /** Columns clients may sort each list by — anything else used to crash Prisma. */
 const DOCUMENT_SORT = ['name', 'type', 'fileSize', 'createdAt', 'updatedAt'];
 const INVENTORY_SORT = ['name', 'category', 'quantity', 'minimumQuantity', 'createdAt', 'updatedAt'];
@@ -368,14 +376,18 @@ export class InventoryController {
   @Get('low-stock')
   async findLowStock(@Req() req: any) {
     const orgId = getOrgId(req);
-    return prisma.inventory.findMany({
+    // S6: wrapped in `{ data, total }` like every other inventory list —
+    // this was the last bare-array response in the module. The farm include
+    // also drops soft-deleted farms (nested includes bypass the hook).
+    const data = await prisma.inventory.findMany({
       where: {
         organizationId: orgId,
         quantity: { lte: prisma.inventory.fields.minimumQuantity },
       },
       orderBy: { quantity: 'asc' },
-      include: { farm: { select: { name: true } } },
+      include: { farm: { select: { name: true, deletedAt: true } } },
     });
+    return { data, total: data.length };
   }
 
   @Permission('farm.write')
@@ -606,7 +618,8 @@ export class EquipmentController {
         orderBy,
         skip,
         take: limitNum,
-        include: { maintenanceRecords: true },
+        // S5: nested include reads bypass the soft-delete hook.
+        include: { maintenanceRecords: { where: { deletedAt: null } } },
       }),
       prisma.equipment.count({ where }),
     ]);
@@ -619,7 +632,7 @@ export class EquipmentController {
   async findOne(@Req() req: any, @Param('id') id: string) {
     const item = await prisma.equipment.findFirst({
       where: { id, organizationId: getOrgId(req) },
-      include: { maintenanceRecords: true },
+      include: { maintenanceRecords: { where: { deletedAt: null } } },
     });
     if (!item) throw new NotFoundException('Equipment not found');
     return item;
@@ -640,7 +653,7 @@ export class EquipmentController {
         type: body.type,
         model: body.model || null,
         serialNumber: body.serialNumber || null,
-        purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
+        purchaseDate: optionalDate(body.purchaseDate, 'purchaseDate'),
         purchaseCost:
           body.purchaseCost === undefined || body.purchaseCost === null || body.purchaseCost === ''
             ? null
@@ -661,12 +674,17 @@ export class EquipmentController {
     if (body.type !== undefined) data.type = body.type;
     if (body.model !== undefined) data.model = body.model;
     if (body.serialNumber !== undefined) data.serialNumber = body.serialNumber;
-    if (body.purchaseDate !== undefined) data.purchaseDate = body.purchaseDate ? new Date(body.purchaseDate) : null;
-    if (body.purchaseCost !== undefined) data.purchaseCost = body.purchaseCost;
+    if (body.purchaseDate !== undefined) data.purchaseDate = optionalDate(body.purchaseDate, 'purchaseDate');
+    if (body.purchaseCost !== undefined) {
+      data.purchaseCost =
+        body.purchaseCost === null || body.purchaseCost === ''
+          ? null
+          : requireNumber(body.purchaseCost, 'purchaseCost');
+    }
     if (body.status !== undefined) data.status = body.status;
     if (body.notes !== undefined) data.notes = body.notes;
-    if (body.lastMaintenance !== undefined) data.lastMaintenance = body.lastMaintenance ? new Date(body.lastMaintenance) : null;
-    if (body.nextMaintenance !== undefined) data.nextMaintenance = body.nextMaintenance ? new Date(body.nextMaintenance) : null;
+    if (body.lastMaintenance !== undefined) data.lastMaintenance = optionalDate(body.lastMaintenance, 'lastMaintenance');
+    if (body.nextMaintenance !== undefined) data.nextMaintenance = optionalDate(body.nextMaintenance, 'nextMaintenance');
     if (body.farmId !== undefined) {
       if (body.farmId) await assertFarmInOrg(body.farmId, getOrgId(req));
       data.farmId = body.farmId;
@@ -681,6 +699,6 @@ export class EquipmentController {
     const item = await prisma.equipment.findFirst({ where: { id, organizationId: getOrgId(req) } });
     if (!item) throw new NotFoundException('Equipment not found');
     await prisma.equipment.delete({ where: { id } });
-    return { deleted: true };
+    // 204 carries no body.
   }
 }
