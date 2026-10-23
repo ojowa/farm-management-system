@@ -83,8 +83,11 @@ function buildRoutes(): ServiceRoute[] {
 
     // Organization Context
     { path: '/organizations', service: 'organization-service', port: resolvePort('organization-service', 4017), baseUrl: resolveBaseUrl('organization-service', 4017) },
+    // Paystack webhooks (HMAC-signed, no user JWT — allowlisted in AuthMiddleware)
+    { path: '/payments', service: 'organization-service', port: resolvePort('organization-service', 4017), baseUrl: resolveBaseUrl('organization-service', 4017) },
 
     // Platform Context
+    { path: '/platform-payments', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
     { path: '/platform-features', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
     { path: '/platform-subscriptions', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },
     { path: '/platform-organizations', service: 'platform-service', port: resolvePort('platform-service', 4018), baseUrl: resolveBaseUrl('platform-service', 4018) },

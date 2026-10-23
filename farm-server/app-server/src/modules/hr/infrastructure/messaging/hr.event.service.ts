@@ -5,7 +5,10 @@ import { EventBus } from '../../../realtime/event-bus';
 export class HrEventService {
   constructor(private readonly events: EventBus) {}
 
-  emitHrEvent(action: 'created' | 'updated' | 'deleted', data: { entity: string; data?: any; id?: string }) {
+  emitHrEvent(
+    action: 'created' | 'updated' | 'deleted',
+    data: { entity: string; data?: any; id?: string; organizationId?: string },
+  ) {
     this.events.emitDomainEvent('hr', action, data);
   }
 }

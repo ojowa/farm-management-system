@@ -72,12 +72,12 @@ export class GatewayProxyService {
     {
       name: 'organization',
       baseUrl: process.env.ORGANIZATION_SERVICE_URL || 'http://localhost:4017',
-      routes: ['organizations'],
+      routes: ['organizations', 'payments'],
     },
     {
       name: 'platform',
       baseUrl: process.env.PLATFORM_SERVICE_URL || 'http://localhost:4018',
-      routes: ['platform-features', 'platform-subscriptions', 'platform-organizations', 'platform-options', 'platform-health', 'platform-broadcasts', 'platform-audit', 'platform-config', 'platform-storage', 'platform-users'],
+      routes: ['platform-features', 'platform-subscriptions', 'platform-organizations', 'platform-options', 'platform-health', 'platform-broadcasts', 'platform-audit', 'platform-config', 'platform-storage', 'platform-users', 'platform-payments'],
     },
     {
       name: 'reporting',

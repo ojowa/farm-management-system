@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { EmailService } from '../../../notification/modules/email/email.service';
 import { NotificationApplicationService } from '../../../notification/application/services/notification.service';
 import { CreateNotificationRequest } from '../../../notification/presentation/dto/notification.dto';
@@ -20,6 +21,11 @@ import {
 } from '../../domain/repositories/hr.repository';
 import { Worker, Task, Shift } from '../../domain/entities/hr.entity';
 import { HrEventService } from '../../infrastructure/messaging/hr.event.service';
+
+/** Cryptographically-strong temporary password (~62 bits, 12 chars). */
+function generateTempPassword(): string {
+  return randomBytes(9).toString('base64url').slice(0, 12);
+}
 
 @Injectable()
 export class HrApplicationService {
@@ -339,7 +345,7 @@ export class HrApplicationService {
       if (existing.organizationId !== organizationId) throw new ConflictException('Email already registered');
       userId = existing.id;
     } else {
-      tempPassword = Math.random().toString(36).slice(-8);
+      tempPassword = generateTempPassword();
       const passwordHash = await bcrypt.hash(tempPassword, 12);
       const user = await prisma.user.create({
         data: {
@@ -480,7 +486,7 @@ export class HrApplicationService {
       throw new BadRequestException('This worker has no linked login account');
     }
 
-    const tempPassword = Math.random().toString(36).slice(-8);
+    const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
     await prisma.user.update({
       where: { id: worker.userId },
@@ -508,9 +514,34 @@ export class HrApplicationService {
   }
 
   async deleteWorker(id: string, organizationId: string) {
-    await this.getWorkerById(id, organizationId);
-    await this.eventService.emitHrEvent('deleted', { entity: 'worker', id });
-    return this.workerRepo.delete(id);
+    const worker = await this.getWorkerById(id, organizationId);
+    await this.eventService.emitHrEvent('deleted', {
+      entity: 'worker',
+      id,
+      organizationId,
+      data: { id, organizationId },
+    });
+    await this.workerRepo.delete(id);
+
+    // W2: the worker's login must not outlive the worker profile. Deactivate
+    // the linked account only when no other non-deleted worker still uses it
+    // (workers can share a user record by email link).
+    if (worker.userId) {
+      try {
+        const others = await prisma.worker.count({
+          where: { userId: worker.userId, id: { not: id }, deletedAt: null },
+        });
+        if (others === 0) {
+          await prisma.user.update({
+            where: { id: worker.userId },
+            data: { isActive: false },
+          });
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to deactivate login ${worker.userId} after deleting worker ${id}: ${err}`);
+      }
+    }
+    return { id, deleted: true };
   }
 
   // Attendance operations

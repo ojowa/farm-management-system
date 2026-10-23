@@ -109,7 +109,9 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
     endDate?: Date;
     status?: string;
   }): Promise<Attendance[]> {
-    const where: any = { organizationId };
+    // W1: soft-deleted workers keep their attendance rows (the delete hook
+    // never cascades), so exclude records whose worker is gone.
+    const where: any = { organizationId, worker: { deletedAt: null } };
     if (filters?.workerId) where.workerId = filters.workerId;
     if (filters?.status) where.status = filters.status;
     if (filters?.date) {
