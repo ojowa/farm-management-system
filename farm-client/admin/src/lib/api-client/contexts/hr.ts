@@ -8,6 +8,8 @@ export interface WorkersAPI {
   delete: (id: string) => Promise<any>;
   /** Rotate the worker's login password and resend their invitation email. */
   reinvite: (id: string) => Promise<any>;
+  /** Distinct department names of live workers — complete filter/datalist source. */
+  departments: () => Promise<any>;
 }
 
 export function createWorkersAPI(client: AxiosInstance): WorkersAPI {
@@ -18,6 +20,7 @@ export function createWorkersAPI(client: AxiosInstance): WorkersAPI {
     update: (id, data) => client.put(`/workers/${id}`, data),
     delete: (id) => client.delete(`/workers/${id}`),
     reinvite: (id) => client.post(`/workers/${id}/reinvite`),
+    departments: () => client.get('/workers/departments'),
   };
 }
 

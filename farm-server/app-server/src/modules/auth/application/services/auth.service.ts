@@ -44,11 +44,27 @@ interface AuthCaller {
   permissions?: string[];
   organizationId?: string | null;
 }
+
+/** Sign-in context used to record a UserSession row on every successful login. */
+interface SessionCtx {
+  ipAddress?: string;
+  userAgent?: string;
+  /** Client platform header ('web', 'mobile', 'console', ...) — defaults to 'web'. */
+  app?: string;
+}
 const ACCESS_TOKEN_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'];
 const REFRESH_TOKEN_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY || '7d') as jwt.SignOptions['expiresIn'];
 const REFRESH_TOKEN_DB_EXPIRY_MS = Number(process.env.REFRESH_TOKEN_DB_EXPIRY_MS) || 7 * 24 * 60 * 60 * 1000;
 const MFA_TOKEN_EXPIRY = (process.env.MFA_TOKEN_EXPIRY || '5m') as jwt.SignOptions['expiresIn'];
 const APP_NAME = process.env.APP_NAME || 'FarmManagement';
+
+/**
+ * Short-TTL memo for the DB-backed platform-admin role flag. Checked on every
+ * scoped user-management call, so the lookup was one query per request; a
+ * demotion now takes effect within the TTL (60s by default).
+ */
+const PLATFORM_ADMIN_CACHE_TTL_MS = Number(process.env.PLATFORM_ADMIN_CACHE_TTL_MS) || 60_000;
+const platformAdminCache = new Map<string, { value: boolean; expires: number }>();
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -108,7 +124,7 @@ export class AuthService {
   constructor(@Inject('UserRepository') private readonly userRepo: UserRepository, @Inject('RefreshTokenRepository') private readonly refreshTokenRepo: RefreshTokenRepository, @Inject('RoleRepository') private readonly roleRepo: RoleRepository, 
   ) {}
 
-  async login(data: { email: string; password: string },  ctx?: { ipAddress?: string; userAgent?: string }) {
+  async login(data: { email: string; password: string },  ctx?: SessionCtx) {
     const user = await this.userRepo.findByEmail(data.email);
     if (!user || !user.isActive) throw new UnauthorizedException('Invalid credentials');
     const isValid = await bcrypt.compare(data.password, user.passwordHash);
@@ -117,15 +133,16 @@ export class AuthService {
       const mfaToken = jwt.sign({ sub: user.id, type: 'mfa' }, getMfaSecret(), { expiresIn: MFA_TOKEN_EXPIRY });
       return { requiresMFA: true, mfaToken, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
     }
-    const accessToken = await this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    const sessionId = await this.recordSession(user, ctx);
+    const accessToken = await this.generateAccessToken(user, undefined, sessionId);
+    const refreshToken = await this.generateRefreshToken(user.id, ctx, undefined, sessionId);
     // Best-effort: record sign-in time for the admin "Last Login" column.
     prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { requiresMFA: false, user: await withPlanFeatures(userWithoutPassword), accessToken, refreshToken };
   }
 
-  async verifyMFA(mfaToken: string, code: string, ctx?: { ipAddress?: string; userAgent?: string }) {
+  async verifyMFA(mfaToken: string, code: string, ctx?: SessionCtx) {
     const payload = jwt.verify(mfaToken, getMfaSecret(), { algorithms: ['HS256'] }) as any;
     const user = await this.userRepo.findById(payload.sub);
     if (!user) throw new NotFoundException('User not found');
@@ -133,15 +150,16 @@ export class AuthService {
     const { authenticator } = await import('otplib');
     const isValid = authenticator.verify({ token: code, secret: user.twoFactorSecret! });
     if (!isValid) throw new UnauthorizedException('Invalid MFA code');
-    const accessToken = await this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    const sessionId = await this.recordSession(user, ctx);
+    const accessToken = await this.generateAccessToken(user, undefined, sessionId);
+    const refreshToken = await this.generateRefreshToken(user.id, ctx, undefined, sessionId);
     // Best-effort: record sign-in time for the admin "Last Login" column.
     prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { user: await withPlanFeatures(userWithoutPassword), accessToken, refreshToken };
   }
 
-  async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string; organizationName?: string }, ctx?: { ipAddress?: string; userAgent?: string }) {
+  async register(data: { email: string; password: string; firstName: string; lastName: string; organizationId?: string; organizationName?: string }, ctx?: SessionCtx) {
     const email = data.email?.trim();
     const firstName = data.firstName?.trim();
     const lastName = data.lastName?.trim();
@@ -180,8 +198,9 @@ export class AuthService {
       roleId,
       organizationId,
     });
-    const accessToken = await this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    const sessionId = await this.recordSession(user, ctx);
+    const accessToken = await this.generateAccessToken(user, undefined, sessionId);
+    const refreshToken = await this.generateRefreshToken(user.id, ctx, undefined, sessionId);
     const { passwordHash: _, twoFactorSecret: __, ...userWithoutPassword } = user as any;
     return { user: userWithoutPassword, accessToken, refreshToken };
   }
@@ -193,9 +212,11 @@ export class AuthService {
     // cannot be re-derived from the user table. A bad signature falls
     // through to the hash lookup below, which rejects uniformly.
     let tokenOrganizationId: string | undefined;
+    let tokenSessionId: string | undefined;
     try {
       const payload = jwt.verify(token, getJwtRefreshSecret()) as any;
       if (typeof payload?.organizationId === 'string') tokenOrganizationId = payload.organizationId;
+      if (typeof payload?.sid === 'string') tokenSessionId = payload.sid;
     } catch {
       /* invalid token — reported by the hash lookup below */
     }
@@ -207,11 +228,17 @@ export class AuthService {
     // A deactivated account must not be able to renew its sessions —
     // JwtAuthGuard never hits the database, so this is the enforcement point.
     if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
-    const accessToken = await this.generateAccessToken(user, tokenOrganizationId);
-    const refreshToken = await this.generateRefreshToken(user.id, ctx, tokenOrganizationId);
+    const accessToken = await this.generateAccessToken(user, tokenOrganizationId, tokenSessionId);
+    const refreshToken = await this.generateRefreshToken(user.id, ctx, tokenOrganizationId, tokenSessionId);
     // Revoke old token and record which new token replaced it
     const newTokenHash = hashToken(refreshToken);
     await this.refreshTokenRepo.revoke(stored.id, newTokenHash);
+    // Session recording: rotation proves this session is still alive.
+    if (tokenSessionId) {
+      prisma.userSession
+        .updateMany({ where: { id: tokenSessionId, userId: user.id }, data: { lastActive: new Date() } })
+        .catch(() => {});
+    }
     return { accessToken, refreshToken };
   }
 
@@ -221,13 +248,15 @@ export class AuthService {
     return !!stored?.revoked;
   }
 
-  async generateRefreshToken(userId: string, ctx?: { ipAddress?: string; deviceInfo?: string }, organizationId?: string | null) {
+  async generateRefreshToken(userId: string, ctx?: { ipAddress?: string; deviceInfo?: string }, organizationId?: string | null, sessionId?: string) {
     // A platform admin's acting-organization context rides the refresh token
     // so it survives rotation without ever touching User.organizationId
     // (membership). Organization staff carry no claim — their membership
     // column is the source of truth.
-    const claims: { sub: string; organizationId?: string } = { sub: userId };
+    const claims: { sub: string; organizationId?: string; sid?: string } = { sub: userId };
     if (organizationId) claims.organizationId = organizationId;
+    // Session id survives rotation so refresh bumps the same UserSession row.
+    if (sessionId) claims.sid = sessionId;
     const rawToken = jwt.sign(claims, getJwtRefreshSecret(), { expiresIn: REFRESH_TOKEN_EXPIRY });
     const tokenHash = hashToken(rawToken);
     await this.refreshTokenRepo.create({
@@ -240,35 +269,70 @@ export class AuthService {
     return rawToken;
   }
 
-  async generateAccessToken(user: any, organizationIdOverride?: string | null) {
+  /**
+   * Session recording (S8): write a UserSession row on every successful
+   * sign-in so the platform's sessions view shows real activity (device, IP,
+   * login time). Best-effort by design — a recording failure must never block
+   * authentication. The returned id rides the access/refresh tokens as the
+   * `sid` claim so logout can close exactly this session.
+   */
+  private async recordSession(user: { id?: string }, ctx?: SessionCtx): Promise<string | undefined> {
+    if (!user?.id) return undefined;
+    try {
+      const session = await prisma.userSession.create({
+        data: {
+          userId: user.id,
+          app: ctx?.app || 'web',
+          ipAddress: ctx?.ipAddress || null,
+          deviceInfo: ctx?.userAgent ? { userAgent: ctx.userAgent } : undefined,
+        },
+      });
+      return session.id;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async generateAccessToken(user: any, organizationIdOverride?: string | null, sessionId?: string) {
     let permissions: string[] = [];
     if (user.roleId) {
       permissions = await this.roleRepo.getPermissionsForRole(user.roleId);
     }
     const secret = getJwtSecret();
-    const token = jwt.sign(
-      {
-        sub: user.id,
-        email: user.email,
-        role: user.role?.name || user.roleName,
-        permissions,
-        // A platform admin's acting context (picked in the admin app's
-        // organization popup) overrides their organization-less membership;
-        // for everyone else this is simply their membership column.
-        organizationId: organizationIdOverride !== undefined ? organizationIdOverride : user.organizationId,
-      },
-      secret,
-      { expiresIn: ACCESS_TOKEN_EXPIRY }
-    );
+    const claims: { sub: string; email: any; role: any; permissions: string[]; organizationId: any; sid?: string } = {
+      sub: user.id,
+      email: user.email,
+      role: user.role?.name || user.roleName,
+      permissions,
+      // A platform admin's acting context (picked in the admin app's
+      // organization popup) overrides their organization-less membership;
+      // for everyone else this is simply their membership column.
+      organizationId: organizationIdOverride !== undefined ? organizationIdOverride : user.organizationId,
+    };
+    // Session id: lets logout close the matching UserSession row.
+    if (sessionId) claims.sid = sessionId;
+    const token = jwt.sign(claims, secret, { expiresIn: ACCESS_TOKEN_EXPIRY });
     return token;
   }
 
-  async logout(userId: string) {
+  async logout(userId: string, sessionId?: string) {
     await this.refreshTokenRepo.deleteAllForUser(userId);
+    // Close the recorded session for THIS device only. Older tokens carry no
+    // `sid` — leave their rows alone rather than closing other devices.
+    if (userId && sessionId) {
+      await prisma.userSession
+        .updateMany({ where: { id: sessionId, userId }, data: { isActive: false, logoutAt: new Date() } })
+        .catch(() => {});
+    }
   }
 
   async logoutAllSessions(userId: string) {
     await this.refreshTokenRepo.deleteAllForUser(userId);
+    if (userId) {
+      await prisma.userSession
+        .updateMany({ where: { userId, isActive: true }, data: { isActive: false, logoutAt: new Date() } })
+        .catch(() => {});
+    }
   }
 
   async getActiveSessions(userId: string) {
@@ -410,9 +474,14 @@ export class AuthService {
    */
   private async isPlatformAdminRole(roleId?: string | null): Promise<boolean> {
     if (!roleId) return false;
+    const cacheKey = `r:${roleId}`;
+    const cached = platformAdminCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) return cached.value;
     const { prisma } = await import('@farm/database');
     const role = await prisma.role.findUnique({ where: { id: roleId }, select: { isPlatformAdmin: true } });
-    return !!role?.isPlatformAdmin;
+    const value = !!role?.isPlatformAdmin;
+    platformAdminCache.set(cacheKey, { value, expires: Date.now() + PLATFORM_ADMIN_CACHE_TTL_MS });
+    return value;
   }
 
   /**
@@ -446,7 +515,7 @@ export class AuthService {
    *   stays organization-less, so the admin never appears in that org's user
    *   lists, counts, or per-org ownership checks.
    */
-  async switchOrganization(userId: string, organizationId: string) {
+  async switchOrganization(userId: string, organizationId: string, sessionId?: string) {
     const user = await this.userRepo.findById(userId);
     if (!user) throw new NotFoundException('User not found');
     if (!organizationId) throw new BadRequestException('organizationId is required');
@@ -463,8 +532,8 @@ export class AuthService {
       actingContext = organizationId;
     }
 
-    const accessToken = await this.generateAccessToken(user, actingContext);
-    const refreshToken = await this.generateRefreshToken(userId, undefined, actingContext);
+    const accessToken = await this.generateAccessToken(user, actingContext, sessionId);
+    const refreshToken = await this.generateRefreshToken(userId, undefined, actingContext, sessionId);
 
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return {
@@ -511,13 +580,20 @@ export class AuthService {
     if (caller.permissions?.includes('*')) return true;
     const userId = caller.id ?? caller.sub;
     if (!userId) return false;
+    // Per-request admin checks were a DB hit each call — memoize the role
+    // flag for a short window (a demotion takes effect within 60s; role
+    // changes already force re-authentication via session revocation).
+    const cached = platformAdminCache.get(userId);
+    if (cached && cached.expires > Date.now()) return cached.value;
     try {
       const { prisma } = await import('@farm/database');
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { role: { select: { isPlatformAdmin: true } } },
       });
-      return !!user?.role?.isPlatformAdmin;
+      const value = !!user?.role?.isPlatformAdmin;
+      platformAdminCache.set(userId, { value, expires: Date.now() + PLATFORM_ADMIN_CACHE_TTL_MS });
+      return value;
     } catch {
       return false;
     }

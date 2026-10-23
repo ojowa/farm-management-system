@@ -151,6 +151,8 @@ export default function WorkersScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Full server-side department list (null until loaded / on failure → fallback).
+  const [serverDepartments, setServerDepartments] = useState<string[] | null>(null);
 
   // Server-side filters the loader reads — a ref so callbacks captured by
   // earlier renders (pull-to-refresh, delete) never act on stale filter values.
@@ -231,7 +233,7 @@ export default function WorkersScreen() {
         farmId: filters.farmId !== 'all' ? filters.farmId : undefined,
         department: filters.department !== 'all' ? filters.department : undefined,
       });
-      const payload = response.data;
+      const payload: any = response.data;
       const rows = unwrapList<Worker>(payload);
       const pages = Number(payload?.totalPages);
       setTotalPages(Number.isFinite(pages) && pages > 0 ? pages : 1);
@@ -258,6 +260,17 @@ export default function WorkersScreen() {
     }
   };
 
+  const fetchDepartments = async () => {
+    try {
+      const response = await workersAPI.departments();
+      const payload: any = response.data;
+      const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+      setServerDepartments(rows.filter((d: any) => typeof d === 'string' && !!d));
+    } catch {
+      /* endpoint unavailable — chips fall back to departments on loaded rows */
+    }
+  };
+
   // Debounce the search box so typing doesn't fire a request per keystroke.
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
@@ -266,6 +279,7 @@ export default function WorkersScreen() {
 
   useEffect(() => {
     fetchFarms();
+    fetchDepartments();
   }, []);
 
   // Any filter change restarts pagination from page 1.
@@ -305,16 +319,20 @@ export default function WorkersScreen() {
     setDepartmentFilter('all');
   };
 
-  // Server-side department values seen so far (departments are free text on
-  // the worker form — derive the chips from what the API has returned).
+  // Department chips: the server-side distinct list (complete across pages)
+  // merged with what's on screen, so a filter keeps working even when the
+  // list call failed. Departments are free text on the worker form.
   const departmentOptions = useMemo(() => {
     const set = new Set<string>();
+    (serverDepartments ?? []).forEach((d) => {
+      if (d) set.add(d);
+    });
     workers.forEach((w) => {
       if (w.department) set.add(w.department);
     });
     if (departmentFilter !== 'all') set.add(departmentFilter);
     return Array.from(set).sort();
-  }, [workers, departmentFilter]);
+  }, [serverDepartments, workers, departmentFilter]);
 
   const handleDeleteWorker = useCallback(
     (workerId: string, name: string) => {

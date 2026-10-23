@@ -140,10 +140,20 @@ export default function WorkersPage() {
     { cacheTime: 60_000 }
   );
 
+  // Complete department list (server-side distinct values over live workers) —
+  // static options + what the org actually uses. Deriving chips from loaded
+  // pages only missed departments beyond page 1.
+  const { data: departmentsData } = useFetch<string[]>('worker-departments', () => workersAPI.departments(), {
+    cacheTime: 300_000,
+  });
+
   const farms = farmsData?.data || [];
   const roles = rolesData?.data || [];
   const workers = workersData?.data || [];
   const totalPages = workersData?.totalPages || 1;
+  const departmentOptions = Array.from(
+    new Set([...WORKER_DEPARTMENT_OPTIONS, ...(Array.isArray(departmentsData) ? departmentsData : [])])
+  );
 
   // Default the login role to the system WORKER role once roles arrive; an
   // empty value still works — the backend falls back to WORKER as well.
@@ -170,11 +180,14 @@ export default function WorkersPage() {
     try {
       // B3: the server caps `limit` at 100 — a single `limit: 1000` request
       // silently truncated the export. Page through until totalPages (bounded
-      // so a pathological dataset can't loop forever).
+      // so a pathological dataset can't loop forever; the cap is now high
+      // enough — 50k rows — that realistic orgs export in full, and hitting
+      // it says so loudly instead of silently).
       const rows: Worker[] = [];
-      const MAX_EXPORT_PAGES = 50;
+      const MAX_EXPORT_PAGES = 500;
       let current = 1;
       let totalPages = 1;
+      let total = 0;
       do {
         const { data } = await workersAPI.list({
           page: current,
@@ -186,8 +199,10 @@ export default function WorkersPage() {
         });
         rows.push(...(data?.data || []));
         totalPages = data?.totalPages || 1;
+        total = data?.total ?? total;
         current += 1;
       } while (current <= totalPages && current <= MAX_EXPORT_PAGES);
+      const truncated = current <= totalPages;
       const header = ['Name', 'Email', 'Phone', 'Position', 'Department', 'Status', 'Hire Date', 'Created'];
       const csv = [
         header.join(','),
@@ -213,7 +228,15 @@ export default function WorkersPage() {
       a.download = 'workers.csv';
       a.click();
       URL.revokeObjectURL(url);
-      toast({ type: 'success', title: `Exported ${rows.length} workers` });
+      toast(
+        truncated
+          ? {
+              type: 'warning',
+              title: 'Export truncated',
+              message: `Exported the first ${rows.length} of ${total} workers — narrow the filters to include the rest.`,
+            }
+          : { type: 'success', title: `Exported ${rows.length} workers` }
+      );
     } catch (err: any) {
       toast({
         type: 'error',
@@ -348,7 +371,7 @@ export default function WorkersPage() {
             />
             <Select
               placeholder="All Departments"
-              options={WORKER_DEPARTMENT_OPTIONS.map((d) => ({ value: d, label: d }))}
+              options={departmentOptions.map((d) => ({ value: d, label: d }))}
               value={departmentFilter}
               onChange={(e) => {
                 setDepartmentFilter(e.target.value);
@@ -570,7 +593,7 @@ export default function WorkersPage() {
                   onChange={(e) => setForm({ ...form, department: e.target.value })}
                 />
                 <datalist id="worker-departments">
-                  {WORKER_DEPARTMENT_OPTIONS.map((d) => (
+                  {departmentOptions.map((d) => (
                     <option key={d} value={d} />
                   ))}
                 </datalist>

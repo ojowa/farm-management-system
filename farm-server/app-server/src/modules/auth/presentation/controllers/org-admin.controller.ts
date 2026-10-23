@@ -56,13 +56,13 @@ export class OrgAdminController {
 
   @Post('roles')
   @Permission('organization.manage')
-  createRole(@Req() req: any, @Body() body: { name: string; description?: string }) {
+  createRole(@Req() req: any, @Body() body: { name: string; description?: string; permissionIds?: string[] }) {
     return this.orgAdminService.createRole(req.user?.organizationId, body);
   }
 
   @Put('roles/:id')
   @Permission('organization.manage')
-  updateRole(@Param('id') id: string, @Req() req: any, @Body() body: { name?: string; description?: string }) {
+  updateRole(@Param('id') id: string, @Req() req: any, @Body() body: { name?: string; description?: string; permissionIds?: string[] }) {
     return this.orgAdminService.updateRole(String(req.user?.organizationId || ''), id, body);
   }
 

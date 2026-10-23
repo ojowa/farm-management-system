@@ -124,6 +124,8 @@ export const platformUsersAPI = {
   update: (id: string, data: any) => apiClient.patch(`/api/platform-users/${id}`, data),
   deactivate: (id: string) => apiClient.delete(`/api/platform-users/${id}`),
   impersonate: (id: string) => apiClient.post(`/api/platform-users/${id}/impersonate`),
+  endImpersonation: (id: string, sessionId: string) =>
+    apiClient.post(`/api/platform-users/${id}/sessions/${sessionId}/end`),
   forceLogout: (id: string) => apiClient.post(`/api/platform-users/${id}/force-logout`),
   sessions: (id: string) => apiClient.get(`/api/platform-users/${id}/sessions`),
   toggleActive: (userId: string) => apiClient.put(`/api/platform-users/${userId}/toggle-active`),

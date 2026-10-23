@@ -84,6 +84,13 @@ export class WorkerController {
   }
 
   @Permission('hr.read')
+  // Declared before `:id` — otherwise Nest would match 'departments' as an id.
+  @Get('departments')
+  departments(@Req() req: any) {
+    return this.hrService.getWorkerDepartments(getOrgId(req));
+  }
+
+  @Permission('hr.read')
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.hrService.getWorkerById(id, getOrgId(req));

@@ -43,8 +43,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
+  permChipSelected: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
   permChipText: { fontSize: 13, color: colors.text, fontWeight: '500' },
   emptyPerms: { fontSize: 14, color: colors.textLight, fontStyle: 'italic' },
+  categoryHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textLight,
+    textTransform: 'uppercase',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  editActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
   actions: { marginTop: 20, gap: 12 },
 });
 
@@ -52,6 +65,7 @@ interface Role {
   id: string;
   name: string;
   description?: string;
+  organizationId?: string | null;
   permissions?: any[];
   permissionIds?: string[];
 }
@@ -62,9 +76,15 @@ function unwrapOne<T>(payload: any): T | null {
   return null;
 }
 
-/** A permission may arrive as a plain string or an expanded object. */
-const permLabel = (p: any): string =>
-  typeof p === 'string' ? p : p?.name || p?.permission || p?.key || String(p?.id ?? '');
+/** A permission may arrive as a plain string, a RolePermission row, or an expanded object. */
+const permLabel = (p: any): string => {
+  if (typeof p === 'string') return p;
+  // RolePermission row: { permissionId, permission: { id, name, ... } }.
+  if (p?.permission && typeof p.permission === 'object') {
+    return p.permission.name || p.permissionId || '';
+  }
+  return p?.name || p?.key || String(p?.permissionId ?? p?.id ?? '');
+};
 
 export default function RoleDetailScreen() {
   const router = useRouter();
@@ -78,6 +98,13 @@ export default function RoleDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<Role | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Permission editor (POST /roles/:id/permissions — org custom roles only).
+  const [editingPerms, setEditingPerms] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [catalog, setCatalog] = useState<any[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [savingPerms, setSavingPerms] = useState(false);
 
   const dynamicStyles = {
     container: { backgroundColor: tc.background },
@@ -144,6 +171,55 @@ export default function RoleDetailScreen() {
     );
   }, [role, success, showError, router]);
 
+  // Pre-check the role's current permissions and open the editor, loading the
+  // org's catalog (GET /permissions already excludes platform permissions).
+  const openPermEditor = async () => {
+    if (!role) return;
+    const current = (role.permissions ?? [])
+      .map((p: any) => p?.permission?.id || p?.permissionId)
+      .filter(Boolean);
+    setSelected(new Set(current));
+    setEditingPerms(true);
+    if (catalog.length) return;
+    setCatalogLoading(true);
+    try {
+      const response = await orgAdminAPI.listPermissions();
+      const payload: any = response.data;
+      const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+      setCatalog(rows.filter((p: any) => p && typeof p.id === 'string'));
+    } catch (error: any) {
+      showError(describeApiError(error, "Couldn't load the permission catalog."));
+      setEditingPerms(false);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const togglePermission = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const savePermissions = async () => {
+    if (!role) return;
+    setSavingPerms(true);
+    try {
+      await orgAdminAPI.setPermissions(role.id, Array.from(selected));
+      success('Permissions updated');
+      setEditingPerms(false);
+      await loadRole();
+    } catch (error: any) {
+      // Server explains the rule (system role, platform permission, ...).
+      showError(describeApiError(error, 'Failed to update permissions.'));
+    } finally {
+      setSavingPerms(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, dynamicStyles.container]}>
@@ -181,6 +257,21 @@ export default function RoleDetailScreen() {
   }
 
   const permissions: any[] = role.permissions ?? [];
+  // Only the org's OWN custom roles are editable — server rejects system roles.
+  const isCustomRole = !!role.organizationId;
+  const canEditPerms = canManage && isCustomRole;
+
+  // Catalog grouped by category for the edit view.
+  const groupedCatalog: Array<[string, any[]]> = [];
+  {
+    const byCategory: Record<string, any[]> = {};
+    for (const perm of catalog) {
+      const category = perm.category || 'General';
+      if (!byCategory[category]) byCategory[category] = [];
+      byCategory[category].push(perm);
+    }
+    for (const entry of Object.entries(byCategory)) groupedCatalog.push(entry);
+  }
 
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
@@ -198,11 +289,62 @@ export default function RoleDetailScreen() {
           {!!role.description && <Text style={[styles.roleDescription, dynamicStyles.roleDescription]}>{role.description}</Text>}
 
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-            Permissions ({permissions.length || role.permissionIds?.length || 0})
+            {editingPerms
+              ? `Edit permissions (${selected.size} of ${catalog.length})`
+              : `Permissions (${permissions.length || role.permissionIds?.length || 0})`}
           </Text>
-          {permissions.length > 0 ? (
+
+          {editingPerms ? (
+            <View>
+              {catalogLoading ? (
+                <Text style={[styles.emptyPerms, dynamicStyles.emptyPerms]}>Loading permission catalog…</Text>
+              ) : groupedCatalog.length === 0 ? (
+                <Text style={[styles.emptyPerms, dynamicStyles.emptyPerms]}>No permissions available.</Text>
+              ) : (
+                groupedCatalog.map(([category, perms]) => (
+                  <View key={category}>
+                    <Text style={[styles.categoryHeader, dynamicStyles.sectionTitle]}>{category}</Text>
+                    {perms.map((perm: any) => {
+                      const checked = selected.has(perm.id);
+                      return (
+                        <TouchableOpacity
+                          key={perm.id}
+                          style={[styles.permChip, dynamicStyles.permChip, checked && styles.permChipSelected]}
+                          onPress={() => togglePermission(perm.id)}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked }}
+                          accessibilityLabel={perm.name}
+                        >
+                          <Text style={[styles.permChipText, dynamicStyles.permChipText]}>
+                            {checked ? '✓ ' : '○ '}
+                            {perm.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ))
+              )}
+              <View style={styles.editActions}>
+                <Button
+                  title="Cancel"
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                  onPress={() => setEditingPerms(false)}
+                  accessibilityLabel="Cancel permission editing"
+                />
+                <Button
+                  title="Save"
+                  style={{ flex: 1 }}
+                  loading={savingPerms}
+                  onPress={savePermissions}
+                  accessibilityLabel="Save role permissions"
+                />
+              </View>
+            </View>
+          ) : permissions.length > 0 ? (
             permissions.map((p, index) => (
-              <View key={p?.id ?? index} style={[styles.permChip, dynamicStyles.permChip]}>
+              <View key={p?.permission?.id ?? p?.permissionId ?? index} style={[styles.permChip, dynamicStyles.permChip]}>
                 <Text style={[styles.permChipText, dynamicStyles.permChipText]}>{permLabel(p)}</Text>
               </View>
             ))
@@ -217,8 +359,15 @@ export default function RoleDetailScreen() {
           )}
         </View>
 
-        {canManage && (
+        {canManage && !editingPerms && (
           <View style={styles.actions}>
+            {canEditPerms && (
+              <Button
+                title="Edit permissions"
+                onPress={openPermEditor}
+                accessibilityLabel="Edit role permissions"
+              />
+            )}
             <Button
               title="Delete Role"
               variant="secondary"
@@ -226,6 +375,11 @@ export default function RoleDetailScreen() {
               accessibilityLabel="Delete this role"
             />
           </View>
+        )}
+        {canManage && !editingPerms && !isCustomRole && (
+          <Text style={[styles.emptyPerms, dynamicStyles.emptyPerms, { marginTop: 12 }]}>
+            System role — permissions are managed by the platform.
+          </Text>
         )}
       </ScrollView>
     </SafeAreaView>

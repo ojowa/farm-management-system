@@ -32,6 +32,8 @@ export interface RolesAPI {
   create: (data: { name: string; description?: string; permissionIds?: string[] }) => Promise<any>;
   update: (id: string, data: { name?: string; description?: string; permissionIds?: string[] }) => Promise<any>;
   delete: (id: string) => Promise<any>;
+  /** POST /roles/:id/permissions — org-managed custom roles only. */
+  setPermissions: (id: string, permissionIds: string[]) => Promise<any>;
 }
 
 export function createRolesAPI(client: AxiosInstance): RolesAPI {
@@ -41,6 +43,7 @@ export function createRolesAPI(client: AxiosInstance): RolesAPI {
     create: (data) => client.post('/roles', data),
     update: (id, data) => client.put(`/roles/${id}`, data),
     delete: (id) => client.delete(`/roles/${id}`),
+    setPermissions: (id, permissionIds) => client.post(`/roles/${id}/permissions`, { permissionIds }),
   };
 }
 

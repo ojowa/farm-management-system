@@ -238,11 +238,41 @@ export class HrApplicationService {
     });
   }
 
+  /**
+   * Liveness guard for attendance writes: rows may only be created for a
+   * live worker in this organization. Without it a soft-deleted worker's ID
+   * still accepted clock-ins and manual records that the list/summary
+   * queries (which exclude deleted workers) then hid forever.
+   */
+  private async assertLiveWorker(organizationId: string, workerId: string): Promise<void> {
+    const worker = await prisma.worker.findFirst({
+      where: { id: workerId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!worker) throw new NotFoundException('Worker not found or has been removed');
+  }
+
   // Worker operations
   async getWorkerById(id: string, organizationId: string) {
     const worker = await this.workerRepo.findById(id, organizationId);
     if (!worker) throw new NotFoundException(`Worker with ID ${id} not found`);
     return worker;
+  }
+
+  /**
+   * Distinct department names of the organization's live workers — the source
+   * for filter chips/datalists. Deriving these from loaded pages only (the
+   * previous client-side approach) missed departments beyond page 1, and the
+   * column is free text so no static list can be complete.
+   */
+  async getWorkerDepartments(organizationId: string): Promise<string[]> {
+    const rows = await prisma.worker.findMany({
+      where: { organizationId, deletedAt: null, department: { not: null } },
+      distinct: ['department'],
+      select: { department: true },
+      orderBy: { department: 'asc' },
+    });
+    return rows.map((r) => r.department as string).filter(Boolean);
   }
 
   async getAllWorkers(
@@ -680,6 +710,9 @@ export class HrApplicationService {
     const inTs = HrApplicationService.toClockTimestamp(day, clockIn);
     const outTs = HrApplicationService.rollOvernight(inTs, HrApplicationService.toClockTimestamp(day, clockOut));
 
+    // Refuse records for workers that no longer exist in this organization.
+    await this.assertLiveWorker(organizationId, workerId);
+
     const attendance = await this.attendanceRepo.create({
       organizationId,
       workerId,
@@ -727,6 +760,10 @@ export class HrApplicationService {
     const scoped = await this.selfClockWorkerId(organizationId, workerId, caller);
     workerId = scoped.workerId;
     if (scoped.workerName) workerName = scoped.workerName;
+
+    // Refuse clock-ins for workers that no longer exist in this organization
+    // (self-clock profiles are already live; this covers manager-supplied IDs).
+    await this.assertLiveWorker(organizationId, workerId);
 
     const today = new Date();
     const existing = await this.attendanceRepo.findByWorkerAndDate(organizationId, workerId, today);

@@ -666,9 +666,13 @@ export const workersAPI = {
     http.put<Worker>(`/workers/${id}`, data),
   delete: (id: string) =>
     http.delete(`/workers/${id}`),
-  // Rotate the linked login's password and resend the invitation email.
+  // Rotate the linked login's password and resend their invitation email.
   reinvite: (id: string) =>
     http.post(`/workers/${id}/reinvite`),
+  // Distinct department names of live workers — complete filter-chip source
+  // (loaded pages alone miss departments beyond page 1).
+  departments: () =>
+    http.get<string[]>('/workers/departments'),
 };
 
 // ─── Attendance ────────────────────────────────────────────────────────────────
@@ -927,6 +931,12 @@ export const orgAdminAPI = {
     http.put(`/org-admin/roles/${id}`, data),
   deleteRole: (id: string) =>
     http.delete(`/org-admin/roles/${id}`),
+  // Permission catalog + assignment (roles controller: org-managed custom
+  // roles only, platform permissions rejected server-side).
+  listPermissions: () =>
+    http.get('/permissions'),
+  setPermissions: (id: string, permissionIds: string[]) =>
+    http.post(`/roles/${id}/permissions`, { permissionIds }),
 };
 
 // ─── Reports ──────────────────────────────────────────────────────────────────

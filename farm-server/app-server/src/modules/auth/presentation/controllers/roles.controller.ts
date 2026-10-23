@@ -28,13 +28,13 @@ export class RolesController {
 
   @Post()
   @Permission('organization.manage')
-  create(@Body() body: { name: string; description?: string; organizationId?: string }, @Req() req: any) {
+  create(@Body() body: { name: string; description?: string; organizationId?: string; permissionIds?: string[] }, @Req() req: any) {
     return this.rolesService.create(body, req.user?.organizationId ?? null);
   }
 
   @Put(':id')
   @Permission('organization.manage')
-  update(@Param('id') id: string, @Body() body: { name?: string; description?: string }, @Req() req: any) {
+  update(@Param('id') id: string, @Body() body: { name?: string; description?: string; permissionIds?: string[] }, @Req() req: any) {
     return this.rolesService.update(id, body, req.user?.organizationId ?? null);
   }
 

@@ -179,6 +179,9 @@ export default function UsersScreen() {
     if (!form.lastName.trim()) errors.lastName = 'Last name is required';
     if (!form.email.trim()) errors.email = 'Email is required';
     else if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) errors.email = 'Enter a valid email address';
+    // POST /org-admin/users requires roleId — User.roleId is non-nullable and
+    // S4 made the server reject invites that omit it.
+    if (!form.roleId) errors.roleId = 'Select a role for the new user';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -405,6 +408,11 @@ export default function UsersScreen() {
               );
             })}
           </View>
+        )}
+        {formErrors.roleId && (
+          <Text style={{ color: colors.error, fontSize: 12, marginBottom: 8 }}>
+            {formErrors.roleId}
+          </Text>
         )}
         <View style={styles.modalActions}>
           <Button

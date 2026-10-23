@@ -17,6 +17,33 @@ const COOKIE_OPTS = {
 const ACCESS_MAX_AGE = Number(process.env.COOKIE_ACCESS_MAX_AGE_MS) || 15 * 60 * 1000;
 const REFRESH_MAX_AGE = Number(process.env.COOKIE_REFRESH_MAX_AGE_MS) || 7 * 24 * 60 * 60 * 1000;
 
+/** Sign-in context for session recording: IP, device and client platform. */
+function sessionCtx(req: any) {
+  return {
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    app: String(req.headers['x-platform'] || 'web'),
+  };
+}
+
+/**
+ * The `sid` claim of the caller's own access token (already verified by
+ * JwtAuthGuard). Lets logout close exactly this device's UserSession row
+ * instead of guessing between concurrent sessions.
+ */
+function sidFromRequest(req: any): string | undefined {
+  const raw =
+    req.cookies?.accessToken ||
+    String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!raw) return undefined;
+  try {
+    const payload = require('jsonwebtoken').decode(raw) as any;
+    return typeof payload?.sid === 'string' ? payload.sid : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 @Controller('auth')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class AuthController {
@@ -25,7 +52,7 @@ export class AuthController {
   @Post('login')
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   async login(@Body() body: LoginDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
-    const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+    const ctx = sessionCtx(req);
     const result = await this.authService.login(body, ctx);
 
     if (result.accessToken && result.refreshToken) {
@@ -39,7 +66,7 @@ export class AuthController {
   @Post('verify-mfa')
   @Throttle({ default: { ttl: 300000, limit: 5 } })
   async verifyMFA(@Body() body: VerifyMfaDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
-    const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+    const ctx = sessionCtx(req);
     const result = await this.authService.verifyMFA(body.mfaToken, body.code, ctx);
 
     if (result.accessToken && result.refreshToken) {
@@ -53,7 +80,7 @@ export class AuthController {
   @Post('register')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   async register(@Body() body: RegisterDto, @Req() req: any, @Res({ passthrough: true }) res: Response): Promise<any> {
-    const ctx = { ipAddress: req.ip, userAgent: req.headers['user-agent'] };
+    const ctx = sessionCtx(req);
     const result = await this.authService.register(body, ctx);
 
     if (result.accessToken && result.refreshToken) {
@@ -133,7 +160,7 @@ export class AuthController {
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
-    await this.authService.logout(req.user?.id);
+    await this.authService.logout(req.user?.id, sidFromRequest(req));
     res.clearCookie('accessToken', { path: '/' });
     res.clearCookie('refreshToken', { path: '/' });
     return { message: 'Logged out successfully' };
@@ -199,7 +226,7 @@ export class AuthController {
   @Post('switch-organization')
   @UseGuards(JwtAuthGuard)
   async switchOrganization(@Req() req: any, @Body() body: { organizationId: string }, @Res({ passthrough: true }) res: Response) {
-    const result = await this.authService.switchOrganization(req.user?.id, body.organizationId);
+    const result = await this.authService.switchOrganization(req.user?.id, body.organizationId, sidFromRequest(req));
 
     if (result.accessToken && result.refreshToken) {
       res.cookie('accessToken', result.accessToken, { ...COOKIE_OPTS, maxAge: ACCESS_MAX_AGE });

@@ -9,7 +9,21 @@ import {
   PlatformConfigRepository,
 } from '../../domain/repositories/platform.repository';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import { EmailService } from '../../../notification/modules/email/email.service';
+
+/** Cryptographically-strong temporary password (~62 bits, 12 chars). */
+function generateTempPassword(): string {
+  return randomBytes(9).toString('base64url').slice(0, 12);
+}
+
+/**
+ * Impersonation tokens are deliberately short-lived: the platform admin gets
+ * a real JWT carrying the target's role/permissions/organization for a quick
+ * support session. Overridable via env (e.g. '5m').
+ */
+const IMPERSONATION_TOKEN_EXPIRY = (process.env.IMPERSONATION_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'];
 
 @Injectable()
 export class PlatformFeatureFlagService {
@@ -468,7 +482,7 @@ export class PlatformUserService {
     const existing = await prisma.user.findFirst({ where: { email }, select: { id: true } });
     if (existing) throw new ConflictException('Email already registered');
 
-    const tempPassword = Math.random().toString(36).slice(-8);
+    const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
     const created = await prisma.user.create({
       data: {
@@ -597,12 +611,94 @@ export class PlatformUserService {
     return this.mapUser(updated);
   }
 
-  async impersonateUser(id: string, auditUserId: string) {
+  /**
+   * S8 — working impersonation. Mints a real, short-lived JWT carrying the
+   * TARGET user's role/permissions/organization (so every downstream guard
+   * scopes the request exactly like that user) plus an `imp` claim naming the
+   * platform admin who minted it. The session is recorded in UserSession
+   * (`app: 'impersonation'`) and the start is audited, so privileged access
+   * leaves a durable trail. The token is returned in the response body — it
+   * is deliberately NOT set as a cookie: the console itself stays signed in
+   * as the platform admin.
+   */
+  async impersonateUser(id: string, auditUserId: string, ctx?: { ipAddress?: string; userAgent?: string }) {
     const { prisma } = await import('@farm/database');
     const user = await prisma.user.findUnique({ where: { id }, include: { role: true } });
     if (!user) throw new NotFoundException('User not found');
+    if (user.id === auditUserId) throw new BadRequestException('You cannot impersonate yourself');
+    if (!user.isActive) throw new BadRequestException('Cannot impersonate a deactivated user');
+    if (!user.role) throw new BadRequestException('User has no role assigned');
+
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: { roleId: user.roleId! },
+      include: { permission: { select: { name: true } } },
+    });
+    const permissions = rolePermissions.map((rp: any) => rp.permission.name);
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET environment variable is required');
+    const token = jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role.name,
+        permissions,
+        organizationId: user.organizationId,
+        // Impersonation marker: who is really acting, and when it started.
+        imp: { by: auditUserId, at: new Date().toISOString() },
+      },
+      secret,
+      { expiresIn: IMPERSONATION_TOKEN_EXPIRY },
+    );
+
+    // Expiry mirrors the token itself (decoded exp) so the session record and
+    // the JWT can never drift apart.
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    const expiresAt = new Date((decoded?.exp ?? Math.floor(Date.now() / 1000)) * 1000);
+    const session = await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        app: 'impersonation',
+        ipAddress: ctx?.ipAddress || null,
+        deviceInfo: {
+          impersonatorId: auditUserId,
+          expiresAt: expiresAt.toISOString(),
+          ...(ctx?.userAgent ? { userAgent: ctx.userAgent } : {}),
+        },
+        isActive: true,
+      },
+    });
+
     await this.auditLogRepo.create({ userId: auditUserId, action: 'user.impersonate', entity: 'User', entityId: id });
-    return { message: 'Impersonation token generated', targetUser: { id: user.id, email: user.email, role: user.role?.name } };
+    return {
+      accessToken: token,
+      expiresAt: expiresAt.toISOString(),
+      sessionId: session.id,
+      targetUser: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role.name,
+        organizationId: user.organizationId,
+      },
+    };
+  }
+
+  /**
+   * Close an impersonation session's record. The JWT is stateless and keeps
+   * working until its short expiry — for immediate revocation use
+   * force-logout/password rotation. Ending twice is harmless (idempotent).
+   */
+  async endImpersonationSession(id: string, sessionId: string, auditUserId: string) {
+    const { prisma } = await import('@farm/database');
+    const session = await prisma.userSession.findFirst({ where: { id: sessionId, userId: id } });
+    if (!session) throw new NotFoundException('Session not found');
+    if (session.isActive) {
+      await prisma.userSession.update({ where: { id: sessionId }, data: { isActive: false, logoutAt: new Date() } });
+    }
+    await this.auditLogRepo.create({ userId: auditUserId, action: 'user.impersonation-end', entity: 'User', entityId: id });
+    return { message: 'Impersonation session ended', sessionId, active: false };
   }
 
   async forceLogoutUser(id: string, auditUserId: string) {

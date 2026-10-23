@@ -41,6 +41,18 @@ export default function UsersPage() {
   const [inviteResult, setInviteResult] = useState<{ name: string; email: string; tempPassword: string } | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
 
+  // Impersonation (S8): a recorded, short-lived session acting as the target.
+  const [impTarget, setImpTarget] = useState<PlatformAdminUser | null>(null);
+  const [impResult, setImpResult] = useState<{ accessToken: string; expiresAt: string; sessionId: string } | null>(null);
+  const [impBusy, setImpBusy] = useState(false);
+  const [impCopied, setImpCopied] = useState(false);
+
+  // Sessions (S8): recorded UserSession rows for one user.
+  const [sessionsUser, setSessionsUser] = useState<PlatformAdminUser | null>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+
   const loadUsers = async () => {
     setLoading(true);
     try {
@@ -205,6 +217,76 @@ export default function UsersPage() {
     setTimeout(() => setInviteCopied(false), 2000);
   };
 
+  // ── Impersonation (S8) ──────────────────────────────────
+  const openImpersonate = (u: PlatformAdminUser) => {
+    setImpTarget(u);
+    setImpResult(null);
+    setImpBusy(false);
+  };
+
+  const startImpersonation = async () => {
+    if (!impTarget) return;
+    setImpBusy(true);
+    try {
+      const { data } = await platformUsersAPI.impersonate(impTarget.id);
+      setImpResult({ accessToken: data.accessToken, expiresAt: data.expiresAt, sessionId: data.sessionId });
+    } catch (err) {
+      toastError(getErrorMessage(err));
+      setImpTarget(null);
+    }
+    setImpBusy(false);
+  };
+
+  const copyImpToken = () => {
+    if (!impResult) return;
+    navigator.clipboard.writeText(impResult.accessToken);
+    setImpCopied(true);
+    setTimeout(() => setImpCopied(false), 2000);
+  };
+
+  const endImpersonation = async () => {
+    if (!impTarget || !impResult) return;
+    setImpBusy(true);
+    try {
+      await platformUsersAPI.endImpersonation(impTarget.id, impResult.sessionId);
+      toastSuccess('Impersonation session ended');
+      setImpResult(null);
+      setImpTarget(null);
+    } catch (err) {
+      toastError(getErrorMessage(err));
+    }
+    setImpBusy(false);
+  };
+
+  // ── Sessions (S8) ───────────────────────────────────────
+  const openSessions = async (u: PlatformAdminUser) => {
+    setSessionsUser(u);
+    setSessions([]);
+    setSessionsError(null);
+    setSessionsLoading(true);
+    try {
+      const { data } = await platformUsersAPI.sessions(u.id);
+      setSessions(Array.isArray(data?.sessions) ? data.sessions : []);
+    } catch (err) {
+      setSessionsError(getErrorMessage(err));
+    }
+    setSessionsLoading(false);
+  };
+
+  const endSessionFromList = async (sessionId: string) => {
+    if (!sessionsUser) return;
+    try {
+      await platformUsersAPI.endImpersonation(sessionsUser.id, sessionId);
+      toastSuccess('Session ended');
+      const { data } = await platformUsersAPI.sessions(sessionsUser.id);
+      setSessions(Array.isArray(data?.sessions) ? data.sessions : []);
+      // The dialog may be showing the same session the impersonate dialog holds.
+      setImpResult((prev) => (prev?.sessionId === sessionId ? null : prev));
+    } catch (err) {
+      toastError(getErrorMessage(err));
+    }
+  };
+
   const totalPages = Math.ceil(total / 20);
 
   return (
@@ -305,6 +387,20 @@ export default function UsersPage() {
                     >
                       Edit
                     </button>
+                    <button
+                      onClick={() => openSessions(u)}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Sessions
+                    </button>
+                    {u.isActive && (
+                      <button
+                        onClick={() => openImpersonate(u)}
+                        className="text-purple-600 hover:text-purple-800 font-medium"
+                      >
+                        Impersonate
+                      </button>
+                    )}
                     <button
                       onClick={() => handleForceLogout(u.id)}
                       className="text-orange-600 hover:text-orange-800 font-medium"
@@ -601,6 +697,166 @@ export default function UsersPage() {
               </div>
             </form>
           )}
+        </Dialog>
+
+        {/* Impersonation (S8): start a recorded, short-lived session as the target */}
+        <Dialog
+          open={!!impTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setImpTarget(null);
+              setImpResult(null);
+            }
+          }}
+          title={
+            impResult
+              ? 'Impersonation active'
+              : `Impersonate ${impTarget ? `${impTarget.firstName} ${impTarget.lastName}` : ''}`
+          }
+          description={
+            impResult
+              ? undefined
+              : 'Mint a short-lived token that acts as this user. The session is recorded and audited, and the token never outlives its expiry.'
+          }
+        >
+          {impResult ? (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                <p>
+                  <span className="text-gray-500">Target:</span> {impTarget?.email}
+                </p>
+                <p>
+                  <span className="text-gray-500">Session:</span>{' '}
+                  <code className="text-xs">{impResult.sessionId}</code>
+                </p>
+                <p>
+                  <span className="text-gray-500">Expires:</span>{' '}
+                  {new Date(impResult.expiresAt).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">Bearer token</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs font-mono flex-1 break-all max-h-32 overflow-y-auto bg-gray-50 border rounded p-2">
+                    {impResult.accessToken}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={copyImpToken}
+                    className="shrink-0 px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                  >
+                    {impCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg">
+                Send it as <code>Authorization: Bearer …</code> to act as this user — requests are scoped to
+                their role and organization. Ending the session closes the record; the token itself dies at
+                its expiry.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImpTarget(null);
+                    setImpResult(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={endImpersonation}
+                  disabled={impBusy}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {impBusy ? 'Ending…' : 'End session'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-700">
+                Start an impersonation session as{' '}
+                <span className="font-medium">{impTarget?.email}</span>? Every request made with the token is
+                recorded under a UserSession row and logged in the audit trail.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setImpTarget(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={startImpersonation}
+                  disabled={impBusy}
+                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                >
+                  {impBusy ? 'Starting…' : 'Start impersonation'}
+                </button>
+              </div>
+            </div>
+          )}
+        </Dialog>
+
+        {/* Recorded sessions (S8): sign-ins + impersonation, with inline end */}
+        <Dialog
+          open={!!sessionsUser}
+          onOpenChange={(open) => {
+            if (!open) setSessionsUser(null);
+          }}
+          title={`Sessions — ${sessionsUser ? `${sessionsUser.firstName} ${sessionsUser.lastName}` : ''}`}
+          description="Recorded sign-ins and impersonation sessions (device, IP, activity)."
+        >
+          <div className="space-y-3">
+            {sessionsLoading ? (
+              <p className="text-sm text-gray-500 text-center py-6">Loading sessions…</p>
+            ) : sessionsError ? (
+              <p className="text-sm text-red-600 text-center py-6">{sessionsError}</p>
+            ) : sessions.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-6">No recorded sessions for this user.</p>
+            ) : (
+              <div className="max-h-[50vh] overflow-y-auto divide-y rounded border">
+                {sessions.map((s) => (
+                  <div key={s.id} className="px-3 py-2 text-sm flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {s.app}
+                        {!s.isActive ? ' · ended' : ' · active'}
+                        {s.app === 'impersonation' && s.deviceInfo?.impersonatorId ? ' · by admin' : ''}
+                      </p>
+                      <p className="text-xs text-gray-500 break-all">
+                        {s.ipAddress || 'no IP'} · login {new Date(s.loginAt).toLocaleString()}
+                        {s.deviceInfo?.userAgent ? ` · ${String(s.deviceInfo.userAgent).slice(0, 60)}` : ''}
+                      </p>
+                    </div>
+                    {s.app === 'impersonation' && s.isActive && (
+                      <button
+                        type="button"
+                        onClick={() => endSessionFromList(s.id)}
+                        className="shrink-0 text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        End
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSessionsUser(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </Dialog>
       </div>
     </div>

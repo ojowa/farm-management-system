@@ -3,6 +3,7 @@ import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { EmailService } from '../../../notification/modules/email/email.service';
+import { isPlatformPermission } from './permissions.service';
 
 /** Column projection for user rows — never expose passwordHash/twoFactorSecret. */
 const SAFE_USER_SELECT = {
@@ -20,6 +21,12 @@ const SAFE_USER_SELECT = {
 /** Cryptographically-strong temporary password (~62 bits, 12 chars). */
 function generateTempPassword(): string {
   return randomBytes(9).toString('base64url').slice(0, 12);
+}
+
+/** Dedupe and drop non-string entries so existence checks compare like for like. */
+function normalizePermissionIds(ids?: string[]): string[] {
+  if (!Array.isArray(ids)) return [];
+  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && !!id))];
 }
 
 @Injectable()
@@ -160,12 +167,21 @@ export class OrgAdminService {
     return role;
   }
 
-  async createRole(organizationId: string, data: { name: string; description?: string }) {
+  async createRole(organizationId: string, data: { name: string; description?: string; permissionIds?: string[] }) {
     if (!data?.name?.trim()) throw new BadRequestException('Role name is required');
-    return prisma.role.create({ data: { name: data.name.trim(), description: data.description || null, organizationId } });
+    const permissionIds = normalizePermissionIds(data?.permissionIds);
+    if (permissionIds.length) await this.assertOrgAssignablePermissions(permissionIds);
+    const role = await prisma.role.create({ data: { name: data.name.trim(), description: data.description || null, organizationId } });
+    // `permissionIds` on create used to be silently dropped — assign them now.
+    if (permissionIds.length) {
+      await prisma.rolePermission.createMany({
+        data: permissionIds.map((permissionId) => ({ roleId: role.id, permissionId })),
+      });
+    }
+    return role;
   }
 
-  async updateRole(organizationId: string, roleId: string, data: { name?: string; description?: string }) {
+  async updateRole(organizationId: string, roleId: string, data: { name?: string; description?: string; permissionIds?: string[] }) {
     const role = await prisma.role.findUnique({ where: { id: roleId } });
     if (!role) throw new NotFoundException('Role not found');
     // Ownership: platform roles and other organizations' custom roles read
@@ -175,10 +191,30 @@ export class OrgAdminService {
       throw new NotFoundException('Role not found');
     }
     if (role.isSystem) throw new BadRequestException('System roles cannot be modified');
-    const clean: { name?: string; description?: string } = {};
-    if (data.name !== undefined) clean.name = data.name;
-    if (data.description !== undefined) clean.description = data.description;
-    return prisma.role.update({ where: { id: roleId }, data: clean });
+    const { permissionIds, ...clean } = data;
+    const updated = await prisma.role.update({ where: { id: roleId }, data: clean });
+    // When the body carries permissionIds, apply them (they used to be dropped).
+    if (permissionIds !== undefined) {
+      const ids = normalizePermissionIds(permissionIds);
+      if (ids.length) await this.assertOrgAssignablePermissions(ids);
+      await prisma.rolePermission.deleteMany({ where: { roleId } });
+      if (ids.length) {
+        await prisma.rolePermission.createMany({ data: ids.map((permissionId) => ({ roleId, permissionId })) });
+      }
+    }
+    return updated;
+  }
+
+  /** Org callers: ids must exist and platform permissions can never be granted. */
+  private async assertOrgAssignablePermissions(permissionIds: string[]) {
+    const permissions = await prisma.permission.findMany({
+      where: { id: { in: permissionIds } },
+      select: { id: true, name: true, category: true },
+    });
+    if (permissions.length !== permissionIds.length) throw new BadRequestException('Unknown permission id in permissionIds');
+    if (permissions.some((p) => isPlatformPermission(p))) {
+      throw new BadRequestException('Platform permissions cannot be assigned by an organization');
+    }
   }
 
   async deleteRole(organizationId: string, roleId: string) {

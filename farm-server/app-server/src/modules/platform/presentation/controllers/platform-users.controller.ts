@@ -47,7 +47,17 @@ export class PlatformUsersController {
   @Post(':id/impersonate')
   @Permission('platform.manage')
   impersonate(@Param('id') id: string, @Req() req: any) {
-    return this.userService.impersonateUser(id, req.user.id);
+    // ctx feeds the UserSession row (IP/device) recorded for the session.
+    return this.userService.impersonateUser(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Post(':id/sessions/:sessionId/end')
+  @Permission('platform.manage')
+  endSession(@Param('id') id: string, @Param('sessionId') sessionId: string, @Req() req: any) {
+    return this.userService.endImpersonationSession(id, sessionId, req.user.id);
   }
 
   @Post(':id/force-logout')
