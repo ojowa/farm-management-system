@@ -26,4 +26,18 @@ export class HealthController {
       memory: process.memoryUsage().rss,
     };
   }
+
+  @Get('health/ready')
+  ready() {
+    return {
+      status: 'ready',
+      timestamp: new Date().toISOString(),
+      service: process.env.SERVICE_NAME || 'app-server',
+    };
+  }
+
+  @Get('health/live')
+  live() {
+    return { status: 'alive' };
+  }
 }

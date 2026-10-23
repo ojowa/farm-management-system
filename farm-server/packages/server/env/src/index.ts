@@ -12,6 +12,7 @@ import { join } from 'path';
  *   1. <farm-server-root>/.env          (the server's own .env)
  *   2. <repo-root>/.env                 (legacy monorepo root .env)
  *   3. <cwd>/.env                       (process.cwd fallback)
+ *   4. <cwd-parent>/.env                (cwd inside a workspace, e.g. app-server/)
  */
 let loaded = false;
 
@@ -25,6 +26,9 @@ export function loadEnv(): void {
     // FMS repo root .env  (packages/server/env/src -> ../../../..)
     join(__dirname, '..', '..', '..', '..', '.env'),
     join(process.cwd(), '.env'),
+    // Running from a workspace cwd (e.g. app-server/) — one level up is
+    // the farm-server root that owns the canonical .env.
+    join(process.cwd(), '..', '.env'),
   ];
 
   let content: string | null = null;

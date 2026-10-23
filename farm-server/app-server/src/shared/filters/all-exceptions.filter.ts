@@ -4,41 +4,77 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { handleError } from '@farm/utils';
 
+/**
+ * Single error shape for the whole server:
+ *
+ *   { success:false,
+ *     data:  { statusCode, message, errors?, code?, timestamp, path },
+ *     error: <same payload>,      // legacy gateway key — clients read either
+ *     timestamp, requestId }
+ *
+ * The old topology produced two shapes (gateway errors used `error`,
+ * proxied-downstream errors used `data`); the shared api-client normalizes
+ * `data ?? error`, and other consumers may read only one of the two — so we
+ * emit both keys with identical content. `data`/`error` are also what
+ * `unwrapEnvelope` on the client leaves untouched (success is false).
+ */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<any>();
-
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
-    let code: string | undefined;
-
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
-      message = (exceptionResponse as any).message || exception.message;
-      code = (exceptionResponse as any).code;
-    } else {
-      const errorResult = handleError(exception);
-      status = errorResult.statusCode;
-      message = errorResult.message;
-      code = errorResult.code;
-    }
+    const request = ctx.getRequest<any>();
 
     if (response.headersSent) {
       return;
     }
 
-    response.status(status).json({
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message: string | string[] = 'Internal server error';
+    let code: string | undefined;
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      const exceptionResponse = exception.getResponse();
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
+      } else if (typeof exceptionResponse === 'object') {
+        const resp = exceptionResponse as any;
+        message = resp.message ?? message;
+        code = resp.code;
+      }
+    } else if (exception instanceof Error) {
+      message = exception.message;
+      this.logger.error(`Unhandled exception: ${exception.message}`, exception.stack);
+    } else if (exception) {
+      const handled = handleError(exception);
+      status = handled.statusCode;
+      message = handled.message;
+      code = handled.code;
+    }
+
+    const errors = Array.isArray(message) ? message : undefined;
+    const payload = {
       statusCode: status,
-      message,
-      code,
+      message: Array.isArray(message) ? message[0] : message,
+      ...(errors ? { errors } : {}),
+      ...(code ? { code } : {}),
       timestamp: new Date().toISOString(),
-      path: ctx.getRequest().url,
+      path: request?.url,
+    };
+
+    response.status(status).json({
+      success: false,
+      data: payload,
+      error: payload,
+      timestamp: new Date().toISOString(),
+      requestId: request?.headers?.['x-request-id'],
     });
   }
 }

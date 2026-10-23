@@ -20,6 +20,8 @@ export class AuthMiddleware implements NestMiddleware {
     '/health/ready',
     '/health/live',
     '/docs',
+    // Paystack webhooks carry a signature header, never a user JWT.
+    '/payments/webhook',
   ]);
 
   use(req: Request, _res: Response, next: NextFunction) {
