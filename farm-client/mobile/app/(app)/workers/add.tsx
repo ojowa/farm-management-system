@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { workersAPI } from '@/modules/hr';
 import { farmsAPI } from '@/modules/farm';
+import { orgAdminAPI } from '@/modules/settings';
 import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
 import { SelectField, SelectOption } from '@/core/ui/SelectField';
 import { useToasts } from '@/core/hooks/useToasts';
@@ -69,6 +70,7 @@ interface FormData {
   email: string;
   phone: string;
   hireDate: string;
+  roleId: string;
   payRate: string;
   payType: string;
   skills: string;
@@ -94,6 +96,7 @@ export default function AddWorkerScreen() {
 
   const [loading, setLoading] = useState(false);
   const [farms, setFarms] = useState<SelectOption[]>([]);
+  const [roles, setRoles] = useState<SelectOption[]>([]);
   const [formData, setFormData] = useState<FormData>({
     farmId: '',
     firstName: '',
@@ -104,6 +107,7 @@ export default function AddWorkerScreen() {
     email: '',
     phone: '',
     hireDate: '',
+    roleId: '',
     payRate: '',
     payType: '',
     skills: '',
@@ -124,6 +128,7 @@ export default function AddWorkerScreen() {
 
   useEffect(() => {
     fetchFarms();
+    fetchRoles();
   }, []);
 
   const fetchFarms = async () => {
@@ -132,6 +137,19 @@ export default function AddWorkerScreen() {
       setFarms(unwrapList<any>(response.data).map((f: any) => ({ id: f.id, label: f.name })));
     } catch {
       /* the select shows "No options available" */
+    }
+  };
+
+  // Login role for the worker's account — optional: omitting it falls back to
+  // the system WORKER role server-side. If the roles list can't be fetched
+  // (missing organization.read), the field simply doesn't render.
+  const fetchRoles = async () => {
+    try {
+      const response = await orgAdminAPI.listRoles();
+      const rows = unwrapList<any>(response.data ?? response);
+      setRoles(rows.map((r: any) => ({ id: r.id, label: r.name })));
+    } catch {
+      /* no role select — server defaults to WORKER */
     }
   };
 
@@ -174,6 +192,7 @@ export default function AddWorkerScreen() {
         email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
         hireDate: formData.hireDate.trim() || undefined,
+        roleId: formData.roleId || undefined,
         payRate: formData.payRate.trim() ? Number(formData.payRate.trim()) : undefined,
         payType: formData.payType || undefined,
         skills: formData.skills
@@ -277,6 +296,16 @@ export default function AddWorkerScreen() {
             onChangeText={(v) => updateFormData('phone', v)}
             keyboardType="phone-pad"
           />
+
+          {roles.length > 0 && (
+            <SelectField
+              label="Login Role"
+              placeholder="Default (WORKER)"
+              value={formData.roleId}
+              options={roles}
+              onSelect={(id) => updateFormData('roleId', id)}
+            />
+          )}
 
           <TextInputField
             label="Hire Date"

@@ -29,7 +29,7 @@ export default function EditWorkerPage() {
   const {
     data: workerData,
     loading: loadingWorker,
-  } = useFetch<{ data: any }>(`worker-${id}`, () => workersAPI.get(id));
+  } = useFetch<any>(`worker-${id}`, () => workersAPI.get(id));
 
   const { data: farmsData, loading: loadingFarms } = useFetch<{ data: { id: string; name: string }[] }>(
     'farms-list',
@@ -37,7 +37,9 @@ export default function EditWorkerPage() {
     { cacheTime: 60_000 }
   );
 
-  const worker = workerData?.data;
+  // GET /workers/:id returns the worker object bare — useFetch passes
+  // non-array responses through, so read it directly (not .data).
+  const worker = workerData;
   const farms = farmsData?.data || [];
 
   const [form, setForm] = useState({

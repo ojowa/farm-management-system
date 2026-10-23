@@ -72,6 +72,9 @@ export interface User {
   organizationId: string;
   phone?: string;
   avatar?: string;
+  /** From SAFE_USER_SELECT on /org-admin/users — null phone / missing
+   * isPlatformAdmin there means the field simply isn't returned. */
+  isActive?: boolean;
   isPlatformAdmin?: boolean;
   planFeatures?: {
     modules: string[];
@@ -722,6 +725,8 @@ export interface CreateWorkerRequest {
   position: string;
   department?: string;
   hireDate?: string;
+  /** Login role — org-applicable roles only; omitted means system WORKER. */
+  roleId?: string;
   payRate?: number | null;
   payType?: string | null;
   terminationDate?: string | null;

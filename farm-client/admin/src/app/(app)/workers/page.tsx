@@ -90,6 +90,8 @@ export default function WorkersPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [farmFilter, setFarmFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '', roleId: '' });
@@ -113,13 +115,15 @@ export default function WorkersPage() {
     error,
     refetch,
   } = useFetch<{ data: Worker[]; total: number; page: number; totalPages: number }>(
-    `workers-list-${debouncedSearch}-${statusFilter}-${page}`,
+    `workers-list-${debouncedSearch}-${statusFilter}-${farmFilter}-${departmentFilter}-${page}`,
     () =>
       workersAPI.list({
         page,
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
         status: statusFilter || undefined,
+        farmId: farmFilter || undefined,
+        department: departmentFilter || undefined,
       }),
     { cacheTime: 30_000 }
   );
@@ -164,12 +168,26 @@ export default function WorkersPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const { data } = await workersAPI.list({
-        limit: 1000,
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
-      });
-      const rows: Worker[] = data?.data || [];
+      // B3: the server caps `limit` at 100 — a single `limit: 1000` request
+      // silently truncated the export. Page through until totalPages (bounded
+      // so a pathological dataset can't loop forever).
+      const rows: Worker[] = [];
+      const MAX_EXPORT_PAGES = 50;
+      let current = 1;
+      let totalPages = 1;
+      do {
+        const { data } = await workersAPI.list({
+          page: current,
+          limit: 100,
+          search: debouncedSearch || undefined,
+          status: statusFilter || undefined,
+          farmId: farmFilter || undefined,
+          department: departmentFilter || undefined,
+        });
+        rows.push(...(data?.data || []));
+        totalPages = data?.totalPages || 1;
+        current += 1;
+      } while (current <= totalPages && current <= MAX_EXPORT_PAGES);
       const header = ['Name', 'Email', 'Phone', 'Position', 'Department', 'Status', 'Hire Date', 'Created'];
       const csv = [
         header.join(','),
@@ -319,13 +337,33 @@ export default function WorkersPage() {
                 setPage(1);
               }}
             />
-            {(search || statusFilter) && (
+            <Select
+              placeholder="All Farms"
+              options={farms.map((f) => ({ value: f.id, label: f.name }))}
+              value={farmFilter}
+              onChange={(e) => {
+                setFarmFilter(e.target.value);
+                setPage(1);
+              }}
+            />
+            <Select
+              placeholder="All Departments"
+              options={WORKER_DEPARTMENT_OPTIONS.map((d) => ({ value: d, label: d }))}
+              value={departmentFilter}
+              onChange={(e) => {
+                setDepartmentFilter(e.target.value);
+                setPage(1);
+              }}
+            />
+            {(search || statusFilter || farmFilter || departmentFilter) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearch('');
                   setStatusFilter('');
+                  setFarmFilter('');
+                  setDepartmentFilter('');
                   setPage(1);
                 }}
               >
@@ -354,11 +392,11 @@ export default function WorkersPage() {
           <CardContent className="p-12 text-center">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
-              {search || statusFilter
+              {search || statusFilter || farmFilter || departmentFilter
                 ? 'No workers match your filters.'
                 : 'No workers yet. Add your first worker!'}
             </p>
-            {!search && !statusFilter && !readOnly && (
+            {!search && !statusFilter && !farmFilter && !departmentFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Worker

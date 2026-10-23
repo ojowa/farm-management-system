@@ -243,7 +243,9 @@ export default function EditWorkerScreen() {
         middleName: formData.middleName.trim(),
         position: formData.position.trim(),
         department: formData.department.trim(),
-        email: formData.email.trim(),
+        // Blank must mean "leave unchanged" — an empty string would wipe the
+        // worker's login email.
+        email: formData.email.trim() || undefined,
         phone: formData.phone.trim(),
         hireDate: formData.hireDate.trim() || null,
         status: formData.status,

@@ -113,7 +113,7 @@ export default function WorkerAttendancePage() {
   const {
     data: workerData,
     loading: workerLoading,
-  } = useFetch<{ data: Worker }>(
+  } = useFetch<Worker>(
     `worker-${workerId}`,
     () => workersAPI.get(workerId),
     { cacheTime: 30_000 }
@@ -145,7 +145,7 @@ export default function WorkerAttendancePage() {
     loading: recordsLoading,
     error: recordsError,
     refetch: refetchRecords,
-  } = useFetch<AttendanceRecord[]>(
+  } = useFetch<{ data: AttendanceRecord[] }>(
     `attendance-list-${workerId}-${selectedMonth}-${selectedYear}`,
     () =>
       attendanceAPI.list({
@@ -156,9 +156,11 @@ export default function WorkerAttendancePage() {
     { cacheTime: 30_000 }
   );
 
-  const worker = workerData?.data;
+  // GET /workers/:id returns the worker bare; useFetch normalises the list
+  // endpoint's bare array to { data: [...] }.
+  const worker = workerData;
   const summary = summaryData?.summary;
-  const records = recordsData || [];
+  const records = recordsData?.data || [];
 
   const sortedRecords = useMemo(
     () => [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),

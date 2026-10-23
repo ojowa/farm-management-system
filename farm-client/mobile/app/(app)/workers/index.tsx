@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -111,6 +111,10 @@ const WORKER_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 const STATUS_FILTERS = ['all', 'ACTIVE', 'INACTIVE', 'PROBATION', 'TERMINATED'] as const;
 type WorkerStatusFilter = (typeof STATUS_FILTERS)[number];
 
+// The server caps `limit` at 100 — asking for 200 silently returned only the
+// first 100 workers. Page through at 50 instead and offer load-more.
+const PAGE_SIZE = 50;
+
 /** The workers endpoint returns either a bare array or a `{ data: [...] }` page
  * envelope depending on the caller; unwrap both so a shape change can never
  * blank the list into a false "empty" state. */
@@ -135,12 +139,38 @@ export default function WorkersScreen() {
   const canDelete = hasPermission('hr.delete');
 
   const [workers, setWorkers] = useState<Worker[]>([]);
-  const [farmNames, setFarmNames] = useState<Record<string, string>>({});
+  const [farmsList, setFarmsList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('all');
+  const [farmFilter, setFarmFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Server-side filters the loader reads — a ref so callbacks captured by
+  // earlier renders (pull-to-refresh, delete) never act on stale filter values.
+  const filtersRef = useRef({ search: '', status: 'all', farmId: 'all', department: 'all' });
+  filtersRef.current = {
+    search: debouncedSearch,
+    status: statusFilter,
+    farmId: farmFilter,
+    department: departmentFilter,
+  };
+  const hasLoadedRef = useRef(false);
+
+  const farmNames = useMemo(
+    () =>
+      farmsList.reduce((acc: Record<string, string>, f) => {
+        acc[f.id] = f.name;
+        return acc;
+      }, {}),
+    [farmsList]
+  );
 
   const dynamicStyles = {
     container: {
@@ -181,38 +211,68 @@ export default function WorkersScreen() {
     },
   };
 
-  useEffect(() => {
-    fetchWorkers();
-    fetchFarms();
-  }, []);
-
-  const fetchWorkers = async () => {
+  /**
+   * Load a page of workers with the current server-side filters
+   * (search/status/farmId/department — the endpoint supports all four).
+   * `append` pages forward; everything else restarts at page 1.
+   */
+  const fetchWorkers = async (targetPage = 1, append = false) => {
+    const filters = filtersRef.current;
+    if (append) setLoadingMore(true);
+    else if (!hasLoadedRef.current) setLoading(true);
+    else setRefreshing(true);
     try {
       setLoadError(null);
-      const response = await workersAPI.list({ page: 1, limit: 200 });
-      setWorkers(unwrapList<Worker>(response.data));
+      const response = await workersAPI.list({
+        page: targetPage,
+        limit: PAGE_SIZE,
+        search: filters.search || undefined,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        farmId: filters.farmId !== 'all' ? filters.farmId : undefined,
+        department: filters.department !== 'all' ? filters.department : undefined,
+      });
+      const payload = response.data;
+      const rows = unwrapList<Worker>(payload);
+      const pages = Number(payload?.totalPages);
+      setTotalPages(Number.isFinite(pages) && pages > 0 ? pages : 1);
+      setPage(targetPage);
+      setWorkers((prev) => (append ? [...prev, ...rows] : rows));
     } catch (error: any) {
-      setLoadError(describeApiError(error, 'Failed to load workers.'));
+      // A failed load-more must not wipe the rows already on screen.
+      if (append) showError(describeApiError(error, 'Failed to load more workers.'));
+      else setLoadError(describeApiError(error, 'Failed to load workers.'));
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   const fetchFarms = async () => {
     try {
       const response = await farmsAPI.list();
-      const farmsData = unwrapList<any>(response.data);
-      setFarmNames(
-        farmsData.reduce((acc: Record<string, string>, f: any) => {
-          acc[f.id] = f.name;
-          return acc;
-        }, {})
-      );
+      setFarmsList(unwrapList<{ id: string; name: string }>(response.data));
     } catch {
       /* ignore — cards fall back to the farm id */
     }
   };
+
+  // Debounce the search box so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    fetchFarms();
+  }, []);
+
+  // Any filter change restarts pagination from page 1.
+  useEffect(() => {
+    fetchWorkers(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, farmFilter, departmentFilter]);
 
   const filteredWorkers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -226,10 +286,35 @@ export default function WorkersScreen() {
     });
   }, [workers, statusFilter, search]);
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = () => {
     setRefreshing(true);
-    fetchWorkers();
-  }, []);
+    fetchWorkers(1, false);
+  };
+
+  const hasActiveFilters =
+    Boolean(debouncedSearch) ||
+    statusFilter !== 'all' ||
+    farmFilter !== 'all' ||
+    departmentFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    setStatusFilter('all');
+    setFarmFilter('all');
+    setDepartmentFilter('all');
+  };
+
+  // Server-side department values seen so far (departments are free text on
+  // the worker form — derive the chips from what the API has returned).
+  const departmentOptions = useMemo(() => {
+    const set = new Set<string>();
+    workers.forEach((w) => {
+      if (w.department) set.add(w.department);
+    });
+    if (departmentFilter !== 'all') set.add(departmentFilter);
+    return Array.from(set).sort();
+  }, [workers, departmentFilter]);
 
   const handleDeleteWorker = useCallback(
     (workerId: string, name: string) => {
@@ -245,7 +330,7 @@ export default function WorkersScreen() {
               try {
                 await workersAPI.delete(workerId);
                 success('Worker deleted successfully');
-                fetchWorkers();
+                fetchWorkers(1, false);
               } catch (error: any) {
                 showError(describeApiError(error, 'Failed to delete worker.'));
               }
@@ -257,35 +342,57 @@ export default function WorkersScreen() {
     [success, showError]
   );
 
-  const renderFooter = useCallback(
-    () =>
-      refreshing ? (
-        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-          <ActivityIndicator size="small" color={tc.primary} />
-          <Text style={[{ fontSize: 12, color: colors.textLight }, dynamicStyles.footerText]}>Loading more…</Text>
-        </View>
-      ) : null,
-    [refreshing, tc.primary, dynamicStyles]
-  );
+  const hasMore = page < totalPages;
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    fetchWorkers(page + 1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingMore, hasMore, page]);
+
+  // Only show the spinner for an actual page fetch — the old footer keyed off
+  // `refreshing`, so pull-to-refresh displayed a bogus "Loading more…".
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return null;
+    return (
+      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={tc.primary} />
+        <Text style={[{ fontSize: 12, color: colors.textLight }, dynamicStyles.footerText]}>Loading more…</Text>
+      </View>
+    );
+  }, [loadingMore, tc.primary, dynamicStyles]);
 
   const renderEmpty = useCallback(
     () => (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>👷</Text>
-        <Text style={[styles.emptyText, dynamicStyles.emptyText]}>No Workers Yet</Text>
-        <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
-          Add your first worker to start tracking your farm team, roles and attendance
+        <Text style={styles.emptyIcon}>{hasActiveFilters ? '🔍' : '👷'}</Text>
+        <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
+          {hasActiveFilters ? 'No Workers Match' : 'No Workers Yet'}
         </Text>
-        {canWrite && (
+        <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
+          {hasActiveFilters
+            ? 'Try different search terms or clear the filters above'
+            : 'Add your first worker to start tracking your farm team, roles and attendance'}
+        </Text>
+        {hasActiveFilters ? (
           <Button
-            title="Add Worker"
-            onPress={() => router.push('/workers/add')}
-            accessibilityLabel="Add your first worker"
+            title="Clear Filters"
+            variant="secondary"
+            onPress={clearFilters}
+            accessibilityLabel="Clear worker filters"
           />
+        ) : (
+          canWrite && (
+            <Button
+              title="Add Worker"
+              onPress={() => router.push('/workers/add')}
+              accessibilityLabel="Add your first worker"
+            />
+          )
         )}
       </View>
     ),
-    [router, canWrite, dynamicStyles]
+    [router, canWrite, hasActiveFilters, clearFilters, dynamicStyles]
   );
 
   const renderItem = useCallback(
@@ -386,7 +493,7 @@ export default function WorkersScreen() {
           variant="error"
           title="Couldn't load workers"
           message={loadError}
-          onRetry={fetchWorkers}
+          onRetry={() => fetchWorkers(1, false)}
           retryLabel="Retry"
         />
       </SafeAreaView>
@@ -445,6 +552,102 @@ export default function WorkersScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {farmsList.length > 0 && (
+          <View style={styles.filterContainer}>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                dynamicStyles.filterButton,
+                farmFilter === 'all' && styles.filterButtonActive,
+              ]}
+              onPress={() => setFarmFilter('all')}
+              accessibilityRole="button"
+              accessibilityLabel="All farms"
+              accessibilityState={{ selected: farmFilter === 'all' }}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  dynamicStyles.filterButtonText,
+                  farmFilter === 'all' && styles.filterButtonTextActive,
+                ]}
+              >
+                All farms
+              </Text>
+            </TouchableOpacity>
+            {farmsList.map((farm) => {
+              const active = farmFilter === farm.id;
+              return (
+                <TouchableOpacity
+                  key={farm.id}
+                  style={[styles.filterButton, dynamicStyles.filterButton, active && styles.filterButtonActive]}
+                  onPress={() => setFarmFilter(active ? 'all' : farm.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filter by farm ${farm.name}`}
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text
+                    style={[
+                      styles.filterButtonText,
+                      dynamicStyles.filterButtonText,
+                      active && styles.filterButtonTextActive,
+                    ]}
+                  >
+                    {farm.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+        {departmentOptions.length > 0 && (
+          <View style={styles.filterContainer}>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                dynamicStyles.filterButton,
+                departmentFilter === 'all' && styles.filterButtonActive,
+              ]}
+              onPress={() => setDepartmentFilter('all')}
+              accessibilityRole="button"
+              accessibilityLabel="All departments"
+              accessibilityState={{ selected: departmentFilter === 'all' }}
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  dynamicStyles.filterButtonText,
+                  departmentFilter === 'all' && styles.filterButtonTextActive,
+                ]}
+              >
+                All depts
+              </Text>
+            </TouchableOpacity>
+            {departmentOptions.map((dept) => {
+              const active = departmentFilter === dept;
+              return (
+                <TouchableOpacity
+                  key={dept}
+                  style={[styles.filterButton, dynamicStyles.filterButton, active && styles.filterButtonActive]}
+                  onPress={() => setDepartmentFilter(active ? 'all' : dept)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filter by department ${dept}`}
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text
+                    style={[
+                      styles.filterButtonText,
+                      dynamicStyles.filterButtonText,
+                      active && styles.filterButtonTextActive,
+                    ]}
+                  >
+                    {dept}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -455,6 +658,8 @@ export default function WorkersScreen() {
         ListFooterComponent={renderFooter}
         renderItem={renderItem}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         windowSize={10}

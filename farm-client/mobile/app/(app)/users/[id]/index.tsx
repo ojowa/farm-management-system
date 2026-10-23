@@ -208,16 +208,16 @@ export default function UserDetailScreen() {
               <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{user.email || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Phone</Text>
-              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{user.phone || '—'}</Text>
-            </View>
-            <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Role</Text>
               <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{roleLabel(user.role) || '—'}</Text>
             </View>
+            {/* Phone and Platform Admin were phantom rows — /org-admin/users
+                never returns either field, so they always rendered as "—/No". */}
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Platform Admin</Text>
-              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{user.isPlatformAdmin ? 'Yes' : 'No'}</Text>
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Status</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>
+                {user.isActive === false ? 'Disabled' : 'Active'}
+              </Text>
             </View>
           </View>
         </View>

@@ -76,11 +76,13 @@ export default function WorkerDetailPage() {
     loading,
     error,
     refetch,
-  } = useFetch<{ data: Worker }>(`worker-${id}`, () => workersAPI.get(id), {
+  } = useFetch<Worker>(`worker-${id}`, () => workersAPI.get(id), {
     cacheTime: 30_000,
   });
 
-  const worker = workerData?.data;
+  // The gateway returns the worker object bare (no {data} envelope), and
+  // useFetch passes non-array responses through unchanged.
+  const worker = workerData;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {

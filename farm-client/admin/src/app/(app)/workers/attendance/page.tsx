@@ -153,7 +153,7 @@ export default function AttendancePage() {
     loading: attendanceLoading,
     error: attendanceError,
     refetch: refetchAttendance,
-  } = useFetch<AttendanceRecord[]>(
+  } = useFetch<{ data: AttendanceRecord[] }>(
     `attendance-list-${selectedDate}`,
     () => attendanceAPI.list({ date: selectedDate }),
     { cacheTime: 30_000 }
@@ -165,9 +165,10 @@ export default function AttendancePage() {
     { cacheTime: 60_000 }
   );
 
-  // The endpoint returns { records, summary } directly.
+  // The endpoint returns a bare array (or an envelope) — useFetch normalises
+  // both to { data: [...] }.
   const todaySummary = todayData?.summary || { present: 0, absent: 0, late: 0, halfDay: 0, onLeave: 0 };
-  const attendanceRecords = attendanceData || [];
+  const attendanceRecords = attendanceData?.data || [];
   const workers = workersData?.data || [];
 
   const tableRows = useMemo<AttendanceRow[]>(() => {
