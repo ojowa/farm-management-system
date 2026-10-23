@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -15,6 +16,7 @@ import {
 
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '../../../../kernel/auth/nestjs';
 import { PermissionAny, PermissionAnyGuard } from '../../../../core/auth/permission-any.guard';
+import { prisma } from '../../../../kernel/database';
 import { HrApplicationService } from '../../application/services/hr.service';
 
 function getOrgId(req: any): string {
@@ -263,10 +265,11 @@ export class ShiftAssignmentsController {
   @Permission('hr.write')
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
-  bulkCreate(@Req() req: any, @Body() body: { assignments?: any[]; records?: any[] }) {
-    // Web sends `{ assignments }`, mobile sends `{ records }`.
-    const rows = body?.assignments || body?.records || [];
-    return this.hrService.bulkCreateShiftAssignments(getOrgId(req), rows);
+  bulkCreate(@Req() req: any, @Body() body: { assignments?: any[] }) {
+    if (!Array.isArray(body?.assignments)) {
+      throw new BadRequestException('"assignments" must be an array');
+    }
+    return this.hrService.bulkCreateShiftAssignments(getOrgId(req), body.assignments);
   }
 
   @Permission('hr.delete')
@@ -348,6 +351,40 @@ export class LeaveRequestsController {
     return this.hrService.createLeaveRequest(getOrgId(req), getUserId(req), body, getUserPermissions(req));
   }
 
+  @PermissionAny('hr.write', 'leave.approve')
+  @Put('bulk')
+  async bulkDecide(
+    @Req() req: any,
+    @Body() body: { ids?: string[]; action?: 'approve' | 'reject'; rejectionReason?: string },
+  ) {
+    if (!Array.isArray(body?.ids) || body.ids.length === 0 || body.ids.length > 100) {
+      throw new BadRequestException('"ids" must contain between 1 and 100 request IDs');
+    }
+    if (body.action !== 'approve' && body.action !== 'reject') {
+      throw new BadRequestException('"action" must be "approve" or "reject"');
+    }
+    const ids = [...new Set(body.ids.filter((id) => typeof id === 'string' && id.trim()).map((id) => id.trim()))];
+    if (!ids.length) throw new BadRequestException('"ids" must contain valid request IDs');
+    const failures: Array<{ id: string; message: string }> = [];
+    let succeeded = 0;
+    for (const id of ids) {
+      try {
+        if (body.action === 'approve') {
+          await this.hrService.approveLeaveRequest(id, getOrgId(req), getUserId(req));
+        } else {
+          await this.hrService.rejectLeaveRequest(id, getOrgId(req), getUserId(req), body.rejectionReason);
+        }
+        succeeded += 1;
+      } catch (error) {
+        failures.push({
+          id,
+          message: error instanceof Error ? error.message : 'Could not process request',
+        });
+      }
+    }
+    return { succeeded, failed: failures.length, failures };
+  }
+
   // Modify a request: the requester edits their own pending request; anyone
   // with hr.write (owners/managers) can edit any request in the org — fixing a
   // rejected one resubmits it as pending, and editing an approved one moves the
@@ -384,6 +421,50 @@ export class LeaveRequestsController {
 @Controller('leave/balance')
 export class LeaveBalanceController {
   constructor(private readonly hrService: HrApplicationService) {}
+
+  @Permission('hr.read')
+  @Get('all')
+  async allBalances(@Req() req: any, @Query('year') yearStr?: string) {
+    const organizationId = getOrgId(req);
+    const year = yearStr ? Number.parseInt(yearStr, 10) : new Date().getFullYear();
+    if (!Number.isInteger(year) || year < 1900 || year > 9999) {
+      throw new BadRequestException('"year" must be a valid year');
+    }
+    const [users, leaveTypes, balances] = await Promise.all([
+      prisma.user.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true, firstName: true, lastName: true, email: true },
+        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      }),
+      prisma.leaveType.findMany({
+        where: { organizationId, deletedAt: null },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.leaveBalance.findMany({
+      where: { organizationId, year, deletedAt: null },
+      orderBy: [{ userId: 'asc' }, { leaveTypeId: 'asc' }],
+      }),
+    ]);
+    const balanceByKey = new Map(balances.map((balance) => [`${balance.userId}:${balance.leaveTypeId}`, balance]));
+    return users.map((user) => ({
+      userId: user.id,
+      userName: `${user.firstName} ${user.lastName}`.trim(),
+      email: user.email,
+      leaveTypes: leaveTypes.map((leaveType) => {
+        const balance = balanceByKey.get(`${user.id}:${leaveType.id}`);
+        const totalDays = balance?.totalDays ?? leaveType.daysPerYear;
+        const usedDays = balance?.usedDays ?? 0;
+        return {
+          leaveTypeId: leaveType.id,
+          leaveTypeName: leaveType.name,
+          isPaid: leaveType.isPaid,
+          totalDays,
+          usedDays,
+          remainingDays: totalDays - usedDays,
+        };
+      }),
+    }));
+  }
 
   // Workers check their own balance (leave.read); managers check anyone's
   // (hr.read + ?userId). Non-hr.read callers are pinned to their own userId so

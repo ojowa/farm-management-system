@@ -374,7 +374,49 @@ export class InventoryController {
         quantity: { lte: prisma.inventory.fields.minimumQuantity },
       },
       orderBy: { quantity: 'asc' },
+      include: { farm: { select: { name: true } } },
     });
+  }
+
+  @Permission('farm.write')
+  @Post(':id/reorder')
+  async requestReorder(@Req() req: any, @Param('id') id: string) {
+    const organizationId = getOrgId(req);
+    const item = await prisma.inventory.findFirst({
+      where: { id, organizationId },
+    });
+    if (!item) throw new NotFoundException('Inventory item not found');
+    if (item.quantity > item.minimumQuantity) {
+      throw new BadRequestException('This item is no longer below its minimum quantity');
+    }
+
+    const recipients = await prisma.user.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+        role: {
+          permissions: {
+            some: {
+              permission: { name: { in: ['farm.write', 'inventory.write', '*'] } },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    const recipientIds = [...new Set([...recipients.map((recipient) => recipient.id), req.user?.sub].filter(Boolean))];
+    await prisma.notification.createMany({
+      data: recipientIds.map((userId) => ({
+        userId,
+        title: 'Inventory reorder requested',
+        message: `${item.name} is at ${item.quantity} ${item.unit}; minimum quantity is ${item.minimumQuantity} ${item.unit}.`,
+        type: 'WARNING',
+        link: '/inventory/low-stock',
+        entityType: 'inventory',
+        entityId: item.id,
+      })),
+    });
+    return { requested: true, notifiedUsers: recipientIds.length };
   }
 
   @Permission('farm.read')

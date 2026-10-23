@@ -231,8 +231,21 @@ export default function SettingsPage() {
   const handleTwoFactorToggle = async () => {
     setSaving(true);
     try {
-      await settingsAPI.updatePreferences({ twoFactorEnabled: !twoFactorEnabled });
-      setTwoFactorEnabled(!twoFactorEnabled);
+      if (twoFactorEnabled) {
+        const code = window.prompt('Enter the current 6-digit authenticator code to disable 2FA');
+        if (!code) return;
+        await settingsAPI.disable2FA(code.trim());
+        setTwoFactorEnabled(false);
+      } else {
+        const setup = await settingsAPI.generate2FA();
+        const secret = setup.data?.secret;
+        if (!secret) throw new Error('The server did not return a 2FA setup secret');
+        window.alert(`Add this secret to your authenticator app:\n\n${secret}`);
+        const code = window.prompt('Enter the 6-digit code from your authenticator app to enable 2FA');
+        if (!code) return;
+        await settingsAPI.enable2FA(code.trim());
+        setTwoFactorEnabled(true);
+      }
       toast({
         type: 'success',
         title: twoFactorEnabled ? '2FA disabled' : '2FA enabled',

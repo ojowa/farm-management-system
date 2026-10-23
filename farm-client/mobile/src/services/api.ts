@@ -267,6 +267,11 @@ export const farmsAPI = {
     http.delete(`/farms/${id}`),
 };
 
+export const farmTransferAPI = {
+  exportFarms: () => http.get('/farms/export/farms'),
+  importFarms: (data: Record<string, unknown>[]) => http.post('/farms/import/farms', { data }),
+};
+
 // ─── Fields ────────────────────────────────────────────────────────────────────
 
 export const fieldsAPI = {
@@ -738,8 +743,8 @@ export const rosterAPI = {
   // Re-assign: move someone to a different shift/date or edit notes.
   updateAssignment: (id: string, data: any) =>
     http.put<ShiftAssignment>(`/shift-assignments/${id}`, data),
-  bulkAssign: (data: any[]) =>
-    http.post('/shift-assignments/bulk', { records: data }),
+  bulkAssign: (assignments: any[]) =>
+    http.post('/shift-assignments/bulk', { assignments }),
   deleteAssignment: (id: string) =>
     http.delete(`/shift-assignments/${id}`),
 };
@@ -929,6 +934,8 @@ export const orgAdminAPI = {
 export const reportsAPI = {
   list: (params?: any) =>
     http.get<Report[]>('/reports', { params }),
+  generate: (templateId: string) =>
+    http.post('/reports/generate', { templateId }),
   get: (id: string) =>
     http.get<Report>(`/reports/${id}`),
   create: (data: any) =>
@@ -948,6 +955,19 @@ export const scheduledReportsAPI = {
     http.put<ScheduledReport>(`/schedule/${id}`, data),
   delete: (id: string) =>
     http.delete(`/schedule/${id}`),
+};
+
+export const budgetsAPI = {
+  list: (params?: { farmId?: string; status?: string }) =>
+    http.get<any[]>('/budgets', { params }),
+  get: (id: string) => http.get<any>(`/budgets/${id}`),
+  create: (data: { name: string; startDate: string; endDate: string; description?: string; farmId?: string }) =>
+    http.post<any>('/budgets', data),
+  update: (id: string, data: any) => http.put<any>(`/budgets/${id}`, data),
+  delete: (id: string) => http.delete(`/budgets/${id}`),
+  addCategory: (budgetId: string, data: { name: string; budgetAmount: number }) =>
+    http.post<any>(`/budgets/${budgetId}/categories`, data),
+  refresh: (budgetId: string) => http.post<any>(`/budgets/${budgetId}/refresh`),
 };
 
 // ─── Irrigation ───────────────────────────────────────────────────────────────

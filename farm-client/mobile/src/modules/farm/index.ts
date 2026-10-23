@@ -7,7 +7,7 @@
  *   - offline API  (`offlineFarmsAPI`, queues writes when disconnected)
  *   - RTK Query   (`farmsApi` + its generated hooks)
  */
-export { farmsAPI, fieldsAPI } from '../../services/api';
+export { farmsAPI, fieldsAPI, farmTransferAPI } from '../../services/api';
 export { offlineFarmsAPI } from '../../services/offlineApi';
 export {
   farmsApi,

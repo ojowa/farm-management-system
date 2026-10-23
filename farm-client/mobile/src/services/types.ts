@@ -251,11 +251,11 @@ export interface CreateHealthRecordRequest {
 export interface VaccinationSchedule {
   id: string;
   livestockId: string;
-  vaccine: string;
-  dosage?: string;
+  vaccineName: string;
   scheduledDate: string;
   administeredDate?: string;
-  status: 'PENDING' | 'ADMINISTERED' | 'OVERDUE';
+  status: 'SCHEDULED' | 'ADMINISTERD' | 'MISSED' | 'CANCELLED';
+  notes?: string | null;
   createdAt: string;
 }
 
@@ -289,7 +289,8 @@ export interface WeightRecord {
   flockId?: string;
   weight: number;
   unit: string;
-  date: string;
+  recordedDate: string;
+  notes?: string | null;
   createdAt: string;
 }
 
@@ -653,12 +654,13 @@ export interface Buyer {
 export interface MarketListing {
   id: string;
   entityType: string;
-  entityId: string;
+  entityId?: string | null;
   title: string;
   price: number;
   quantity: number;
   unit: string;
-  status: 'ACTIVE' | 'SOLD' | 'EXPIRED';
+  status: 'ACTIVE' | 'SOLD' | 'CANCELLED';
+  listedDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -933,11 +935,10 @@ export interface DeviceToken {
 
 export interface Report {
   id: string;
-  name: string;
-  type: string;
+  title: string;
   status: string;
-  data?: any;
-  generatedAt?: string;
+  farmId?: string | null;
+  parameters?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -945,11 +946,12 @@ export interface Report {
 export interface ScheduledReport {
   id: string;
   name: string;
-  type: string;
+  template: string;
+  recipients: string[];
   frequency: string;
-  status: string;
-  nextRun?: string;
-  lastRun?: string;
+  isActive: boolean;
+  nextSend?: string | null;
+  lastSent?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -14,6 +14,7 @@ export {
   contractsAPI,
   marketplaceAPI,
   profitabilityAPI,
+  budgetsAPI,
 } from '../../services/api';
 export { offlineFinanceAPI } from '../../services/offlineApi';
 export {

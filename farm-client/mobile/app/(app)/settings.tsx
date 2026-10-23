@@ -40,7 +40,9 @@ import { describeApiError } from '@/core/utils/apiError';
  */
 async function mirrorPushPreference(enabled: boolean): Promise<void> {
   try {
-    await authAPI.updatePreferences({ pushNotifications: enabled });
+    await authAPI.updatePreferences({
+      notificationPreferences: { pushNotifications: enabled },
+    });
   } catch {
     // Older servers may not expose /auth/preferences — non-fatal.
   }
@@ -363,6 +365,22 @@ export default function SettingsScreen() {
             <View style={styles.settingItemText}>
               <Text style={[styles.settingItemTitle, themed.text]}>Change Password</Text>
               <Text style={[styles.settingItemDescription, themed.textSecondary]}>Update your account password</Text>
+            </View>
+            <Text style={{ fontSize: 18 }}>→</Text>
+          </TouchableOpacity>
+        </Card>
+        <Card style={styles.settingItem}>
+          <TouchableOpacity
+            style={styles.settingItemRow}
+            onPress={() => router.push('/settings/two-factor')}
+            accessibilityRole="button"
+            accessibilityLabel="Two-factor authentication"
+          >
+            <View style={styles.settingItemText}>
+              <Text style={[styles.settingItemTitle, themed.text]}>Two-factor authentication</Text>
+              <Text style={[styles.settingItemDescription, themed.textSecondary]}>
+                Protect sign-in with an authenticator app
+              </Text>
             </View>
             <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>

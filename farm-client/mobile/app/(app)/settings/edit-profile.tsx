@@ -18,7 +18,7 @@ import { ScreenLoading, StateView } from '../../../src/core/ui/feedback';
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { useAppDispatch } from '../../../src/modules/auth/hooks/useAuth';
 import { describeApiError } from '../../../src/core/utils/apiError';
-import { apiClient } from '../../../src/modules/auth';
+import { apiClient, authAPI } from '../../../src/modules/auth';
 import { useAppTheme } from '../../../src/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
@@ -184,8 +184,10 @@ export default function EditProfileScreen() {
 
     setSubmitting(true);
     try {
-      await apiClient.client.put('/auth/profile', {
-        fullName: formData.fullName.trim(),
+      const [firstName = '', ...lastNameParts] = formData.fullName.trim().split(/\s+/);
+      await authAPI.updateProfile({
+        firstName,
+        lastName: lastNameParts.join(' '),
         email: formData.email.trim(),
         avatar: formData.avatar || undefined,
       });

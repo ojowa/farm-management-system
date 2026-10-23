@@ -31,8 +31,8 @@ interface ScheduledReport {
   name: string;
   template: string;
   frequency: string;
-  status: string;
-  nextSendAt: string;
+  isActive: boolean;
+  nextSend?: string | null;
   recipients: string[];
 }
 
@@ -160,15 +160,15 @@ export default function ScheduledReportsPage() {
                       {frequencyLabels[report.frequency] || report.frequency}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={report.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                        {report.status}
+                      <Badge variant={report.isActive ? 'success' : 'secondary'}>
+                        {report.isActive ? 'Active' : 'Paused'}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-muted-foreground text-sm">
                         <Calendar className="h-3 w-3" />
-                        {report.nextSendAt
-                          ? new Date(report.nextSendAt).toLocaleDateString()
+                        {report.nextSend
+                          ? new Date(report.nextSend).toLocaleDateString()
                           : '—'}
                       </div>
                     </TableCell>

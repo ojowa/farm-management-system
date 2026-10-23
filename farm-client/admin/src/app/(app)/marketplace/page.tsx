@@ -57,15 +57,21 @@ const BUYER_TYPE_OPTIONS = [
 
 const LISTING_STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Sold', label: 'Sold' },
-  { value: 'Draft', label: 'Draft' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'SOLD', label: 'Sold' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
+
+const LISTING_ENTITY_OPTIONS = [
+  { value: 'crop', label: 'Crop' },
+  { value: 'livestock', label: 'Livestock' },
+  { value: 'poultry', label: 'Poultry' },
 ];
 
 const LISTING_STATUS_COLORS: Record<string, string> = {
-  Active: 'bg-green-100 text-green-800',
-  Sold: 'bg-blue-100 text-blue-800',
-  Draft: 'bg-gray-100 text-gray-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  SOLD: 'bg-blue-100 text-blue-800',
+  CANCELLED: 'bg-gray-100 text-gray-800',
 };
 
 const PAGE_SIZE = 10;
@@ -91,10 +97,11 @@ export default function MarketplacePage() {
     type: 'Individual',
   });
   const [listingForm, setListingForm] = useState({
+    entityType: 'crop',
     title: '',
     price: '',
     quantity: '',
-    status: 'Active',
+    unit: 'kg',
     buyerId: '',
   });
   const [buyerErrors, setBuyerErrors] = useState<Record<string, string>>({});
@@ -164,26 +171,36 @@ export default function MarketplacePage() {
 
   const handleCreateListing = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!listingForm.title.trim()) {
-      setListingErrors({ title: 'Title is required' });
+    const errors: Record<string, string> = {};
+    if (!listingForm.title.trim()) errors.title = 'Title is required';
+    if (listingForm.price === '' || !Number.isFinite(Number(listingForm.price)) || Number(listingForm.price) < 0) {
+      errors.price = 'Enter a valid price';
+    }
+    if (listingForm.quantity === '' || !Number.isFinite(Number(listingForm.quantity)) || Number(listingForm.quantity) <= 0) {
+      errors.quantity = 'Enter a quantity greater than zero';
+    }
+    if (Object.keys(errors).length > 0) {
+      setListingErrors(errors);
       return;
     }
     setListingErrors({});
     setSaving(true);
     try {
       await marketplaceAPI.createListing({
+        entityType: listingForm.entityType,
         title: listingForm.title,
-        price: listingForm.price ? Number(listingForm.price) : undefined,
-        quantity: listingForm.quantity || undefined,
-        status: listingForm.status,
+        price: Number(listingForm.price),
+        quantity: Number(listingForm.quantity),
+        unit: listingForm.unit,
         buyerId: listingForm.buyerId || undefined,
       });
       setShowAddListing(false);
       setListingForm({
+        entityType: 'crop',
         title: '',
         price: '',
         quantity: '',
-        status: 'Active',
+        unit: 'kg',
         buyerId: '',
       });
       clearFetchCache('marketplace-listings');
@@ -443,7 +460,7 @@ export default function MarketplacePage() {
                               className={LISTING_STATUS_COLORS[listing.status] || ''}
                               variant="secondary"
                             >
-                              {listing.status}
+                              {listing.status.charAt(0) + listing.status.slice(1).toLowerCase()}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground">
@@ -603,6 +620,18 @@ export default function MarketplacePage() {
           <form onSubmit={handleCreateListing} className="space-y-4">
             <div>
               <label className="text-sm font-medium mb-1 block">
+                Listing type <span className="text-destructive">*</span>
+              </label>
+              <Select
+                options={LISTING_ENTITY_OPTIONS}
+                value={listingForm.entityType}
+                onChange={(e) =>
+                  setListingForm({ ...listingForm, entityType: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
                 Title <span className="text-destructive">*</span>
               </label>
               <Input
@@ -622,7 +651,9 @@ export default function MarketplacePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Price</label>
+                <label className="text-sm font-medium mb-1 block">
+                  Price <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="number"
                   placeholder="0.00"
@@ -633,33 +664,35 @@ export default function MarketplacePage() {
                     setListingForm({ ...listingForm, price: e.target.value })
                   }
                 />
+                {listingErrors.price && (
+                  <p className="text-sm text-destructive mt-1">{listingErrors.price}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">
-                  Quantity
+                  Quantity <span className="text-destructive">*</span>
                 </label>
                 <Input
-                  placeholder="e.g. 100 kg"
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  placeholder="e.g. 100"
                   value={listingForm.quantity}
                   onChange={(e) =>
-                    setListingForm({
-                      ...listingForm,
-                      quantity: e.target.value,
-                    })
+                    setListingForm({ ...listingForm, quantity: e.target.value })
                   }
                 />
+                {listingErrors.quantity && (
+                  <p className="text-sm text-destructive mt-1">{listingErrors.quantity}</p>
+                )}
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Status</label>
-              <Select
-                options={[
-                  { value: 'Active', label: 'Active' },
-                  { value: 'Draft', label: 'Draft' },
-                ]}
-                value={listingForm.status}
+              <label className="text-sm font-medium mb-1 block">Unit</label>
+              <Input
+                value={listingForm.unit}
                 onChange={(e) =>
-                  setListingForm({ ...listingForm, status: e.target.value })
+                  setListingForm({ ...listingForm, unit: e.target.value })
                 }
               />
             </div>

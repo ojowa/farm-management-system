@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   RefreshControl,
-  ActivityIndicator,
   TouchableOpacity,
   Alert,
 } from 'react-native';
@@ -20,8 +19,6 @@ import { MenuButton } from '@/core/ui/MenuButton';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
 
-const LOW_STOCK_THRESHOLD = 10;
-
 export default function LowStockScreen() {
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
@@ -33,17 +30,8 @@ export default function LowStockScreen() {
   const loadItems = useCallback(async () => {
     try {
       setLoadError(null);
-      const res = await inventoryAPI.list();
-      // GET /inventory answers `{ data, total, page, totalPages }`. The old
-      // `res.data.items || res.data || []` fell through both object branches
-      // (`items` is undefined, `res.data` is the paginated object) and handed
-      // `.filter` a non-array, which threw — silently swallowed by the empty
-      // catch, rendering a permanent "No low stock items".
-      const list = unwrapList(res?.data);
-      const lowStock = list.filter(
-        (item: any) => item.quantity <= (item.minQuantity ?? LOW_STOCK_THRESHOLD)
-      );
-      setItems(lowStock);
+      const response = await inventoryAPI.lowStock();
+      setItems(unwrapList(response?.data));
     } catch (error) {
       setLoadError(describeApiError(error, 'Failed to load low-stock inventory.'));
     }
@@ -116,18 +104,18 @@ export default function LowStockScreen() {
                   {item.quantity} {item.unit || ''}
                 </Text>
               </View>
-              {item.minQuantity !== undefined && (
+              {item.minimumQuantity !== undefined && (
                 <View style={styles.itemRow}>
                   <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Min Required</Text>
                   <Text style={[styles.itemValue, { color: tc.text }]}>
-                    {item.minQuantity} {item.unit || ''}
+                    {item.minimumQuantity} {item.unit || ''}
                   </Text>
                 </View>
               )}
-              {item.farmName && (
+              {(item.farm?.name || item.farmName) && (
                 <View style={styles.itemRow}>
                   <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Farm</Text>
-                  <Text style={[styles.itemValue, { color: tc.text }]}>{item.farmName}</Text>
+                  <Text style={[styles.itemValue, { color: tc.text }]}>{item.farm?.name || item.farmName}</Text>
                 </View>
               )}
               {item.costPerUnit !== undefined && (

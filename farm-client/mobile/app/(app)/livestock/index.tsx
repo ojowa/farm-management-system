@@ -19,6 +19,18 @@ const sections = [
     route: '/livestock/health',
   },
   {
+    title: 'Vaccinations',
+    description: 'Schedule and record animal vaccinations',
+    icon: '💉',
+    route: '/livestock/vaccinations',
+  },
+  {
+    title: 'Weight',
+    description: 'Track animal weight over time',
+    icon: '⚖️',
+    route: '/livestock/weight',
+  },
+  {
     title: 'Breeding',
     description: 'Track breeding pairs and expected due dates',
     icon: '🐮',

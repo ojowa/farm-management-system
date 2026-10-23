@@ -274,12 +274,36 @@ export class AuthService {
   async getNotificationPreferences(userId: string) {
     const user = await this.userRepo.findById(userId);
     if (!user) throw new NotFoundException('User not found');
-    return user.notificationPreferences || {};
+    const stored = user.notificationPreferences;
+    const preferences = stored && typeof stored === 'object' ? stored as Record<string, unknown> : {};
+    const notificationPreferences =
+      preferences.notificationPreferences && typeof preferences.notificationPreferences === 'object'
+        ? preferences.notificationPreferences as Record<string, unknown>
+        : Object.fromEntries(Object.entries(preferences).filter(([key]) => key !== 'twoFactorEnabled'));
+    return { notificationPreferences, twoFactorEnabled: user.twoFactorEnabled };
   }
 
-  async updateNotificationPreferences(userId: string, preferences: any) {
-    const user = await this.userRepo.update(userId, { notificationPreferences: preferences } as any);
-    return user.notificationPreferences;
+  async updateNotificationPreferences(userId: string, body: unknown) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      throw new BadRequestException('Notification preferences must be an object');
+    }
+    const input = body as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(input, 'twoFactorEnabled')) {
+      throw new BadRequestException('Two-factor authentication must be changed through the verified 2FA endpoints');
+    }
+    const incoming = input.notificationPreferences ?? input;
+    if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
+      throw new BadRequestException('notificationPreferences must be an object');
+    }
+    const current = await this.getNotificationPreferences(userId);
+    const notificationPreferences = {
+      ...current.notificationPreferences,
+      ...(incoming as Record<string, unknown>),
+    };
+    const user = await this.userRepo.update(userId, {
+      notificationPreferences: { notificationPreferences } as any,
+    } as any);
+    return { notificationPreferences: user.notificationPreferences?.notificationPreferences, twoFactorEnabled: user.twoFactorEnabled };
   }
 
   async enable2fa(userId: string) {

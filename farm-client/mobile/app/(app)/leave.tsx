@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -136,6 +137,7 @@ const styles = StyleSheet.create({
   },
   ledgerName: { fontSize: 14, color: colors.text, flex: 1 },
   ledgerValue: { fontSize: 13, color: colors.textLight, marginLeft: 8 },
+  ledgerEntry: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   pickerChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
 });
 
@@ -275,6 +277,16 @@ export default function LeaveScreen() {
   const [filter, setFilter] = useState<string>('all');
   const [year, setYear] = useState<number>(THIS_YEAR);
   const [showModal, setShowModal] = useState(false);
+  const [showTypeManager, setShowTypeManager] = useState(false);
+  const [typeName, setTypeName] = useState('');
+  const [typeDays, setTypeDays] = useState('0');
+  const [typePaid, setTypePaid] = useState(true);
+  const [typeSaving, setTypeSaving] = useState(false);
+  const [showBalanceEditor, setShowBalanceEditor] = useState(false);
+  const [balanceUserId, setBalanceUserId] = useState('');
+  const [balanceLeaveTypeId, setBalanceLeaveTypeId] = useState('');
+  const [balanceTotalDays, setBalanceTotalDays] = useState('');
+  const [balanceSaving, setBalanceSaving] = useState(false);
   const [leaveTypeId, setLeaveTypeId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -308,7 +320,7 @@ export default function LeaveScreen() {
       ]);
       setRequests(unwrapList<any>(reqRes.data));
       setBalance(unwrapList<any>(balRes.data));
-      setLeaveTypes(unwrapList<any>(typeRes.data).filter((t: any) => t.isActive));
+      setLeaveTypes(unwrapList<any>(typeRes.data));
     } catch (err: any) {
       // Surface the failure — a silent catch renders as a false "No leave
       // requests" empty state.
@@ -347,11 +359,71 @@ export default function LeaveScreen() {
     }
   };
 
+  const createLeaveType = async () => {
+    const daysPerYear = Number(typeDays);
+    if (!typeName.trim() || !Number.isInteger(daysPerYear) || daysPerYear < 0) {
+      Alert.alert('Invalid leave type', 'Enter a name and a non-negative number of days.');
+      return;
+    }
+    setTypeSaving(true);
+    try {
+      await leaveAPI.createType({ name: typeName.trim(), daysPerYear, isPaid: typePaid });
+      setTypeName('');
+      setTypeDays('0');
+      await loadData();
+    } catch (err: any) {
+      Alert.alert('Could not create leave type', describeApiError(err));
+    } finally {
+      setTypeSaving(false);
+    }
+  };
+
+  const toggleLeaveType = async (leaveType: any) => {
+    try {
+      await leaveAPI.updateType(leaveType.id, { isActive: !leaveType.isActive });
+      await loadData();
+    } catch (err: any) {
+      Alert.alert('Could not update leave type', describeApiError(err));
+    }
+  };
+
+  const openBalanceEditor = (row: any, cell: any) => {
+    setLedgerOpen(false);
+    setShowBalanceEditor(true);
+    setBalanceUserId(row.userId || '');
+    setBalanceLeaveTypeId(cell.leaveTypeId || '');
+    setBalanceTotalDays(String(cell.totalDays ?? 0));
+  };
+
+  const saveLeaveBalance = async () => {
+    const totalDays = Number(balanceTotalDays);
+    if (!balanceUserId || !balanceLeaveTypeId || !Number.isInteger(totalDays) || totalDays < 0) {
+      Alert.alert('Invalid leave balance', 'Choose a worker and leave type, then enter non-negative total days.');
+      return;
+    }
+    setBalanceSaving(true);
+    try {
+      await leaveAPI.upsertBalance({
+        userId: balanceUserId,
+        leaveTypeId: balanceLeaveTypeId,
+        year,
+        totalDays,
+      });
+      setShowBalanceEditor(false);
+      setBalanceTotalDays('');
+      await openLedger();
+    } catch (err: any) {
+      Alert.alert('Could not save leave balance', describeApiError(err));
+    } finally {
+      setBalanceSaving(false);
+    }
+  };
+
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
   const openModal = () => {
     setEditingId(null);
-    setLeaveTypeId(leaveTypes[0]?.id || '');
+    setLeaveTypeId(leaveTypes.find((type) => type.isActive)?.id || '');
     setStartDate('');
     setEndDate('');
     setReason('');
@@ -360,7 +432,7 @@ export default function LeaveScreen() {
 
   const openEdit = (request: any) => {
     setEditingId(request.id);
-    setLeaveTypeId(request.leaveTypeId || leaveTypes[0]?.id || '');
+    setLeaveTypeId(request.leaveTypeId || leaveTypes.find((type) => type.isActive)?.id || '');
     setStartDate(String(request.startDate).slice(0, 10));
     setEndDate(String(request.endDate).slice(0, 10));
     setReason(request.reason || '');
@@ -505,6 +577,11 @@ export default function LeaveScreen() {
             <Text style={[styles.headerActionText, bulkMode && styles.headerActionActiveText]}>
               {bulkMode ? 'Done' : 'Bulk'}
             </Text>
+          </TouchableOpacity>
+        )}
+        {isManager && (
+          <TouchableOpacity style={styles.headerAction} onPress={() => setShowTypeManager(true)} accessibilityLabel="Manage leave types">
+            <Text style={styles.headerActionText}>Types</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.headerAction} onPress={openModal} accessibilityLabel="Request leave">
@@ -749,7 +826,7 @@ export default function LeaveScreen() {
             <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{editingId ? 'Edit Leave Request' : 'Request Leave'}</Text>
             <Text style={[styles.label, dynamicStyles.label]}>Leave Type</Text>
             <View style={styles.pickerChipRow}>
-              {leaveTypes.map((t) => (
+              {leaveTypes.filter((type) => type.isActive).map((t) => (
                 <TouchableOpacity
                   key={t.id}
                   onPress={() => setLeaveTypeId(t.id)}
@@ -792,6 +869,52 @@ export default function LeaveScreen() {
         </View>
       </Modal>
 
+      {isManager && (
+        <Modal visible={showTypeManager} animationType="slide" transparent>
+          <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+            <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Manage Leave Types</Text>
+              <TextInput
+                value={typeName}
+                onChangeText={setTypeName}
+                placeholder="Leave type name"
+                style={[styles.input, dynamicStyles.input]}
+                placeholderTextColor={tc.placeholder}
+              />
+              <TextInput
+                value={typeDays}
+                onChangeText={setTypeDays}
+                placeholder="Days per year"
+                keyboardType="numeric"
+                style={[styles.input, dynamicStyles.input]}
+                placeholderTextColor={tc.placeholder}
+              />
+              <TouchableOpacity onPress={() => setTypePaid((value) => !value)} style={styles.requestActions}>
+                <Text style={[styles.actionBtnText, dynamicStyles.inlineText]}>
+                  {typePaid ? 'Paid leave' : 'Unpaid leave'} · tap to change
+                </Text>
+              </TouchableOpacity>
+              <Button title="Add leave type" onPress={createLeaveType} loading={typeSaving} disabled={typeSaving} />
+              <ScrollView style={{ maxHeight: 220 }}>
+                {leaveTypes.map((type) => (
+                  <View key={type.id} style={[styles.ledgerRow, dynamicStyles.ledgerDivider]}>
+                    <Text style={[styles.ledgerName, dynamicStyles.ledgerName]}>
+                      {type.name} · {type.daysPerYear} days
+                    </Text>
+                    <TouchableOpacity onPress={() => void toggleLeaveType(type)}>
+                      <Text style={{ color: type.isActive ? '#DC2626' : colors.primary, fontWeight: '700' }}>
+                        {type.isActive ? 'Deactivate' : 'Activate'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+              <Button title="Close" variant="secondary" onPress={() => setShowTypeManager(false)} />
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* Team balances ledger (hr.read) */}
       <Modal visible={ledgerOpen} animationType="slide" transparent>
         <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
@@ -804,13 +927,23 @@ export default function LeaveScreen() {
             ) : (
               ledger.map((row: any, i: number) => (
                 <View key={row.userId || row.id || i} style={[styles.ledgerRow, dynamicStyles.ledgerDivider]}>
-                  <Text style={[styles.ledgerName, dynamicStyles.ledgerName]}>
-                    {row.userName || row.workerName || row.name || row.userId || 'Worker'}
-                  </Text>
-                  <Text style={[styles.ledgerValue, dynamicStyles.ledgerValue]}>
-                    {row.leaveTypeName ? `${row.leaveTypeName} · ` : ''}
-                    {row.usedDays ?? 0}/{row.totalDays ?? 0} used
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.ledgerName, dynamicStyles.ledgerName]}>
+                      {row.userName || row.userId || 'Worker'}
+                    </Text>
+                    {(row.leaveTypes || []).map((cell: any) => (
+                      <View key={cell.leaveTypeId} style={styles.ledgerEntry}>
+                        <Text style={[styles.ledgerValue, dynamicStyles.ledgerValue]}>
+                          {cell.leaveTypeName} · {cell.usedDays ?? 0}/{cell.totalDays ?? 0} used
+                        </Text>
+                        {isManager && (
+                          <TouchableOpacity onPress={() => openBalanceEditor(row, cell)}>
+                            <Text style={{ color: colors.primary, fontWeight: '700' }}>Edit</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+                  </View>
                 </View>
               ))
             )}
@@ -820,6 +953,31 @@ export default function LeaveScreen() {
           </View>
         </View>
       </Modal>
+
+      {isManager && (
+        <Modal visible={showBalanceEditor} animationType="slide" transparent>
+          <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
+            <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>Set Leave Balance</Text>
+              <Text style={[styles.helper, dynamicStyles.helper]}>
+                Update {leaveTypes.find((type) => type.id === balanceLeaveTypeId)?.name || 'leave'} days for {ledger?.find((row: any) => row.userId === balanceUserId)?.userName || 'worker'} in {year}.
+              </Text>
+              <TextInput
+                value={balanceTotalDays}
+                onChangeText={setBalanceTotalDays}
+                placeholder="Total days"
+                keyboardType="numeric"
+                style={[styles.input, dynamicStyles.input]}
+                placeholderTextColor={tc.placeholder}
+              />
+              <View style={styles.modalActions}>
+                <Button title="Cancel" variant="secondary" onPress={() => setShowBalanceEditor(false)} style={{ flex: 1 }} />
+                <Button title="Save" onPress={saveLeaveBalance} loading={balanceSaving} disabled={balanceSaving} style={{ flex: 1 }} />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }

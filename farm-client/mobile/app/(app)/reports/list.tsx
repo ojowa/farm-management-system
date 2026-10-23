@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { reportsAPI } from '@/modules/reporting';
@@ -24,6 +24,16 @@ export default function ReportsListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  const templates = [
+    { id: 'farm-summary', title: 'Farm Summary' },
+    { id: 'crop-report', title: 'Crop Report' },
+    { id: 'livestock-report', title: 'Livestock Report' },
+    { id: 'poultry-report', title: 'Poultry Report' },
+    { id: 'financial-report', title: 'Financial Report' },
+    { id: 'inventory-report', title: 'Inventory Report' },
+  ];
 
   const loadReports = useCallback(async () => {
     try {
@@ -37,6 +47,19 @@ export default function ReportsListScreen() {
       setRefreshing(false);
     }
   }, []);
+
+  const generateReport = async (templateId: string, title: string) => {
+    setGenerating(templateId);
+    try {
+      await reportsAPI.generate(templateId);
+      await loadReports();
+      Alert.alert('Report generated', `${title} has been generated.`);
+    } catch (error) {
+      Alert.alert('Could not generate report', describeApiError(error, 'Please try again.'));
+    } finally {
+      setGenerating(null);
+    }
+  };
 
   useEffect(() => {
     void loadReports();
@@ -83,17 +106,39 @@ export default function ReportsListScreen() {
             tintColor={themeColors.primary}
           />
         }
+        ListHeaderComponent={
+          <View style={styles.generateSection}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Generate report</Text>
+            <View style={styles.templateGrid}>
+              {templates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  disabled={Boolean(generating)}
+                  onPress={() => void generateReport(template.id, template.title)}
+                  style={[styles.templateButton, { borderColor: themeColors.border, backgroundColor: themeColors.card }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Generate ${template.title}`}
+                >
+                  {generating === template.id
+                    ? <ActivityIndicator color={themeColors.primary} />
+                    : <Text style={[styles.templateText, { color: themeColors.text }]}>{template.title}</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Generated reports</Text>
+          </View>
+        }
         ListEmptyComponent={
           <Text style={[styles.empty, { color: themeColors.textSecondary }]}>No reports have been generated yet.</Text>
         }
         renderItem={({ item }) => (
           <Card style={[styles.card, { backgroundColor: themeColors.card }]}>
             <View style={styles.row}>
-              <Text style={[styles.reportName, { color: themeColors.text }]}>{item.name || 'Untitled report'}</Text>
+              <Text style={[styles.reportName, { color: themeColors.text }]}>{item.title || 'Untitled report'}</Text>
               {!!item.status && <Text style={[styles.status, { color: themeColors.primary }]}>{item.status}</Text>}
             </View>
             <Text style={[styles.meta, { color: themeColors.textSecondary }]}>
-              {item.type || 'Report'} · {formatDate(item.generatedAt || item.createdAt)}
+              {String(item.parameters?.templateId || 'Report')} · {formatDate(item.createdAt)}
             </Text>
           </Card>
         )}
@@ -132,4 +177,9 @@ const styles = StyleSheet.create({
   status: { fontSize: 12, fontWeight: '700' },
   meta: { fontSize: 13, marginTop: 6 },
   empty: { textAlign: 'center', paddingVertical: 40 },
+  generateSection: { gap: 10, paddingBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  templateGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  templateButton: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  templateText: { fontSize: 13, fontWeight: '600' },
 });

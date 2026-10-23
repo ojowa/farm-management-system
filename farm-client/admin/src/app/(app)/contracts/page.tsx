@@ -32,7 +32,8 @@ import { usePermission } from '@/lib/usePermission';
 interface Contract {
   id: string;
   type: string;
-  counterpartyName: string;
+  buyerSellerName?: string;
+  counterpartyName?: string;
   value?: number;
   currency?: string;
   status: string;
@@ -221,7 +222,7 @@ export default function ContractsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">
-                          {contract.counterpartyName}
+                          {contract.buyerSellerName || contract.counterpartyName}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -276,7 +277,7 @@ export default function ContractsPage() {
                                 onClick={() =>
                                   handleDelete(
                                     contract.id,
-                                    contract.counterpartyName
+                                    contract.buyerSellerName || contract.counterpartyName || ''
                                   )
                                 }
                               >

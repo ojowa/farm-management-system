@@ -1,5 +1,6 @@
 import {
   Controller,
+  BadRequestException,
   Get,
   Post,
   Put,
@@ -171,14 +172,64 @@ export class CropLifecycleController {
   async getCalendar(
     @Req() req: any,
     @Query('farmId') farmId?: string,
+    @Query('month') month?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const filter: Record<string, unknown> = {};
-    if (farmId) filter.farmId = farmId;
-    if (startDate) filter.startDate = startDate;
-    if (endDate) filter.endDate = endDate;
-    return this.cropService.getAllCropCycles({ organizationId: getOrgId(req), filter: filter as any });
+    let rangeStart: Date | undefined;
+    let rangeEnd: Date | undefined;
+    if (month) {
+      if (!/^\d{4}-\d{2}$/.test(month)) throw new BadRequestException('"month" must use YYYY-MM format');
+      const [year, monthNumber] = month.split('-').map(Number);
+      if (monthNumber < 1 || monthNumber > 12) throw new BadRequestException('"month" must be a valid month');
+      rangeStart = new Date(Date.UTC(year, monthNumber - 1, 1));
+      rangeEnd = new Date(Date.UTC(year, monthNumber, 1));
+    } else {
+      rangeStart = startDate ? new Date(startDate) : undefined;
+      rangeEnd = endDate ? new Date(endDate) : undefined;
+    }
+    if (rangeStart && Number.isNaN(rangeStart.getTime())) throw new BadRequestException('"startDate" must be valid');
+    if (rangeEnd && Number.isNaN(rangeEnd.getTime())) throw new BadRequestException('"endDate" must be valid');
+
+    const { prisma } = await import('../../../../kernel/database');
+    const cycles = await prisma.cropCycle.findMany({
+      where: {
+        organizationId: getOrgId(req),
+        deletedAt: null,
+        ...(farmId ? { field: { farmId } } : {}),
+      },
+      include: {
+        crop: true,
+        field: { include: { farm: true } },
+      },
+    });
+    if (!cycles.length) return [];
+    const cycleById = new Map(cycles.map((cycle) => [cycle.id, cycle]));
+    const stages = await prisma.cropStage.findMany({
+      where: {
+        organizationId: getOrgId(req),
+        deletedAt: null,
+        cropCycleId: { in: cycles.map((cycle) => cycle.id) },
+        ...(rangeEnd ? { startDate: { lt: rangeEnd } } : {}),
+        ...(rangeStart
+          ? { OR: [{ endDate: null }, { endDate: { gte: rangeStart } }] }
+          : {}),
+      },
+      orderBy: { startDate: 'asc' },
+    });
+    return stages.flatMap((stage) => {
+      const cycle = cycleById.get(stage.cropCycleId);
+      return cycle
+        ? [{
+            ...stage,
+            stageName: stage.stage,
+            cropName: cycle.crop.name,
+            farmId: cycle.field.farmId,
+            farmName: cycle.field.farm.name,
+            endDate: stage.endDate || stage.startDate,
+          }]
+        : [];
+    });
   }
 
   @Permission('crop.read')

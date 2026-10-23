@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete, UsePipes, ValidationPipe, Param } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Get, Put, Body, Req, Res, UseGuards, HttpCode, Delete, UsePipes, ValidationPipe, Param } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 
@@ -176,7 +176,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async disable2fa(@Req() req: any, @Body() body: { code: string }) {
     if (!body.code || body.code.length !== 6) {
-      return { error: 'A valid 6-digit TOTP code is required to disable 2FA' };
+      throw new BadRequestException('A valid 6-digit TOTP code is required to disable 2FA');
     }
     await this.authService.disable2fa(req.user?.id, body.code);
     return { message: '2FA disabled successfully' };

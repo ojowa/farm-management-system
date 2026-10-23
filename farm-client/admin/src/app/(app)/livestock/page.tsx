@@ -204,6 +204,8 @@ export default function LivestockPage() {
         tabs={[
           { label: 'Livestock', href: '/livestock' },
           { label: 'Health', href: '/livestock/health' },
+          { label: 'Vaccinations', href: '/livestock/vaccinations' },
+          { label: 'Weight', href: '/livestock/weight' },
           { label: 'Breeding', href: '/livestock/breeding' },
         ]}
       />

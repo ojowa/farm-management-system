@@ -142,9 +142,9 @@ export default function ReportsPage() {
       });
     } catch (err: any) {
       toast({
-        type: 'info',
-        title: 'Report generation',
-        message: `${template.title} generation will be fully available in a future update.`,
+        type: 'error',
+        title: 'Report generation failed',
+        message: err.response?.data?.message || `${template.title} could not be generated.`,
       });
     } finally {
       setGenerating(null);

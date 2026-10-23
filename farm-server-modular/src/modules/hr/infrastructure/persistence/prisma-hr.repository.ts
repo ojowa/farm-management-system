@@ -367,7 +367,12 @@ export class PrismaLeaveBalanceRepository implements LeaveBalanceRepository {
     // Compound-key lookups became findFirst when the uniqueness moved to a
     // partial unique index (soft-deleted rows no longer block re-creation).
     const existing = await prisma.leaveBalance.findFirst({
-      where: { userId: data.userId, leaveTypeId: data.leaveTypeId, year: data.year },
+      where: {
+        organizationId: data.organizationId,
+        userId: data.userId,
+        leaveTypeId: data.leaveTypeId,
+        year: data.year,
+      },
     });
     if (existing) {
       return prisma.leaveBalance.update({

@@ -18,6 +18,12 @@ const sections = [
     icon: '🗺️',
     route: '/farms/map',
   },
+  {
+    title: 'Import & Export',
+    description: 'Transfer farm records using JSON',
+    icon: '↔️',
+    route: '/farms/data-transfer',
+  },
 ];
 
 export default function FarmsHubScreen() {

@@ -18,6 +18,12 @@ const sections = [
     icon: '📊',
     route: '/finance/profitability',
   },
+  {
+    title: 'Budgets',
+    description: 'Plan spending, manage categories, and refresh actuals',
+    icon: '🧾',
+    route: '/finance/budgets',
+  },
 ];
 
 export default function FinanceHubScreen() {

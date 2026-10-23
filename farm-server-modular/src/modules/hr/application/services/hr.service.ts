@@ -1227,9 +1227,22 @@ export class HrApplicationService {
     totalDays: number;
   }) {
     const { userId, leaveTypeId, year, totalDays } = data;
-    if (!userId || !leaveTypeId || !year || totalDays === undefined) {
+    if (!organizationId || !userId || !leaveTypeId || totalDays === undefined) {
       throw new BadRequestException('userId, leaveTypeId, year, and totalDays are required');
     }
+    if (!Number.isInteger(year) || year < 1900 || year > 9999) {
+      throw new BadRequestException('year must be a valid year');
+    }
+    if (!Number.isInteger(totalDays) || totalDays < 0) {
+      throw new BadRequestException('totalDays must be a non-negative integer');
+    }
+    const { prisma } = await import('../../../../kernel/database');
+    const [user, leaveType] = await Promise.all([
+      prisma.user.findFirst({ where: { id: userId, organizationId, isActive: true } }),
+      prisma.leaveType.findFirst({ where: { id: leaveTypeId, organizationId, deletedAt: null } }),
+    ]);
+    if (!user) throw new NotFoundException('User not found in this organization');
+    if (!leaveType) throw new NotFoundException('Leave type not found in this organization');
 
     return this.leaveBalanceRepo.upsert({
       organizationId,

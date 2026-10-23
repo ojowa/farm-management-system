@@ -4,13 +4,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  Modal,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, colors } from '../../../src/core/ui/UIComponents';
+import { Button, Card, colors } from '../../../src/core/ui/UIComponents';
 import { useRouter } from 'expo-router';
 import { scheduledReportsAPI } from '@/modules/reporting';
 import type { ScheduledReport } from '@/modules/reporting';
@@ -20,21 +22,14 @@ import { describeApiError } from '@/core/utils/apiError';
 import { StateView } from '@/core/ui/feedback';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
-const STATUS_COLORS: Record<string, string> = {
-  active: '#4CAF50',
-  paused: '#FF9800',
-  completed: '#2196F3',
-  failed: '#F44336',
-  pending: '#9E9E9E',
-};
-
 const FREQUENCY_LABELS: Record<string, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  yearly: 'Yearly',
+  DAILY: 'Daily',
+  WEEKLY: 'Weekly',
+  MONTHLY: 'Monthly',
+  QUARTERLY: 'Quarterly',
 };
+const FREQUENCIES = Object.keys(FREQUENCY_LABELS);
+const TEMPLATES = ['farm-summary', 'crop-report', 'livestock-report', 'poultry-report', 'financial-report', 'inventory-report'];
 
 export default function ScheduledReportsScreen() {
   const router = useRouter();
@@ -43,6 +38,12 @@ export default function ScheduledReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState('');
+  const [template, setTemplate] = useState(TEMPLATES[0]);
+  const [frequency, setFrequency] = useState('WEEKLY');
+  const [recipients, setRecipients] = useState('');
 
   const loadReports = useCallback(async () => {
     try {
@@ -58,6 +59,58 @@ export default function ScheduledReportsScreen() {
   useEffect(() => { loadReports(); }, [loadReports]);
 
   const onRefresh = () => { setRefreshing(true); loadReports(); };
+
+  const createSchedule = async () => {
+    const recipientList = recipients.split(',').map((value) => value.trim()).filter(Boolean);
+    if (!name.trim() || recipientList.length === 0) {
+      Alert.alert('Missing information', 'Enter a schedule name and at least one recipient email.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await scheduledReportsAPI.create({
+        name: name.trim(),
+        template,
+        frequency,
+        recipients: recipientList,
+      });
+      setShowCreate(false);
+      setName('');
+      setRecipients('');
+      await loadReports();
+    } catch (error) {
+      Alert.alert('Could not create schedule', describeApiError(error, 'Please try again.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleSchedule = async (report: ScheduledReport) => {
+    try {
+      await scheduledReportsAPI.update(report.id, { isActive: !report.isActive });
+      await loadReports();
+    } catch (error) {
+      Alert.alert('Could not update schedule', describeApiError(error, 'Please try again.'));
+    }
+  };
+
+  const deleteSchedule = (report: ScheduledReport) => {
+    Alert.alert('Delete schedule', `Delete "${report.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await scheduledReportsAPI.delete(report.id);
+            await loadReports();
+          } catch (error) {
+            Alert.alert('Could not delete schedule', describeApiError(error, 'Please try again.'));
+          }
+        },
+      },
+    ]);
+  };
 
   const dynamicStyles = {
     container: { backgroundColor: tc.background },
@@ -116,14 +169,14 @@ export default function ScheduledReportsScreen() {
             <Card key={report.id} style={[styles.reportCard, dynamicStyles.cardBackground]}>
               <View style={styles.reportHeader}>
                 <Text style={[styles.reportName, dynamicStyles.reportName]}>{report.name}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[report.status] || '#9E9E9E' }]}>
-                  <Text style={styles.statusText}>{report.status}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: report.isActive ? '#4CAF50' : '#9E9E9E' }]}>
+                  <Text style={styles.statusText}>{report.isActive ? 'Active' : 'Paused'}</Text>
                 </View>
               </View>
-              {report.type && (
+              {report.template && (
                 <View style={styles.reportRow}>
-                  <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Type</Text>
-                  <Text style={[styles.reportValue, dynamicStyles.reportValue]}>{report.type}</Text>
+                  <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Template</Text>
+                  <Text style={[styles.reportValue, dynamicStyles.reportValue]}>{report.template}</Text>
                 </View>
               )}
               {report.frequency && (
@@ -134,30 +187,79 @@ export default function ScheduledReportsScreen() {
                   </Text>
                 </View>
               )}
-              {report.nextRun && (
+              {report.nextSend && (
                 <View style={styles.reportRow}>
                   <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Next Run</Text>
                   <Text style={[styles.reportValue, dynamicStyles.reportValue]}>
-                    {new Date(report.nextRun).toLocaleDateString()}
+                    {new Date(report.nextSend).toLocaleDateString()}
                   </Text>
                 </View>
               )}
-              {report.lastRun && (
+              {report.lastSent && (
                 <View style={styles.reportRow}>
                   <Text style={[styles.reportLabel, dynamicStyles.reportLabel]}>Last Run</Text>
                   <Text style={[styles.reportValue, dynamicStyles.reportValue]}>
-                    {new Date(report.lastRun).toLocaleDateString()}
+                    {new Date(report.lastSent).toLocaleDateString()}
                   </Text>
                 </View>
               )}
+              <View style={styles.actions}>
+                <TouchableOpacity onPress={() => void toggleSchedule(report)} style={styles.actionButton}>
+                  <Text style={styles.actionText}>{report.isActive ? 'Pause' : 'Resume'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteSchedule(report)} style={styles.actionButton}>
+                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </Card>
           ))
         )}
 
-        <TouchableOpacity style={styles.scheduleButton} onPress={() => Alert.alert('Coming Soon', 'Scheduling reports from mobile will be available in a future update.')}>
+        <TouchableOpacity style={styles.scheduleButton} onPress={() => setShowCreate(true)}>
           <Text style={styles.scheduleButtonText}>+ Schedule Report</Text>
         </TouchableOpacity>
       </ScrollView>
+      <Modal visible={showCreate} transparent animationType="slide" onRequestClose={() => setShowCreate(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modal, { backgroundColor: tc.card }]}>
+            <Text style={[styles.modalTitle, { color: tc.text }]}>Schedule a report</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Schedule name"
+              placeholderTextColor={tc.textSecondary}
+              style={[styles.input, { color: tc.text, borderColor: tc.border }]}
+            />
+            <Text style={[styles.modalLabel, { color: tc.text }]}>Template</Text>
+            <View style={styles.options}>
+              {TEMPLATES.map((option) => (
+                <TouchableOpacity key={option} onPress={() => setTemplate(option)} style={[styles.option, template === option && styles.selectedOption]}>
+                  <Text style={[styles.optionText, { color: template === option ? '#FFFFFF' : tc.text }]}>{option.replace('-report', '')}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.modalLabel, { color: tc.text }]}>Frequency</Text>
+            <View style={styles.options}>
+              {FREQUENCIES.map((option) => (
+                <TouchableOpacity key={option} onPress={() => setFrequency(option)} style={[styles.option, frequency === option && styles.selectedOption]}>
+                  <Text style={[styles.optionText, { color: frequency === option ? '#FFFFFF' : tc.text }]}>{FREQUENCY_LABELS[option]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              value={recipients}
+              onChangeText={setRecipients}
+              placeholder="Recipient emails, separated by commas"
+              placeholderTextColor={tc.textSecondary}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[styles.input, { color: tc.text, borderColor: tc.border }]}
+            />
+            <Button title="Create schedule" onPress={createSchedule} loading={saving} disabled={saving} />
+            <Button title="Cancel" onPress={() => setShowCreate(false)} variant="secondary" />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -214,4 +316,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   scheduleButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 18, marginTop: 14 },
+  actionButton: { paddingVertical: 6, paddingHorizontal: 8 },
+  actionText: { color: colors.primary, fontWeight: '700' },
+  deleteText: { color: '#F44336' },
+  modalBackdrop: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)', padding: 18 },
+  modal: { borderRadius: 14, padding: 18, gap: 12 },
+  modalTitle: { fontSize: 20, fontWeight: '700' },
+  modalLabel: { fontSize: 14, fontWeight: '600' },
+  input: { borderWidth: 1, borderRadius: 8, padding: 12 },
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  option: { borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: '#888888' },
+  selectedOption: { backgroundColor: colors.primary },
+  optionText: { fontSize: 12, textTransform: 'capitalize' },
 });

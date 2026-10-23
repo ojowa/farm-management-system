@@ -26,7 +26,7 @@ export default function NewContractPage() {
 
   const [form, setForm] = useState({
     type: '',
-    counterpartyName: '',
+    buyerSellerName: '',
     startDate: '',
     endDate: '',
     value: '',
@@ -39,8 +39,8 @@ export default function NewContractPage() {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if (!form.type) newErrors.type = 'Type is required';
-    if (!form.counterpartyName.trim())
-      newErrors.counterpartyName = 'Counterparty name is required';
+    if (!form.buyerSellerName.trim())
+      newErrors.buyerSellerName = 'Counterparty name is required';
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -50,7 +50,7 @@ export default function NewContractPage() {
     try {
       await contractsAPI.create({
         type: form.type,
-        counterpartyName: form.counterpartyName,
+        buyerSellerName: form.buyerSellerName,
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
         value: form.value ? Number(form.value) : undefined,
@@ -114,16 +114,16 @@ export default function NewContractPage() {
               </label>
               <Input
                 placeholder="e.g. ABC Suppliers Ltd"
-                value={form.counterpartyName}
+                value={form.buyerSellerName}
                 onChange={(e) => {
-                  setForm({ ...form, counterpartyName: e.target.value });
-                  if (errors.counterpartyName)
-                    setErrors({ ...errors, counterpartyName: '' });
+                  setForm({ ...form, buyerSellerName: e.target.value });
+                  if (errors.buyerSellerName)
+                    setErrors({ ...errors, buyerSellerName: '' });
                 }}
               />
-              {errors.counterpartyName && (
+              {errors.buyerSellerName && (
                 <p className="text-sm text-destructive mt-1">
-                  {errors.counterpartyName}
+                  {errors.buyerSellerName}
                 </p>
               )}
             </div>

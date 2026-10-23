@@ -10,11 +10,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { TextInputField, Button } from '../../src/core/ui/UIComponents';
 import { useAuth } from '../../src/modules/auth/hooks/useAuth';
 import { useAppTheme } from '../../src/core/theme/ThemeContext';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { login, verifyMFA, loading, error, mfaRequired, mfaSessionToken, clearError, resetMFA } = useAuth();
   const { colors: themeColors, isDark } = useAppTheme();
 
@@ -62,11 +64,7 @@ export default function LoginScreen() {
   };
 
   const handleContactAdmin = () => {
-    Alert.alert(
-      'Account Support',
-      'To request an account or reset your credentials, please contact your farm administrator or supervisor.',
-      [{ text: 'OK' }]
-    );
+    router.push('/(auth)/register');
   };
 
   if (mfaRequired) {
@@ -216,9 +214,9 @@ export default function LoginScreen() {
               style={[styles.registerLink, { color: themeColors.primary }]}
               onPress={handleContactAdmin}
               accessibilityRole="link"
-              accessibilityLabel="Contact your administrator"
+              accessibilityLabel="Create an account"
             >
-              Contact your administrator
+              Create an account
             </Text>
           </Text>
         </ScrollView>
