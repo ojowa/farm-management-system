@@ -51,6 +51,7 @@ export interface BreedFilter {
 export interface FlockFilter {
   organizationId: string;
   farmId?: string;
+  poultryHouseId?: string;
   penId?: string;
   breedId?: string;
   status?: string;
@@ -60,6 +61,7 @@ export interface FlockFilter {
 export interface FeedingRecordFilter {
   organizationId: string;
   flockId?: string;
+  poultryHouseId?: string;
   feedType?: string;
 }
 
@@ -124,6 +126,8 @@ export interface PoultryAggregateRepository {
 
   // Flock
   findFlockById(id: string, organizationId: string): Promise<Flock | null>;
+  /** P6: in-org batchCode lookup so the service can return a clear 409. */
+  findFlockByBatchCode(organizationId: string, batchCode: string, excludeId?: string): Promise<Flock | null>;
   findAllFlocks(filter: FlockFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Flock>>;
   createFlock(data: Omit<Flock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flock>;
   updateFlock(id: string, data: Partial<Flock>): Promise<Flock>;
@@ -147,6 +151,19 @@ export interface PoultryAggregateRepository {
   findMortalityRecordById(id: string, organizationId: string): Promise<MortalityRecord | null>;
   findAllMortalityRecords(filter: MortalityRecordFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<MortalityRecord>>;
   createMortalityRecord(data: Omit<MortalityRecord, 'id' | 'createdAt'>): Promise<MortalityRecord>;
+  /** P3: create the record AND decrement the flock count in one transaction. */
+  createMortalityRecordWithFlockAdjust(
+    data: Omit<MortalityRecord, 'id' | 'createdAt'>,
+    count: number,
+  ): Promise<MortalityRecord>;
+  /** P3: apply the full count/flock reassignment diff to BOTH flocks atomically. */
+  updateMortalityRecordWithFlockAdjust(
+    id: string,
+    data: Partial<MortalityRecord> & { date?: Date | string },
+    diff: { countDelta: number; flockId?: string; from?: { flockId: string; count: number }; to?: { flockId: string; count: number } },
+  ): Promise<MortalityRecord>;
+  /** P3: credit the flock back for the removed birds, then delete — atomically. */
+  deleteMortalityRecordWithFlockRestore(id: string, record: { flockId: string; count: number }): Promise<void>;
   updateMortalityRecord(id: string, data: Partial<MortalityRecord>): Promise<MortalityRecord>;
   deleteMortalityRecord(id: string): Promise<void>;
 
@@ -168,6 +185,23 @@ export interface PoultryAggregateRepository {
   findPoultrySaleById(id: string, organizationId: string): Promise<PoultrySale | null>;
   findAllPoultrySales(filter: PoultrySaleFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<PoultrySale>>;
   createPoultrySale(data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>): Promise<PoultrySale>;
+  /** P2: create the sale AND decrement the flock count (SOLD at 0) atomically. */
+  createPoultrySaleWithFlockAdjust(
+    data: Omit<PoultrySale, 'id' | 'createdAt' | 'updatedAt'>,
+    flockId: string,
+    quantity: number,
+  ): Promise<PoultrySale>;
+  /** P2: re-credit the OLD flock and re-debit the NEW one when a sale is edited. */
+  updatePoultrySaleWithFlockAdjust(
+    id: string,
+    data: Partial<PoultrySale>,
+    adjustments: { from?: { flockId: string; quantity: number }; to?: { flockId: string; quantity: number } },
+  ): Promise<PoultrySale>;
+  /** P2: birds that came back (sale removed) rejoin the flock, atomically. */
+  deletePoultrySaleWithFlockRestore(
+    id: string,
+    sale: { flockId: string | null; quantity: number; organizationId: string },
+  ): Promise<void>;
   updatePoultrySale(id: string, data: Partial<PoultrySale>): Promise<PoultrySale>;
   deletePoultrySale(id: string): Promise<void>;
 }

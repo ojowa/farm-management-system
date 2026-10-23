@@ -309,6 +309,10 @@ export default function AddFlockScreen() {
     setLoading(true);
     try {
       const birdCount = Number(formData.birdCount);
+      const arrivalDate = formData.arrivalDate.trim();
+      const arrivalTimestamp = Date.parse(`${arrivalDate}T00:00:00.000Z`);
+      const today = new Date();
+      const todayTimestamp = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
       await offlinePoultryAPI.create({
         // Organization is derived from the JWT server-side; included only to
         // satisfy the request type (the zod schema ignores it).
@@ -319,7 +323,9 @@ export default function AddFlockScreen() {
         batchCode: formData.batchCode.trim(),
         birdCount,
         currentCount: birdCount,
-        arrivalDate: formData.arrivalDate.trim(),
+        arrivalDate,
+        currentAgeDays: Math.max(0, Math.floor((todayTimestamp - arrivalTimestamp) / 86_400_000)),
+        status: 'ACTIVE',
       });
       success('Flock created successfully');
       router.back();

@@ -158,7 +158,8 @@ export type PondHarvestFormInput = z.infer<typeof pondHarvestFormSchema>;
 export const poultryHouseFormSchema = z.object({
   name: z.string().min(1, 'House name is required'),
   farmId: z.string().min(1, 'Farm is required'),
-  capacity: z.string().min(1, 'Capacity is required'),
+  capacity: z.string()
+    .regex(/^[1-9]\d*$/, 'Capacity must be a positive whole number'),
 });
 
 export type PoultryHouseFormInput = z.infer<typeof poultryHouseFormSchema>;

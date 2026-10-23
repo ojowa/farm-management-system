@@ -12,6 +12,8 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { PoultryApplicationService } from '../../application/services/poultry.service';
@@ -33,6 +35,10 @@ import {
   updateMortalityRecordSchema,
   createMedicationSchema,
   updateMedicationSchema,
+  createEggProductionSchema,
+  updateEggProductionSchema,
+  createPoultrySaleSchema,
+  updatePoultrySaleSchema,
 } from '@farm/validation-server';
 
 /**
@@ -42,6 +48,36 @@ import {
  */
 function getOrgId(req: any): string {
   return String(req.user?.organizationId || '');
+}
+
+/**
+ * S2: `parseInt('?page=abc')` produced NaN which reached Prisma as
+ * `skip: NaN` and 500'd the request. Clamp page/limit, and only accept the
+ * two real sort directions.
+ */
+function toPositiveInt(value: string | undefined, fallback: number): number {
+  if (value === undefined || value === '') return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function toSortOrder(value: string | undefined, fallback: 'asc' | 'desc'): 'asc' | 'desc' {
+  return value === 'asc' ? 'asc' : value === 'desc' ? 'desc' : fallback;
+}
+
+function validateDateRange(startDate?: string, endDate?: string): void {
+  const start = startDate ? new Date(startDate) : undefined;
+  const end = endDate ? new Date(endDate) : undefined;
+
+  if (start && Number.isNaN(start.getTime())) {
+    throw new BadRequestException('"startDate" must be a valid date');
+  }
+  if (end && Number.isNaN(end.getTime())) {
+    throw new BadRequestException('"endDate" must be a valid date');
+  }
+  if (start && end && end < start) {
+    throw new BadRequestException('"endDate" cannot precede "startDate"');
+  }
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
@@ -72,10 +108,10 @@ export class PoultryHousesController {
     if (farmId) filter.farmId = farmId;
     if (name) filter.name = name;
     return this.poultryService.getAllPoultryHouses(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'createdAt',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -96,7 +132,7 @@ export class PoultryHousesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deletePoultryHouse(getOrgId(req), id);
+    await this.poultryService.deletePoultryHouse(getOrgId(req), id);
   }
 }
 
@@ -128,10 +164,10 @@ export class PensController {
     if (poultryHouseId) filter.poultryHouseId = poultryHouseId;
     if (name) filter.name = name;
     return this.poultryService.getAllPens(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'createdAt',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -152,7 +188,7 @@ export class PensController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deletePen(getOrgId(req), id);
+    await this.poultryService.deletePen(getOrgId(req), id);
   }
 }
 
@@ -160,6 +196,20 @@ export class PensController {
 @Controller('breeds')
 export class BreedsController {
   constructor(private readonly poultryService: PoultryApplicationService) {}
+
+  /**
+   * P5: Breed is a SHARED global catalog (no organizationId column), but any
+   * tenant could previously rename or delete entries — a cross-tenant write.
+   * Org-scoped callers may still ADD breeds (POST) but rename/delete is
+   * platform-only, mirroring the crop catalog rule.
+   */
+  private assertPlatformCatalogMutation(req: any): void {
+    if (getOrgId(req)) {
+      throw new ForbiddenException(
+        'The breed catalog is shared across all farms. Only platform administrators can rename or remove entries.',
+      );
+    }
+  }
 
   @Permission('poultry.write')
   @Post()
@@ -183,10 +233,10 @@ export class BreedsController {
     if (name) filter.name = name;
     if (birdType) filter.birdType = birdType;
     return this.poultryService.getAllBreeds(filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'name',
-      sortOrder: sortOrder || 'asc',
+      sortOrder: toSortOrder(sortOrder, 'asc'),
     });
   }
 
@@ -199,15 +249,17 @@ export class BreedsController {
   @Permission('poultry.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateBreedSchema))
-  async update(@Param('id') id: string, @Body() data: any) {
+  async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
+    this.assertPlatformCatalogMutation(req);
     return this.poultryService.updateBreed(id, data);
   }
 
   @Permission('poultry.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('id') id: string) {
-    return this.poultryService.deleteBreed(id);
+  async delete(@Param('id') id: string, @Req() req: any) {
+    this.assertPlatformCatalogMutation(req);
+    await this.poultryService.deleteBreed(id);
   }
 }
 
@@ -233,6 +285,7 @@ export class FlocksController {
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('farmId') farmId?: string,
+    @Query('houseId') houseId?: string,
     @Query('penId') penId?: string,
     @Query('breedId') breedId?: string,
     @Query('status') status?: string,
@@ -240,15 +293,16 @@ export class FlocksController {
   ) {
     const filter: Record<string, unknown> = {};
     if (farmId) filter.farmId = farmId;
+    if (houseId) filter.poultryHouseId = houseId;
     if (penId) filter.penId = penId;
     if (breedId) filter.breedId = breedId;
     if (status) filter.status = status;
     if (search) filter.search = search;
     return this.poultryService.getAllFlocks(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'createdAt',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -269,7 +323,7 @@ export class FlocksController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deleteFlock(getOrgId(req), id);
+    await this.poultryService.deleteFlock(getOrgId(req), id);
   }
 }
 
@@ -295,16 +349,18 @@ export class FeedingRecordsController {
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('flockId') flockId?: string,
+    @Query('houseId') houseId?: string,
     @Query('feedType') feedType?: string,
   ) {
     const filter: Record<string, unknown> = {};
     if (flockId) filter.flockId = flockId;
+    if (houseId) filter.poultryHouseId = houseId;
     if (feedType) filter.feedType = feedType;
     return this.poultryService.getAllFeedingRecords(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'date',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -325,7 +381,7 @@ export class FeedingRecordsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deleteFeedingRecord(getOrgId(req), id);
+    await this.poultryService.deleteFeedingRecord(getOrgId(req), id);
   }
 }
 
@@ -357,10 +413,10 @@ export class VaccinationRecordsController {
     if (flockId) filter.flockId = flockId;
     if (vaccine) filter.vaccine = vaccine;
     return this.poultryService.getAllVaccinationRecords(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'date',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -381,7 +437,7 @@ export class VaccinationRecordsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deleteVaccinationRecord(getOrgId(req), id);
+    await this.poultryService.deleteVaccinationRecord(getOrgId(req), id);
   }
 }
 
@@ -411,10 +467,10 @@ export class MortalityRecordsController {
     const filter: Record<string, unknown> = {};
     if (flockId) filter.flockId = flockId;
     return this.poultryService.getAllMortalityRecords(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'date',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -435,7 +491,7 @@ export class MortalityRecordsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deleteMortalityRecord(getOrgId(req), id);
+    await this.poultryService.deleteMortalityRecord(getOrgId(req), id);
   }
 }
 
@@ -469,10 +525,10 @@ export class MedicationsController {
     if (status) filter.status = status;
     if (search) filter.search = search;
     return this.poultryService.getAllMedications(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'createdAt',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -493,7 +549,7 @@ export class MedicationsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deleteMedication(getOrgId(req), id);
+    await this.poultryService.deleteMedication(getOrgId(req), id);
   }
 }
 
@@ -504,6 +560,7 @@ export class EggProductionController {
 
   @Permission('poultry.write')
   @Post()
+  @UsePipes(new ZodValidationPipe(createEggProductionSchema))
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() data: any) {
     return this.poultryService.createEggProduction(getOrgId(req), {
@@ -525,15 +582,16 @@ export class EggProductionController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
+    validateDateRange(startDate, endDate);
     const filter: Record<string, unknown> = {};
     if (flockId) filter.flockId = flockId;
     if (startDate) filter.startDate = startDate;
     if (endDate) filter.endDate = endDate;
     return this.poultryService.getAllEggProductions(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'date',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -545,6 +603,7 @@ export class EggProductionController {
 
   @Permission('poultry.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateEggProductionSchema))
   async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
     return this.poultryService.updateEggProduction(getOrgId(req), id, data);
   }
@@ -553,7 +612,7 @@ export class EggProductionController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deleteEggProduction(getOrgId(req), id);
+    await this.poultryService.deleteEggProduction(getOrgId(req), id);
   }
 }
 
@@ -564,6 +623,7 @@ export class PoultrySalesController {
 
   @Permission('poultry.write')
   @Post()
+  @UsePipes(new ZodValidationPipe(createPoultrySaleSchema))
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() data: any) {
     return this.poultryService.createPoultrySale(getOrgId(req), data);
@@ -582,16 +642,17 @@ export class PoultrySalesController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
+    validateDateRange(startDate, endDate);
     const filter: Record<string, unknown> = {};
     if (farmId) filter.farmId = farmId;
     if (flockId) filter.flockId = flockId;
     if (startDate) filter.startDate = startDate;
     if (endDate) filter.endDate = endDate;
     return this.poultryService.getAllPoultrySales(getOrgId(req), filter, {
-      page: parseInt(page || '1'),
-      limit: parseInt(limit || '20'),
+      page: toPositiveInt(page, 1),
+      limit: Math.min(toPositiveInt(limit, 20), 500),
       sortBy: sortBy || 'date',
-      sortOrder: sortOrder || 'desc',
+      sortOrder: toSortOrder(sortOrder, 'desc'),
     });
   }
 
@@ -603,6 +664,7 @@ export class PoultrySalesController {
 
   @Permission('poultry.write')
   @Put(':id')
+  @UsePipes(new ZodValidationPipe(updatePoultrySaleSchema))
   async update(@Param('id') id: string, @Req() req: any, @Body() data: any) {
     return this.poultryService.updatePoultrySale(getOrgId(req), id, data);
   }
@@ -611,6 +673,6 @@ export class PoultrySalesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') id: string, @Req() req: any) {
-    return this.poultryService.deletePoultrySale(getOrgId(req), id);
+    await this.poultryService.deletePoultrySale(getOrgId(req), id);
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -79,6 +79,7 @@ export default function FlocksPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [houseFilter, setHouseFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
@@ -92,19 +93,24 @@ export default function FlocksPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setHouseFilter(new URLSearchParams(window.location.search).get('houseId') || '');
+  }, []);
+
   const {
     data: flocksData,
     loading,
     error: flocksError,
     refetch,
   } = useFetch<{ data: Flock[]; total: number; page: number; totalPages: number }>(
-    `flocks-list-${page}-${statusFilter}-${search.trim()}`,
+    `flocks-list-${page}-${statusFilter}-${search.trim()}-${houseFilter}`,
     () =>
       flocksAPI.list({
         page,
         limit: PAGE_SIZE,
         search: search.trim() || undefined,
         status: statusFilter || undefined,
+        houseId: houseFilter || undefined,
       }),
     { cacheTime: 30_000 }
   );

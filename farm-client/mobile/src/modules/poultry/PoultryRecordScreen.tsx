@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -44,7 +44,7 @@ export interface PoultryRecordConfig {
   columns: Array<{ key: string; label: string }>;
   fields: RecordField[];
   validate?: (values: Record<string, string>) => string | null;
-  list: () => Promise<{ data: unknown }>;
+  list: (page: number) => Promise<{ data: unknown }>;
   create: (values: Record<string, string>) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
 }
@@ -86,8 +86,12 @@ export function PoultryRecordScreen({ config }: { config: PoultryRecordConfig })
   const canWrite = hasPermission('poultry.write');
   const canDelete = hasPermission('poultry.delete');
   const [records, setRecords] = useState<RecordRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const loadingMoreRef = useRef(false);
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [flockLoadError, setFlockLoadError] = useState<string | null>(null);
@@ -98,18 +102,31 @@ export function PoultryRecordScreen({ config }: { config: PoultryRecordConfig })
   const [formError, setFormError] = useState('');
   const [expandedPicker, setExpandedPicker] = useState<string | null>(null);
 
-  const loadRecords = useCallback(async () => {
+  const loadRecords = useCallback(async (requestedPage = 1, append = false) => {
     try {
       setLoadError(null);
-      const response = await config.list();
-      setRecords(unwrapList<RecordRow>(response.data));
+      const response = await config.list(requestedPage);
+      const payload = response.data as { totalPages?: number; pagination?: { totalPages?: number } };
+      const nextRecords = unwrapList<RecordRow>(response.data);
+      setRecords((current) => append ? [...current, ...nextRecords] : nextRecords);
+      setPage(requestedPage);
+      setTotalPages(payload?.totalPages ?? payload?.pagination?.totalPages ?? 1);
     } catch (error) {
       setLoadError(describeApiError(error, `Failed to load ${config.title.toLowerCase()}.`));
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
   }, [config]);
+
+  const loadMoreRecords = useCallback(() => {
+    if (loadingMoreRef.current || page >= totalPages) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    void loadRecords(page + 1, true);
+  }, [loadRecords, page, totalPages]);
 
   const loadFlocks = useCallback(async () => {
     try {
@@ -122,7 +139,7 @@ export function PoultryRecordScreen({ config }: { config: PoultryRecordConfig })
   }, []);
 
   useEffect(() => {
-    void loadRecords();
+    void loadRecords(1, false);
     void loadFlocks();
   }, [loadRecords, loadFlocks]);
 
@@ -186,7 +203,7 @@ export function PoultryRecordScreen({ config }: { config: PoultryRecordConfig })
       await config.create(form);
       setShowForm(false);
       success(`${config.title} record added.`);
-      await loadRecords();
+      await loadRecords(1, false);
     } catch (error) {
       showError(describeApiError(error, `Failed to add ${config.title.toLowerCase()}.`));
     } finally {
@@ -273,11 +290,14 @@ export function PoultryRecordScreen({ config }: { config: PoultryRecordConfig })
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              void loadRecords();
+              void loadRecords(1, false);
             }}
             tintColor={themeColors.primary}
           />
         }
+        onEndReached={loadMoreRecords}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={themeColors.primary} /> : null}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>{config.icon}</Text>

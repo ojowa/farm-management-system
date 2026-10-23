@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -59,6 +59,8 @@ export default function FeedingPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [linkedFlockId, setLinkedFlockId] = useState('');
+  const [linkedHouseId, setLinkedHouseId] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
     flockId: '',
@@ -69,13 +71,26 @@ export default function FeedingPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flockId = params.get('flockId') || '';
+    setLinkedFlockId(flockId);
+    setLinkedHouseId(params.get('houseId') || '');
+    if (flockId) setForm((current) => ({ ...current, flockId }));
+  }, []);
+
   const {
     data: recordsData,
     loading,
     refetch,
   } = useFetch<{ data: FeedingRecord[]; total: number; page: number; totalPages: number }>(
-    'feeding-records-list',
-    () => feedingRecordsAPI.list({ page, limit: PAGE_SIZE }),
+    `feeding-records-list-${linkedFlockId}-${linkedHouseId}`,
+    () => feedingRecordsAPI.list({
+      page,
+      limit: PAGE_SIZE,
+      flockId: linkedFlockId || undefined,
+      houseId: linkedHouseId || undefined,
+    }),
     { cacheTime: 30_000 }
   );
 

@@ -47,7 +47,10 @@ export const createFlockSchema = z.object({
   currentCount: z.number().int().nonnegative(),
   arrivalDate: dateSchema,
   currentAgeDays: z.number().int().nonnegative(),
-  status: z.string().min(2),
+  // P7: status was a free string — 'acive' or 'Active' produced a badge the
+  // clients could never match. Constrained to the values they render
+  // (mobile's edit form also offers COMPLETED).
+  status: z.enum(['ACTIVE', 'SOLD', 'DECEASED', 'COMPLETED']),
 });
 
 export const updateFlockSchema = z.object({
@@ -61,7 +64,7 @@ export const updateFlockSchema = z.object({
   currentCount: z.number().int().nonnegative().optional(),
   arrivalDate: dateSchema.optional(),
   currentAgeDays: z.number().int().nonnegative().optional(),
-  status: z.string().min(2).optional(),
+  status: z.enum(['ACTIVE', 'SOLD', 'DECEASED', 'COMPLETED']).optional(),
 });
 
 export const createFeedingRecordSchema = z.object({
@@ -135,4 +138,82 @@ export const updateMedicationSchema = z.object({
   endDate: dateSchema.optional().nullable(),
   notes: z.string().optional().nullable(),
   status: z.enum(['ACTIVE', 'COMPLETED', 'CANCELLED']).optional(),
+});
+
+// Egg production schemas (P4)
+//
+// These two endpoints were the only poultry writes without a Zod pipe: the
+// body went straight into Prisma, so a missing flockId or a string egg count
+// surfaced as a 500. Shapes mirror what the mobile record screen and the
+// admin forms actually send.
+
+export const createEggProductionSchema = z
+  .object({
+    flockId: z.string().uuid(),
+    date: dateSchema,
+    totalEggs: z.number().int().nonnegative(),
+    goodEggs: z.number().int().nonnegative().default(0),
+    brokenEggs: z.number().int().nonnegative().default(0),
+    notes: z.string().max(2000).nullish(),
+  })
+  // The screen validates this client-side too; enforce it server-side so the
+  // totals can never contradict their parts.
+  .refine((data) => data.goodEggs + data.brokenEggs <= data.totalEggs, {
+    message: 'goodEggs + brokenEggs cannot exceed totalEggs',
+    path: ['goodEggs'],
+  });
+
+export const updateEggProductionSchema = z
+  .object({
+    flockId: z.string().uuid().optional(),
+    date: dateSchema.optional(),
+    totalEggs: z.number().int().nonnegative().optional(),
+    goodEggs: z.number().int().nonnegative().optional(),
+    brokenEggs: z.number().int().nonnegative().optional(),
+    notes: z.string().max(2000).nullish(),
+  })
+  .refine(
+    (data) =>
+      data.goodEggs === undefined ||
+      data.brokenEggs === undefined ||
+      data.totalEggs === undefined ||
+      data.goodEggs + data.brokenEggs <= data.totalEggs,
+    {
+      message: 'goodEggs + brokenEggs cannot exceed totalEggs',
+      path: ['goodEggs'],
+    },
+  );
+
+// Poultry sale schemas (P4 + P2)
+//
+// quantity is positive-int (a negative "sale" used to ADD birds to the
+// flock's count), and flockId may be null for a generic sale — but when
+// present the service checks it belongs to the caller's organization.
+
+export const createPoultrySaleSchema = z.object({
+  flockId: z.string().uuid().nullish(),
+  farmId: z.string().uuid().nullish(),
+  date: dateSchema,
+  buyerName: z.string().max(300).nullish(),
+  birdType: z.string().min(1).max(100),
+  quantity: z.number().int().positive(),
+  weight: z.number().positive().nullish(),
+  pricePerBird: z.number().nonnegative().nullish(),
+  totalAmount: z.number().nonnegative(),
+  paymentMethod: z.string().max(100).nullish(),
+  notes: z.string().max(2000).nullish(),
+});
+
+export const updatePoultrySaleSchema = z.object({
+  flockId: z.string().uuid().nullish(),
+  farmId: z.string().uuid().nullish(),
+  date: dateSchema.optional(),
+  buyerName: z.string().max(300).nullish(),
+  birdType: z.string().min(1).max(100).optional(),
+  quantity: z.number().int().positive().optional(),
+  weight: z.number().positive().nullish(),
+  pricePerBird: z.number().nonnegative().nullish(),
+  totalAmount: z.number().nonnegative().optional(),
+  paymentMethod: z.string().max(100).nullish(),
+  notes: z.string().max(2000).nullish(),
 });

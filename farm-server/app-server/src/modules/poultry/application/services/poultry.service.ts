@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import {
   PoultryAggregateRepository,
   PoultryHouseFilter,
@@ -82,11 +82,10 @@ export class PoultryApplicationService {
     return house;
   }
 
-  async deletePoultryHouse(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deletePoultryHouse(organizationId: string, id: string): Promise<void> {
     await this.getPoultryHouseById(organizationId, id);
     await this.repo.deletePoultryHouse(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── Pen ──
@@ -117,11 +116,10 @@ export class PoultryApplicationService {
     return pen;
   }
 
-  async deletePen(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deletePen(organizationId: string, id: string): Promise<void> {
     await this.getPenById(organizationId, id);
     await this.repo.deletePen(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── Breed (shared catalog — intentionally not org-scoped) ──
@@ -149,11 +147,10 @@ export class PoultryApplicationService {
     return breed;
   }
 
-  async deleteBreed(id: string): Promise<{ deleted: boolean }> {
+  async deleteBreed(id: string): Promise<void> {
     await this.getBreedById(id);
     await this.repo.deleteBreed(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id });
-    return { deleted: true };
   }
 
   // ── Flock ──
@@ -166,6 +163,17 @@ export class PoultryApplicationService {
     await this.getBreedById(data.breedId);
     await this.assertFarmInOrg(data.farmId, organizationId);
     const arrivalDate = typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate;
+    // P6: batch codes are unique per organization. The DB enforces it with a
+    // partial unique index; check first so a duplicate returns a clear 409
+    // instead of a raw P2002 leaking through as a 500.
+    if (data.batchCode) {
+      const existing = await this.repo.findFlockByBatchCode(organizationId, data.batchCode);
+      if (existing) {
+        throw new ConflictException(
+          `A flock with batch code "${data.batchCode}" already exists in your organization`,
+        );
+      }
+    }
     // organizationId always comes from the JWT — never from the body, which
     // the old zod schema required clients to supply (spoofable tenancy).
     const flock = await this.repo.createFlock({ ...data, organizationId, arrivalDate });
@@ -191,6 +199,15 @@ export class PoultryApplicationService {
     if (data.farmId) await this.assertFarmInOrg(data.farmId, organizationId);
     // A flock can never change tenancy — drop any organizationId from input.
     const { organizationId: _ignored, arrivalDate: rawArrivalDate, ...rest } = data;
+    // P6: re-check batchCode uniqueness when it changes.
+    if (rest.batchCode) {
+      const clash = await this.repo.findFlockByBatchCode(organizationId, rest.batchCode, id);
+      if (clash) {
+        throw new ConflictException(
+          `A flock with batch code "${rest.batchCode}" already exists in your organization`,
+        );
+      }
+    }
     const arrivalDate = rawArrivalDate
       ? typeof rawArrivalDate === 'string'
         ? new Date(rawArrivalDate)
@@ -201,11 +218,10 @@ export class PoultryApplicationService {
     return flock;
   }
 
-  async deleteFlock(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deleteFlock(organizationId: string, id: string): Promise<void> {
     await this.getFlockById(organizationId, id);
     await this.repo.deleteFlock(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── FeedingRecord ──
@@ -238,11 +254,10 @@ export class PoultryApplicationService {
     return record;
   }
 
-  async deleteFeedingRecord(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deleteFeedingRecord(organizationId: string, id: string): Promise<void> {
     await this.getFeedingRecordById(organizationId, id);
     await this.repo.deleteFeedingRecord(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── VaccinationRecord ──
@@ -285,13 +300,15 @@ export class PoultryApplicationService {
   // ── MortalityRecord ──
   async createMortalityRecord(organizationId: string, data: Omit<MortalityRecord, 'id' | 'createdAt'> & { date: Date | string; count: number }): Promise<MortalityRecord> {
     this.requireOrg(organizationId);
-    const flock = await this.getFlockById(organizationId, data.flockId);
+    // Validate the flock belongs to the caller's org before the transaction.
+    await this.getFlockById(organizationId, data.flockId);
     const date = typeof data.date === 'string' ? new Date(data.date) : data.date;
-    if (data.count > flock.currentCount) {
-      throw new BadRequestException(`Mortality count (${data.count}) cannot exceed current flock bird count (${flock.currentCount})`);
-    }
-    const record = await this.repo.createMortalityRecord({ ...data, date });
-    await this.repo.updateFlock(flock.id, { currentCount: flock.currentCount - data.count });
+    // P3: the record insert and the flock decrement now happen in ONE
+    // transaction — a crash between the two writes used to leave the flock
+    // count permanently wrong (birds recorded dead, still counted alive).
+    // The availability check also moved inside the transaction so a concurrent
+    // write can't race past it.
+    const record = await this.repo.createMortalityRecordWithFlockAdjust({ ...data, date }, data.count);
     this.events.emitDomainEvent('poultry', 'created', { ...record, organizationId });
     return record;
   }
@@ -309,30 +326,39 @@ export class PoultryApplicationService {
 
   async updateMortalityRecord(organizationId: string, id: string, data: Partial<MortalityRecord> & { date?: Date | string }): Promise<MortalityRecord> {
     const originalRecord = await this.getMortalityRecordById(organizationId, id);
-    const flock = await this.getFlockById(organizationId, originalRecord.flockId);
-    let countDiff = 0;
-    if (data.count !== undefined) {
-      countDiff = data.count - originalRecord.count;
-      if (countDiff > flock.currentCount) {
-        throw new BadRequestException(`Updated mortality count exceeds available flock count by ${countDiff - flock.currentCount}`);
-      }
+    // Validate any NEW flock the record is being moved to belongs to the org.
+    if (data.flockId && data.flockId !== originalRecord.flockId) {
+      await this.getFlockById(organizationId, data.flockId);
     }
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
-    const record = await this.repo.updateMortalityRecord(id, { ...data, date });
-    if (countDiff !== 0) {
-      await this.repo.updateFlock(flock.id, { currentCount: flock.currentCount - countDiff });
-    }
+    // P3: build the full diff. The old code only applied a `count` delta to
+    // the ORIGINAL flock, so REASSIGNING a record to a different flock
+    // double-decremented the old one and never touched the new one. Pass both
+    // sides so the repository can credit the old flock and debit the new one
+    // atomically.
+    const newCount = data.count ?? originalRecord.count;
+    const movedFlock = data.flockId && data.flockId !== originalRecord.flockId;
+    const diff = {
+      // Net change applied to the flock the record stays with.
+      countDelta: newCount - originalRecord.count,
+      // The flock the record stays with (used for the stationary count-change
+      // case; ignored when the record is reassigned via from/to).
+      flockId: originalRecord.flockId,
+      // Old flock is credited back for the full original count when the record
+      // leaves it (reassignment) — otherwise the repo applies countDelta only.
+      ...(movedFlock ? { from: { flockId: originalRecord.flockId, count: originalRecord.count } } : {}),
+      ...(movedFlock ? { to: { flockId: data.flockId as string, count: newCount } } : {}),
+    };
+    const record = await this.repo.updateMortalityRecordWithFlockAdjust(id, { ...data, date }, diff);
     this.events.emitDomainEvent('poultry', 'updated', { ...record, organizationId });
     return record;
   }
 
-  async deleteMortalityRecord(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deleteMortalityRecord(organizationId: string, id: string): Promise<void> {
     const record = await this.getMortalityRecordById(organizationId, id);
-    const flock = await this.getFlockById(organizationId, record.flockId);
-    await this.repo.updateFlock(flock.id, { currentCount: flock.currentCount + record.count });
-    await this.repo.deleteMortalityRecord(id);
+    // P3: credit the flock back and delete the row in ONE transaction.
+    await this.repo.deleteMortalityRecordWithFlockRestore(id, { flockId: record.flockId, count: record.count });
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── Medication ──
@@ -367,11 +393,10 @@ export class PoultryApplicationService {
     return record;
   }
 
-  async deleteMedication(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deleteMedication(organizationId: string, id: string): Promise<void> {
     await this.getMedicationById(organizationId, id);
     await this.repo.deleteMedication(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── EggProduction ──
@@ -406,11 +431,10 @@ export class PoultryApplicationService {
     return record;
   }
 
-  async deleteEggProduction(organizationId: string, id: string): Promise<{ deleted: boolean }> {
+  async deleteEggProduction(organizationId: string, id: string): Promise<void> {
     await this.getEggProductionById(organizationId, id);
     await this.repo.deleteEggProduction(id);
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 
   // ── PoultrySale ──
@@ -419,7 +443,21 @@ export class PoultryApplicationService {
     if (data.farmId) await this.assertFarmInOrg(data.farmId, organizationId);
     if (data.flockId) await this.getFlockById(organizationId, data.flockId);
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : new Date();
-    const record = await this.repo.createPoultrySale({ ...data, organizationId, date });
+    // P2: when the sale is tied to a flock, the birds must LEAVE the flock in
+    // the same transaction that writes the sale row — and the quantity is
+    // validated against live availability inside that transaction (the Zod
+    // schema already rejects non-positive quantities, so a negative "sale"
+    // can no longer silently ADD birds).
+    let record: PoultrySale;
+    if (data.flockId) {
+      record = await this.repo.createPoultrySaleWithFlockAdjust(
+        { ...data, organizationId, date },
+        data.flockId,
+        data.quantity,
+      );
+    } else {
+      record = await this.repo.createPoultrySale({ ...data, organizationId, date });
+    }
     this.events.emitDomainEvent('poultry', 'created', record);
     return record;
   }
@@ -436,20 +474,43 @@ export class PoultryApplicationService {
   }
 
   async updatePoultrySale(organizationId: string, id: string, data: Partial<PoultrySale> & { date?: Date | string }): Promise<PoultrySale> {
-    await this.getPoultrySaleById(organizationId, id);
+    const original = await this.getPoultrySaleById(organizationId, id);
     if (data.farmId) await this.assertFarmInOrg(data.farmId, organizationId);
     if (data.flockId) await this.getFlockById(organizationId, data.flockId);
     const date = data.date ? (typeof data.date === 'string' ? new Date(data.date) : data.date) : undefined;
     const { organizationId: _ignored, ...rest } = data;
+    const newQuantity = data.quantity ?? original.quantity;
+    const newFlockId = data.flockId ?? original.flockId ?? null;
+    const movedFlock = newFlockId && newFlockId !== (original.flockId ?? null);
+    // P2: re-credit the OLD flock and re-debit the NEW one (or just the
+    // quantity delta) when a sale is edited, atomically with the row update.
+    if (newFlockId) {
+      const adjustments = {
+        ...(original.flockId && original.flockId !== newFlockId
+          ? { from: { flockId: original.flockId, quantity: original.quantity } }
+          : {}),
+        ...(movedFlock || data.quantity !== undefined
+          ? { to: { flockId: newFlockId, quantity: newQuantity } }
+          : {}),
+      };
+      const record = await this.repo.updatePoultrySaleWithFlockAdjust(id, { ...rest, date }, adjustments);
+      this.events.emitDomainEvent('poultry', 'updated', record);
+      return record;
+    }
     const record = await this.repo.updatePoultrySale(id, { ...rest, date });
     this.events.emitDomainEvent('poultry', 'updated', record);
     return record;
   }
 
-  async deletePoultrySale(organizationId: string, id: string): Promise<{ deleted: boolean }> {
-    await this.getPoultrySaleById(organizationId, id);
-    await this.repo.deletePoultrySale(id);
+  async deletePoultrySale(organizationId: string, id: string): Promise<void> {
+    const original = await this.getPoultrySaleById(organizationId, id);
+    // P2: birds that came back (the sale is removed) rejoin the flock,
+    // atomically with the row delete.
+    await this.repo.deletePoultrySaleWithFlockRestore(id, {
+      flockId: original.flockId ?? null,
+      quantity: original.quantity,
+      organizationId,
+    });
     this.events.emitDomainEvent('poultry', 'deleted', { id, organizationId });
-    return { deleted: true };
   }
 }

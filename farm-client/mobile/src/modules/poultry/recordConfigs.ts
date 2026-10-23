@@ -25,7 +25,7 @@ export const feedingConfig: PoultryRecordConfig = {
     { key: 'quantityKg', label: 'Quantity (kg)', type: 'number', required: true, min: 0.01 },
     { key: 'date', label: 'Date', type: 'date', required: true },
   ],
-  list: () => feedingRecordsAPI.list({ page: 1, limit: 100 }),
+  list: (page) => feedingRecordsAPI.list({ page, limit: 100 }),
   create: (values) =>
     feedingRecordsAPI.create({
       flockId: values.flockId,
@@ -53,7 +53,7 @@ export const vaccinationConfig: PoultryRecordConfig = {
     { key: 'dosage', label: 'Dosage (optional)', type: 'text' },
     { key: 'date', label: 'Date', type: 'date', required: true },
   ],
-  list: () => vaccinationRecordsAPI.list({ page: 1, limit: 100 }),
+  list: (page) => vaccinationRecordsAPI.list({ page, limit: 100 }),
   create: (values) =>
     vaccinationRecordsAPI.create({
       flockId: values.flockId,
@@ -86,7 +86,7 @@ export const medicationConfig: PoultryRecordConfig = {
     { key: 'endDate', label: 'End date (optional)', type: 'date' },
     { key: 'notes', label: 'Notes (optional)', type: 'text' },
   ],
-  list: () => medicationAPI.list({ page: 1, limit: 100 }),
+  list: (page) => medicationAPI.list({ page, limit: 100 }),
   create: (values) =>
     medicationAPI.create({
       flockId: values.flockId,
@@ -117,7 +117,7 @@ export const mortalityConfig: PoultryRecordConfig = {
     { key: 'cause', label: 'Cause (optional)', type: 'text' },
     { key: 'date', label: 'Date', type: 'date', required: true },
   ],
-  list: () => mortalityRecordsAPI.list({ page: 1, limit: 100 }),
+  list: (page) => mortalityRecordsAPI.list({ page, limit: 100 }),
   create: (values) =>
     mortalityRecordsAPI.create({
       flockId: values.flockId,
@@ -152,7 +152,7 @@ export const eggProductionConfig: PoultryRecordConfig = {
     Number(values.goodEggs) + Number(values.brokenEggs) > Number(values.totalEggs)
       ? 'Good and broken eggs cannot exceed the total egg count.'
       : null,
-  list: () => eggProductionAPI.list({ page: 1, limit: 100 }),
+  list: (page) => eggProductionAPI.list({ page, limit: 100 }),
   create: (values) =>
     eggProductionAPI.create({
       flockId: values.flockId,
@@ -190,7 +190,7 @@ export const poultrySalesConfig: PoultryRecordConfig = {
     { key: 'date', label: 'Date', type: 'date', required: true },
     { key: 'notes', label: 'Notes (optional)', type: 'text' },
   ],
-  list: () => poultrySalesAPI.list({ page: 1, limit: 100 }),
+  list: (page) => poultrySalesAPI.list({ page, limit: 100 }),
   create: (values) =>
     poultrySalesAPI.create({
       flockId: values.flockId || null,

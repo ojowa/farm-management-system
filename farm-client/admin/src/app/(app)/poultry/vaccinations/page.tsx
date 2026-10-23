@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -59,6 +59,7 @@ export default function VaccinationsPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [linkedFlockId, setLinkedFlockId] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
     flockId: '',
@@ -69,13 +70,23 @@ export default function VaccinationsPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    const flockId = new URLSearchParams(window.location.search).get('flockId') || '';
+    setLinkedFlockId(flockId);
+    if (flockId) setForm((current) => ({ ...current, flockId }));
+  }, []);
+
   const {
     data: recordsData,
     loading,
     refetch,
   } = useFetch<{ data: VaccinationRecord[]; total: number; page: number; totalPages: number }>(
-    'vaccination-records-list',
-    () => vaccinationRecordsAPI.list({ page, limit: PAGE_SIZE }),
+    `vaccination-records-list-${linkedFlockId}`,
+    () => vaccinationRecordsAPI.list({
+      page,
+      limit: PAGE_SIZE,
+      flockId: linkedFlockId || undefined,
+    }),
     { cacheTime: 30_000 }
   );
 

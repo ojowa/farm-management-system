@@ -365,7 +365,9 @@ export default function PoultryHousesPage() {
             )}
           </div>
           <div>
-            <label className="text-sm font-medium mb-1 block">Capacity (birds)</label>
+            <label className="text-sm font-medium mb-1 block">
+              Capacity (birds) <span className="text-destructive">*</span>
+            </label>
             <Input
               type="number"
               placeholder="5000"
