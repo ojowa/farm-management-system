@@ -6,9 +6,12 @@ import {
   Body,
   Req,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
 import { AuthService } from '../../application/services/auth.service';
+import { UpdateUserDto } from '../dto/auth.dto';
 
 /**
  * `/admin/users` account management used by the admin console.
@@ -28,7 +31,8 @@ export class AdminUsersController {
 
   @Put('users/:userId')
   @Permission('users.manage')
-  updateUser(@Param('userId') userId: string, @Body() body: any, @Req() req: any) {
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  updateUser(@Param('userId') userId: string, @Body() body: UpdateUserDto, @Req() req: any) {
     return this.authService.updateUser(userId, body || {}, req?.user);
   }
 

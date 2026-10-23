@@ -119,6 +119,8 @@ export class AuthService {
     }
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    // Best-effort: record sign-in time for the admin "Last Login" column.
+    prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { requiresMFA: false, user: await withPlanFeatures(userWithoutPassword), accessToken, refreshToken };
   }
@@ -133,6 +135,8 @@ export class AuthService {
     if (!isValid) throw new UnauthorizedException('Invalid MFA code');
     const accessToken = await this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id, ctx);
+    // Best-effort: record sign-in time for the admin "Last Login" column.
+    prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
     const { passwordHash, twoFactorSecret, ...userWithoutPassword } = user as any;
     return { user: await withPlanFeatures(userWithoutPassword), accessToken, refreshToken };
   }
@@ -200,6 +204,9 @@ export class AuthService {
     if (!stored) throw new UnauthorizedException('Invalid refresh token');
     const user = await this.userRepo.findById(stored.userId);
     if (!user) throw new NotFoundException('User not found');
+    // A deactivated account must not be able to renew its sessions —
+    // JwtAuthGuard never hits the database, so this is the enforcement point.
+    if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
     const accessToken = await this.generateAccessToken(user, tokenOrganizationId);
     const refreshToken = await this.generateRefreshToken(user.id, ctx, tokenOrganizationId);
     // Revoke old token and record which new token replaced it
@@ -476,7 +483,7 @@ export class AuthService {
   async listAllUsers(caller?: AuthCaller) {
     const { prisma } = await import('@farm/database');
     return prisma.user.findMany({
-      where: this.userManagementScope(caller),
+      where: await this.userManagementScope(caller),
       select: {
         id: true,
         firstName: true,
@@ -484,6 +491,7 @@ export class AuthService {
         lastName: true,
         email: true,
         isActive: true,
+        lastLoginAt: true,
         organizationId: true,
         organization: { select: { id: true, name: true } },
         role: true,
@@ -494,12 +502,29 @@ export class AuthService {
   }
 
   /** Platform admins see every user; everyone else only their own organization. */
-  private isPlatformAdmin(caller?: AuthCaller): boolean {
-    return !!caller?.permissions?.includes('*');
+  private async isPlatformAdmin(caller?: AuthCaller): Promise<boolean> {
+    if (!caller) return false;
+    // Fast path: some tokens carry the literal wildcard, but the seed expands
+    // SUPER_ADMIN's '*' into concrete permission rows — so the JWT usually
+    // does NOT contain it. The role flag in the database is the source of
+    // truth; check it whenever the claim is inconclusive.
+    if (caller.permissions?.includes('*')) return true;
+    const userId = caller.id ?? caller.sub;
+    if (!userId) return false;
+    try {
+      const { prisma } = await import('@farm/database');
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: { select: { isPlatformAdmin: true } } },
+      });
+      return !!user?.role?.isPlatformAdmin;
+    } catch {
+      return false;
+    }
   }
 
-  private userManagementScope(caller?: AuthCaller) {
-    if (this.isPlatformAdmin(caller)) return undefined;
+  private async userManagementScope(caller?: AuthCaller) {
+    if (await this.isPlatformAdmin(caller)) return undefined;
     if (caller?.organizationId) return { organizationId: caller.organizationId };
     // No organization and not platform-scoped: only the caller's own account.
     return { id: caller?.id ?? caller?.sub ?? '__no-users__' };
@@ -507,7 +532,7 @@ export class AuthService {
 
   /** Guards cross-tenant writes: non-platform callers may only touch users in their own organization. */
   private async assertUserInScope(caller: AuthCaller | undefined, targetUserId: string) {
-    if (this.isPlatformAdmin(caller)) return;
+    if (await this.isPlatformAdmin(caller)) return;
     const { prisma } = await import('@farm/database');
     const target = await prisma.user.findUnique({
       where: { id: targetUserId },
@@ -519,14 +544,37 @@ export class AuthService {
     }
   }
 
-  async updateUser(userId: string, data: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }, caller?: AuthCaller) {
+  async updateUser(userId: string, data: { firstName?: string; lastName?: string; isActive?: boolean; roleId?: string; organizationId?: string }, caller?: AuthCaller) {
     await this.assertUserInScope(caller, userId);
-    // Moving a user between organizations is a platform-admin action.
-    if (!this.isPlatformAdmin(caller)) delete (data as any).organizationId;
+    const platform = await this.isPlatformAdmin(caller);
     const { prisma } = await import('@farm/database');
+
+    // Explicit whitelist — the raw body must never reach `update` (it could
+    // otherwise rewrite passwordHash, twoFactorSecret, email or phone).
+    const clean: Record<string, unknown> = {};
+    if (typeof data.firstName === 'string') clean.firstName = data.firstName;
+    if (typeof data.lastName === 'string') clean.lastName = data.lastName;
+    if (typeof data.isActive === 'boolean') clean.isActive = data.isActive;
+    if (data.roleId) {
+      const role = await prisma.role.findUnique({
+        where: { id: data.roleId },
+        select: { id: true, organizationId: true, isPlatformAdmin: true },
+      });
+      if (!role) throw new BadRequestException('Unknown role');
+      // Non-platform callers cannot assign platform roles or roles of other orgs.
+      if (!platform && (role.isPlatformAdmin || (role.organizationId && role.organizationId !== caller?.organizationId))) {
+        throw new BadRequestException('Unknown role');
+      }
+      clean.roleId = data.roleId;
+    }
+    // Moving a user between organizations is a platform-admin action.
+    if (platform && 'organizationId' in data) {
+      clean.organizationId = data.organizationId || null;
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data,
+      data: clean,
       select: {
         id: true,
         firstName: true,
@@ -569,8 +617,8 @@ export class AuthService {
       try {
         await this.logoutAllSessions(userId);
       } catch {
-        // Session revocation is best-effort — the guard already rejects
-        // deactivated users on the next token verification.
+        // Best-effort: refreshToken() now rejects deactivated accounts, so a
+        // surviving token still cannot be renewed even if this delete failed.
       }
     }
 

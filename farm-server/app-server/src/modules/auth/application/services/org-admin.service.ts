@@ -1,7 +1,26 @@
 import { Injectable, NotFoundException, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { prisma } from '@farm/database';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { EmailService } from '../../../notification/modules/email/email.service';
+
+/** Column projection for user rows — never expose passwordHash/twoFactorSecret. */
+const SAFE_USER_SELECT = {
+  id: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  email: true,
+  isActive: true,
+  organizationId: true,
+  role: true,
+  createdAt: true,
+} as const;
+
+/** Cryptographically-strong temporary password (~62 bits, 12 chars). */
+function generateTempPassword(): string {
+  return randomBytes(9).toString('base64url').slice(0, 12);
+}
 
 @Injectable()
 export class OrgAdminService {
@@ -59,14 +78,17 @@ export class OrgAdminService {
     const firstName = data?.firstName?.trim();
     const lastName = data?.lastName?.trim();
     if (!email || !firstName || !lastName) throw new BadRequestException('email, firstName and lastName are required');
-    if (data.roleId) await this.assertRoleUsable(organizationId, data.roleId);
+    // roleId is required: User.roleId is a non-nullable column, and silently
+    // defaulting it would let invites bypass role governance.
+    if (!data.roleId) throw new BadRequestException('roleId is required');
+    await this.assertRoleUsable(organizationId, data.roleId);
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) throw new ConflictException('Email already registered');
-    const tempPassword = Math.random().toString(36).slice(-8);
+    const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 12);
     const user = await prisma.user.create({
       data: { email, firstName, lastName, roleId: data.roleId, passwordHash, organizationId },
-      include: { role: true },
+      select: SAFE_USER_SELECT,
     });
 
     // Invitation email — logged when SMTP is unconfigured; delivery failure
@@ -95,7 +117,7 @@ export class OrgAdminService {
       await this.assertRoleUsable(organizationId, data.roleId);
       clean.roleId = data.roleId;
     }
-    return prisma.user.update({ where: { id: userId }, data: clean });
+    return prisma.user.update({ where: { id: userId }, data: clean, select: SAFE_USER_SELECT });
   }
 
   async deleteUser(organizationId: string, userId: string) {
@@ -115,8 +137,27 @@ export class OrgAdminService {
         NOT: { isPlatformAdmin: true },
         OR: [{ organizationId: null }, ...(orgId ? [{ organizationId: orgId }] : [])],
       },
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true } },
+        permissions: { include: { permission: { select: { id: true, name: true, description: true, category: true } } } },
+      },
     });
+  }
+
+  /** One role with its attached permissions — ownership like updateRole/deleteRole. */
+  async getRole(organizationId: string, roleId: string) {
+    const role = await prisma.role.findUnique({
+      where: { id: roleId },
+      include: {
+        _count: { select: { users: true } },
+        permissions: { include: { permission: { select: { id: true, name: true, description: true, category: true } } } },
+      },
+    });
+    if (!role) throw new NotFoundException('Role not found');
+    if (!organizationId || role.isPlatformAdmin || (role.organizationId && role.organizationId !== organizationId)) {
+      throw new NotFoundException('Role not found');
+    }
+    return role;
   }
 
   async createRole(organizationId: string, data: { name: string; description?: string }) {

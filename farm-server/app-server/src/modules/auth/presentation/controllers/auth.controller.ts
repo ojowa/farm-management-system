@@ -3,8 +3,8 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 
 import { AuthService } from '../../application/services/auth.service';
-import { JwtAuthGuard, AuthorizationGuard } from '@farm/auth-server/nestjs';
-import { LoginDto, RegisterDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto } from '../dto/auth.dto';
+import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
+import { LoginDto, RegisterDto, RefreshTokenDto, VerifyMfaDto, ChangePasswordDto, UpdateProfileDto, UpdateUserDto } from '../dto/auth.dto';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_SAMESITE = (process.env.COOKIE_SAMESITE || 'lax') as 'lax' | 'strict' | 'none';
@@ -210,7 +210,8 @@ export class AuthController {
   }
 
   @Get('users')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
+  @Permission('users.read')
   @SkipThrottle()
   async listAllUsers(@Req() req: any) {
     // Organization-scoped: callers only see users of their own organization
@@ -219,8 +220,9 @@ export class AuthController {
   }
 
   @Put('users/:userId')
-  @UseGuards(JwtAuthGuard)
-  async updateUser(@Param('userId') userId: string, @Body() body: { firstName?: string; lastName?: string; isActive?: boolean; organizationId?: string }, @Req() req: any) {
+  @UseGuards(JwtAuthGuard, AuthorizationGuard)
+  @Permission('users.manage')
+  async updateUser(@Param('userId') userId: string, @Body() body: UpdateUserDto, @Req() req: any) {
     return this.authService.updateUser(userId, body, req?.user);
   }
 }

@@ -48,6 +48,12 @@ export class OrgAdminController {
     return this.orgAdminService.listRoles(req.user?.organizationId);
   }
 
+  @Get('roles/:id')
+  @Permission('organization.read')
+  getRole(@Param('id') id: string, @Req() req: any) {
+    return this.orgAdminService.getRole(String(req.user?.organizationId || ''), id);
+  }
+
   @Post('roles')
   @Permission('organization.manage')
   createRole(@Req() req: any, @Body() body: { name: string; description?: string }) {
