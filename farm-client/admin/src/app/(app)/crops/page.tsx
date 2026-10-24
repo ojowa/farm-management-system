@@ -16,7 +16,7 @@ import {
   Sprout,
   Layers,
 } from 'lucide-react';
-import { cropsAPI, cropStagesAPI, farmsAPI } from '@/lib/api';
+import { cropsAPI, cropStagesAPI, farmsAPI, fieldsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +36,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
-import { cropFormSchema } from '@/lib/validation';
+import { cropFormSchema, fieldFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
 
 interface CropCycle {
@@ -95,6 +95,17 @@ export default function CropsPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  // ── Add Crop (name catalog) dialog ──
+  const [showCreateCrop, setShowCreateCrop] = useState(false);
+  const [createCropName, setCreateCropName] = useState('');
+  const [createCropSaving, setCreateCropSaving] = useState(false);
+
+  // ── Add Field (inline dialog, replaces router.push('/fields/new')) ──
+  const [showAddField, setShowAddField] = useState(false);
+  const [addFieldForm, setAddFieldForm] = useState({ farmId: '', name: '', size: '' });
+  const [addFieldErrors, setAddFieldErrors] = useState<Record<string, string>>({});
+  const [addFieldSaving, setAddFieldSaving] = useState(false);
 
   const {
     data: cyclesData,
@@ -198,6 +209,65 @@ export default function CropsPage() {
     }
   };
 
+  const handleCreateCrop = async () => {
+    const name = createCropName.trim();
+    if (!name) return;
+    setCreateCropSaving(true);
+    try {
+      await cropsAPI.create({ name });
+      toast({ type: 'success', title: 'Crop added' });
+      setShowCreateCrop(false);
+      setCreateCropName('');
+      // The crop catalog dropdown on the Add Cycle form and the crop list
+      // both read this cache — drop it so the new name shows up.
+      clearFetchCache('crops-catalog');
+      clearFetchCache('crop-new-crops');
+      clearFetchCache('crop-new-fields');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'An error occurred';
+      toast({ type: 'error', title: 'Failed to add crop', message: msg });
+    } finally {
+      setCreateCropSaving(false);
+    }
+  };
+
+  const handleAddFieldSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = fieldFormSchema.safeParse(addFieldForm);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        errors[String(issue.path[0])] = issue.message;
+      });
+      setAddFieldErrors(errors);
+      return;
+    }
+    setAddFieldErrors({});
+    setAddFieldSaving(true);
+    try {
+      await fieldsAPI.create({
+        farmId: addFieldForm.farmId,
+        name: addFieldForm.name.trim(),
+        size: Number(addFieldForm.size),
+      });
+      toast({ type: 'success', title: 'Field added' });
+      setShowAddField(false);
+      setAddFieldForm({ farmId: '', name: '', size: '' });
+      // The farm detail "Fields" card and the add-cycle field picker cache
+      // their field lists — drop them so the new field shows up.
+      clearFetchCache('farm-fields');
+      clearFetchCache('crop-new-fields');
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to add field',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setAddFieldSaving(false);
+    }
+  };
+
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete crop cycle "${name}"? This action cannot be undone.`)) return;
     try {
@@ -237,9 +307,15 @@ export default function CropsPage() {
           {/* Seeding a cycle starts with a parcel — jump straight to the
               add-field form from wherever a cycle is being managed. */}
           {canCreate('farm') && (
-            <Button variant="outline" onClick={() => router.push('/fields/new')}>
+            <Button variant="outline" onClick={() => setShowAddField(true)}>
               <Layers className="mr-2 h-4 w-4" />
               Add Field
+            </Button>
+          )}
+          {!readOnly && (
+            <Button onClick={() => setShowCreateCrop(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Crop
             </Button>
           )}
           {!readOnly && (
@@ -522,6 +598,108 @@ export default function CropsPage() {
               </Button>
               <Button type="submit" loading={saving}>
                 Create Cycle
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+
+      {/* Add Crop Dialog */}
+      {!readOnly && (
+        <Dialog open={showCreateCrop} onOpenChange={setShowCreateCrop} title="Add Crop">
+          <form onSubmit={(e) => { e.preventDefault(); handleCreateCrop(); }} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="e.g. Potato, Wheat, Maize"
+                value={createCropName}
+                onChange={(e) => setCreateCropName(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCreateCrop(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={createCropSaving}>
+                Add Crop
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+
+      {/* Add Field Dialog */}
+      {canCreate('farm') && (
+        <Dialog open={showAddField} onOpenChange={setShowAddField} title="Add Field">
+          <form onSubmit={handleAddFieldSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Farm <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select a farm"
+                options={farms.map((f) => ({ value: f.id, label: f.name }))}
+                value={addFieldForm.farmId}
+                onChange={(e) => {
+                  setAddFieldForm({ ...addFieldForm, farmId: e.target.value });
+                  if (addFieldErrors.farmId) setAddFieldErrors({ ...addFieldErrors, farmId: '' });
+                }}
+              />
+              {addFieldErrors.farmId && (
+                <p className="text-sm text-destructive mt-1">{addFieldErrors.farmId}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Field Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="e.g. North Valley Plot"
+                value={addFieldForm.name}
+                onChange={(e) => {
+                  setAddFieldForm({ ...addFieldForm, name: e.target.value });
+                  if (addFieldErrors.name) setAddFieldErrors({ ...addFieldErrors, name: '' });
+                }}
+              />
+              {addFieldErrors.name && (
+                <p className="text-sm text-destructive mt-1">{addFieldErrors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Size (acres) <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step="0.1"
+                placeholder="e.g. 12.5"
+                value={addFieldForm.size}
+                onChange={(e) => {
+                  setAddFieldForm({ ...addFieldForm, size: e.target.value });
+                  if (addFieldErrors.size) setAddFieldErrors({ ...addFieldErrors, size: '' });
+                }}
+              />
+              {addFieldErrors.size && (
+                <p className="text-sm text-destructive mt-1">{addFieldErrors.size}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAddField(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={addFieldSaving}>
+                Add Field
               </Button>
             </div>
           </form>

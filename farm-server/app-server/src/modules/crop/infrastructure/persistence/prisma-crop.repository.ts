@@ -12,11 +12,11 @@ const CROP_CYCLE_SORTABLE = ['id', 'status', 'health', 'plantingDate', 'harvestD
 
 @Injectable()
 export class PrismaCropRepository implements CropRepository {
-  async findById(id: string): Promise<Crop | null> {
-    return prisma.crop.findUnique({ where: { id } });
+  async findById(id: string, organizationId: string): Promise<Crop | null> {
+    return prisma.crop.findFirst({ where: { id, organizationId } });
   }
 
-  async findAll(options?: {
+  async findAll(organizationId: string, options?: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
@@ -28,7 +28,7 @@ export class PrismaCropRepository implements CropRepository {
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
     const skip = (safePage - 1) * safeLimit;
 
-    const where: any = {};
+    const where: any = { organizationId };
     if (filter.name) {
       where.name = {
         contains: filter.name,
@@ -49,16 +49,16 @@ export class PrismaCropRepository implements CropRepository {
     return { crops, total };
   }
 
-  async create(data: Omit<Crop, 'id' | 'createdAt' | 'updatedAt'>): Promise<Crop> {
-    return prisma.crop.create({ data });
+  async create(data: Omit<Crop, 'id' | 'createdAt' | 'updatedAt'>, organizationId: string): Promise<Crop> {
+    return prisma.crop.create({ data: { ...data, organizationId } });
   }
 
-  async update(id: string, data: Partial<Pick<Crop, 'name'>>): Promise<Crop> {
-    return prisma.crop.update({ where: { id }, data });
+  async update(id: string, organizationId: string, data: Partial<Pick<Crop, 'name'>>): Promise<Crop> {
+    return prisma.crop.update({ where: { id, organizationId }, data });
   }
 
-  async delete(id: string): Promise<void> {
-    await prisma.crop.delete({ where: { id } });
+  async delete(id: string, organizationId: string): Promise<void> {
+    await prisma.crop.delete({ where: { id, organizationId } });
   }
 }
 

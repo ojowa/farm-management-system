@@ -6,16 +6,19 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
-import { useListCropsQuery } from '@/modules/crop';
-import { Card, Button } from '@/core/ui/UIComponents';
+import { useListCropsQuery, offlineCropsAPI } from '@/modules/crop';
+import { Card, Button, colors, TextInputField } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAppTheme } from '@/core/theme/ThemeContext';
+import { useToasts } from '@/core/hooks/useToasts';
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -70,6 +73,39 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
   emptySubtext: { fontSize: 14, marginBottom: 20, textAlign: 'center' },
   listContent: { paddingHorizontal: 20, paddingBottom: 20 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '85%',
+    maxHeight: '60%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  submitButton: {
+    marginTop: 16,
+  },
+  modalCloseButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600',
+  },
 });
 
 const keyExtractor = (item: any) => item.id;
@@ -82,6 +118,10 @@ export default function CropsScreen() {
   const { canCreate } = usePermission();
   const canWrite = canCreate('crop');
   const [refreshing, setRefreshing] = useState(false);
+  const { success: showSuccess, error: showError } = useToasts();
+  const [showAddCropModal, setShowAddCropModal] = useState(false);
+  const [newCropName, setNewCropName] = useState('');
+  const [creatingCrop, setCreatingCrop] = useState(false);
 
   const { data, isLoading, isFetching, error, refetch } = useListCropsQuery({
     limit: 100,
@@ -112,6 +152,23 @@ export default function CropsScreen() {
     setRefreshing(true);
     refetch();
   }, [refetch]);
+
+  const handleAddCropName = async () => {
+    const name = newCropName.trim();
+    if (!name) return;
+    setCreatingCrop(true);
+    try {
+      await offlineCropsAPI.create({ name });
+      showSuccess('Crop added');
+      setNewCropName('');
+      setShowAddCropModal(false);
+      refetch();
+    } catch (err: any) {
+      showError('Failed to add crop');
+    } finally {
+      setCreatingCrop(false);
+    }
+  };
 
   useEffect(() => {
     if (refreshing && !isFetching) setRefreshing(false);
@@ -202,14 +259,24 @@ export default function CropsScreen() {
         </TouchableOpacity>
       )}
       {canWrite ? (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/crops/add')}
-          accessibilityRole="button"
-          accessibilityLabel="Add new crop"
-        >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push('/crops/add')}
+            accessibilityRole="button"
+            accessibilityLabel="Add crop cycle"
+          >
+            <Text style={styles.addButtonText}>+</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addButton, { marginLeft: 6 }]}
+            onPress={() => { setNewCropName(''); setShowAddCropModal(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Add crop name"
+          >
+            <Text style={styles.addButtonText}>Crop</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={{ width: 60 }} />
       )}
@@ -270,6 +337,45 @@ export default function CropsScreen() {
         maxToRenderPerBatch={10}
         windowSize={10}
       />
+
+      {/* Add Crop Name Modal */}
+      <Modal
+        visible={showAddCropModal}
+        onRequestClose={() => setShowAddCropModal(false)}
+        transparent
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior="padding"
+          keyboardVerticalOffset={100}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Crop</Text>
+            <TextInputField
+              label="Crop name"
+              placeholder="e.g. Potato"
+              value={newCropName}
+              onChangeText={setNewCropName}
+              autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={handleAddCropName}
+            />
+            <Button
+              title="Add"
+              onPress={handleAddCropName}
+              loading={creatingCrop}
+              disabled={creatingCrop || !newCropName.trim()}
+              style={styles.submitButton}
+            />
+            <TouchableOpacity
+              onPress={() => setShowAddCropModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -432,10 +432,16 @@ model PoultrySale {
 }
 
 model Crop {
-  id   String @id @default(uuid())
-  name String
+  id             String @id @default(uuid())
+  // Per-organization vocabulary (was a shared global catalog): every org
+  // owns its own crop names, backfilled from the old global rows.
+  organizationId String
+  name           String
 
   cropCycles CropCycle[]
+
+  @@index([organizationId])
+  @@unique([organizationId, name])
 }
 
 model CropCycle {

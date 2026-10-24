@@ -13,7 +13,6 @@ import {
   HttpStatus,
   UseGuards,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
@@ -60,13 +59,14 @@ export class CropController {
   @Post()
   @UsePipes(new ZodValidationPipe(createCropSchema))
   @HttpCode(HttpStatus.CREATED)
-  async createCrop(@Body() data: { name: string }) {
-    return this.cropService.createCrop(data);
+  async createCrop(@Body() data: { name: string }, @Req() req: any) {
+    return this.cropService.createCrop(data, getOrgId(req));
   }
 
   @Permission('crop.read')
   @Get()
   async getAllCrops(
+    @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('sortBy') sortBy?: string,
@@ -76,7 +76,7 @@ export class CropController {
     const filter: { name?: string } = {};
     if (name) filter.name = name;
 
-    const result = await this.cropService.getAllCrops({
+    const result = await this.cropService.getAllCrops(getOrgId(req), {
       sortBy,
       sortOrder,
       page: toPositiveInt(page, 1),
@@ -90,38 +90,22 @@ export class CropController {
 
   @Permission('crop.read')
   @Get(':id')
-  async getCropById(@Param('id') id: string) {
-    return this.cropService.getCropById(id);
-  }
-
-  /**
-   * C1: Crop is a SHARED global name catalog (no organizationId column), but
-   * every tenant could previously rename or delete entries — a cross-tenant
-   * write. Org-scoped callers may still ADD names (POST) but rename/delete is
-   * platform-only. The clients treat the catalog as read-only for org users.
-   */
-  private assertPlatformCatalogMutation(req: any): void {
-    if (getOrgId(req)) {
-      throw new ForbiddenException(
-        'The crop catalog is shared across all farms. Only platform administrators can rename or remove entries.',
-      );
-    }
+  async getCropById(@Param('id') id: string, @Req() req: any) {
+    return this.cropService.getCropById(id, getOrgId(req));
   }
 
   @Permission('crop.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateCropSchema))
   async updateCrop(@Param('id') id: string, @Req() req: any, @Body() data: { name: string }) {
-    this.assertPlatformCatalogMutation(req);
-    return this.cropService.updateCrop(id, data);
+    return this.cropService.updateCrop(id, getOrgId(req), data);
   }
 
   @Permission('crop.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteCrop(@Param('id') id: string, @Req() req: any) {
-    this.assertPlatformCatalogMutation(req);
-    return this.cropService.deleteCrop(id);
+    return this.cropService.deleteCrop(id, getOrgId(req));
   }
 }
 

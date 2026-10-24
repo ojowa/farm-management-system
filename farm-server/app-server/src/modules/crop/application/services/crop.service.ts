@@ -24,39 +24,49 @@ export class CropApplicationService {
     if (!organizationId) throw new ForbiddenException('No organization context');
   }
 
-  async createCrop(data: { name: string }) {
-    const crop = await this.cropRepo.create({ name: data.name });
-    await this.eventService.emitCropCreatedEvent(crop);
-    return crop;
+  async createCrop(data: { name: string }, organizationId: string) {
+    this.requireOrg(organizationId);
+    try {
+      const crop = await this.cropRepo.create({ name: data.name }, organizationId);
+      await this.eventService.emitCropCreatedEvent(crop);
+      return crop;
+    } catch (error) {
+      // P2002: unique constraint on (organizationId, name) — duplicate crop name
+      // within this org. Surface a ConflictException instead of a raw 500.
+      if (error && typeof error === 'object' && (error as { code?: string }).code === 'P2002') {
+        throw new ConflictException(`A crop named "${data.name}" already exists in your organization.`);
+      }
+      throw error;
+    }
   }
 
-  async getCropById(id: string) {
-    const crop = await this.cropRepo.findById(id);
+  async getCropById(id: string, organizationId: string) {
+    const crop = await this.cropRepo.findById(id, organizationId);
     if (!crop) throw new NotFoundException(`Crop with ID ${id} not found`);
     return crop;
   }
 
-  async getAllCrops(options: {
+  async getAllCrops(organizationId: string, options: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
     filter?: { name?: string };
   } = {}) {
-    return this.cropRepo.findAll(options);
+    return this.cropRepo.findAll(organizationId, options);
   }
 
-  async updateCrop(id: string, data: { name: string }) {
-    await this.getCropById(id);
-    const updatedCrop = await this.cropRepo.update(id, { name: data.name });
+  async updateCrop(id: string, organizationId: string, data: { name: string }) {
+    await this.getCropById(id, organizationId);
+    const updatedCrop = await this.cropRepo.update(id, organizationId, { name: data.name });
     await this.eventService.emitCropUpdatedEvent(updatedCrop);
     return updatedCrop;
   }
 
-  async deleteCrop(id: string) {
-    await this.getCropById(id);
+  async deleteCrop(id: string, organizationId: string) {
+    await this.getCropById(id, organizationId);
     try {
-      await this.cropRepo.delete(id);
+      await this.cropRepo.delete(id, organizationId);
     } catch (error) {
       // Crop cycles reference the catalog row with no cascade — a crop that
       // is planted anywhere can't be removed. Surface that as a conflict
@@ -67,7 +77,7 @@ export class CropApplicationService {
       throw error;
     }
     // Only announce the deletion once the row is actually gone.
-    await this.eventService.emitCropDeletedEvent(id);
+    await this.eventService.emitCropDeletedEvent(id, organizationId);
   }
 
   async createCropCycle(organizationId: string, data: {
@@ -79,7 +89,7 @@ export class CropApplicationService {
     status?: string;
   }) {
     this.requireOrg(organizationId);
-    await this.getCropById(data.cropId);
+    await this.getCropById(data.cropId, organizationId);
     if (!(await this.cropCycleRepo.fieldExistsInOrg(data.fieldId, organizationId))) {
       throw new BadRequestException('Unknown field');
     }
@@ -218,7 +228,7 @@ export class CropApplicationService {
     const existing = await this.getCropCycleById(organizationId, id);
 
     if (data.cropId) {
-      await this.getCropById(data.cropId);
+      await this.getCropById(data.cropId, organizationId);
     }
     if (data.fieldId && !(await this.cropCycleRepo.fieldExistsInOrg(data.fieldId, organizationId))) {
       throw new BadRequestException('Unknown field');

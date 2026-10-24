@@ -1,9 +1,9 @@
 export interface Crop {
   id: string;
   name: string;
-  // The shared catalog has no organization column; present only when the
-  // Prisma row happens to carry it (never for Crop).
-  organizationId?: string;
+  // Owning organization — every crop belongs to exactly one org (per-tenant
+  // vocabulary, backfilled from the old global catalog in the migration).
+  organizationId: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

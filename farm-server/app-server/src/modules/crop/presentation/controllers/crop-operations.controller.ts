@@ -312,9 +312,9 @@ export class YieldController {
   @Post('crop/:cropId')
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Param('cropId') cropId: string, @Body() body: any) {
-    const crop = await prisma.crop.findUnique({ where: { id: cropId } });
-    if (!crop) throw new NotFoundException('Crop not found');
     const orgId = organizationId(req);
+    const crop = await prisma.crop.findFirst({ where: { id: cropId, organizationId: orgId } });
+    if (!crop) throw new NotFoundException('Crop not found');
     if (body.cropCycleId) {
       const cycle = await prisma.cropCycle.findFirst({
         where: { id: body.cropCycleId, cropId, organizationId: orgId },
