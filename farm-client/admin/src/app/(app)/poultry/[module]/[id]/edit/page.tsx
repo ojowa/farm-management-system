@@ -40,7 +40,7 @@ export default function EditPoultryRecordPage() {
   );
   const { data: flockData } = useFetch<{ data: FlockOption[] }>(
     'poultry-record-flocks',
-    () => poultryAPI.list({ limit: 500 }),
+    () => flocksAPI.list({ limit: 500 }),
     { enabled: !!config && config.fields.some((field) => field.type === 'flock') },
   );
   const record = data ? unwrapPoultryRecord(data) : null;
