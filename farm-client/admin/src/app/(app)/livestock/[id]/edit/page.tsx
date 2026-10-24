@@ -38,7 +38,9 @@ export default function EditLivestockPage() {
     { cacheTime: 60_000 }
   );
 
-  const livestock = livestockData?.data;
+  // The service returns the animal bare; accept `{ data }` too so a loaded
+  // animal never falls through to "Livestock not found".
+  const livestock = ((livestockData as any)?.data ?? livestockData ?? null);
   const farms = farmsData?.data || [];
 
   const [form, setForm] = useState({

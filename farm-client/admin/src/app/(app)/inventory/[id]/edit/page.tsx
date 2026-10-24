@@ -30,7 +30,9 @@ export default function EditInventoryPage() {
     loading: loadingItem,
   } = useFetch<{ data: any }>(`inventory-${id}`, () => inventoryAPI.get(id));
 
-  const item = itemData?.data;
+  // The inventory endpoint returns the item bare; accept `{ data }` too so
+  // a loaded item never falls through to "Item not found".
+  const item = ((itemData as any)?.data ?? itemData ?? null);
 
   const [form, setForm] = useState({ name: '', category: '', quantity: '', unit: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});

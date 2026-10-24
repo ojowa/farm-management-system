@@ -65,7 +65,9 @@ export default function LivestockDetailPage() {
     cacheTime: 30_000,
   });
 
-  const livestock = livestockData?.data;
+  // The service returns the animal bare; accept `{ data }` too so a loaded
+  // animal never falls through to "Livestock not found".
+  const livestock = ((livestockData as any)?.data ?? livestockData ?? null);
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {

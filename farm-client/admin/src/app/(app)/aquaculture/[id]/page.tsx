@@ -263,7 +263,9 @@ export default function PondDetailPage() {
     { cacheTime: 60_000 }
   );
 
-  const pond = pondData?.data;
+  // The service returns the pond bare; accept `{ data }` too so a loaded
+  // pond never falls through to the "not found" state.
+  const pond = ((pondData as any)?.data ?? pondData ?? null);
   const stockings = stockingsData?.data || [];
   const feedings = feedingsData?.data || [];
   const waterQuality = waterQualityData?.data || [];

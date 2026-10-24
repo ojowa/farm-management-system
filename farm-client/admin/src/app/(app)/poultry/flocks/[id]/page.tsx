@@ -61,7 +61,9 @@ export default function FlockDetailPage() {
     { cacheTime: 60_000 }
   );
 
-  const flock = flockData?.data;
+  // The service returns the flock bare; accept `{ data }` too so a loaded
+  // flock never falls through to the "not found" state.
+  const flock = ((flockData as any)?.data ?? flockData ?? null);
   const farmName = farmsData?.data?.find((farm) => farm.id === flock?.farmId)?.name;
   const breedName = breedsData?.data?.find((breed) => breed.id === flock?.breedId)?.name;
 

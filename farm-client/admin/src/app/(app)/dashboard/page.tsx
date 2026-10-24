@@ -158,7 +158,10 @@ function DashboardContent() {
   const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
   // Use profitability summary from backend when available
-  const profitSummary = profitabilityData?.data;
+  // The profitability summary endpoint returns the summary bare; accept
+  // `{ data }` too — reading `.data` alone meant this backend summary was
+  // silently never used and the page always fell back to client-side math.
+  const profitSummary = (profitabilityData as any)?.data ?? profitabilityData;
   const displayIncome = profitSummary?.totalRevenue ?? totalIncome;
   const displayExpenses = profitSummary?.totalExpenses ?? totalExpenses;
   const displayProfit = profitSummary?.netProfit ?? (displayIncome - displayExpenses);

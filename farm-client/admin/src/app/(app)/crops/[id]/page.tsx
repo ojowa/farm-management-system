@@ -51,7 +51,9 @@ export default function CropDetailPage() {
     cacheTime: 30_000,
   });
 
-  const cycle = cycleData?.data;
+  // The service returns the cycle bare; accept `{ data }` too so a loaded
+  // cycle never falls through to "Crop cycle not found".
+  const cycle = ((cycleData as any)?.data ?? cycleData ?? null);
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {

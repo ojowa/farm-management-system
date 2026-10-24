@@ -48,7 +48,9 @@ export default function PoultryHouseDetailPage() {
     cacheTime: 30_000,
   });
 
-  const house = houseData?.data;
+  // The service returns the house bare; accept `{ data }` too so a loaded
+  // house never falls through to the "not found" state.
+  const house = ((houseData as any)?.data ?? houseData ?? null);
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {

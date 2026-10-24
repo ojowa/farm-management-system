@@ -96,7 +96,9 @@ export default function EditFlockPage() {
     { cacheTime: 60_000 }
   );
 
-  const flock = flockData?.data;
+  // The service returns the flock bare; accept `{ data }` too so a loaded
+  // flock never falls through to the "not found" state.
+  const flock = ((flockData as any)?.data ?? flockData ?? null);
   const farms = farmsData?.data || [];
   const houses = housesData?.data || [];
   const pens = pensData?.data || [];

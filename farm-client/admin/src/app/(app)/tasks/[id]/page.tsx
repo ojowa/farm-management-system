@@ -118,7 +118,9 @@ export default function TaskDetailPage() {
     { cacheTime: 60_000 }
   );
 
-  const task = taskData?.data;
+  // The service returns the task (plus comments/attachments) bare; accept
+  // `{ data }` too so a loaded task never falls through to "Task not found".
+  const task = ((taskData as any)?.data ?? taskData ?? null);
   const farmName = task?.farmId
     ? farmsData?.data?.find((f) => f.id === task.farmId)?.name
     : undefined;
@@ -281,8 +283,10 @@ export default function TaskDetailPage() {
     task.status !== 'COMPLETED' &&
     task.status !== 'CANCELLED';
 
-  const comments = task.comments || [];
-  const attachments = task.attachments || [];
+  // Typed as any[] so the render callbacks stay typed now that `task`
+  // itself accepts either response shape.
+  const comments: any[] = task.comments || [];
+  const attachments: any[] = task.attachments || [];
 
   return (
     <div className="space-y-6">

@@ -70,7 +70,9 @@ export default function EditCropPage() {
     { cacheTime: 60_000 }
   );
 
-  const cycle = cycleData?.data;
+  // The service returns the cycle bare; accept `{ data }` too so a loaded
+  // cycle never falls through to "Crop cycle not found".
+  const cycle = ((cycleData as any)?.data ?? cycleData ?? null);
   const farms = farmsData?.data || [];
   const crops = cropsData?.data || [];
 

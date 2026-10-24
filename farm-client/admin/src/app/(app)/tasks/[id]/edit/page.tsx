@@ -62,7 +62,9 @@ export default function EditTaskPage() {
     { cacheTime: 60_000 }
   );
 
-  const task = taskData?.data;
+  // The service returns the task (plus comments/attachments) bare; accept
+  // `{ data }` too so a loaded task never falls through to "Task not found".
+  const task = ((taskData as any)?.data ?? taskData ?? null);
   const farms = farmsData?.data || [];
   const workers = workersData?.data || [];
 

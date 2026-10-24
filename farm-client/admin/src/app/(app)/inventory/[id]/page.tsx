@@ -51,7 +51,9 @@ export default function InventoryDetailPage() {
     cacheTime: 30_000,
   });
 
-  const item = itemData?.data;
+  // The inventory endpoint returns the item bare; accept `{ data }` too so
+  // a loaded item never falls through to "Item not found".
+  const item = ((itemData as any)?.data ?? itemData ?? null);
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
