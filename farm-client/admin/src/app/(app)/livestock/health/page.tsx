@@ -4,6 +4,8 @@ import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { livestockHealthAPI } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
+import { NavTabs } from '@/components/NavTabs';
+import { LIVESTOCK_TABS } from '@/lib/livestockTabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +48,8 @@ export default function LivestockHealthPage() {
           <h1 className="text-2xl font-bold">Livestock Health</h1>
         </div>
       </div>
+
+      <NavTabs ariaLabel="Livestock section" tabs={LIVESTOCK_TABS} />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">

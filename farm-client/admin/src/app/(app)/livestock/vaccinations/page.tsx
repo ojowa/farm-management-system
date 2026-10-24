@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { NavTabs } from '@/components/NavTabs';
+import { LIVESTOCK_TABS } from '@/lib/livestockTabs';
 import { livestockAPI, livestockHealthAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,14 +91,9 @@ export default function LivestockVaccinationsPage() {
 
   return (
     <div className="space-y-6">
-      <NavTabs tabs={[
-        { label: 'Livestock', href: '/livestock' },
-        { label: 'Health', href: '/livestock/health' },
-        { label: 'Vaccinations', href: '/livestock/vaccinations' },
-        { label: 'Weight', href: '/livestock/weight' },
-        { label: 'Breeding', href: '/livestock/breeding' },
-      ]} />
       <h1 className="text-2xl font-bold">Livestock Vaccinations</h1>
+
+      <NavTabs ariaLabel="Livestock section" tabs={LIVESTOCK_TABS} />
       <Card>
         <CardContent className="pt-6">
           <label className="block text-sm font-medium">Animal

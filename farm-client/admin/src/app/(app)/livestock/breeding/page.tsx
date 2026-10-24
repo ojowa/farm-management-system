@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { breedingAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { NavTabs } from '@/components/NavTabs';
+import { LIVESTOCK_TABS } from '@/lib/livestockTabs';
 import { usePermission } from '@/lib/usePermission';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,6 +74,8 @@ export default function BreedingListPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Livestock section" tabs={LIVESTOCK_TABS} />
 
       <Card>
         <CardContent className="pt-6">

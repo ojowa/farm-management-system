@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { NavTabs } from '@/components/NavTabs';
+import { LIVESTOCK_TABS } from '@/lib/livestockTabs';
 import {
   Plus,
   Search,
@@ -199,16 +200,7 @@ export default function LivestockPage() {
         )}
       </div>
 
-      <NavTabs
-        ariaLabel="Livestock section"
-        tabs={[
-          { label: 'Livestock', href: '/livestock' },
-          { label: 'Health', href: '/livestock/health' },
-          { label: 'Vaccinations', href: '/livestock/vaccinations' },
-          { label: 'Weight', href: '/livestock/weight' },
-          { label: 'Breeding', href: '/livestock/breeding' },
-        ]}
-      />
+      <NavTabs ariaLabel="Livestock section" tabs={LIVESTOCK_TABS} />
 
       <Card>
         <CardContent className="p-4">
