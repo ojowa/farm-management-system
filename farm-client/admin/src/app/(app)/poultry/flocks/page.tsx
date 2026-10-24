@@ -153,13 +153,13 @@ export default function FlocksPage() {
 
   const { data: pensData } = useFetch<{ data: Pen[] }>(
     'poultry-flock-pens',
-    () => pensAPI.list({ limit: 1000 }),
-    { cacheTime: 60_000 }
+    () => pensAPI.list({ limit: 500 }),
+    { cacheTime: 60_000, enabled: !!form.farmId }
   );
 
   const { data: breedsData } = useFetch<{ data: Breed[] }>(
     'poultry-flock-breeds',
-    () => breedsAPI.list({ limit: 1000 }),
+    () => breedsAPI.list({ limit: 500 }),
     { cacheTime: 60_000 }
   );
 
@@ -170,14 +170,7 @@ export default function FlocksPage() {
   const breeds = breedsData?.data || [];
   const farmNames = useMemo(() => new Map(farms.map((farm) => [farm.id, farm.name])), [farms]);
   const breedNames = useMemo(() => new Map(breeds.map((breed) => [breed.id, breed.name])), [breeds]);
-  const availablePens = useMemo(
-    () => pens.filter((pen: any) => {
-      if (pen.farmId === form.farmId) return true;
-      const house = houses.find((h: any) => h.id === pen.poultryHouseId);
-      return house?.farmId === form.farmId;
-    }),
-    [pens, form.farmId, houses]
-  );
+  const availablePens = pens;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
