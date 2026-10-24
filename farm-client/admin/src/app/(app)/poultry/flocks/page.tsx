@@ -171,8 +171,12 @@ export default function FlocksPage() {
   const farmNames = useMemo(() => new Map(farms.map((farm) => [farm.id, farm.name])), [farms]);
   const breedNames = useMemo(() => new Map(breeds.map((breed) => [breed.id, breed.name])), [breeds]);
   const availablePens = useMemo(
-    () => pens.filter((pen: any) => pen.farmId === form.farmId),
-    [pens, form.farmId]
+    () => pens.filter((pen: any) => {
+      if (pen.farmId === form.farmId) return true;
+      const house = houses.find((h: any) => h.id === pen.poultryHouseId);
+      return house?.farmId === form.farmId;
+    }),
+    [pens, form.farmId, houses]
   );
 
   const handleRealtimeEvent = useCallback(
