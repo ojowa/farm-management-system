@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -8,8 +8,8 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useGetFarmQuery, useDeleteFarmMutation } from '@/modules/farm';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useGetFarmQuery, useDeleteFarmMutation, fieldsAPI, type Field } from '@/modules/farm';
 import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
@@ -115,6 +115,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  fieldsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addFieldText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fieldRowMeta: {
+    fontSize: 12,
+  },
   actionsContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -155,6 +168,37 @@ export default function FarmDetailScreen() {
   useEffect(() => {
     if (id) dispatch(setSelectedFarmId(id));
   }, [id, dispatch]);
+
+  // Fields load on focus (not just mount) so returning from the add-field
+  // screen shows the newly created parcel without a manual refresh.
+  const [fields, setFields] = useState<Field[]>([]);
+  const [fieldsLoading, setFieldsLoading] = useState(false);
+  const [fieldsError, setFieldsError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          setFieldsLoading(true);
+          const response = await fieldsAPI.list({ farmId: id });
+          if (cancelled) return;
+          setFields(Array.isArray(response.data) ? response.data : []);
+          setFieldsError(null);
+        } catch (error: any) {
+          if (!cancelled) {
+            setFieldsError(describeApiError(error, 'Failed to load fields.'));
+          }
+        } finally {
+          if (!cancelled) setFieldsLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [id])
+  );
 
   // Type-aware related links. POULTRY is omitted: the mobile app has no
   // poultry list route on disk. AQUACULTURE links without a farmId because
@@ -240,6 +284,9 @@ export default function FarmDetailScreen() {
     },
     relatedRowText: {
       color: themeColors.text,
+    },
+    fieldMeta: {
+      color: themeColors.textSecondary,
     },
     relatedArrow: {
       color: themeColors.textSecondary,
@@ -338,6 +385,52 @@ export default function FarmDetailScreen() {
               </Text>
             </View>
           </View>
+        </Card>
+
+        <Card style={[styles.relatedCard, dynamicStyles.cardBackground]}>
+          <View style={styles.fieldsHeaderRow}>
+            <Text style={[styles.relatedTitle, dynamicStyles.relatedTitle]}>
+              Fields ({fields.length})
+            </Text>
+            {canWrite && (
+              <TouchableOpacity
+                onPress={() => router.push(`/farms/add-field?farmId=${id}`)}
+                accessibilityRole="button"
+                accessibilityLabel="Add Field"
+              >
+                <Text style={[styles.addFieldText, { color: themeColors.primary }]}>
+                  + Add
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {fieldsError ? (
+            <Text style={[styles.fieldRowMeta, { color: themeColors.error }]}>
+              {fieldsError}
+            </Text>
+          ) : fieldsLoading && fields.length === 0 ? (
+            <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
+              Loading fields…
+            </Text>
+          ) : fields.length === 0 ? (
+            <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
+              No fields yet — fields are the parcels that crop cycles get planted on.
+            </Text>
+          ) : (
+            fields.map((field) => (
+              <View key={field.id} style={[styles.relatedRow, dynamicStyles.divider]}>
+                <Text
+                  style={[styles.relatedRowText, dynamicStyles.relatedRowText]}
+                  numberOfLines={1}
+                >
+                  {field.name}
+                </Text>
+                <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
+                  {field.size != null ? `${field.size} ha` : '—'}
+                </Text>
+              </View>
+            ))
+          )}
         </Card>
 
         {relatedLinks.length > 0 && (

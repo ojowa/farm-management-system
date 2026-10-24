@@ -210,6 +210,10 @@ const styles = StyleSheet.create({
   statusButtonTextActive: {
     color: '#FFFFFF',
   },
+  addCycleAction: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
   actionsContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -248,10 +252,13 @@ interface CropData {
   type: string;
   farm: string;
   farmId?: string;
+  fieldId?: string;
   area: number;
   plantedDate: string;
   health: number;
-  status: 'growing' | 'harvesting' | 'completed';
+  // Legacy rows use lowercase stages ("growing"); the server also accepts
+  // the PLANNED/ACTIVE/COMPLETED/FAILED enum values.
+  status: string;
 }
 
 export default function CropDetailScreen() {
@@ -274,8 +281,25 @@ export default function CropDetailScreen() {
       setLoading(true);
       setLoadError(null);
       const response = await offlineCropsAPI.getCycle(id);
-      const cropData = response.data as any;
-      setCrop(cropData);
+      const raw = response.data as any;
+      if (!raw) {
+        setLoadError('Crop not found');
+        return;
+      }
+      // The service returns the cycle bare (cropName/fieldName/farmName,
+      // with the farm reached through the nested field row).
+      setCrop({
+        id: raw.id,
+        name: raw.cropName || raw.crop?.name || 'Crop Cycle',
+        type: raw.fieldName || raw.field?.name || '—',
+        farm: raw.farmName || raw.field?.farm?.name || '—',
+        farmId: raw.field?.farmId ?? raw.farmId,
+        fieldId: raw.fieldId,
+        area: raw.field?.size ?? raw.area ?? 0,
+        plantedDate: raw.plantingDate ? String(raw.plantingDate).slice(0, 10) : '—',
+        health: typeof raw.health === 'number' ? raw.health : 100,
+        status: String(raw.status || 'growing').toLowerCase(),
+      });
       dispatch(setSelectedCropId(id));
     } catch (error: any) {
       const message = describeApiError(error, 'Failed to load crop details.');
@@ -490,6 +514,15 @@ export default function CropDetailScreen() {
           </View>
         </Card>
 
+        {crop.fieldId && crop.farmId && (
+          <Button
+            title="Add Cycle for this Field"
+            onPress={() =>
+              router.push(`/crops/add?farmId=${crop.farmId}&fieldId=${crop.fieldId}`)
+            }
+            style={styles.addCycleAction}
+          />
+        )}
         <View style={styles.actionsContainer}>
           <Button
             title="Edit"

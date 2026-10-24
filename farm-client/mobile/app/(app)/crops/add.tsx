@@ -11,8 +11,8 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { farmsAPI } from '@/modules/farm';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { farmsAPI, fieldsAPI } from '@/modules/farm';
 import { offlineCropsAPI } from '@/modules/crop';
 import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
 import { useToasts } from '../../../src/core/hooks/useToasts';
@@ -87,6 +87,11 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 12,
     marginTop: 4,
+  },
+  emptyHint: {
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 17,
   },
   modalOverlay: {
     flex: 1,
@@ -219,14 +224,29 @@ interface CropOption {
   name: string;
 }
 
+interface FieldOption {
+  id: string;
+  name: string;
+}
+
 export default function AddCropScreen() {
   const router = useRouter();
+  // Prefill context from the crop detail screen's "Add Cycle for this Field".
+  const { farmId: paramFarmId, fieldId: paramFieldId } = useLocalSearchParams<{
+    farmId?: string;
+    fieldId?: string;
+  }>();
   const { success, error: showError } = useToasts();
   const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(false);
   const [farms, setFarms] = useState<FarmOption[]>([]);
   const [crops, setCrops] = useState<CropOption[]>([]);
-  const [showFarmModal, setShowFarmModal] = useState(false);
+  // Farm isn't posted (a cycle's farm comes via its field) — it drives the
+  // field picker, mirroring the admin add-crop page.
+  const [farmId, setFarmId] = useState('');
+  const [fields, setFields] = useState<FieldOption[]>([]);
+  const [loadingFields, setLoadingFields] = useState(false);
+  const [picker, setPicker] = useState<'farm' | 'crop' | 'field' | null>(null);
   const [formData, setFormData] = useState<FormData>({
     fieldId: '',
     cropId: '',
@@ -241,6 +261,39 @@ export default function AddCropScreen() {
     fetchFarms();
     fetchCrops();
   }, []);
+
+  // Prefill from ?farmId=&fieldId=. Only seed values the user hasn't touched.
+  useEffect(() => {
+    if (paramFarmId) setFarmId((prev) => prev || String(paramFarmId));
+    if (paramFieldId) {
+      setFormData((prev) => (prev.fieldId ? prev : { ...prev, fieldId: String(paramFieldId) }));
+    }
+  }, [paramFarmId, paramFieldId]);
+
+  // Fields cascade from the chosen farm (GET /fields REQUIRES farmId).
+  useEffect(() => {
+    if (!farmId) {
+      setFields([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingFields(true);
+        const response = await fieldsAPI.list({ farmId });
+        if (cancelled) return;
+        const rows = Array.isArray(response.data) ? response.data : [];
+        setFields(rows.map((f: any) => ({ id: f.id, name: f.name })));
+      } catch (error: any) {
+        if (!cancelled) showError(describeApiError(error, 'Failed to load fields.'));
+      } finally {
+        if (!cancelled) setLoadingFields(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [farmId]);
 
   const fetchFarms = async () => {
     try {
@@ -278,7 +331,7 @@ export default function AddCropScreen() {
     const newErrors: FormErrors = {};
 
     if (!formData.fieldId.trim()) {
-      newErrors.fieldId = 'Field ID is required';
+      newErrors.fieldId = 'Please select a field';
     }
 
     if (!formData.cropId) {
@@ -340,7 +393,44 @@ export default function AddCropScreen() {
     }
   };
 
+  const selectedFarm = farms.find((f) => f.id === farmId);
+  const selectedField = fields.find((f) => f.id === formData.fieldId);
   const selectedCrop = crops.find((c) => c.id === formData.cropId);
+
+  const renderPickerItems = (
+    data: FieldOption[],
+    selectedId: string,
+    onSelect: (id: string) => void
+  ) =>
+    data.length === 0 ? (
+      <View style={styles.modalItemEmpty}>
+        <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>
+          Nothing available
+        </Text>
+      </View>
+    ) : (
+      <FlatList
+        data={data}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
+            onPress={() => onSelect(item.id)}
+          >
+            <Text
+              style={[
+                styles.modalItemText,
+                item.id === selectedId
+                  ? { color: colors.primary, fontWeight: '600' }
+                  : { color: tc.text },
+              ]}
+            >
+              {item.name}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+    );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
@@ -361,33 +451,64 @@ export default function AddCropScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: tc.text }]}>Field ID *</Text>
-            <TextInputField
-              label="Field ID *"
-              placeholder="e.g. FIELD-01"
-              value={formData.fieldId}
-              onChangeText={(value) => updateFormData('fieldId', value)}
-              error={errors.fieldId}
-            />
-            {errors.fieldId && (
-              <Text style={styles.errorText}>{errors.fieldId}</Text>
-            )}
+            <Text style={[styles.label, { color: tc.text }]}>Farm *</Text>
+            <TouchableOpacity
+              style={[styles.selectButton, { backgroundColor: tc.card, borderColor: tc.border }]}
+              onPress={() => setPicker('farm')}
+            >
+              <Text
+                style={[
+                  styles.selectButtonText,
+                  selectedFarm ? { color: tc.text } : { color: tc.textSecondary },
+                ]}
+              >
+                {selectedFarm ? selectedFarm.name : 'Select a farm'}
+              </Text>
+              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: tc.text }]}>Crop *</Text>
+            <Text style={[styles.label, { color: tc.text }]}>Field *</Text>
             <TouchableOpacity
               style={[
                 styles.selectButton,
-                errors.cropId && styles.selectError,
+                errors.fieldId && styles.selectError,
                 { backgroundColor: tc.card },
-                errors.cropId ? undefined : { borderColor: tc.border },
+                errors.fieldId ? undefined : { borderColor: tc.border },
               ]}
-              onPress={() => setShowFarmModal(false)}
+              disabled={!farmId}
+              onPress={() => setPicker('field')}
             >
-              {/* Crop picker rendered inline below to keep the farm modal for farms only */}
+              <Text
+                style={[
+                  styles.selectButtonText,
+                  selectedField ? { color: tc.text } : { color: tc.textSecondary },
+                ]}
+              >
+                {!farmId
+                  ? 'Select a farm first'
+                  : loadingFields
+                    ? 'Loading fields…'
+                    : selectedField
+                      ? selectedField.name
+                      : 'Select a field'}
+              </Text>
+              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
             </TouchableOpacity>
-            {errors.cropId && <Text style={styles.errorText}>{errors.cropId}</Text>}
+            {errors.fieldId && <Text style={styles.errorText}>{errors.fieldId}</Text>}
+            {farmId && !loadingFields && fields.length === 0 && (
+              <Text style={[styles.emptyHint, { color: tc.textSecondary }]}>
+                No fields on this farm yet.{' '}
+                <Text
+                  style={{ color: tc.primary, fontWeight: '600' }}
+                  onPress={() => router.push(`/farms/add-field?farmId=${farmId}`)}
+                >
+                  Add a field
+                </Text>{' '}
+                to plant here.
+              </Text>
+            )}
           </View>
 
           {/* Crop selection (catalog is read-only shared catalog; display names only) */}
@@ -395,10 +516,7 @@ export default function AddCropScreen() {
             <Text style={[styles.label, { color: tc.text }]}>Crop *</Text>
             <TouchableOpacity
               style={[styles.selectButton, { backgroundColor: tc.card, borderColor: tc.border }]}
-              onPress={() => {
-                // Toggle a simple inline picker via state is handled by the modal below
-                setShowFarmModal(true);
-              }}
+              onPress={() => setPicker('crop')}
             >
               <Text
                 style={[
@@ -414,57 +532,76 @@ export default function AddCropScreen() {
           </View>
 
           <Modal
-            visible={showFarmModal}
+            visible={picker !== null}
             transparent
             animationType="fade"
-            onRequestClose={() => setShowFarmModal(false)}
+            onRequestClose={() => setPicker(null)}
           >
             <TouchableOpacity
               style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
               activeOpacity={1}
-              onPress={() => setShowFarmModal(false)}
+              onPress={() => setPicker(null)}
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
                 <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
-                  <Text style={[styles.modalTitle, { color: tc.text }]}>Select Crop</Text>
-                  {crops.length === 0 ? (
-                    <View style={styles.modalItemEmpty}>
-                      <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>
-                        No crops available
-                      </Text>
-                    </View>
-                  ) : (
-                    <FlatList
-                      data={crops}
-                      keyExtractor={(item) => item.id}
-                      renderItem={({ item }) => (
+                  <Text style={[styles.modalTitle, { color: tc.text }]}>
+                    {picker === 'farm'
+                      ? 'Select Farm'
+                      : picker === 'field'
+                        ? 'Select Field'
+                        : 'Select Crop'}
+                  </Text>
+                  {picker === 'farm' &&
+                    renderPickerItems(farms, farmId, (id) => {
+                      // Switching farms invalidates the picked field.
+                      setFarmId(id);
+                      updateFormData('fieldId', '');
+                      setPicker(null);
+                    })}
+                  {picker === 'field' &&
+                    (fields.length === 0 ? (
+                      <View style={styles.modalItemEmpty}>
+                        <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>
+                          No fields on this farm yet.
+                        </Text>
                         <TouchableOpacity
-                          style={[
-                            styles.modalItem,
-                            { borderBottomColor: isDark ? tc.surface : '#F5F5F5' },
-                          ]}
                           onPress={() => {
-                            updateFormData('cropId', item.id);
-                            setShowFarmModal(false);
+                            setPicker(null);
+                            router.push(`/farms/add-field?farmId=${farmId}`);
                           }}
                         >
                           <Text
                             style={[
-                              styles.modalItemText,
-                              item.id === formData.cropId
-                                ? { color: colors.primary, fontWeight: '600' }
-                                : { color: tc.text },
+                              styles.modalItemEmptyText,
+                              { color: colors.primary, fontWeight: '600', marginTop: 8 },
                             ]}
                           >
-                            {item.name}
+                            Add a field
                           </Text>
                         </TouchableOpacity>
-                      )}
-                    />
-                  )}
+                      </View>
+                    ) : (
+                      renderPickerItems(fields, formData.fieldId, (id) => {
+                        updateFormData('fieldId', id);
+                        setPicker(null);
+                      })
+                    ))}
+                  {picker === 'crop' &&
+                    (crops.length === 0 ? (
+                      <View style={styles.modalItemEmpty}>
+                        <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>
+                          No crops available
+                        </Text>
+                      </View>
+                    ) : (
+                      renderPickerItems(crops, formData.cropId, (id) => {
+                        updateFormData('cropId', id);
+                        setPicker(null);
+                      })
+                    ))}
                   <TouchableOpacity
                     style={styles.modalCloseButton}
-                    onPress={() => setShowFarmModal(false)}
+                    onPress={() => setPicker(null)}
                   >
                     <Text style={styles.modalCloseButtonText}>Cancel</Text>
                   </TouchableOpacity>
