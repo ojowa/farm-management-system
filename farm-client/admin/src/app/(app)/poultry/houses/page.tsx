@@ -71,7 +71,7 @@ export default function PoultryHousesPage() {
     loading,
     refetch,
   } = useFetch<{ data: PoultryHouse[]; total: number; page: number; totalPages: number }>(
-    'poultry-houses-list',
+    `poultry-houses-list-${page}`,
     () => poultryHousesAPI.list({ page, limit: PAGE_SIZE }),
     { cacheTime: 30_000 }
   );

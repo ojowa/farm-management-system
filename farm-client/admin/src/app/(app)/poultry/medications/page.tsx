@@ -80,7 +80,7 @@ export default function MedicationsPage() {
     loading,
     refetch,
   } = useFetch<{ data: Medication[]; total: number; page: number; totalPages: number }>(
-    'medications-list',
+    `medications-list-${page}`,
     () => medicationAPI.list({ page, limit: PAGE_SIZE }),
     { cacheTime: 30_000 }
   );

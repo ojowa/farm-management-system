@@ -27,6 +27,7 @@ import { Select } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { useDebounce } from '@/hooks/useDebounce';
 import { usePermission } from '@/lib/usePermission';
 
 interface Contract {
@@ -76,6 +77,7 @@ export default function ContractsPage() {
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -85,16 +87,16 @@ export default function ContractsPage() {
     loading,
     refetch,
   } = useFetch<{ data: Contract[]; total: number; totalPages: number }>(
-    'contracts-list',
+    `contracts-list-${debouncedSearch}-${statusFilter}-${typeFilter}-${page}`,
     useCallback(async () => {
       return await contractsAPI.list({
-        search,
+        search: debouncedSearch,
         status: statusFilter || undefined,
         type: typeFilter || undefined,
         page,
         limit: PAGE_SIZE,
       });
-    }, [search, statusFilter, typeFilter, page])
+    }, [debouncedSearch, statusFilter, typeFilter, page])
   );
 
   const contracts = data?.data || [];

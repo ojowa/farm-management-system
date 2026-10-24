@@ -74,7 +74,7 @@ export default function MortalityPage() {
     loading,
     refetch,
   } = useFetch<{ data: MortalityRecord[]; total: number; page: number; totalPages: number }>(
-    'mortality-records-list',
+    `mortality-records-list-${page}`,
     () => mortalityRecordsAPI.list({ page, limit: PAGE_SIZE }),
     { cacheTime: 30_000 }
   );

@@ -102,7 +102,7 @@ export default function CropsPage() {
     loading,
     refetch,
   } = useFetch<{ data: CropCycle[]; total: number; page: number; totalPages: number }>(
-    'crop-cycles-list',
+    `crop-cycles-list-${page}-${statusFilter}`,
     () =>
       cropsAPI.listCycles({
         page,
@@ -155,8 +155,11 @@ export default function CropsPage() {
     return result;
   }, [cycles, search, statusFilter, farmFilter, farms, crops]);
 
-  const totalPages = cyclesData?.totalPages || Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // The server already paginates (`page`/`limit` above) and `status` is applied
+  // server-side; search + farm are filtered client-side within the returned page.
+  // Do NOT re-slice here — that double-paginated and emptied every page past 1.
+  const totalPages = cyclesData?.totalPages || 1;
+  const paginated = filtered;
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

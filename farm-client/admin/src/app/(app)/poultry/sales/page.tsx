@@ -71,7 +71,7 @@ export default function SalesPage() {
     loading,
     refetch,
   } = useFetch<{ data: Sale[]; total: number; page: number; totalPages: number }>(
-    'sales-list',
+    `sales-list-${page}`,
     () => poultrySalesAPI.list({ page, limit: PAGE_SIZE }),
     { cacheTime: 30_000 }
   );

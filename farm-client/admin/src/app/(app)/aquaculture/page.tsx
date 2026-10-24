@@ -107,7 +107,7 @@ export default function AquaculturePage() {
     loading,
     refetch,
   } = useFetch<{ data: Pond[]; total: number; page: number; totalPages: number }>(
-    'aquaculture-ponds-list',
+    `aquaculture-ponds-list-${page}`,
     () => aquacultureAPI.ponds.list({ page, limit: PAGE_SIZE }),
     { cacheTime: 30_000 }
   );
