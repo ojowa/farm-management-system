@@ -36,11 +36,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
-import { useFetch } from '@/hooks/useFetch';
+import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { clearFarmCaches } from '@/lib/farmCaches';
+import { fieldFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
 
 import { FARM_TYPE_MAP as FARM_TYPE_CONFIG } from '@/lib/farmTypes';
@@ -87,6 +90,10 @@ export default function FarmDetailPage() {
   const readOnly = !canCreate('farm');
   const [showDelete, setShowDelete] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [showAddField, setShowAddField] = useState(false);
+  const [addFieldForm, setAddFieldForm] = useState({ name: '', size: '' });
+  const [addFieldErrors, setAddFieldErrors] = useState<Record<string, string>>({});
+  const [addFieldSaving, setAddFieldSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const {
@@ -107,7 +114,7 @@ export default function FarmDetailPage() {
   // ── Related data for this farm (fired once the farm has loaded) ──────
   const loaded = Boolean(farm);
 
-  const { data: fieldsData } = useFetch<{ data: Field[] }>(
+  const { data: fieldsData, refetch: refetchFields } = useFetch<{ data: Field[] }>(
     `farm-fields-${id}`,
     () => fieldsAPI.list({ farmId: id }),
     { enabled: loaded, cacheTime: 30_000 }
@@ -173,6 +180,34 @@ export default function FarmDetailPage() {
     } finally {
       setActionLoading(false);
       setShowDelete(false);
+    }
+  };
+
+  const handleAddFieldSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = fieldFormSchema.safeParse({ ...addFieldForm, farmId: id });
+    if (!result.success) {
+      const errs: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        errs[String(issue.path[0])] = issue.message;
+      });
+      setAddFieldErrors(errs);
+      return;
+    }
+    setAddFieldErrors({});
+    setAddFieldSaving(true);
+    try {
+      await fieldsAPI.create({ farmId: id, name: addFieldForm.name.trim(), size: Number(addFieldForm.size) });
+      toast({ type: 'success', title: 'Field added' });
+      setShowAddField(false);
+      setAddFieldForm({ name: '', size: '' });
+      clearFetchCache('farm-fields');
+      clearFetchCache('crop-new-fields');
+      refetchFields();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to add field', message: err.response?.data?.message || 'An error occurred' });
+    } finally {
+      setAddFieldSaving(false);
     }
   };
 
@@ -446,7 +481,7 @@ export default function FarmDetailPage() {
               <Button
                 variant="link"
                 size="sm"
-                onClick={() => router.push(`/fields/new?farmId=${id}`)}
+                onClick={() => setShowAddField(true)}
               >
                 <Plus className="mr-1 h-4 w-4" />
                 Add Field
@@ -552,6 +587,39 @@ export default function FarmDetailPage() {
         onConfirm={handleDelete}
         onCancel={() => setShowDelete(false)}
       />
+
+      {/* Inline Add Field modal */}
+      <Dialog open={showAddField} onOpenChange={setShowAddField} title="Add Field">
+        <form onSubmit={handleAddFieldSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Field Name <span className="text-destructive">*</span>
+            </label>
+            <Input
+              placeholder="e.g. North Valley Plot"
+              value={addFieldForm.name}
+              onChange={(e) => setAddFieldForm({ ...addFieldForm, name: e.target.value })}
+            />
+            {addFieldErrors.name && <p className="text-sm text-destructive mt-1">{addFieldErrors.name}</p>}
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Size</label>
+            <Input
+              type="number"
+              placeholder="Size in acres"
+              value={addFieldForm.size}
+              onChange={(e) => setAddFieldForm({ ...addFieldForm, size: e.target.value })}
+            />
+            {addFieldErrors.size && <p className="text-sm text-destructive mt-1">{addFieldErrors.size}</p>}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => { setShowAddField(false); setAddFieldForm({ name: '', size: '' }); }}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={addFieldSaving}>Add Field</Button>
+          </div>
+        </form>
+      </Dialog>
 
       {/* Archive/Restore confirmation */}
       <ConfirmDialog
