@@ -128,6 +128,12 @@ export default function CropsPage() {
     { cacheTime: 60_000 }
   );
 
+  const { data: fieldsData } = useFetch<{ data: any[] }>(
+    'fields-list',
+    () => fieldsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
   const { data: cropsData } = useFetch<{ data: Crop[] }>(
     'crops-catalog',
     () => cropsAPI.getCatalog(),
@@ -136,6 +142,7 @@ export default function CropsPage() {
 
   const cycles = cyclesData?.data || [];
   const farms = farmsData?.data || [];
+  const fields = fieldsData?.data || [];
   const crops = cropsData?.data || [];
 
   const getFarmName = (cycle: CropCycle) =>
@@ -524,8 +531,9 @@ export default function CropsPage() {
               <label className="text-sm font-medium mb-1 block">
                 Field <span className="text-destructive">*</span>
               </label>
-              <Input
-                placeholder="Field ID"
+              <Select
+                placeholder="Select a field"
+                options={fields.map((f: any) => ({ value: f.id, label: f.name }))}
                 value={form.fieldId}
                 onChange={(e) => setForm({ ...form, fieldId: e.target.value })}
               />
