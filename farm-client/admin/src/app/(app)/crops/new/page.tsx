@@ -205,10 +205,7 @@ export default function NewCropPage() {
                 placeholder="Select status"
                 options={[
                   { value: 'PLANNED', label: 'Planned' },
-                  { value: 'BRED', label: 'Bred' },
-                  { value: 'CONFIRMED', label: 'Confirmed' },
-                  { value: 'PREGNANT', label: 'Pregnant' },
-                  { value: 'BORN', label: 'Born' },
+                  { value: 'ACTIVE', label: 'Active' },
                   { value: 'COMPLETED', label: 'Completed' },
                   { value: 'FAILED', label: 'Failed' },
                 ]}
