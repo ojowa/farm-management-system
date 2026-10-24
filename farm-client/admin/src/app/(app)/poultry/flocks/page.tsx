@@ -93,6 +93,30 @@ export default function FlocksPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  // Inline Add Breed modal
+  const [showAddBreed, setShowAddBreed] = useState(false);
+  const [addBreedForm, setAddBreedForm] = useState({ name: '', birdType: '' });
+  const [addBreedErrors, setAddBreedErrors] = useState<Record<string, string>>({});
+  const [addBreedSaving, setAddBreedSaving] = useState(false);
+
+  const handleAddBreedSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addBreedForm.name.trim()) return;
+    setAddBreedSaving(true);
+    try {
+      await breedsAPI.create({ name: addBreedForm.name.trim(), birdType: addBreedForm.birdType || undefined });
+      toast({ type: 'success', title: 'Breed added' });
+      setShowAddBreed(false);
+      setAddBreedForm({ name: '', birdType: '' });
+      clearFetchCache('poultry-flock-breeds');
+      refetch();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Failed to add breed', message: err.response?.data?.message || 'An error occurred' });
+    } finally {
+      setAddBreedSaving(false);
+    }
+  };
+
   useEffect(() => {
     setHouseFilter(new URLSearchParams(window.location.search).get('houseId') || '');
   }, []);
@@ -460,6 +484,9 @@ export default function FlocksPage() {
             {formErrors.breedId && (
               <p className="text-sm text-destructive mt-1">{formErrors.breedId}</p>
             )}
+            <Button type="button" variant="link" size="sm" onClick={() => setShowAddBreed(true)} className="h-auto p-0 mt-1">
+              <Plus className="mr-1 h-3 w-3" /> Add new breed
+            </Button>
           </div>
           <div>
             <label className="text-sm font-medium mb-1 block">
@@ -520,6 +547,24 @@ export default function FlocksPage() {
           </form>
         </Dialog>
       )}
+
+      {/* Inline Add Breed modal */}
+      <Dialog open={showAddBreed} onOpenChange={setShowAddBreed} title="Add Breed">
+        <form onSubmit={handleAddBreedSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">Name <span className="text-destructive">*</span></label>
+            <Input placeholder="e.g. Cobb 500" value={addBreedForm.name} onChange={(e) => setAddBreedForm({ ...addBreedForm, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Bird Type</label>
+            <Input placeholder="e.g. BROILER" value={addBreedForm.birdType} onChange={(e) => setAddBreedForm({ ...addBreedForm, birdType: e.target.value })} />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => { setShowAddBreed(false); setAddBreedForm({ name: '', birdType: '' }); }}>Cancel</Button>
+            <Button type="submit" loading={addBreedSaving}>Add Breed</Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }
