@@ -499,7 +499,7 @@ export default function FlocksPage() {
                 return { value: pen.id, label: house ? `${pen.name} (${house.name})` : pen.name };
               })}
               value={form.penId}
-              disabled={!form.farmId || availablePens.length === 0}
+              disabled={!form.farmId}
               onChange={(e) => setForm({ ...form, penId: e.target.value })}
             />
             {formErrors.penId && (
