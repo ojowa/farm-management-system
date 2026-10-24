@@ -215,8 +215,8 @@ export class BreedsController {
   @Post()
   @UsePipes(new ZodValidationPipe(createBreedSchema))
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() data: any) {
-    return this.poultryService.createBreed(data);
+  async create(@Req() req: any, @Body() data: any) {
+    return this.poultryService.createBreed(getOrgId(req), data);
   }
 
   @Permission('poultry.read')

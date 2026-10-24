@@ -123,9 +123,9 @@ export class PoultryApplicationService {
   }
 
   // ── Breed (shared catalog — intentionally not org-scoped) ──
-  async createBreed(data: Omit<Breed, 'id'>): Promise<Breed> {
-    const breed = await this.repo.createBreed(data);
-    this.events.emitDomainEvent('poultry', 'created', breed);
+  async createBreed(organizationId: string, data: Omit<Breed, 'id'>): Promise<Breed> {
+    const breed = await this.repo.createBreed({ ...data, organizationId } as any);
+    this.events.emitDomainEvent('poultry', 'created', { ...breed, organizationId });
     return breed;
   }
 

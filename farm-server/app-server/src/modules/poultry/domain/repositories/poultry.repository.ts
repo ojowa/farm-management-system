@@ -120,7 +120,7 @@ export interface PoultryAggregateRepository {
   // Breed (shared catalog — no organization scoping)
   findBreedById(id: string): Promise<Breed | null>;
   findAllBreeds(filter: BreedFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Breed>>;
-  createBreed(data: Omit<Breed, 'id'>): Promise<Breed>;
+  createBreed(data: Omit<Breed, 'id'> & { organizationId?: string }): Promise<Breed>;
   updateBreed(id: string, data: Partial<Breed>): Promise<Breed>;
   deleteBreed(id: string): Promise<void>;
 

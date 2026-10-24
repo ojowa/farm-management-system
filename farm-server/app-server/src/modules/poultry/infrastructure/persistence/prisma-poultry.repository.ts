@@ -168,8 +168,8 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     return { data: data as Breed[], total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async createBreed(data: Omit<Breed, 'id'>): Promise<Breed> {
-    return prisma.breed.create({ data }) as Promise<Breed>;
+  async createBreed(data: Omit<Breed, 'id'> & { organizationId?: string }): Promise<Breed> {
+    return prisma.breed.create({ data: data as any }) as Promise<Breed>;
   }
 
   async updateBreed(id: string, data: Partial<Breed>): Promise<Breed> {
