@@ -154,7 +154,7 @@ export default function FlocksPage() {
   const { data: pensData } = useFetch<{ data: Pen[] }>(
     'poultry-flock-pens',
     () => pensAPI.list({ limit: 500 }),
-    { cacheTime: 60_000, enabled: !!form.farmId }
+    { cacheTime: 60_000 }
   );
 
   const { data: breedsData } = useFetch<{ data: Breed[] }>(
