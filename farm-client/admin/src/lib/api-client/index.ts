@@ -5,7 +5,7 @@ import { createAPIClient, setupTokenRefresh, APIClientConfig } from './core';
 import { createAuthAPI, createRolesAPI, createOrgAdminAPI, createAdminAPI, AuthAPI, RolesAPI, OrgAdminAPI, AdminAPI } from './contexts/identity';
 
 // ── Farm Management Context ──────────────────────────────────────
-import { createFarmsAPI, FarmsAPI } from './contexts/farm';
+import { createFarmsAPI, createFieldsAPI, FarmsAPI, FieldsAPI } from './contexts/farm';
 
 // ── Crop Management Context ──────────────────────────────────────
 import { createCropsAPI, createCropStagesAPI, createYieldAPI, createIrrigationAPI, createPestDiseaseAPI, CropsAPI, CropStagesAPI, YieldAPI, IrrigationAPI, PestDiseaseAPI } from './contexts/crop';
@@ -36,7 +36,7 @@ import { createWeatherAPI, createDocumentsAPI, createSubscriptionAPI, WeatherAPI
 
 export type {
   AuthAPI, RolesAPI, OrgAdminAPI, AdminAPI,
-  FarmsAPI,
+  FarmsAPI, FieldsAPI,
   CropsAPI, CropStagesAPI, YieldAPI, IrrigationAPI, PestDiseaseAPI,
   LivestockAPI, LivestockHealthAPI, BreedingAPI, WeightAPI,
   AquacultureAPI,
@@ -56,6 +56,7 @@ export interface FarmManagementClient {
   orgAdmin: OrgAdminAPI;
   admin: AdminAPI;
   farms: FarmsAPI;
+  fields: FieldsAPI;
   crops: CropsAPI;
   cropStages: CropStagesAPI;
   yield: YieldAPI;
@@ -105,6 +106,7 @@ export function createFarmManagementClient(config: APIClientConfig = {}): FarmMa
     orgAdmin: createOrgAdminAPI(client),
     admin: createAdminAPI(client),
     farms: createFarmsAPI(client),
+    fields: createFieldsAPI(client),
     crops: createCropsAPI(client),
     cropStages: createCropStagesAPI(client),
     yield: createYieldAPI(client),

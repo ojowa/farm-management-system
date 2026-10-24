@@ -37,7 +37,11 @@ export default function EditFarmPage() {
     refetch,
   } = useFetch<{ data: any }>(`farm-${id}`, () => farmsAPI.get(id));
 
-  const farm = farmData?.data;
+  // Accept both response shapes: the farm service returns the farm entity
+  // bare (gateway wraps once, client unwraps), so reading `.data` alone left
+  // this form unpopulated — and the page stuck on "Farm not found" — for
+  // farms that had loaded fine.
+  const farm = ((farmData as any)?.data ?? farmData ?? null) as any;
 
   const [form, setForm] = useState({
     name: '',

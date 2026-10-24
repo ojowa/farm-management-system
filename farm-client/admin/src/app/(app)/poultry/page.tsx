@@ -55,7 +55,9 @@ export default function PoultryPage() {
         {sections.map((s) => (
           <Link
             key={s.href}
-            href={s.href}
+            // Carry the farm filter into every section so a click through the
+            // hub doesn't silently drop the ?farmId= the farm detail page set.
+            href={farmId ? `${s.href}?farmId=${encodeURIComponent(farmId)}` : s.href}
             className="block p-6 rounded-lg border bg-card hover:bg-accent transition-colors"
           >
             <div className="flex items-center gap-3 mb-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { NavTabs } from '@/components/NavTabs';
 import {
@@ -87,10 +87,14 @@ export default function WorkersPage() {
   const readOnly = !canCreate('hr');
   const canRemove = canDelete('hr');
   const { toast } = useToast();
+  // Arrives from the farm detail page's linked tiles (?farmId=) — seed the
+  // farm filter so the list opens pre-filtered to that farm instead of
+  // silently ignoring the parameter.
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [farmFilter, setFarmFilter] = useState('');
+  const [farmFilter, setFarmFilter] = useState(() => searchParams.get('farmId') || '');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);

@@ -73,6 +73,7 @@ export const apiClient = client.client;
 
 // ── Re-export standard modules from @/lib/api-client ────────
 export const farmsAPI = client.farms;
+export const fieldsAPI = client.fields;
 export const cropsAPI = client.crops;
 export const livestockAPI = client.livestock;
 export const aquacultureAPI = client.aquaculture;

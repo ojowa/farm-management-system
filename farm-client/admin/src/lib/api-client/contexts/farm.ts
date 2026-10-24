@@ -29,3 +29,26 @@ export function createFarmsAPI(client: AxiosInstance): FarmsAPI {
     exportWorkers: (format) => client.get('/farms/export/workers', { params: { format }, responseType: format === 'csv' ? 'blob' : undefined }),
   };
 }
+
+/**
+ * Fields are the parcels that belong to a farm (GET /fields?farmId=… — the
+ * server REQUIRES farmId, so every call must pass it). The farm detail page
+ * uses `list` to show the farm's parcels.
+ */
+export interface FieldsAPI {
+  list: (params?: { farmId: string }) => Promise<any>;
+  get: (id: string) => Promise<any>;
+  create: (data: any) => Promise<any>;
+  update: (id: string, data: any) => Promise<any>;
+  delete: (id: string) => Promise<any>;
+}
+
+export function createFieldsAPI(client: AxiosInstance): FieldsAPI {
+  return {
+    list: (params) => client.get('/fields', { params }),
+    get: (id) => client.get(`/fields/${id}`),
+    create: (data) => client.post('/fields', data),
+    update: (id, data) => client.put(`/fields/${id}`, data),
+    delete: (id) => client.delete(`/fields/${id}`),
+  };
+}
