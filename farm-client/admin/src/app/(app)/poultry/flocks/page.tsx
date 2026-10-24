@@ -494,7 +494,10 @@ export default function FlocksPage() {
             </label>
             <Select
               placeholder={form.farmId ? 'Select a pen' : 'Select a farm first'}
-              options={availablePens.map((pen) => ({ value: pen.id, label: pen.name }))}
+              options={availablePens.map((pen) => {
+                const house = houses.find((h) => h.id === pen.poultryHouseId);
+                return { value: pen.id, label: house ? `${pen.name} (${house.name})` : pen.name };
+              })}
               value={form.penId}
               disabled={!form.farmId || availablePens.length === 0}
               onChange={(e) => setForm({ ...form, penId: e.target.value })}
