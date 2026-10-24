@@ -3,6 +3,8 @@
 import React, { useState, useCallback } from 'react';
 import { pestDiseaseAPI, farmsAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { NavTabs } from '@/components/NavTabs';
+import { CROPS_TABS } from '@/lib/cropsTabs';
 import { usePermission } from '@/lib/usePermission';
 import { useToast, getErrorMessage } from '@/lib/toasts';
 import { Card, CardContent } from '@/components/ui/card';
@@ -140,6 +142,8 @@ export default function PestDiseasePage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Crops section" tabs={CROPS_TABS} />
 
       <Card>
         <CardContent className="pt-6">

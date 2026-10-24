@@ -3,6 +3,8 @@
 import React, { useCallback, useState } from 'react';
 import { irrigationAPI, farmsAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { NavTabs } from '@/components/NavTabs';
+import { CROPS_TABS } from '@/lib/cropsTabs';
 import { usePermission } from '@/lib/usePermission';
 import { useToast, getErrorMessage } from '@/lib/toasts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -121,6 +123,8 @@ export default function IrrigationPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Crops section" tabs={CROPS_TABS} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

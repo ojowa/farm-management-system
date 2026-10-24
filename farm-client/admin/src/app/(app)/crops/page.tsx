@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { NavTabs } from '@/components/NavTabs';
+import { CROPS_TABS } from '@/lib/cropsTabs';
 import {
   Plus,
   Search,
@@ -239,15 +240,7 @@ export default function CropsPage() {
         )}
       </div>
 
-      <NavTabs
-        ariaLabel="Crops section"
-        tabs={[
-          { label: 'Cycles', href: '/crops' },
-          { label: 'Calendar', href: '/crops/calendar' },
-          { label: 'Pest & Disease', href: '/crops/pest-disease' },
-          { label: 'Irrigation', href: '/irrigation' },
-        ]}
-      />
+      <NavTabs ariaLabel="Crops section" tabs={CROPS_TABS} />
 
       {/* Filters */}
       <Card>

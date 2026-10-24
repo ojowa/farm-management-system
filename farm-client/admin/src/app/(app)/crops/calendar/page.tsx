@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react';
 import { cropStagesAPI, farmsAPI } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
+import { NavTabs } from '@/components/NavTabs';
+import { CROPS_TABS } from '@/lib/cropsTabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -104,6 +106,8 @@ export default function CropCalendarPage() {
         </div>
         <Select value={farmFilter} onChange={(e) => setFarmFilter(e.target.value)} options={farmOptions} />
       </div>
+
+      <NavTabs ariaLabel="Crops section" tabs={CROPS_TABS} />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
