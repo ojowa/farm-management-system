@@ -219,6 +219,7 @@ model Farm {
 
   fields        Field[]
   poultryHouses PoultryHouse[]
+  pens          Pen[]
   flocks        Flock[]
   workers       Worker[]
   inventory     Inventory[]
@@ -265,15 +266,18 @@ model PoultryHouse {
 
 model Pen {
   id             String @id @default(uuid())
+  farmId         String
   poultryHouseId String
   name           String
   capacity       Int
 
+  farm          Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
   poultryHouse PoultryHouse @relation(fields: [poultryHouseId], references: [id], onDelete: Cascade)
 
   flocks    Flock[]
   deletedAt DateTime?
 
+  @@index([farmId])
   @@index([poultryHouseId])
 }
 
