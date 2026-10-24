@@ -171,7 +171,7 @@ export default function FlocksPage() {
   const farmNames = useMemo(() => new Map(farms.map((farm) => [farm.id, farm.name])), [farms]);
   const breedNames = useMemo(() => new Map(breeds.map((breed) => [breed.id, breed.name])), [breeds]);
   const availablePens = useMemo(
-    () => pens.filter((pen) => pen.farmId === form.farmId),
+    () => pens.filter((pen: any) => pen.farmId === form.farmId),
     [pens, form.farmId]
   );
 
