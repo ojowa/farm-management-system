@@ -17,6 +17,7 @@ import { farmsAPI } from '@/modules/farm';
 import { Card, Button, TextInputField, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
 import { useAppTheme } from '@/core/theme/ThemeContext';
@@ -126,15 +127,16 @@ const keyExtractor = (item: any) => item.id;
 export default function AquacultureScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
-  const user = useAppSelector((state) => state.auth.user);
   const { colors: tc, isDark } = useAppTheme();
 
   // Pond actions mirror the server's permission checks: everyone with
   // aquaculture.read sees the list; only aquaculture.write may add/edit,
-  // aquaculture.delete may delete. Missing permissions default to hidden
-  // (same pattern as farms.tsx) — the API would 403 regardless.
-  const canWrite = user?.permissions?.includes('aquaculture.write') ?? false;
-  const canDelete = user?.permissions?.includes('aquaculture.delete') ?? false;
+  // aquaculture.delete may delete. usePermission is wildcard-aware ("*" and
+  // "aquaculture.*" both grant aquaculture.write) where a raw
+  // permissions.includes() was not.
+  const { canCreate, canDelete } = usePermission();
+  const canWrite = canCreate('aquaculture');
+  const canRemove = canDelete('aquaculture');
 
   const [ponds, setPonds] = useState<Pond[]>([]);
   const [farmNames, setFarmNames] = useState<Record<string, string>>({});
@@ -290,7 +292,7 @@ export default function AquacultureScreen() {
             <Text style={[styles.actionButtonText, { color: tc.primary }]}>Edit</Text>
           </TouchableOpacity>
         )}
-        {canDelete && (
+        {canRemove && (
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteBorderColor]}
             onPress={() => handleDeletePond(pond.id, pond.name)}

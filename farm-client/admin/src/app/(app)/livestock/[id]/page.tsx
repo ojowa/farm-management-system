@@ -135,7 +135,17 @@ export default function LivestockDetailPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant={livestock.status === 'active' ? 'success' : 'secondary'}>
+            <Badge
+              variant={
+                livestock.status?.toUpperCase() === 'ACTIVE'
+                  ? 'success'
+                  : livestock.status?.toUpperCase() === 'SOLD'
+                    ? 'destructive'
+                    : livestock.status?.toUpperCase() === 'DECEASED'
+                      ? 'destructive'
+                      : 'secondary'
+              }
+            >
               {livestock.status || 'active'}
             </Badge>
             {!readOnly && (

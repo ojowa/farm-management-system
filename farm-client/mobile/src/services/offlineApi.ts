@@ -59,6 +59,7 @@ export const offlineFarmsAPI = {
 export const offlineCropsAPI = {
   list: (params?: any) => cropsAPI.list(params),
   get: (id: string) => cropsAPI.get(id),
+  getCycle: (id: string) => cropsAPI.getCycle(id),
   listCycles: (params?: any) => cropsAPI.listCycles(params),
   create: (data: any) => {
     if (!isOnline()) {
@@ -80,6 +81,27 @@ export const offlineCropsAPI = {
       return Promise.resolve({ data: { success: true } } as any);
     }
     return cropsAPI.delete(id);
+  },
+  createCycle: (data: any) => {
+    if (!isOnline()) {
+      queueWrite('crops', 'POST', '/crop-cycles', data);
+      return Promise.resolve({ data: { ...data, id: `pending-${Date.now()}` } } as any);
+    }
+    return cropsAPI.createCycle(data);
+  },
+  updateCycle: (id: string, data: any) => {
+    if (!isOnline()) {
+      queueWrite('crops', 'PUT', `/crop-cycles/${id}`, data);
+      return Promise.resolve({ data: { ...data, id } } as any);
+    }
+    return cropsAPI.updateCycle(id, data);
+  },
+  deleteCycle: (id: string) => {
+    if (!isOnline()) {
+      queueWrite('crops', 'DELETE', `/crop-cycles/${id}`);
+      return Promise.resolve({ data: { success: true } } as any);
+    }
+    return cropsAPI.deleteCycle(id);
   },
 };
 

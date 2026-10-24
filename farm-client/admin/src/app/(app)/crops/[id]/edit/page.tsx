@@ -20,6 +20,22 @@ interface Farm {
   name: string;
 }
 
+interface Crop {
+  id: string;
+  name: string;
+}
+
+interface CropCycle {
+  id: string;
+  fieldId: string;
+  cropId: string;
+  cropName?: string;
+  plantingDate: string;
+  harvestDate?: string | null;
+  health?: number;
+  status?: string;
+}
+
 export default function EditCropPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -33,9 +49,9 @@ export default function EditCropPage() {
   }
 
   const {
-    data: cropData,
-    loading: loadingCrop,
-  } = useFetch<{ data: any }>(`crop-${id}`, () => cropsAPI.get(id));
+    data: cycleData,
+    loading: loadingCycle,
+  } = useFetch<{ data: CropCycle }>(`crop-cycle-${id}`, () => cropsAPI.getCycle(id));
 
   const {
     data: farmsData,
@@ -46,30 +62,41 @@ export default function EditCropPage() {
     { cacheTime: 60_000 }
   );
 
-  const crop = cropData?.data;
+  const {
+    data: cropsData,
+  } = useFetch<{ data: Crop[] }>(
+    'crops-catalog',
+    () => cropsAPI.list({ limit: 500 }),
+    { cacheTime: 60_000 }
+  );
+
+  const cycle = cycleData?.data;
   const farms = farmsData?.data || [];
+  const crops = cropsData?.data || [];
 
   const [form, setForm] = useState({
-    name: '',
-    farmId: '',
-    cropType: '',
-    area: '',
-    status: '',
+    fieldId: '',
+    cropId: '',
+    plantingDate: '',
+    harvestDate: '',
+    health: '',
+    status: 'PLANNED',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (crop) {
+    if (cycle) {
       setForm({
-        name: crop.name || '',
-        farmId: crop.farmId || '',
-        cropType: crop.cropType || '',
-        area: crop.area?.toString() || '',
-        status: crop.status || '',
+        fieldId: cycle.fieldId || '',
+        cropId: cycle.cropId || '',
+        plantingDate: cycle.plantingDate ? new Date(cycle.plantingDate).toISOString().slice(0, 10) : '',
+        harvestDate: cycle.harvestDate ? new Date(cycle.harvestDate).toISOString().slice(0, 10) : '',
+        health: cycle.health?.toString() || '',
+        status: cycle.status || 'PLANNED',
       });
     }
-  }, [crop]);
+  }, [cycle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,20 +112,21 @@ export default function EditCropPage() {
     setErrors({});
     setSaving(true);
     try {
-      await cropsAPI.update(id, {
-        name: form.name,
-        farmId: form.farmId,
-        cropType: form.cropType || undefined,
-        area: form.area ? Number(form.area) : undefined,
-        status: form.status || undefined,
+      await cropsAPI.updateCycle(id, {
+        fieldId: form.fieldId,
+        cropId: form.cropId,
+        plantingDate: form.plantingDate,
+        harvestDate: form.harvestDate || undefined,
+        health: form.health ? Number(form.health) : undefined,
+        status: form.status || 'PLANNED',
       });
-      toast({ type: 'success', title: 'Crop updated successfully' });
-      clearFetchCache('crops');
+      toast({ type: 'success', title: 'Crop cycle updated successfully' });
+      clearFetchCache('crop-cycles');
       router.push(`/crops/${id}`);
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to update crop',
+        title: 'Failed to update crop cycle',
         message: err.response?.data?.message || 'An error occurred',
       });
     } finally {
@@ -106,7 +134,7 @@ export default function EditCropPage() {
     }
   };
 
-  if (loadingCrop || loadingFarms) {
+  if (loadingCycle || loadingFarms) {
     return (
       <div className="flex items-center justify-center py-16">
         <LoadingSpinner className="h-8 w-8" />
@@ -114,16 +142,16 @@ export default function EditCropPage() {
     );
   }
 
-  if (!crop) {
+  if (!cycle) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground">Crop not found.</p>
+        <p className="text-muted-foreground">Crop cycle not found.</p>
         <Button
           variant="outline"
           className="mt-4"
           onClick={() => router.push('/crops')}
         >
-          Back to Crops
+          Back to Crop Cycles
         </Button>
       </div>
     );
@@ -138,10 +166,10 @@ export default function EditCropPage() {
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-2"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Crop
+          Back to Crop Cycle
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Edit Crop</h1>
-        <p className="text-muted-foreground">Update {crop.name}</p>
+        <h1 className="text-3xl font-bold tracking-tight">Edit Crop Cycle</h1>
+        <p className="text-muted-foreground">Update {cycle.cropName || 'this cycle'}</p>
       </div>
 
       {/* Form */}
@@ -150,61 +178,75 @@ export default function EditCropPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Crop Name <span className="text-destructive">*</span>
+                Field <span className="text-destructive">*</span>
               </label>
               <Input
-                placeholder="e.g. Maize, Wheat"
-                value={form.name}
+                placeholder="Field ID"
+                value={form.fieldId}
                 onChange={(e) => {
-                  setForm({ ...form, name: e.target.value });
-                  if (errors.name) setErrors({ ...errors, name: '' });
+                  setForm({ ...form, fieldId: e.target.value });
+                  if (errors.fieldId) setErrors({ ...errors, fieldId: '' });
                 }}
               />
-              {errors.name && (
-                <p className="text-sm text-destructive mt-1">{errors.name}</p>
+              {errors.fieldId && (
+                <p className="text-sm text-destructive mt-1">{errors.fieldId}</p>
               )}
             </div>
 
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Farm <span className="text-destructive">*</span>
+                Crop <span className="text-destructive">*</span>
               </label>
               <Select
-                placeholder="Select a farm"
-                options={farms.map((f) => ({ value: f.id, label: f.name }))}
-                value={form.farmId}
+                placeholder="Select a crop"
+                options={crops.map((c) => ({ value: c.id, label: c.name }))}
+                value={form.cropId}
                 onChange={(e) => {
-                  setForm({ ...form, farmId: e.target.value });
-                  if (errors.farmId) setErrors({ ...errors, farmId: '' });
+                  setForm({ ...form, cropId: e.target.value });
+                  if (errors.cropId) setErrors({ ...errors, cropId: '' });
                 }}
               />
-              {errors.farmId && (
-                <p className="text-sm text-destructive mt-1">{errors.farmId}</p>
+              {errors.cropId && (
+                <p className="text-sm text-destructive mt-1">{errors.cropId}</p>
               )}
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block">Crop Type</label>
+              <label className="text-sm font-medium mb-1 block">
+                Planting Date <span className="text-destructive">*</span>
+              </label>
               <Input
-                placeholder="e.g. Grain, Vegetable, Fruit"
-                value={form.cropType}
-                onChange={(e) =>
-                  setForm({ ...form, cropType: e.target.value })
-                }
+                type="date"
+                value={form.plantingDate}
+                onChange={(e) => {
+                  setForm({ ...form, plantingDate: e.target.value });
+                  if (errors.plantingDate)
+                    setErrors({ ...errors, plantingDate: '' });
+                }}
+              />
+              {errors.plantingDate && (
+                <p className="text-sm text-destructive mt-1">{errors.plantingDate}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">Harvest Date</label>
+              <Input
+                type="date"
+                value={form.harvestDate}
+                onChange={(e) => setForm({ ...form, harvestDate: e.target.value })}
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block">
-                Area (acres)
-              </label>
+              <label className="text-sm font-medium mb-1 block">Health (%)</label>
               <Input
                 type="number"
-                placeholder="e.g. 50"
                 min="0"
-                step="0.1"
-                value={form.area}
-                onChange={(e) => setForm({ ...form, area: e.target.value })}
+                max="100"
+                step="1"
+                value={form.health}
+                onChange={(e) => setForm({ ...form, health: e.target.value })}
               />
             </div>
 
@@ -213,14 +255,16 @@ export default function EditCropPage() {
               <Select
                 placeholder="Select status"
                 options={[
-                  { value: 'active', label: 'Active' },
-                  { value: 'harvested', label: 'Harvested' },
-                  { value: 'inactive', label: 'Inactive' },
+                  { value: 'PLANNED', label: 'Planned' },
+                  { value: 'BRED', label: 'Bred' },
+                  { value: 'CONFIRMED', label: 'Confirmed' },
+                  { value: 'PREGNANT', label: 'Pregnant' },
+                  { value: 'BORN', label: 'Born' },
+                  { value: 'COMPLETED', label: 'Completed' },
+                  { value: 'FAILED', label: 'Failed' },
                 ]}
                 value={form.status}
-                onChange={(e) =>
-                  setForm({ ...form, status: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
               />
             </div>
 

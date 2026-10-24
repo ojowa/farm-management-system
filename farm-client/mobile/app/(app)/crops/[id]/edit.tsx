@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { farmsAPI } from '@/modules/farm';
 import { offlineCropsAPI } from '@/modules/crop';
 import { TextInputField, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
@@ -195,39 +194,24 @@ const styles = StyleSheet.create({
 });
 
 interface FormData {
-  name: string;
-  type: string;
-  farmId: string;
-  area: string;
-  plantedDate: string;
+  fieldId: string;
+  cropId: string;
+  plantingDate: string;
+  harvestDate: string;
   health: string;
-  status: 'growing' | 'harvesting' | 'completed';
+  status: 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'FAILED';
 }
 
 interface FormErrors {
-  name?: string;
-  type?: string;
-  farmId?: string;
-  area?: string;
-  plantedDate?: string;
+  fieldId?: string;
+  cropId?: string;
+  plantingDate?: string;
   health?: string;
 }
 
-interface FarmOption {
+interface CropOption {
   id: string;
   name: string;
-}
-
-interface CropData {
-  id: string;
-  name: string;
-  type: string;
-  farm: string;
-  farmId?: string;
-  area: number;
-  plantedDate: string;
-  health: number;
-  status: 'growing' | 'harvesting' | 'completed';
 }
 
 export default function EditCropScreen() {
@@ -237,44 +221,43 @@ export default function EditCropScreen() {
   const { colors: tc, isDark } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [crop, setCrop] = useState<CropData | null>(null);
+  const [cycle, setCycle] = useState<any>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [farms, setFarms] = useState<FarmOption[]>([]);
-  const [showFarmModal, setShowFarmModal] = useState(false);
+  const [crops, setCrops] = useState<CropOption[]>([]);
+  const [showCropModal, setShowCropModal] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    name: '',
-    type: '',
-    farmId: '',
-    area: '',
-    plantedDate: '',
+    fieldId: '',
+    cropId: '',
+    plantingDate: '',
+    harvestDate: '',
     health: '100',
-    status: 'growing',
+    status: 'PLANNED',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
-    Promise.all([fetchCrop(), fetchFarms()]);
+    fetchCycle();
+    fetchCrops();
   }, [id]);
 
-  const fetchCrop = async () => {
+  const fetchCycle = async () => {
     if (!id) return;
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await offlineCropsAPI.get(id);
-      const cropData = response.data as any;
-      setCrop(cropData);
+      const response = await offlineCropsAPI.getCycle(id);
+      const data = response.data as any;
+      setCycle(data);
       setFormData({
-        name: cropData.name || '',
-        type: cropData.type || '',
-        farmId: cropData.farmId || '',
-        area: cropData.area?.toString() || '',
-        plantedDate: cropData.plantedDate || '',
-        health: cropData.health?.toString() || '100',
-        status: cropData.status || 'growing',
+        fieldId: data.fieldId || '',
+        cropId: data.cropId || '',
+        plantingDate: data.plantingDate ? data.plantingDate.slice(0, 10) : '',
+        harvestDate: data.harvestDate ? data.harvestDate.slice(0, 10) : '',
+        health: (data.health ?? 100).toString(),
+        status: data.status || 'PLANNED',
       });
     } catch (error: any) {
-      const message = describeApiError(error, 'Failed to load crop details.');
+      const message = describeApiError(error, 'Failed to load crop cycle.');
       setLoadError(message);
       showError(message);
     } finally {
@@ -282,16 +265,16 @@ export default function EditCropScreen() {
     }
   };
 
-  const fetchFarms = async () => {
+  const fetchCrops = async () => {
     try {
-      const response = await farmsAPI.list();
-      const farmsData = response.data;
-      const farmList = Array.isArray(farmsData)
-        ? farmsData.map((f: any) => ({ id: f.id, name: f.name }))
+      const response = await offlineCropsAPI.list();
+      const cropsData = response.data;
+      const cropList = Array.isArray(cropsData)
+        ? cropsData.map((c: any) => ({ id: c.id, name: c.name }))
         : [];
-      setFarms(farmList);
+      setCrops(cropList);
     } catch (error: any) {
-      showError(describeApiError(error, 'Failed to load farms.'));
+      showError(describeApiError(error, 'Failed to load crop catalog.'));
     }
   };
 
@@ -304,32 +287,22 @@ export default function EditCropScreen() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Crop name is required';
+    if (!formData.fieldId.trim()) {
+      newErrors.fieldId = 'Field ID is required';
     }
 
-    if (!formData.type.trim()) {
-      newErrors.type = 'Crop type is required';
+    if (!formData.cropId) {
+      newErrors.cropId = 'Please select a crop';
     }
 
-    if (!formData.farmId) {
-      newErrors.farmId = 'Please select a farm';
-    }
-
-    if (!formData.area.trim()) {
-      newErrors.area = 'Area is required';
-    } else if (isNaN(Number(formData.area)) || Number(formData.area) <= 0) {
-      newErrors.area = 'Area must be a positive number';
-    }
-
-    if (!formData.plantedDate.trim()) {
-      newErrors.plantedDate = 'Planted date is required';
+    if (!formData.plantingDate.trim()) {
+      newErrors.plantingDate = 'Planting date is required';
     } else {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(formData.plantedDate)) {
-        newErrors.plantedDate = 'Use YYYY-MM-DD format';
-      } else if (isNaN(Date.parse(formData.plantedDate))) {
-        newErrors.plantedDate = 'Invalid date';
+      if (!dateRegex.test(formData.plantingDate)) {
+        newErrors.plantingDate = 'Use YYYY-MM-DD format';
+      } else if (isNaN(Date.parse(formData.plantingDate))) {
+        newErrors.plantingDate = 'Invalid date';
       }
     }
 
@@ -351,21 +324,20 @@ export default function EditCropScreen() {
 
     setSubmitting(true);
     try {
-      const cropData = {
-        name: formData.name.trim(),
-        type: formData.type.trim(),
-        farmId: formData.farmId,
-        area: Number(formData.area),
-        plantedDate: formData.plantedDate,
+      const cycleData = {
+        fieldId: formData.fieldId.trim(),
+        cropId: formData.cropId,
+        plantingDate: formData.plantingDate,
+        harvestDate: formData.harvestDate || undefined,
         health: Number(formData.health),
         status: formData.status,
       };
 
-      await offlineCropsAPI.update(id, cropData);
-      success('Crop updated successfully');
+      await offlineCropsAPI.updateCycle(id, cycleData);
+      success('Crop cycle updated successfully');
       router.back();
     } catch (error: any) {
-      showError(describeApiError(error, 'Failed to update crop. Please try again.'));
+      showError(describeApiError(error, 'Failed to update crop cycle. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -378,7 +350,7 @@ export default function EditCropScreen() {
     }
   };
 
-  const selectedFarm = farms.find((f) => f.id === formData.farmId);
+  const selectedCrop = crops.find((c) => c.id === formData.cropId);
 
   if (loading) {
     return (
@@ -387,29 +359,29 @@ export default function EditCropScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Crop</Text>
+          <Text style={styles.headerTitle}>Edit Crop Cycle</Text>
           <View style={{ width: 60 }} />
         </View>
-        <ScreenLoading message="Loading crop details…" />
+        <ScreenLoading message="Loading crop cycle details…" />
       </SafeAreaView>
     );
   }
 
-  if (loadError || !crop) {
+  if (!cycle) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]}>
         <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Crop</Text>
+          <Text style={styles.headerTitle}>Edit Crop Cycle</Text>
           <View style={{ width: 60 }} />
         </View>
         <StateView
           variant="error"
-          title="Couldn't load crop"
-          message={loadError || 'Crop not found'}
-          onRetry={() => Promise.all([fetchCrop(), fetchFarms()])}
+          title="Couldn't load crop cycle"
+          message="Crop cycle not found"
+          onRetry={() => fetchCycle()}
           retryLabel="Retry"
         />
       </SafeAreaView>
@@ -422,7 +394,7 @@ export default function EditCropScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Crop</Text>
+        <Text style={styles.headerTitle}>Edit Crop Cycle</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -435,87 +407,79 @@ export default function EditCropScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: tc.text }]}>Field ID *</Text>
             <TextInputField
-              label="Crop Name *"
-              placeholder="e.g. Maize Field A"
-              value={formData.name}
-              onChangeText={(value) => updateFormData('name', value)}
-              error={errors.name}
+              label="Field ID *"
+              placeholder="e.g. FIELD-01"
+              value={formData.fieldId}
+              onChangeText={(value) => updateFormData('fieldId', value)}
+              error={errors.fieldId}
             />
-          </View>
-
-          <View style={styles.formGroup}>
-            <TextInputField
-              label="Crop Type *"
-              placeholder="e.g. Maize, Wheat, Soybean"
-              value={formData.type}
-              onChangeText={(value) => updateFormData('type', value)}
-              error={errors.type}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: tc.text }]}>Farm *</Text>
-            <TouchableOpacity
-              style={[
-                styles.selectButton,
-                errors.farmId && styles.selectError,
-                { backgroundColor: tc.card },
-                errors.farmId ? undefined : { borderColor: tc.border },
-              ]}
-              onPress={() => setShowFarmModal(true)}
-            >
-              <Text
-                style={
-                  selectedFarm
-                    ? [styles.selectButtonText, { color: tc.text }]
-                    : [styles.selectPlaceholder, { color: tc.textSecondary }]
-                }
-              >
-                {selectedFarm ? selectedFarm.name : 'Select a farm'}
-              </Text>
-              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
-            </TouchableOpacity>
-            {errors.farmId && (
-              <Text style={styles.errorText}>{errors.farmId}</Text>
+            {errors.fieldId && (
+              <Text style={styles.errorText}>{errors.fieldId}</Text>
             )}
           </View>
 
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: tc.text }]}>Crop *</Text>
+            <TouchableOpacity
+              style={[styles.selectButton, { backgroundColor: tc.card, borderColor: tc.border }]}
+              onPress={() => setShowCropModal(true)}
+            >
+              <Text
+                style={[
+                  styles.selectButtonText,
+                  selectedCrop ? { color: tc.text } : { color: tc.textSecondary },
+                ]}
+              >
+                {selectedCrop ? selectedCrop.name : 'Select a crop'}
+              </Text>
+              <Text style={[styles.selectArrow, { color: tc.textSecondary }]}>▼</Text>
+            </TouchableOpacity>
+            {errors.cropId && <Text style={styles.errorText}>{errors.cropId}</Text>}
+          </View>
+
           <Modal
-            visible={showFarmModal}
+            visible={showCropModal}
             transparent
             animationType="fade"
-            onRequestClose={() => setShowFarmModal(false)}
+            onRequestClose={() => setShowCropModal(false)}
           >
             <TouchableOpacity
               style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
               activeOpacity={1}
-              onPress={() => setShowFarmModal(false)}
+              onPress={() => setShowCropModal(false)}
             >
               <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
                 <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
-                  <Text style={[styles.modalTitle, { color: tc.text }]}>Select Farm</Text>
-                  {farms.length === 0 ? (
+                  <Text style={[styles.modalTitle, { color: tc.text }]}>Select Crop</Text>
+                  {crops.length === 0 ? (
                     <View style={styles.modalItemEmpty}>
-                      <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No farms available</Text>
+                      <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>
+                        No crops available
+                      </Text>
                     </View>
                   ) : (
                     <FlatList
-                      data={farms}
+                      data={crops}
                       keyExtractor={(item) => item.id}
                       renderItem={({ item }) => (
                         <TouchableOpacity
-                          style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
+                          style={[
+                            styles.modalItem,
+                            { borderBottomColor: isDark ? tc.surface : '#F5F5F5' },
+                          ]}
                           onPress={() => {
-                            updateFormData('farmId', item.id);
-                            setShowFarmModal(false);
+                            updateFormData('cropId', item.id);
+                            setShowCropModal(false);
                           }}
                         >
                           <Text
                             style={[
                               styles.modalItemText,
-                              item.id === formData.farmId && { color: colors.primary, fontWeight: '600' },
-                              item.id === formData.farmId ? undefined : { color: tc.text },
+                              item.id === formData.cropId
+                                ? { color: colors.primary, fontWeight: '600' }
+                                : { color: tc.text },
                             ]}
                           >
                             {item.name}
@@ -526,7 +490,7 @@ export default function EditCropScreen() {
                   )}
                   <TouchableOpacity
                     style={styles.modalCloseButton}
-                    onPress={() => setShowFarmModal(false)}
+                    onPress={() => setShowCropModal(false)}
                   >
                     <Text style={styles.modalCloseButtonText}>Cancel</Text>
                   </TouchableOpacity>
@@ -537,22 +501,23 @@ export default function EditCropScreen() {
 
           <View style={styles.formGroup}>
             <TextInputField
-              label="Area (hectares) *"
-              placeholder="Enter area"
-              value={formData.area}
-              onChangeText={(value) => updateFormData('area', value)}
-              keyboardType="numeric"
-              error={errors.area}
+              label="Planting Date *"
+              placeholder="YYYY-MM-DD"
+              value={formData.plantingDate}
+              onChangeText={(value) => updateFormData('plantingDate', value)}
+              error={errors.plantingDate}
             />
+            {errors.plantingDate && (
+              <Text style={styles.errorText}>{errors.plantingDate}</Text>
+            )}
           </View>
 
           <View style={styles.formGroup}>
             <TextInputField
-              label="Planted Date *"
+              label="Harvest Date (optional)"
               placeholder="YYYY-MM-DD"
-              value={formData.plantedDate}
-              onChangeText={(value) => updateFormData('plantedDate', value)}
-              error={errors.plantedDate}
+              value={formData.harvestDate}
+              onChangeText={(value) => updateFormData('harvestDate', value)}
             />
           </View>
 
@@ -582,14 +547,17 @@ export default function EditCropScreen() {
                   ]}
                 />
               </View>
-              <Text style={[styles.healthValue, { color: tc.text }]}>{formData.health || 0}%</Text>
+              <Text style={[styles.healthValue, { color: tc.text }]}>
+                {formData.health || 0}%
+              </Text>
             </View>
+            {errors.health && <Text style={styles.errorText}>{errors.health}</Text>}
           </View>
 
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: tc.text }]}>Status</Text>
             <View style={styles.statusContainer}>
-              {(['growing', 'harvesting', 'completed'] as const).map((s) => (
+              {(['PLANNED', 'ACTIVE', 'COMPLETED', 'FAILED'] as const).map((s) => (
                 <TouchableOpacity
                   key={s}
                   style={[
@@ -606,20 +574,40 @@ export default function EditCropScreen() {
                       formData.status === s ? undefined : { color: tc.text },
                     ]}
                   >
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                    {s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          <Button
-            title="Save Changes"
-            onPress={handleSubmit}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.submitButton}
-          />
+          <View style={{ marginTop: 20, gap: 10 }}>
+            <Button
+              title="Save Changes"
+              onPress={handleSubmit}
+              loading={submitting}
+              disabled={submitting}
+              style={styles.submitButton}
+            />
+            <Button
+              title="Delete"
+              onPress={() => {
+                // Simplified delete; in a fuller build this would prompt a confirm dialog.
+                if (window.confirm('Delete this crop cycle? This cannot be undone.')) {
+                  offlineCropsAPI
+                    .deleteCycle(id)
+                    .then(() => {
+                      success('Crop cycle deleted');
+                      router.back();
+                    })
+                    .catch((err: any) =>
+                      showError(describeApiError(err, 'Failed to delete crop cycle.'))
+                    );
+                }
+              }}
+              style={[styles.submitButton, { backgroundColor: colors.error }]}
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

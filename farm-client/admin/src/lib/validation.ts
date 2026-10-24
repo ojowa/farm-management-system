@@ -75,10 +75,17 @@ export function fieldErrorsFromFarmApiError(err: any): Record<string, string> | 
 }
 
 export const cropFormSchema = z.object({
-  name: z.string().min(1, 'Crop name is required'),
-  farmId: z.string().min(1, 'Farm is required'),
-  cropType: z.string().optional(),
-  area: z.string().optional(),
+  fieldId: z.string().min(1, 'Field is required'),
+  cropId: z.string().min(1, 'Crop is required'),
+  plantingDate: z.string().min(1, 'Planting date is required'),
+  harvestDate: z.string().optional(),
+  health: z
+    .string()
+    .optional()
+    .refine(
+      (val) => val === '' || val === undefined || (Number(val) >= 0 && Number(val) <= 100),
+      { message: 'Health must be between 0 and 100' },
+    ),
   status: z.string().optional(),
 });
 
@@ -217,7 +224,13 @@ export const eggProductionFormSchema = z.object({
   brokenEggs: z.string().regex(/^(0|[1-9]\d*)$/, 'Enter a whole number of broken eggs'),
   date: z.string().min(1, 'Date is required'),
   notes: z.string().optional(),
-});
+}).refine(
+  (data) => Number(data.goodEggs) + Number(data.brokenEggs) <= Number(data.totalEggs),
+  {
+    message: 'Good eggs + broken eggs cannot exceed total eggs',
+    path: ['goodEggs'],
+  },
+);
 
 export type EggProductionFormInput = z.infer<typeof eggProductionFormSchema>;
 

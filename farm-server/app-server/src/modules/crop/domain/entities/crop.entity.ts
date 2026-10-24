@@ -17,6 +17,11 @@ export interface CropCycle {
   harvestDate: Date | null;
   health?: number;
   status?: string;
+  // Denormalized names populated by the repository for the clients (calendar
+  // and list/detail screens render crop/field/farm names directly).
+  cropName?: string | null;
+  fieldName?: string | null;
+  farmName?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

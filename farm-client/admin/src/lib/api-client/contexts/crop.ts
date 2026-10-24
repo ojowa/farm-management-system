@@ -1,20 +1,37 @@
 import { AxiosInstance } from 'axios';
 
 export interface CropsAPI {
+  // Shared, read-only-for-orgs name catalog (GET /crops).
   list: (params?: any) => Promise<any>;
   get: (id: string) => Promise<any>;
+  getCatalog: () => Promise<any>;
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
   delete: (id: string) => Promise<any>;
+  // CropCycle org-scoped endpoints (GET/POST/PUT/DELETE /crop-cycles).
+  listCycles: (params?: any) => Promise<any>;
+  getCycle: (id: string) => Promise<any>;
+  createCycle: (data: any) => Promise<any>;
+  updateCycle: (id: string, data: any) => Promise<any>;
+  deleteCycle: (id: string) => Promise<any>;
 }
 
 export function createCropsAPI(client: AxiosInstance): CropsAPI {
   return {
+    // ── Catalog (shared, read-only for org users on PUT/DELETE) ──
     list: (params) => client.get('/crops', { params }),
     get: (id) => client.get(`/crops/${id}`),
+    getCatalog: () => client.get('/crops', { params: { limit: 500 } }),
     create: (data) => client.post('/crops', data),
     update: (id, data) => client.put(`/crops/${id}`, data),
     delete: (id) => client.delete(`/crops/${id}`),
+
+    // ── Crop cycles (the real org-scoped entity) ──
+    listCycles: (params) => client.get('/crop-cycles', { params }),
+    getCycle: (id) => client.get(`/crop-cycles/${id}`),
+    createCycle: (data) => client.post('/crop-cycles', data),
+    updateCycle: (id, data) => client.put(`/crop-cycles/${id}`, data),
+    deleteCycle: (id) => client.delete(`/crop-cycles/${id}`),
   };
 }
 

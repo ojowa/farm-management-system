@@ -7,8 +7,6 @@ import {
   ArrowLeft,
   Calendar,
   Sprout,
-  Ruler,
-  MapPin,
   Pencil,
   Trash2,
 } from 'lucide-react';
@@ -22,15 +20,17 @@ import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
 
-interface Crop {
+interface CropCycle {
   id: string;
-  name: string;
-  farmId: string;
+  fieldId: string;
+  fieldName?: string;
+  cropId: string;
+  cropName?: string;
+  farmId?: string;
   farmName?: string;
-  cropType?: string;
-  area?: number;
-  areaUnit?: string;
-  description?: string;
+  plantingDate: string;
+  harvestDate?: string | null;
+  health?: number;
   status?: string;
   createdAt: string;
   updatedAt?: string;
@@ -44,14 +44,14 @@ export default function CropDetailPage() {
   const { toast } = useToast();
 
   const {
-    data: cropData,
+    data: cycleData,
     loading,
     refetch,
-  } = useFetch<{ data: Crop }>(`crop-${id}`, () => cropsAPI.get(id), {
+  } = useFetch<{ data: CropCycle }>(`crop-cycle-${id}`, () => cropsAPI.getCycle(id), {
     cacheTime: 30_000,
   });
 
-  const crop = cropData?.data;
+  const cycle = cycleData?.data;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -64,17 +64,17 @@ export default function CropDetailPage() {
   useRealtime('crop', handleRealtimeEvent);
 
   const handleDelete = async () => {
-    if (!crop || !confirm(`Delete "${crop.name}"? This action cannot be undone.`))
+    if (!cycle || !confirm(`Delete crop cycle "${cycle.cropName || cycle.id}"? This action cannot be undone.`))
       return;
     try {
-      await cropsAPI.delete(id);
-      toast({ type: 'success', title: 'Crop deleted' });
-      clearFetchCache('crops');
+      await cropsAPI.deleteCycle(id);
+      toast({ type: 'success', title: 'Crop cycle deleted' });
+      clearFetchCache('crop-cycles');
       router.push('/crops');
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to delete crop',
+        title: 'Failed to delete crop cycle',
         message: err.response?.data?.message || 'An error occurred',
       });
     }
@@ -88,12 +88,12 @@ export default function CropDetailPage() {
     );
   }
 
-  if (!crop) {
+  if (!cycle) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground">Crop not found.</p>
+        <p className="text-muted-foreground">Crop cycle not found.</p>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/crops')}>
-          Back to Crops
+          Back to Crop Cycles
         </Button>
       </div>
     );
@@ -108,29 +108,36 @@ export default function CropDetailPage() {
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-2"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Crops
+          Back to Crop Cycles
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{crop.name}</h1>
-            {crop.cropType && (
+            <h1 className="text-3xl font-bold tracking-tight">
+              {cycle.cropName || 'Crop Cycle'}
+              {cycle.fieldName && (
+                <span className="text-xl font-normal text-muted-foreground ml-2">
+                  · {cycle.fieldName}
+                </span>
+              )}
+            </h1>
+            {cycle.farmName && (
               <div className="flex items-center gap-1 text-muted-foreground mt-1">
                 <Sprout className="h-4 w-4" />
-                {crop.cropType}
+                {cycle.farmName}
               </div>
             )}
           </div>
           <div className="flex items-center gap-3">
             <Badge
               variant={
-                crop.status === 'active'
+                cycle.status?.toUpperCase() === 'COMPLETED'
                   ? 'success'
-                  : crop.status === 'harvested'
-                  ? 'default'
-                  : 'secondary'
+                  : cycle.status?.toUpperCase() === 'FAILED'
+                    ? 'destructive'
+                    : 'secondary'
               }
             >
-              {crop.status || 'active'}
+              {cycle.status || '—'}
             </Badge>
             {!readOnly && (
               <Button
@@ -161,7 +168,7 @@ export default function CropDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Farm</p>
-                <p className="text-lg font-semibold">{crop.farmName || '—'}</p>
+                <p className="text-lg font-semibold">{cycle.farmName || '—'}</p>
               </div>
             </div>
           </CardContent>
@@ -173,8 +180,8 @@ export default function CropDetailPage() {
                 <Sprout className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Type</p>
-                <p className="text-lg font-semibold">{crop.cropType || 'Not set'}</p>
+                <p className="text-sm text-muted-foreground">Field</p>
+                <p className="text-lg font-semibold">{cycle.fieldName || 'Not set'}</p>
               </div>
             </div>
           </CardContent>
@@ -183,14 +190,12 @@ export default function CropDetailPage() {
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                <Ruler className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Area</p>
+                <p className="text-sm text-muted-foreground">Planting Date</p>
                 <p className="text-lg font-semibold">
-                  {crop.area
-                    ? `${crop.area} ${crop.areaUnit || 'acres'}`
-                    : 'Not set'}
+                  {new Date(cycle.plantingDate).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -203,9 +208,11 @@ export default function CropDetailPage() {
                 <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Created</p>
+                <p className="text-sm text-muted-foreground">Harvest Date</p>
                 <p className="text-lg font-semibold">
-                  {new Date(crop.createdAt).toLocaleDateString()}
+                  {cycle.harvestDate
+                    ? new Date(cycle.harvestDate).toLocaleDateString()
+                    : 'Not set'}
                 </p>
               </div>
             </div>
@@ -213,14 +220,12 @@ export default function CropDetailPage() {
         </Card>
       </div>
 
-      {/* Description */}
-      {crop.description && (
+      {/* Health */}
+      {cycle.health != null && (
         <Card>
-          <CardHeader>
-            <CardTitle>Description</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Crop Health</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{crop.description}</p>
+            <p className="text-lg font-semibold">{cycle.health}%</p>
           </CardContent>
         </Card>
       )}

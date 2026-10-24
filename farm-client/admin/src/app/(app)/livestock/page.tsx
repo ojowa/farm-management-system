@@ -330,7 +330,13 @@ export default function LivestockPage() {
                       <TableCell>
                         <Badge
                           variant={
-                            animal.status === 'active' ? 'success' : 'secondary'
+                            animal.status?.toUpperCase() === 'ACTIVE'
+                              ? 'success'
+                              : animal.status?.toUpperCase() === 'SOLD'
+                                ? 'destructive'
+                                : animal.status?.toUpperCase() === 'DECEASED'
+                                  ? 'destructive'
+                                  : 'secondary'
                           }
                         >
                           {animal.status || 'active'}

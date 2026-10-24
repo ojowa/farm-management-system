@@ -273,7 +273,7 @@ export default function CropDetailScreen() {
     try {
       setLoading(true);
       setLoadError(null);
-      const response = await offlineCropsAPI.get(id);
+      const response = await offlineCropsAPI.getCycle(id);
       const cropData = response.data as any;
       setCrop(cropData);
       dispatch(setSelectedCropId(id));
@@ -342,7 +342,7 @@ export default function CropDetailScreen() {
   const confirmDelete = async () => {
     if (!crop) return;
     try {
-      await offlineCropsAPI.delete(crop.id);
+      await offlineCropsAPI.deleteCycle(crop.id);
       success('Crop deleted successfully');
       dispatch(setSelectedCropId(null));
       router.back();

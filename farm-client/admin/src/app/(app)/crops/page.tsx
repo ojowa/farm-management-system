@@ -7,14 +7,14 @@ import { NavTabs } from '@/components/NavTabs';
 import {
   Plus,
   Search,
-  Sprout,
   Calendar,
   Pencil,
   Trash2,
   Eye,
   X,
+  Sprout,
 } from 'lucide-react';
-import { cropsAPI, farmsAPI } from '@/lib/api';
+import { cropsAPI, cropStagesAPI, farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,14 +37,17 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { cropFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
 
-interface Crop {
+interface CropCycle {
   id: string;
-  name: string;
-  farmId: string;
+  fieldId: string;
+  fieldName?: string;
+  cropId: string;
+  cropName?: string;
+  farmId?: string;
   farmName?: string;
-  cropType?: string;
-  area?: number;
-  areaUnit?: string;
+  plantingDate: string;
+  harvestDate?: string | null;
+  health?: number;
   status?: string;
   createdAt: string;
 }
@@ -54,7 +57,22 @@ interface Farm {
   name: string;
 }
 
+interface Crop {
+  id: string;
+  name: string;
+}
+
 const PAGE_SIZE = 10;
+
+const CYCLE_STATUS_OPTIONS = [
+  { value: 'PLANNED', label: 'Planned' },
+  { value: 'BRED', label: 'Bred' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'PREGNANT', label: 'Pregnant' },
+  { value: 'BORN', label: 'Born' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'FAILED', label: 'Failed' },
+];
 
 export default function CropsPage() {
   const router = useRouter();
@@ -69,22 +87,28 @@ export default function CropsPage() {
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({
-    name: '',
-    farmId: '',
-    cropType: '',
-    area: '',
-    status: '',
+    fieldId: '',
+    cropId: '',
+    plantingDate: '',
+    harvestDate: '',
+    health: '',
+    status: 'PLANNED',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const {
-    data: cropsData,
+    data: cyclesData,
     loading,
     refetch,
-  } = useFetch<{ data: Crop[]; total: number; page: number; totalPages: number }>(
-    'crops-list',
-    () => cropsAPI.list({ page, limit: PAGE_SIZE }),
+  } = useFetch<{ data: CropCycle[]; total: number; page: number; totalPages: number }>(
+    'crop-cycles-list',
+    () =>
+      cropsAPI.listCycles({
+        page,
+        limit: PAGE_SIZE,
+        status: statusFilter || undefined,
+      }),
     { cacheTime: 30_000 }
   );
 
@@ -94,43 +118,44 @@ export default function CropsPage() {
     { cacheTime: 60_000 }
   );
 
-  const crops = cropsData?.data || [];
-  const farms = farmsData?.data || [];
-
-  const getFarmName = (farmId: string) => {
-    return farms.find((f) => f.id === farmId)?.name || '—';
-  };
-
-  const handleRealtimeEvent = useCallback(
-    (event: { entity: string; action: string; data: any }) => {
-      if (['created', 'updated', 'deleted'].includes(event.action)) {
-        clearFetchCache('crops');
-        refetch();
-      }
-    },
-    [refetch]
+  const { data: cropsData } = useFetch<{ data: Crop[] }>(
+    'crops-catalog',
+    () => cropsAPI.getCatalog(),
+    { cacheTime: 60_000 }
   );
-  useRealtime('crop', handleRealtimeEvent);
+
+  const cycles = cyclesData?.data || [];
+  const farms = farmsData?.data || [];
+  const crops = cropsData?.data || [];
+
+  const getFarmName = (cycle: CropCycle) =>
+    cycle.farmName || farms.find((f) => f.id === cycle.farmId)?.name || '—';
+  const getCropName = (cycle: CropCycle) =>
+    cycle.cropName || crops.find((c) => c.id === cycle.cropId)?.name || '—';
+  const getFieldName = (cycle: CropCycle) =>
+    cycle.fieldName || '—';
 
   const filtered = useMemo(() => {
-    let result = crops;
+    let result = cycles;
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
         (c) =>
-          c.name.toLowerCase().includes(q) || c.cropType?.toLowerCase().includes(q)
+          getCropName(c).toLowerCase().includes(q) ||
+          getFarmName(c).toLowerCase().includes(q) ||
+          c.id.toLowerCase().includes(q)
       );
     }
     if (statusFilter) {
       result = result.filter((c) => c.status === statusFilter);
     }
     if (farmFilter) {
-      result = result.filter((c) => c.farmId === farmFilter);
+      result = result.filter((c) => (c.farmId || '') === farmFilter);
     }
     return result;
-  }, [crops, search, statusFilter, farmFilter]);
+  }, [cycles, search, statusFilter, farmFilter, farms, crops]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const totalPages = cyclesData?.totalPages || Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -147,22 +172,23 @@ export default function CropsPage() {
     setFormErrors({});
     setSaving(true);
     try {
-      await cropsAPI.create({
-        name: form.name,
-        farmId: form.farmId,
-        cropType: form.cropType || undefined,
-        area: form.area ? Number(form.area) : undefined,
-        status: form.status || undefined,
+      await cropsAPI.createCycle({
+        fieldId: form.fieldId,
+        cropId: form.cropId,
+        plantingDate: form.plantingDate,
+        harvestDate: form.harvestDate || undefined,
+        health: form.health ? Number(form.health) : undefined,
+        status: form.status || 'PLANNED',
       });
-      toast({ type: 'success', title: 'Crop created successfully' });
+      toast({ type: 'success', title: 'Crop cycle created successfully' });
       setShowAdd(false);
-      setForm({ name: '', farmId: '', cropType: '', area: '', status: '' });
-      clearFetchCache('crops');
+      setForm({ fieldId: '', cropId: '', plantingDate: '', harvestDate: '', health: '', status: 'PLANNED' });
+      clearFetchCache('crop-cycles');
       refetch();
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to create crop',
+        title: 'Failed to create crop cycle',
         message: err.response?.data?.message || 'An error occurred',
       });
     } finally {
@@ -171,33 +197,44 @@ export default function CropsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This action cannot be undone.`)) return;
+    if (!confirm(`Delete crop cycle "${name}"? This action cannot be undone.`)) return;
     try {
-      await cropsAPI.delete(id);
-      toast({ type: 'success', title: 'Crop deleted' });
-      clearFetchCache('crops');
+      await cropsAPI.deleteCycle(id);
+      toast({ type: 'success', title: 'Crop cycle deleted' });
+      clearFetchCache('crop-cycles');
       refetch();
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to delete crop',
+        title: 'Failed to delete crop cycle',
         message: err.response?.data?.message || 'An error occurred',
       });
     }
   };
+
+  const handleRealtimeEvent = useCallback(
+    (event: { entity: string; action: string; data: any }) => {
+      if (['created', 'updated', 'deleted'].includes(event.action)) {
+        clearFetchCache('crop-cycles');
+        refetch();
+      }
+    },
+    [refetch]
+  );
+  useRealtime('crop', handleRealtimeEvent);
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Crops</h1>
-          <p className="text-muted-foreground">Manage your crop cycles</p>
+          <h1 className="text-3xl font-bold tracking-tight">Crop Cycles</h1>
+          <p className="text-muted-foreground">Track planting and harvest per field</p>
         </div>
         {!readOnly && (
           <Button onClick={() => setShowAdd(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Crop
+            Add Cycle
           </Button>
         )}
       </div>
@@ -205,7 +242,7 @@ export default function CropsPage() {
       <NavTabs
         ariaLabel="Crops section"
         tabs={[
-          { label: 'Crops', href: '/crops' },
+          { label: 'Cycles', href: '/crops' },
           { label: 'Calendar', href: '/crops/calendar' },
           { label: 'Pest & Disease', href: '/crops/pest-disease' },
           { label: 'Irrigation', href: '/irrigation' },
@@ -219,7 +256,7 @@ export default function CropsPage() {
             <div className="relative flex-1 min-w-[200px] max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search crops by name or type..."
+                placeholder="Search by crop, farm, or cycle..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -230,11 +267,7 @@ export default function CropsPage() {
             </div>
             <Select
               placeholder="All statuses"
-              options={[
-                { value: 'active', label: 'Active' },
-                { value: 'harvested', label: 'Harvested' },
-                { value: 'inactive', label: 'Inactive' },
-              ]}
+              options={CYCLE_STATUS_OPTIONS}
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
@@ -266,13 +299,12 @@ export default function CropsPage() {
             onClick={() => {
               setFarmFilter('');
               setPage(1);
-              // Drop the param too so a refresh doesn't resurrect the filter.
               router.replace('/crops');
             }}
             className="inline-flex items-center gap-1 rounded-full border border-primary/50 bg-primary/5 px-3 py-1 text-sm text-foreground hover:bg-primary/10 transition-colors"
             aria-label="Clear farm filter"
           >
-            Filtered to farm: {getFarmName(farmFilter)}
+            Filtered to farm: {farms.find((f) => f.id === farmFilter)?.name || farmFilter}
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -289,13 +321,13 @@ export default function CropsPage() {
             <Sprout className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-muted-foreground">
               {search || statusFilter || farmFilter
-                ? 'No crops match your filters.'
-                : 'No crops yet. Create your first crop!'}
+                ? 'No crop cycles match your filters.'
+                : 'No crop cycles yet. Create your first cycle!'}
             </p>
             {!search && !statusFilter && !farmFilter && !readOnly && (
               <Button className="mt-4" onClick={() => setShowAdd(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Crop
+                Add Cycle
               </Button>
             )}
           </CardContent>
@@ -305,76 +337,75 @@ export default function CropsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Crop</TableHead>
+                    <TableHead>Field</TableHead>
                     <TableHead>Farm</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Area</TableHead>
+                    <TableHead>Planting Date</TableHead>
+                    <TableHead>Harvest Date</TableHead>
+                    <TableHead>Health</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map((crop) => (
+                  {paginated.map((cycle) => (
                     <TableRow
-                      key={crop.id}
+                      key={cycle.id}
                       className="cursor-pointer"
-                      onClick={() => router.push(`/crops/${crop.id}`)}
+                      onClick={() => router.push(`/crops/${cycle.id}`)}
                     >
                       <TableCell>
-                        <span className="font-medium">{crop.name}</span>
+                        <span className="font-medium">{getCropName(cycle)}</span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {getFarmName(crop.farmId)}
+                        {getFieldName(cycle)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {crop.cropType || '—'}
-                      </TableCell>
-                      <TableCell>
-                        {crop.area
-                          ? `${crop.area} ${crop.areaUnit || 'acres'}`
-                          : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            crop.status === 'active'
-                              ? 'success'
-                              : crop.status === 'harvested'
-                              ? 'default'
-                              : 'secondary'
-                          }
-                        >
-                          {crop.status || 'active'}
-                        </Badge>
+                        {getFarmName(cycle)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground text-sm">
                           <Calendar className="h-3 w-3" />
-                          {new Date(crop.createdAt).toLocaleDateString()}
+                          {new Date(cycle.plantingDate).toLocaleDateString()}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div
-                          className="flex items-center gap-1"
-                          onClick={(e) => e.stopPropagation()}
+                        {cycle.harvestDate
+                          ? new Date(cycle.harvestDate).toLocaleDateString()
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {cycle.health != null ? `${cycle.health}%` : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            cycle.status?.toUpperCase() === 'COMPLETED'
+                              ? 'success'
+                              : cycle.status?.toUpperCase() === 'FAILED'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
                         >
+                          {cycle.status || '—'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => router.push(`/crops/${crop.id}`)}
+                            onClick={() => router.push(`/crops/${cycle.id}`)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                           {!readOnly && (
+                          {!readOnly && (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() =>
-                                router.push(`/crops/${crop.id}/edit`)
-                              }
+                              onClick={() => router.push(`/crops/${cycle.id}/edit`)}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -384,7 +415,7 @@ export default function CropsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(crop.id, crop.name)}
+                              onClick={() => handleDelete(cycle.id, getCropName(cycle))}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -398,93 +429,100 @@ export default function CropsPage() {
             </div>
             {totalPages > 1 && (
               <div className="border-t p-4 flex justify-center">
-                <Pagination
-                  currentPage={page}
-                  totalPages={totalPages}
-                  onPageChange={setPage}
-                />
+                <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             )}
           </>
         )}
       </Card>
 
-      {/* Add Crop Dialog */}
-      {!readOnly && <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Crop">
-        <form onSubmit={handleAdd} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Crop Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              placeholder="e.g. Maize, Wheat"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            {formErrors.name && (
-              <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Farm <span className="text-destructive">*</span>
-            </label>
-            <Select
-              placeholder="Select a farm"
-              options={farms.map((f) => ({ value: f.id, label: f.name }))}
-              value={form.farmId}
-              onChange={(e) => setForm({ ...form, farmId: e.target.value })}
-            />
-            {formErrors.farmId && (
-              <p className="text-sm text-destructive mt-1">{formErrors.farmId}</p>
-            )}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Crop Type</label>
-            <Input
-              placeholder="e.g. Grain, Vegetable, Fruit"
-              value={form.cropType}
-              onChange={(e) => setForm({ ...form, cropType: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Area (acres)</label>
-            <Input
-              type="number"
-              placeholder="e.g. 50"
-              min="0"
-              step="0.1"
-              value={form.area}
-              onChange={(e) => setForm({ ...form, area: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Status</label>
-            <Select
-              placeholder="Select status"
-              options={[
-                { value: 'active', label: 'Active' },
-                { value: 'harvested', label: 'Harvested' },
-                { value: 'inactive', label: 'Inactive' },
-              ]}
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowAdd(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Create Crop
-            </Button>
-          </div>
-        </form>
-      </Dialog>}
+      {/* Add Crop Cycle Dialog */}
+      {!readOnly && (
+        <Dialog open={showAdd} onOpenChange={setShowAdd} title="Add Crop Cycle">
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Field <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="Field ID"
+                value={form.fieldId}
+                onChange={(e) => setForm({ ...form, fieldId: e.target.value })}
+              />
+              {formErrors.fieldId && (
+                <p className="text-sm text-destructive mt-1">{formErrors.fieldId}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Crop <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select a crop"
+                options={crops.map((c) => ({ value: c.id, label: c.name }))}
+                value={form.cropId}
+                onChange={(e) => setForm({ ...form, cropId: e.target.value })}
+              />
+              {formErrors.cropId && (
+                <p className="text-sm text-destructive mt-1">{formErrors.cropId}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Planting Date <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="date"
+                value={form.plantingDate}
+                onChange={(e) => setForm({ ...form, plantingDate: e.target.value })}
+              />
+              {formErrors.plantingDate && (
+                <p className="text-sm text-destructive mt-1">{formErrors.plantingDate}</p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Harvest Date</label>
+              <Input
+                type="date"
+                value={form.harvestDate}
+                onChange={(e) => setForm({ ...form, harvestDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Health (%)</label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={form.health}
+                onChange={(e) => setForm({ ...form, health: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Status</label>
+              <Select
+                placeholder="Select status"
+                options={CYCLE_STATUS_OPTIONS}
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={saving}>
+                Create Cycle
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

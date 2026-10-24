@@ -65,10 +65,20 @@ export class PrismaCropRepository implements CropRepository {
 @Injectable()
 export class PrismaCropCycleRepository implements CropCycleRepository {
   async findById(id: string, organizationId: string): Promise<CropCycle | null> {
-    return prisma.cropCycle.findFirst({
+    const cycle = await prisma.cropCycle.findFirst({
       where: { id, organizationId },
-      include: { crop: true, field: true },
+      include: {
+        crop: true,
+        field: { include: { farm: { select: { id: true, name: true, deletedAt: true } } } },
+      },
     });
+    if (!cycle) return null;
+    return {
+      ...cycle,
+      cropName: cycle.crop?.name ?? null,
+      fieldName: cycle.field?.name ?? null,
+      farmName: cycle.field?.farm?.name ?? null,
+    };
   }
 
   async findAll(organizationId: string, options?: {
@@ -109,7 +119,14 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
     ]);
 
     return {
-      cycles: cycles.filter((cycle: any) => cycle.field && !cycle.field.deletedAt && !cycle.field.farm?.deletedAt),
+      cycles: cycles
+        .filter((cycle: any) => cycle.field && !cycle.field.deletedAt && !cycle.field.farm?.deletedAt)
+        .map((cycle: any) => ({
+          ...cycle,
+          cropName: cycle.crop?.name ?? null,
+          fieldName: cycle.field?.name ?? null,
+          farmName: cycle.field?.farm?.name ?? null,
+        })),
       total,
     };
   }
@@ -127,7 +144,10 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
         health: data.health ?? 100,
         status: data.status,
       } as any,
-      include: { crop: true, field: true },
+      include: {
+        crop: true,
+        field: { include: { farm: { select: { id: true, name: true } } } },
+      },
     });
   }
 
@@ -135,7 +155,10 @@ export class PrismaCropCycleRepository implements CropCycleRepository {
     return prisma.cropCycle.update({
       where: { id },
       data: data as any,
-      include: { crop: true, field: true },
+      include: {
+        crop: true,
+        field: { include: { farm: { select: { id: true, name: true } } } },
+      },
     });
   }
 

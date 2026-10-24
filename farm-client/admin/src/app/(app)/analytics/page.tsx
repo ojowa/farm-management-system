@@ -15,11 +15,11 @@ export default function AnalyticsPage() {
         const [farms, crops, livestock, expenses, sales] = await Promise.allSettled([
           farmsAPI.list(), cropsAPI.list(), livestockAPI.list(), financeAPI.listExpenses(), financeAPI.listSales(),
         ]);
-        const farmsList = farms.status === 'fulfilled' ? (farms.value.data.farms || farms.value.data || []) : [];
-        const cropsList = crops.status === 'fulfilled' ? (crops.value.data.crops || crops.value.data || []) : [];
-        const livestockList = livestock.status === 'fulfilled' ? (livestock.value.data.animals || livestock.value.data || []) : [];
-        const expensesList = expenses.status === 'fulfilled' ? (expenses.value.data.expenses || expenses.value.data || []) : [];
-        const salesList = sales.status === 'fulfilled' ? (sales.value.data.sales || sales.value.data || []) : [];
+        const farmsList = farms.status === 'fulfilled' ? (farms.value.data?.data || farms.value.data || []) : [];
+        const cropsList = crops.status === 'fulfilled' ? (crops.value.data?.data || crops.value.data || []) : [];
+        const livestockList = livestock.status === 'fulfilled' ? (livestock.value.data?.data || livestock.value.data || []) : [];
+        const expensesList = expenses.status === 'fulfilled' ? (expenses.value.data?.data || expenses.value.data || []) : [];
+        const salesList = sales.status === 'fulfilled' ? (sales.value.data?.data || sales.value.data || []) : [];
         const txns = [
           ...expensesList.map((e: any) => ({ ...e, type: 'expense' })),
           ...salesList.map((s: any) => ({ ...s, type: 'income' })),

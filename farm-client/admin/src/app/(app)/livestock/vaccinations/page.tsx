@@ -136,7 +136,7 @@ export default function LivestockVaccinationsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={record.status === 'ADMINISTERD' ? 'success' : 'secondary'}>{record.status}</Badge>
+                    <Badge variant={['ADMINISTERED', 'ADMINISTERD'].includes(record.status) ? 'success' : 'secondary'}>{record.status}</Badge>
                     {canWrite && record.status === 'SCHEDULED' && (
                       <Button size="sm" variant="outline" onClick={() => void markAdministered(record.id)}>Mark administered</Button>
                     )}
