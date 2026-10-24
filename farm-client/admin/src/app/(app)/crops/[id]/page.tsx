@@ -8,6 +8,7 @@ import {
   Calendar,
   Sprout,
   Pencil,
+  Plus,
   Trash2,
 } from 'lucide-react';
 import { cropsAPI } from '@/lib/api';
@@ -54,6 +55,9 @@ export default function CropDetailPage() {
   // The service returns the cycle bare; accept `{ data }` too so a loaded
   // cycle never falls through to "Crop cycle not found".
   const cycle = ((cycleData as any)?.data ?? cycleData ?? null);
+  // The detail payload reaches the farm through the nested field row
+  // (there is no top-level farmId on a cycle).
+  const cycleFarmId = cycle?.field?.farmId ?? cycle?.farmId ?? null;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -141,6 +145,16 @@ export default function CropDetailPage() {
             >
               {cycle.status || '—'}
             </Badge>
+            {!readOnly && cycleFarmId && (
+              <Button
+                onClick={() =>
+                  router.push(`/crops/new?farmId=${cycleFarmId}&fieldId=${cycle.fieldId}`)
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Cycle for this Field
+              </Button>
+            )}
             {!readOnly && (
               <Button
                 variant="outline"

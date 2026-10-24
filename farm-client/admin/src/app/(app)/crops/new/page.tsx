@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
 import { cropsAPI, farmsAPI, fieldsAPI } from '@/lib/api';
@@ -28,6 +28,7 @@ interface Crop {
 
 export default function NewCropPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('crop');
   const { isLoading: authLoading } = useAuth();
@@ -40,6 +41,16 @@ export default function NewCropPage() {
   useEffect(() => {
     if (!authLoading && readOnly) router.push('/crops');
   }, [authLoading, readOnly, router]);
+
+  // Prefill from ?farmId=&fieldId= — the crop-cycle detail page links here
+  // via "Add Cycle for this Field". Only seed values the user hasn't touched,
+  // so a later param change never stomps an in-progress edit.
+  useEffect(() => {
+    const farm = searchParams.get('farmId');
+    const field = searchParams.get('fieldId');
+    if (farm) setFarmId((prev) => prev || farm);
+    if (field) setForm((prev) => (prev.fieldId ? prev : { ...prev, fieldId: field }));
+  }, [searchParams]);
   const [form, setForm] = useState({
     fieldId: '',
     cropId: '',
@@ -67,7 +78,7 @@ export default function NewCropPage() {
   );
 
   // The server requires farmId on /fields, so only fetch once a farm is picked.
-  const { data: fieldsData } = useFetch<{ data: { id: string; name: string }[] }>(
+  const { data: fieldsData, loading: loadingFields } = useFetch<{ data: { id: string; name: string }[] }>(
     `crop-new-fields-${farmId}`,
     () => fieldsAPI.list({ farmId }),
     { enabled: Boolean(farmId), cacheTime: 60_000 }
@@ -165,15 +176,30 @@ export default function NewCropPage() {
                 Field <span className="text-destructive">*</span>
               </label>
               {farmId ? (
-                <Select
-                  placeholder="Select a field"
-                  options={fields.map((f) => ({ value: f.id, label: f.name }))}
-                  value={form.fieldId}
-                  onChange={(e) => {
-                    setForm({ ...form, fieldId: e.target.value });
-                    if (errors.fieldId) setErrors({ ...errors, fieldId: '' });
-                  }}
-                />
+                loadingFields ? (
+                  <LoadingSpinner className="h-5 w-5" />
+                ) : fields.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No fields on this farm yet.{' '}
+                    <Link
+                      href={`/fields/new?farmId=${farmId}`}
+                      className="text-primary underline underline-offset-2"
+                    >
+                      Add a field
+                    </Link>{' '}
+                    to plant here.
+                  </p>
+                ) : (
+                  <Select
+                    placeholder="Select a field"
+                    options={fields.map((f) => ({ value: f.id, label: f.name }))}
+                    value={form.fieldId}
+                    onChange={(e) => {
+                      setForm({ ...form, fieldId: e.target.value });
+                      if (errors.fieldId) setErrors({ ...errors, fieldId: '' });
+                    }}
+                  />
+                )
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Select a farm above to list its fields.

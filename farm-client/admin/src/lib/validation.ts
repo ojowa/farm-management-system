@@ -74,6 +74,17 @@ export function fieldErrorsFromFarmApiError(err: any): Record<string, string> | 
   return { [field]: detail.charAt(0).toUpperCase() + detail.slice(1) };
 }
 
+export const fieldFormSchema = z.object({
+  farmId: z.string().min(1, 'Farm is required'),
+  name: z.string().min(1, 'Field name is required'),
+  size: z
+    .string()
+    .min(1, 'Size is required')
+    .refine((val) => Number(val) >= 0, { message: 'Size must be 0 or more' }),
+});
+
+export type FieldFormInput = z.infer<typeof fieldFormSchema>;
+
 export const cropFormSchema = z.object({
   fieldId: z.string().min(1, 'Field is required'),
   cropId: z.string().min(1, 'Crop is required'),

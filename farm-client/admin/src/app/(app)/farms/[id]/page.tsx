@@ -9,6 +9,7 @@ import {
   Calendar,
   Ruler,
   Pencil,
+  Plus,
   Trash2,
   Archive,
   RotateCcw,
@@ -441,6 +442,16 @@ export default function FarmDetailPage() {
               <Layers className="h-5 w-5 text-blue-600" />
               Fields ({fields.length})
             </CardTitle>
+            {!readOnly && (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => router.push(`/fields/new?farmId=${id}`)}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add Field
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {fields.length === 0 ? (
