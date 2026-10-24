@@ -17,6 +17,7 @@ import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
 import { StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { unwrapList } from '@/core/utils/listPayload';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
@@ -179,12 +180,12 @@ export default function AddFieldScreen() {
 
   const fetchFarms = async () => {
     try {
-      const response = await farmsAPI.list();
-      const farmsData = response.data;
-      const farmList = Array.isArray(farmsData)
-        ? farmsData.map((f: any) => ({ id: f.id, name: f.name }))
-        : [];
-      setFarms(farmList);
+      // GET /farms answers {farms, total, data} — an Array.isArray guard
+      // alone always landed on the object and rendered an empty picker.
+      const response = await farmsAPI.list({ limit: 200 });
+      setFarms(
+        unwrapList<any>(response.data).map((f: any) => ({ id: f.id, name: f.name }))
+      );
     } catch (error: any) {
       showError(describeApiError(error, 'Failed to load farms.'));
     }

@@ -14,6 +14,7 @@ import {
   Eye,
   X,
   Sprout,
+  Layers,
 } from 'lucide-react';
 import { cropsAPI, cropStagesAPI, farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -232,12 +233,22 @@ export default function CropsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Crop Cycles</h1>
           <p className="text-muted-foreground">Track planting and harvest per field</p>
         </div>
-        {!readOnly && (
-          <Button onClick={() => setShowAdd(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Cycle
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Seeding a cycle starts with a parcel — jump straight to the
+              add-field form from wherever a cycle is being managed. */}
+          {canCreate('farm') && (
+            <Button variant="outline" onClick={() => router.push('/fields/new')}>
+              <Layers className="mr-2 h-4 w-4" />
+              Add Field
+            </Button>
+          )}
+          {!readOnly && (
+            <Button onClick={() => setShowAdd(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Cycle
+            </Button>
+          )}
+        </div>
       </div>
 
       <NavTabs ariaLabel="Crops section" tabs={CROPS_TABS} />

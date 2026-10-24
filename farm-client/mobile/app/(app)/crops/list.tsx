@@ -36,6 +36,15 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   addButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  seedButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  seedButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   chipRow: { paddingHorizontal: 20, paddingBottom: 4 },
   chip: {
     alignSelf: 'flex-start',
@@ -180,6 +189,18 @@ export default function CropsScreen() {
           "← Back" affordance, which made no sense on a top-level tab). */}
       <MenuButton />
       <Text style={[styles.headerTitle, { flex: 1 }]}>Crops</Text>
+      {/* Mirror the admin cycle page: a shortcut to seed a field, since a
+          cycle can't be planted without one. */}
+      {canCreate('farm') && (
+        <TouchableOpacity
+          style={styles.seedButton}
+          onPress={() => router.push('/farms/add-field')}
+          accessibilityRole="button"
+          accessibilityLabel="Add Field"
+        >
+          <Text style={styles.seedButtonText}>+ Field</Text>
+        </TouchableOpacity>
+      )}
       {canWrite ? (
         <TouchableOpacity
           style={styles.addButton}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -11,12 +11,13 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { farmsAPI, fieldsAPI } from '@/modules/farm';
 import { offlineCropsAPI } from '@/modules/crop';
 import { TextInputField, Button, colors } from '../../../src/core/ui/UIComponents';
 import { useToasts } from '../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../src/core/utils/apiError';
+import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
@@ -270,39 +271,44 @@ export default function AddCropScreen() {
     }
   }, [paramFarmId, paramFieldId]);
 
-  // Fields cascade from the chosen farm (GET /fields REQUIRES farmId).
-  useEffect(() => {
-    if (!farmId) {
-      setFields([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoadingFields(true);
-        const response = await fieldsAPI.list({ farmId });
-        if (cancelled) return;
-        const rows = Array.isArray(response.data) ? response.data : [];
-        setFields(rows.map((f: any) => ({ id: f.id, name: f.name })));
-      } catch (error: any) {
-        if (!cancelled) showError(describeApiError(error, 'Failed to load fields.'));
-      } finally {
-        if (!cancelled) setLoadingFields(false);
+  // Fields cascade from the chosen farm (GET /fields REQUIRES farmId) and
+  // reload on focus, so returning from the add-field screen shows a parcel
+  // created a moment ago.
+  useFocusEffect(
+    useCallback(() => {
+      if (!farmId) {
+        setFields([]);
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [farmId]);
+      let cancelled = false;
+      (async () => {
+        try {
+          setLoadingFields(true);
+          const response = await fieldsAPI.list({ farmId });
+          if (cancelled) return;
+          setFields(
+            unwrapList<any>(response.data).map((f: any) => ({ id: f.id, name: f.name }))
+          );
+        } catch (error: any) {
+          if (!cancelled) showError(describeApiError(error, 'Failed to load fields.'));
+        } finally {
+          if (!cancelled) setLoadingFields(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [farmId])
+  );
 
   const fetchFarms = async () => {
     try {
-      const response = await farmsAPI.list();
-      const farmsData = response.data;
-      const farmList = Array.isArray(farmsData)
-        ? farmsData.map((f: any) => ({ id: f.id, name: f.name }))
-        : [];
-      setFarms(farmList);
+      // GET /farms answers {farms, total, data} — an Array.isArray guard
+      // alone always landed on the object and rendered an empty picker.
+      const response = await farmsAPI.list({ limit: 200 });
+      setFarms(
+        unwrapList<any>(response.data).map((f: any) => ({ id: f.id, name: f.name }))
+      );
     } catch (error: any) {
       showError(describeApiError(error, 'Failed to load farms.'));
     }
@@ -310,12 +316,11 @@ export default function AddCropScreen() {
 
   const fetchCrops = async () => {
     try {
-      const response = await offlineCropsAPI.list();
-      const cropsData = response.data;
-      const cropList = Array.isArray(cropsData)
-        ? cropsData.map((c: any) => ({ id: c.id, name: c.name }))
-        : [];
-      setCrops(cropList);
+      // The catalog answers {crops, total, data} — same envelope trap.
+      const response = await offlineCropsAPI.list({ limit: 500 });
+      setCrops(
+        unwrapList<any>(response.data).map((c: any) => ({ id: c.id, name: c.name }))
+      );
     } catch (error: any) {
       showError(describeApiError(error, 'Failed to load crop catalog.'));
     }
