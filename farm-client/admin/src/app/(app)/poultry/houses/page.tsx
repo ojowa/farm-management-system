@@ -96,13 +96,14 @@ export default function PoultryHousesPage() {
   );
   useRealtime('poultryHouse', handleRealtimeEvent);
 
+  const farmNameMap = useMemo(() => new Map(farms.map((f) => [f.id, f.name])), [farms]);
+
   const filtered = useMemo(() => {
     let result = houses;
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
-        (h) =>
-          h.name.toLowerCase().includes(q) || h.farmName?.toLowerCase().includes(q)
+        (h) => h.name.toLowerCase().includes(q) || (farmNameMap.get(h.farmId) || '').toLowerCase().includes(q)
       );
     }
     if (statusFilter) {
@@ -131,7 +132,7 @@ export default function PoultryHousesPage() {
       await poultryHousesAPI.create({
         name: form.name,
         farmId: form.farmId,
-        capacity: form.capacity ? Number(form.capacity) : undefined,
+        capacity: form.capacity ? Number(form.capacity) : 1,
       });
       toast({ type: 'success', title: 'Poultry house created successfully' });
       setShowAdd(false);
@@ -270,7 +271,7 @@ export default function PoultryHousesPage() {
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Home className="h-3 w-3" />
-                          {house.farmName || '—'}
+                          {farms.find((f) => f.id === house.farmId)?.name || '—'}
                         </div>
                       </TableCell>
                       <TableCell>{house.capacity ? `${house.capacity} birds` : '—'}</TableCell>
