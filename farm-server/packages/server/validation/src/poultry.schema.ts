@@ -5,7 +5,7 @@ const dateSchema = z.string().datetime().or(z.date()).or(z.string().regex(/^\d{4
 export const createPoultryHouseSchema = z.object({
   farmId: z.string().uuid(),
   name: z.string().min(2),
-  capacity: z.number().int().positive(),
+  capacity: z.number().int().min(0),
 });
 
 export const updatePoultryHouseSchema = z.object({
@@ -17,7 +17,7 @@ export const updatePoultryHouseSchema = z.object({
 export const createPenSchema = z.object({
   poultryHouseId: z.string().uuid(),
   name: z.string().min(1),
-  capacity: z.number().int().positive(),
+  capacity: z.number().int().min(0),
 });
 
 export const updatePenSchema = z.object({
