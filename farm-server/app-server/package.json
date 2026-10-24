@@ -5,7 +5,7 @@
   "description": "Microservices - each domain module runs as an independent NestJS HTTP server",
   "main": "dist/microservices/api.main.js",
   "scripts": {
-    "build": "prisma migrate deploy --schema=packages/server/database/prisma/schema.prisma && nest build auth-service farm-service livestock-service aquaculture-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service api-service domains-service",
+    "build": "prisma migrate deploy --schema=../packages/server/database/prisma/schema.prisma && nest build auth-service farm-service livestock-service aquaculture-service poultry-service finance-service hr-service notification-service organization-service platform-service reporting-service crop-service realtime-service api-service domains-service",
     "build:auth": "nest build auth-service",
     "build:farm": "nest build farm-service",
     "build:livestock": "nest build livestock-service",
