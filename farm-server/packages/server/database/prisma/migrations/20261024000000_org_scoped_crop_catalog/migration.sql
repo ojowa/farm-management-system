@@ -12,15 +12,18 @@
 --   6. SET NOT NULL on organizationId;
 --   7. De-dupe (organizationId, name) then create the org index + unique index.
 
--- 1. Add nullable organizationId column.
-ALTER TABLE "Crop" ADD COLUMN "organizationId" TEXT;
+-- 1. Add nullable organizationId + timestamp columns (Crop has no
+--    createdAt/updatedAt from the legacy 0_init baseline).
+ALTER TABLE "Crop" ADD COLUMN IF NOT EXISTS "organizationId" TEXT;
+ALTER TABLE "Crop" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT now();
+ALTER TABLE "Crop" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT now();
 
 -- 2. Copy each global (organizationId IS NULL) crop row into every org.
 --    Ids are UUID-shaped: md5(organizationId || originalId) with the version
 --    nibble forced to 4 and the variant nibble forced to 9 (RFC-4122), so the
 --    client-side zod .uuid() validation passes. ON CONFLICT DO NOTHING makes
 --    the step idempotent on re-run.
-INSERT INTO "Crop" ("id", "organizationId", "name", "createdAt", "updatedAt")
+INSERT INTO "Crop" ("id", "organizationId", "name")
 SELECT
   substr(md5(o."id" || c."id"), 1, 8) || '-' ||
   substr(md5(o."id" || c."id"), 9, 4) || '-4' ||
@@ -28,9 +31,7 @@ SELECT
   substr(md5(o."id" || c."id"), 19, 3) || '-' ||
   substr(md5(o."id" || c."id"), 21, 12),
   o."id",
-  c."name",
-  now(),
-  now()
+  c."name"
 FROM "Organization" o
 CROSS JOIN "Crop" c
 WHERE c."organizationId" IS NULL
@@ -111,6 +112,7 @@ FROM ranked
 WHERE c."id" = ranked."id"
   AND ranked.rn > 1;
 
--- 8. Org-scoped index + unique index on (organizationId, name).
-CREATE INDEX "Crop_organizationId_idx" ON "Crop"("organizationId");
-CREATE UNIQUE INDEX "Crop_organizationId_name_key" ON "Crop"("organizationId", "name");
+-- 8. Org-scoped index + unique index on (organizationId, name). Both
+--    idempotent (IF NOT EXISTS) so the migration can be safely re-run.
+CREATE INDEX IF NOT EXISTS "Crop_organizationId_idx" ON "Crop"("organizationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Crop_organizationId_name_key" ON "Crop"("organizationId", "name");

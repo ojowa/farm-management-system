@@ -35,8 +35,10 @@ FROM ranked
 WHERE "Flock"."id" = ranked."id"
   AND ranked.rn > 1;
 
--- 3. Org-scoped, live-rows-only unique index.
-CREATE UNIQUE INDEX "Flock_organizationId_batchCode_key"
+-- 3. Org-scoped, live-rows-only unique index (idempotent — this may already be
+--    present from an earlier manual apply; `IF NOT EXISTS` keeps deploy from
+--    colliding on the existing index).
+CREATE UNIQUE INDEX IF NOT EXISTS "Flock_organizationId_batchCode_key"
   ON "Flock"("organizationId", "batchCode")
   WHERE "deletedAt" IS NULL;
 

@@ -433,6 +433,9 @@ model PoultrySale {
 
 model Crop {
   id             String @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Per-organization vocabulary (was a shared global catalog): every org
   // owns its own crop names, backfilled from the old global rows.
   organizationId String
