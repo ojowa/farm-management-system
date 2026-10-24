@@ -91,8 +91,8 @@ export class PoultryApplicationService {
   // ── Pen ──
   async createPen(organizationId: string, data: Omit<Pen, 'id'>): Promise<Pen> {
     this.requireOrg(organizationId);
-    await this.getPoultryHouseById(organizationId, data.poultryHouseId);
-    const pen = await this.repo.createPen(data);
+    const house = await this.getPoultryHouseById(organizationId, data.poultryHouseId);
+    const pen = await this.repo.createPen({ ...data, farmId: house.farmId } as any);
     this.events.emitDomainEvent('poultry', 'created', { ...pen, organizationId });
     return pen;
   }

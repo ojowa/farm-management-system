@@ -282,11 +282,14 @@ model Pen {
 }
 
 model Breed {
-  id       String @id @default(uuid())
-  name     String
-  birdType String // Enum-like string (BROILER, LAYER, etc)
+  id             String @id @default(uuid())
+  organizationId String
+  name           String
+  birdType       String // Enum-like string (BROILER, LAYER, etc)
 
   flocks Flock[]
+
+  @@index([organizationId])
 }
 
 model Flock {

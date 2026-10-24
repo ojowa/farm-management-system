@@ -113,7 +113,7 @@ export interface PoultryAggregateRepository {
   // Pen
   findPenById(id: string, organizationId: string): Promise<Pen | null>;
   findAllPens(filter: PenFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Pen>>;
-  createPen(data: Omit<Pen, 'id'>): Promise<Pen>;
+  createPen(data: Omit<Pen, 'id'> & { farmId?: string }): Promise<Pen>;
   updatePen(id: string, data: Partial<Pen>): Promise<Pen>;
   deletePen(id: string): Promise<void>;
 

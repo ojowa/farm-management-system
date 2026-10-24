@@ -138,8 +138,8 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     return { data: data as Pen[], total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async createPen(data: Omit<Pen, 'id'>): Promise<Pen> {
-    return prisma.pen.create({ data }) as Promise<Pen>;
+  async createPen(data: Omit<Pen, 'id'> & { farmId?: string }): Promise<Pen> {
+    return prisma.pen.create({ data: data as any }) as Promise<Pen>;
   }
 
   async updatePen(id: string, data: Partial<Pen>): Promise<Pen> {
