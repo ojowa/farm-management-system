@@ -14,6 +14,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { livestockFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 
 export default function EditLivestockPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,11 +22,14 @@ export default function EditLivestockPage() {
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('livestock');
+  const { isLoading: authLoading } = useAuth();
 
-  if (readOnly) {
-    router.push('/livestock');
-    return null;
-  }
+  // Redirect only once the auth context has settled — an early return
+  // before the hooks below used to crash the page on a cold load (the
+  // hook count flipped the moment `user` hydrated).
+  useEffect(() => {
+    if (!authLoading && readOnly) router.push('/livestock');
+  }, [authLoading, readOnly, router]);
 
   const {
     data: livestockData,
@@ -104,6 +108,8 @@ export default function EditLivestockPage() {
       setSaving(false);
     }
   };
+
+  if (!authLoading && readOnly) return null;
 
   if (loadingLivestock) {
     return (

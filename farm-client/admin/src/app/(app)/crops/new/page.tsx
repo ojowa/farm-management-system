@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
-import { cropsAPI, farmsAPI } from '@/lib/api';
+import { cropsAPI, farmsAPI, fieldsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch } from '@/hooks/useFetch';
 import { cropFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 
 interface Farm {
   id: string;
@@ -29,12 +30,16 @@ export default function NewCropPage() {
   const router = useRouter();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('crop');
+  const { isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  if (readOnly) {
-    router.push('/crops');
-    return null;
-  }
+  // Redirect only once the auth context has settled. This used to be an
+  // early `return null` BEFORE the hooks below — when `user` hydrated a
+  // moment later the hook count flipped and React crashed the page, so a
+  // cold load of the add-crop screen rendered nothing at all.
+  useEffect(() => {
+    if (!authLoading && readOnly) router.push('/crops');
+  }, [authLoading, readOnly, router]);
   const [form, setForm] = useState({
     fieldId: '',
     cropId: '',
@@ -45,6 +50,9 @@ export default function NewCropPage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  // Farm isn't posted (a cycle's farm comes via its field) — it drives the
+  // field picker below.
+  const [farmId, setFarmId] = useState('');
 
   const { data: farmsData, loading: loadingFarms } = useFetch<{ data: Farm[] }>(
     'farms-list',
@@ -58,8 +66,16 @@ export default function NewCropPage() {
     { cacheTime: 60_000 }
   );
 
+  // The server requires farmId on /fields, so only fetch once a farm is picked.
+  const { data: fieldsData } = useFetch<{ data: { id: string; name: string }[] }>(
+    `crop-new-fields-${farmId}`,
+    () => fieldsAPI.list({ farmId }),
+    { enabled: Boolean(farmId), cacheTime: 60_000 }
+  );
+
   const farms = farmsData?.data || [];
   const crops = cropsData?.data || [];
+  const fields = fieldsData?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +112,8 @@ export default function NewCropPage() {
     }
   };
 
+  if (!authLoading && readOnly) return null;
+
   if (loadingFarms) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -127,16 +145,40 @@ export default function NewCropPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Field <span className="text-destructive">*</span>
+                Farm <span className="text-destructive">*</span>
               </label>
-              <Input
-                placeholder="Field ID"
-                value={form.fieldId}
+              <Select
+                placeholder="Select a farm"
+                options={farms.map((f) => ({ value: f.id, label: f.name }))}
+                value={farmId}
                 onChange={(e) => {
-                  setForm({ ...form, fieldId: e.target.value });
-                  if (errors.fieldId) setErrors({ ...errors, fieldId: '' });
+                  // Switching farms invalidates the previously picked field.
+                  setFarmId(e.target.value);
+                  setForm((f) => ({ ...f, fieldId: '' }));
+                  setErrors((prev) => ({ ...prev, fieldId: '' }));
                 }}
               />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Field <span className="text-destructive">*</span>
+              </label>
+              {farmId ? (
+                <Select
+                  placeholder="Select a field"
+                  options={fields.map((f) => ({ value: f.id, label: f.name }))}
+                  value={form.fieldId}
+                  onChange={(e) => {
+                    setForm({ ...form, fieldId: e.target.value });
+                    if (errors.fieldId) setErrors({ ...errors, fieldId: '' });
+                  }}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Select a farm above to list its fields.
+                </p>
+              )}
               {errors.fieldId && (
                 <p className="text-sm text-destructive mt-1">{errors.fieldId}</p>
               )}

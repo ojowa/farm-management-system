@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -12,17 +12,21 @@ import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 
 export default function NewContractPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
+  const { isLoading: authLoading } = useAuth();
 
-  if (readOnly) {
-    router.push('/contracts');
-    return null;
-  }
+  // Redirect only once the auth context has settled — an early return
+  // before the hooks below used to crash the page on a cold load (the
+  // hook count flipped the moment `user` hydrated).
+  useEffect(() => {
+    if (!authLoading && readOnly) router.push('/contracts');
+  }, [authLoading, readOnly, router]);
 
   const [form, setForm] = useState({
     type: '',
@@ -69,6 +73,8 @@ export default function NewContractPage() {
       setSaving(false);
     }
   };
+
+  if (!authLoading && readOnly) return null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

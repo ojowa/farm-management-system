@@ -14,6 +14,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { cropFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 
 interface Farm {
   id: string;
@@ -41,12 +42,15 @@ export default function EditCropPage() {
   const router = useRouter();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('crop');
+  const { isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
-  if (readOnly) {
-    router.push('/crops');
-    return null;
-  }
+  // Redirect only once the auth context has settled — an early return
+  // before the hooks below used to crash the page on a cold load (the
+  // hook count flipped the moment `user` hydrated).
+  useEffect(() => {
+    if (!authLoading && readOnly) router.push('/crops');
+  }, [authLoading, readOnly, router]);
 
   const {
     data: cycleData,
@@ -135,6 +139,8 @@ export default function EditCropPage() {
       setSaving(false);
     }
   };
+
+  if (!authLoading && readOnly) return null;
 
   if (loadingCycle || loadingFarms) {
     return (

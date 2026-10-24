@@ -20,6 +20,7 @@ import {
 } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 
 interface RoleOption {
   id: string;
@@ -31,6 +32,7 @@ export default function NewWorkerPage() {
   const router = useRouter();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('hr');
+  const { isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [form, setForm] = useState({
     firstName: '',
@@ -77,10 +79,12 @@ export default function NewWorkerPage() {
     if (preferred) setForm((f) => (f.roleId ? f : { ...f, roleId: preferred.id }));
   }, [roles, form.roleId]);
 
-  if (readOnly) {
-    router.push('/workers');
-    return null;
-  }
+  // Redirect once the auth context has settled instead of pushing during
+  // render (which React flags as updating while rendering).
+  useEffect(() => {
+    if (!authLoading && readOnly) router.push('/workers');
+  }, [authLoading, readOnly, router]);
+  if (!authLoading && readOnly) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
