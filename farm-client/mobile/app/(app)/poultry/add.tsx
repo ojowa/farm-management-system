@@ -395,13 +395,13 @@ export default function AddFlockScreen() {
 
           <PickerField
             label="Pen *"
-            placeholder={formData.farmId ? 'Select a pen' : 'Select a farm first'}
+            placeholder={formData.farmId ? (availablePens.length === 0 ? 'No pens for this farm' : 'Select a pen') : 'Select a farm first'}
             selectedId={formData.penId}
             options={availablePens}
             onSelect={(id) => updateFormData('penId', id)}
             error={errors.penId}
-            disabled={!formData.farmId}
-            disabledHint="Pens are grouped by the selected farm's poultry houses."
+            disabled={!formData.farmId || availablePens.length === 0}
+            disabledHint={formData.farmId && availablePens.length === 0 ? 'No pens found under this farm\'s houses.' : 'Pens are grouped by the selected farm\'s poultry houses.'}
           />
 
           <View style={styles.formGroup}>
