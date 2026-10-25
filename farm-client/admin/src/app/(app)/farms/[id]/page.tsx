@@ -17,6 +17,7 @@ import {
   Beef,
   Egg,
   Fish,
+  Home,
   Tractor,
   AlertCircle,
   Users,
@@ -30,6 +31,7 @@ import {
   livestockAPI,
   aquacultureAPI,
   poultryAPI,
+  poultryHousesAPI,
   workersAPI,
 } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -65,6 +67,14 @@ interface Field {
   id: string;
   name: string;
   size?: number;
+}
+
+interface PoultryHouse {
+  id: string;
+  name: string;
+  farmId: string;
+  capacity?: number;
+  status?: string;
 }
 
 /**
@@ -144,6 +154,14 @@ export default function FarmDetailPage() {
     { enabled: loaded, cacheTime: 30_000 }
   );
 
+  // Houses sit with the fields on this page, so they are scoped to the farm
+  // here rather than loaded wholesale from the houses list.
+  const { data: housesData } = useFetch<{ data: PoultryHouse[]; total?: number }>(
+    `farm-houses-${id}`,
+    () => poultryHousesAPI.list({ farmId: id, limit: 1000 }),
+    { enabled: loaded, cacheTime: 30_000 }
+  );
+
   const { data: workersStat } = useFetch<{ data: any[]; total?: number }>(
     `farm-stat-workers-${id}`,
     () => workersAPI.list({ farmId: id, limit: 1 }),
@@ -152,6 +170,10 @@ export default function FarmDetailPage() {
 
   const fields: Field[] = fieldsData?.data || [];
   const recentCycles: any[] = (cyclesData?.data || []).slice(0, 5);
+  const houses: PoultryHouse[] = housesData?.data || [];
+  // Long enough to be useful, short enough to keep the card the same height
+  // as its neighbours — the header's count and "View all" cover the rest.
+  const visibleHouses = houses.slice(0, 8);
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -469,8 +491,9 @@ export default function FarmDetailPage() {
         </Card>
       )}
 
-      {/* Fields on this farm + the latest crop cycles */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Fields, latest crop cycles and this farm's poultry houses — three
+          cards side by side, each one scoped to the farm in the route. */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -541,6 +564,49 @@ export default function FarmDetailPage() {
                     {cycleStatusBadge(cycle.status)}
                   </li>
                 ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Home className="h-5 w-5 text-orange-600" />
+              Poultry Houses ({houses.length})
+            </CardTitle>
+            <Button variant="link" size="sm" onClick={() => router.push('/poultry/houses')}>
+              View all
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {houses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No poultry houses on this farm yet.
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {visibleHouses.map((house) => (
+                  <li key={house.id} className="flex items-center justify-between gap-3 py-2">
+                    <Link
+                      href={`/poultry/houses/${house.id}`}
+                      className="font-medium truncate hover:underline"
+                    >
+                      {house.name}
+                    </Link>
+                    <span className="text-sm text-muted-foreground shrink-0">
+                      {house.capacity != null
+                        ? `Capacity ${house.capacity.toLocaleString()}`
+                        : '—'}
+                    </span>
+                  </li>
+                ))}
+                {houses.length > visibleHouses.length && (
+                  <li className="py-2 text-sm text-muted-foreground">
+                    +{houses.length - visibleHouses.length} more — see View all
+                  </li>
+                )}
               </ul>
             )}
           </CardContent>

@@ -10,6 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useGetFarmQuery, useDeleteFarmMutation, fieldsAPI, type Field } from '@/modules/farm';
+import { poultryHousesAPI, type PoultryHouse } from '@/modules/poultry';
+import { unwrapList } from '@/modules/poultry/flockChain';
 import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
@@ -169,30 +171,47 @@ export default function FarmDetailScreen() {
     if (id) dispatch(setSelectedFarmId(id));
   }, [id, dispatch]);
 
-  // Fields load on focus (not just mount) so returning from the add-field
-  // screen shows the newly created parcel without a manual refresh.
+  // Fields and poultry houses both load on focus (not just mount) so
+  // returning from an add screen shows the newly created row without a manual
+  // refresh. They are fetched together — one pass over the focus effect, one
+  // loading flag — but reported separately so one failure doesn't blank the
+  // other card.
   const [fields, setFields] = useState<Field[]>([]);
-  const [fieldsLoading, setFieldsLoading] = useState(false);
+  const [houses, setHouses] = useState<PoultryHouse[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
   const [fieldsError, setFieldsError] = useState<string | null>(null);
+  const [housesError, setHousesError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       if (!id) return;
       let cancelled = false;
       (async () => {
-        try {
-          setFieldsLoading(true);
-          const response = await fieldsAPI.list({ farmId: id });
-          if (cancelled) return;
-          setFields(Array.isArray(response.data) ? response.data : []);
+        setRelatedLoading(true);
+        const [fieldsResult, housesResult] = await Promise.allSettled([
+          fieldsAPI.list({ farmId: id }),
+          poultryHousesAPI.list({ farmId: id, limit: 1000 }),
+        ]);
+        if (cancelled) return;
+
+        if (fieldsResult.status === 'fulfilled') {
+          const rows = fieldsResult.value.data;
+          setFields(Array.isArray(rows) ? rows : []);
           setFieldsError(null);
-        } catch (error: any) {
-          if (!cancelled) {
-            setFieldsError(describeApiError(error, 'Failed to load fields.'));
-          }
-        } finally {
-          if (!cancelled) setFieldsLoading(false);
+        } else {
+          setFieldsError(describeApiError(fieldsResult.reason, 'Failed to load fields.'));
         }
+
+        if (housesResult.status === 'fulfilled') {
+          setHouses(unwrapList<PoultryHouse>(housesResult.value.data));
+          setHousesError(null);
+        } else {
+          setHousesError(
+            describeApiError(housesResult.reason, 'Failed to load poultry houses.')
+          );
+        }
+
+        setRelatedLoading(false);
       })();
       return () => {
         cancelled = true;
@@ -408,7 +427,7 @@ export default function FarmDetailScreen() {
             <Text style={[styles.fieldRowMeta, { color: themeColors.error }]}>
               {fieldsError}
             </Text>
-          ) : fieldsLoading && fields.length === 0 ? (
+          ) : relatedLoading && fields.length === 0 ? (
             <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
               Loading fields…
             </Text>
@@ -429,6 +448,60 @@ export default function FarmDetailScreen() {
                   {field.size != null ? `${field.size} ha` : '—'}
                 </Text>
               </View>
+            ))
+          )}
+        </Card>
+
+        {/* Poultry houses on this farm — sits with the fields, since both are
+            "what this farm is made of" rows. Each row opens the house. */}
+        <Card style={[styles.relatedCard, dynamicStyles.cardBackground]}>
+          <View style={styles.fieldsHeaderRow}>
+            <Text style={[styles.relatedTitle, dynamicStyles.relatedTitle]}>
+              Poultry Houses ({houses.length})
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/poultry/houses')}
+              accessibilityRole="link"
+              accessibilityLabel="View all poultry houses"
+            >
+              <Text style={[styles.addFieldText, { color: themeColors.primary }]}>
+                View all
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {housesError ? (
+            <Text style={[styles.fieldRowMeta, { color: themeColors.error }]}>
+              {housesError}
+            </Text>
+          ) : relatedLoading && houses.length === 0 ? (
+            <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
+              Loading houses…
+            </Text>
+          ) : houses.length === 0 ? (
+            <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
+              No poultry houses on this farm yet.
+            </Text>
+          ) : (
+            houses.map((house) => (
+              <TouchableOpacity
+                key={house.id}
+                style={[styles.relatedRow, dynamicStyles.divider]}
+                onPress={() => router.push(`/poultry/houses/${house.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${house.name}`}
+              >
+                <Text
+                  style={[styles.relatedRowText, dynamicStyles.relatedRowText]}
+                  numberOfLines={1}
+                >
+                  {house.name}
+                </Text>
+                <Text style={[styles.fieldRowMeta, dynamicStyles.fieldMeta]}>
+                  {house.capacity != null
+                    ? `Capacity ${house.capacity.toLocaleString()}`
+                    : '—'}
+                </Text>
+              </TouchableOpacity>
             ))
           )}
         </Card>
