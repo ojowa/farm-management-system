@@ -102,6 +102,14 @@ export const cropFormSchema = z.object({
 
 export type CropFormInput = z.infer<typeof cropFormSchema>;
 
+// The org crop catalog: a crop is just a name. Mirrors the server's
+// createCropSchema (min 2 chars, unique per organization on 409).
+export const cropCatalogFormSchema = z.object({
+  name: z.string().trim().min(2, 'Crop name must be at least 2 characters'),
+});
+
+export type CropCatalogFormInput = z.infer<typeof cropCatalogFormSchema>;
+
 export const livestockFormSchema = z.object({
   species: z.string().min(1, 'Species is required'),
   breed: z.string().optional(),

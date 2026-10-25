@@ -55,4 +55,12 @@ describe('Crops hub', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/crops/calendar?farmId=farm%201');
   });
+
+  it('links the crop catalog tile to the catalog manager', () => {
+    render(<CropsHubScreen />);
+
+    fireEvent.press(screen.getByLabelText('Crop Catalog'));
+
+    expect(mockPush).toHaveBeenCalledWith('/crops/catalog');
+  });
 });

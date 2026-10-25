@@ -13,6 +13,12 @@ const sections = [
     route: '/crops/list',
   },
   {
+    title: 'Crop Catalog',
+    description: 'Add, rename, and remove the crop types you plant',
+    icon: '🌾',
+    route: '/crops/catalog',
+  },
+  {
     title: 'Calendar',
     description: 'Review crop stages and upcoming field activities',
     icon: '📅',
