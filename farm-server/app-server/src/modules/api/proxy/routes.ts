@@ -69,6 +69,7 @@ function buildRoutes(): ServiceRoute[] {
 
     // HR Context
     { path: '/workers', service: 'hr-service', port: resolvePort('hr-service', 4015), baseUrl: resolveBaseUrl('hr-service', 4015) },
+    { path: '/departments', service: 'hr-service', port: resolvePort('hr-service', 4015), baseUrl: resolveBaseUrl('hr-service', 4015) },
     { path: '/tasks', service: 'hr-service', port: resolvePort('hr-service', 4015), baseUrl: resolveBaseUrl('hr-service', 4015) },
     { path: '/attendance', service: 'hr-service', port: resolvePort('hr-service', 4015), baseUrl: resolveBaseUrl('hr-service', 4015) },
     { path: '/leave', service: 'hr-service', port: resolvePort('hr-service', 4015), baseUrl: resolveBaseUrl('hr-service', 4015) },

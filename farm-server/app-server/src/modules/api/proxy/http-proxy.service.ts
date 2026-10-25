@@ -62,7 +62,7 @@ export class GatewayProxyService {
     {
       name: 'hr',
       baseUrl: process.env.HR_SERVICE_URL || 'http://localhost:4015',
-      routes: ['workers', 'tasks', 'attendance', 'leave', 'shifts', 'shift-assignments', 'messages', 'correspondence'],
+      routes: ['workers', 'departments', 'tasks', 'attendance', 'leave', 'shifts', 'shift-assignments', 'messages', 'correspondence'],
     },
     {
       name: 'notification',

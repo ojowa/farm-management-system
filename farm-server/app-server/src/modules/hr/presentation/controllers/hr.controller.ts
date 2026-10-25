@@ -20,6 +20,8 @@ import { ZodValidationPipe } from '@farm/utils';
 import {
   createWorkerSchema,
   updateWorkerSchema,
+  createDepartmentSchema,
+  updateDepartmentSchema,
   createTaskSchema,
   updateTaskSchema,
   createTaskCommentSchema,
@@ -56,6 +58,43 @@ function getUserName(req: any): string {
 }
 
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
+@Controller('departments')
+export class DepartmentsController {
+  constructor(private readonly hrService: HrApplicationService) {}
+
+  // The org's departments, each carrying how many workers/tasks/shifts use
+  // it — the counts are what the delete guard reports back.
+  @Permission('hr.read')
+  @Get()
+  findAll(@Req() req: any) {
+    return this.hrService.getDepartments(getOrgId(req));
+  }
+
+  @Permission('hr.write')
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(createDepartmentSchema))
+  create(@Req() req: any, @Body() body: any) {
+    return this.hrService.createDepartment(getOrgId(req), body);
+  }
+
+  @Permission('hr.write')
+  @Put(':id')
+  @UsePipes(new ZodValidationPipe(updateDepartmentSchema))
+  update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
+    return this.hrService.updateDepartment(id, getOrgId(req), body);
+  }
+
+  // Refused (409) while any worker, task or shift still references it.
+  @Permission('hr.delete')
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.hrService.deleteDepartment(id, getOrgId(req));
+  }
+}
+
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('workers')
 export class WorkerController {
   constructor(private readonly hrService: HrApplicationService) {}
@@ -68,6 +107,7 @@ export class WorkerController {
     @Query('status') status?: string,
     @Query('farmId') farmId?: string,
     @Query('department') department?: string,
+    @Query('departmentId') departmentId?: string,
     @Query('position') position?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -77,6 +117,7 @@ export class WorkerController {
       status,
       farmId,
       department,
+      departmentId,
       position,
       page,
       limit,
@@ -241,6 +282,11 @@ export class TasksController {
     @Query('priority') priority?: string,
     @Query('assignedToId') assignedToId?: string,
     @Query('farmId') farmId?: string,
+    @Query('departmentId') departmentId?: string,
+    // Record panels ask for the tasks linked to one row:
+    // /tasks?linkedModule=crop&linkedRecordId=<cropCycleId>
+    @Query('linkedModule') linkedModule?: string,
+    @Query('linkedRecordId') linkedRecordId?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -250,6 +296,9 @@ export class TasksController {
       priority,
       assignedToId,
       farmId,
+      departmentId,
+      linkedModule,
+      linkedRecordId,
       search,
       page,
       limit,
@@ -367,8 +416,8 @@ export class ShiftsController {
   // stay hr.write/hr.delete.
   @PermissionAny('hr.read', 'worker.read')
   @Get()
-  findAll(@Req() req: any) {
-    return this.hrService.getShifts(getOrgId(req));
+  findAll(@Req() req: any, @Query('departmentId') departmentId?: string) {
+    return this.hrService.getShifts(getOrgId(req), { departmentId });
   }
 
   @Permission('hr.write')

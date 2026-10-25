@@ -18,7 +18,10 @@ export const createWorkerSchema = z.object({
     .email('Enter a valid email address'),
   phone: z.string().optional().nullable(),
   position: z.string().min(1, 'Position is required'),
+  // Either half is enough: departmentId wins, a bare name is resolved (and
+  // created if new) by the service so legacy free-text clients keep working.
   department: z.string().optional().nullable(),
+  departmentId: z.string().optional().nullable(),
   hireDate: z.string().optional().nullable(),
   roleId: z.string().optional(),
 
@@ -44,6 +47,7 @@ export const updateWorkerSchema = z
     phone: z.string().optional().nullable(),
     position: z.string().min(1).optional(),
     department: z.string().optional().nullable(),
+    departmentId: z.string().optional().nullable(),
     hireDate: z.string().optional().nullable(),
     status: z
       .string()

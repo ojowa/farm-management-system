@@ -1,4 +1,5 @@
 import {
+  Department,
   Worker,
   Attendance,
   Task,
@@ -18,12 +19,27 @@ export interface WorkerListFilters {
   status?: string;
   farmId?: string;
   department?: string;
+  departmentId?: string;
   position?: string;
 }
 
 export interface PageResult<T> {
   rows: T[];
   total: number;
+}
+
+export interface DepartmentRepository {
+  findById(id: string, organizationId: string): Promise<Department | null>;
+  findByName(organizationId: string, name: string): Promise<Department | null>;
+  /** Live departments with worker/task/shift usage counts. */
+  findByOrganizationId(organizationId: string): Promise<Department[]>;
+  /** Distinct names still carried by the denormalised Worker.department column. */
+  findLegacyWorkerNames(organizationId: string): Promise<string[]>;
+  create(data: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'counts'>): Promise<Department>;
+  update(id: string, data: Partial<Department>): Promise<Department>;
+  delete(id: string): Promise<void>;
+  /** Total rows still referencing this department, across all three entities. */
+  countUsage(departmentId: string): Promise<number>;
 }
 
 export interface WorkerRepository {
@@ -55,24 +71,27 @@ export interface AttendanceRepository {
   createMany(data: Omit<Attendance, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<number>;
 }
 
+export interface TaskListFilters {
+  status?: string;
+  priority?: string;
+  assignedToId?: string;
+  assignedToIds?: string[];
+  farmId?: string;
+  departmentId?: string;
+  linkedModule?: string;
+  linkedRecordId?: string;
+  search?: string;
+}
+
 export interface TaskRepository {
   findById(id: string, organizationId: string): Promise<Task | null>;
-  findByOrganizationId(organizationId: string, filters?: {
-    status?: string;
-    priority?: string;
-    assignedToId?: string;
-    assignedToIds?: string[];
-    farmId?: string;
-    search?: string;
-  }): Promise<Task[]>;
-  findManyWithCount(organizationId: string, filters: {
-    status?: string;
-    priority?: string;
-    assignedToId?: string;
-    assignedToIds?: string[];
-    farmId?: string;
-    search?: string;
-  } | undefined, page: number, limit: number): Promise<PageResult<Task>>;
+  findByOrganizationId(organizationId: string, filters?: TaskListFilters): Promise<Task[]>;
+  findManyWithCount(
+    organizationId: string,
+    filters: TaskListFilters | undefined,
+    page: number,
+    limit: number
+  ): Promise<PageResult<Task>>;
   create(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task>;
   update(id: string, data: Partial<Task>): Promise<Task>;
   delete(id: string): Promise<void>;
@@ -81,7 +100,7 @@ export interface TaskRepository {
 
 export interface ShiftRepository {
   findById(id: string, organizationId: string): Promise<Shift | null>;
-  findByOrganizationId(organizationId: string): Promise<Shift[]>;
+  findByOrganizationId(organizationId: string, filters?: { departmentId?: string }): Promise<Shift[]>;
   findByName(organizationId: string, name: string): Promise<Shift | null>;
   create(data: Omit<Shift, 'id' | 'createdAt' | 'updatedAt'>): Promise<Shift>;
   update(id: string, data: Partial<Shift>): Promise<Shift>;

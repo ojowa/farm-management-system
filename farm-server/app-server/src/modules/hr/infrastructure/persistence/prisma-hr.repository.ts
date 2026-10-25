@@ -4,6 +4,7 @@ import {
   WorkerRepository,
   AttendanceRepository,
   TaskRepository,
+  TaskListFilters,
   ShiftRepository,
   ShiftAssignmentRepository,
   LeaveTypeRepository,
@@ -13,9 +14,11 @@ import {
   MessageRecipientRepository,
   CorrespondenceRepository,
   CorrespondenceAttachmentRepository,
+  DepartmentRepository,
   WorkerListFilters,
 } from '../../domain/repositories/hr.repository';
 import {
+  Department,
   Worker,
   Attendance,
   Task,
@@ -33,12 +36,77 @@ import {
 const prisma = scopedPrisma as any;
 
 @Injectable()
+export class PrismaDepartmentRepository implements DepartmentRepository {
+  private readonly withCounts = {
+    _count: { select: { workers: true, tasks: true, shifts: true } },
+  };
+
+  async findById(id: string, organizationId: string): Promise<Department | null> {
+    return prisma.department.findFirst({ where: { id, organizationId, deletedAt: null } });
+  }
+
+  async findByName(organizationId: string, name: string): Promise<Department | null> {
+    return prisma.department.findFirst({
+      where: { organizationId, name, deletedAt: null },
+    });
+  }
+
+  async findByOrganizationId(organizationId: string): Promise<Department[]> {
+    const rows = await prisma.department.findMany({
+      where: { organizationId, deletedAt: null },
+      include: this.withCounts,
+      orderBy: { name: 'asc' },
+    });
+    return rows.map((d: any) => ({
+      ...d,
+      counts: {
+        workers: d._count?.workers ?? 0,
+        tasks: d._count?.tasks ?? 0,
+        shifts: d._count?.shifts ?? 0,
+      },
+    }));
+  }
+
+  async findLegacyWorkerNames(organizationId: string): Promise<string[]> {
+    const rows = await prisma.worker.findMany({
+      where: { organizationId, deletedAt: null, department: { not: null } },
+      distinct: ['department'],
+      select: { department: true },
+      orderBy: { department: 'asc' },
+    });
+    return rows.map((r: any) => r.department).filter(Boolean);
+  }
+
+  async create(data: Omit<Department, 'id' | 'createdAt' | 'updatedAt' | 'counts'>): Promise<Department> {
+    return prisma.department.create({ data });
+  }
+
+  async update(id: string, data: Partial<Department>): Promise<Department> {
+    return prisma.department.update({ where: { id }, data });
+  }
+
+  async delete(id: string): Promise<void> {
+    await prisma.department.delete({ where: { id } });
+  }
+
+  async countUsage(departmentId: string): Promise<number> {
+    const [workers, tasks, shifts] = await Promise.all([
+      prisma.worker.count({ where: { departmentId } }),
+      prisma.task.count({ where: { departmentId } }),
+      prisma.shift.count({ where: { departmentId } }),
+    ]);
+    return workers + tasks + shifts;
+  }
+}
+
+@Injectable()
 export class PrismaWorkerRepository implements WorkerRepository {
   private whereFor(organizationId: string, filters?: WorkerListFilters): any {
     const where: any = { organizationId };
     if (filters?.status) where.status = filters.status;
     if (filters?.farmId) where.farmId = filters.farmId;
     if (filters?.department) where.department = filters.department;
+    if (filters?.departmentId) where.departmentId = filters.departmentId;
     if (filters?.position) where.position = filters.position;
     if (filters?.search) {
       const s = filters.search;
@@ -162,20 +230,17 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
 
 @Injectable()
 export class PrismaTaskRepository implements TaskRepository {
-  private whereFor(organizationId: string, filters?: {
-    status?: string;
-    priority?: string;
-    assignedToId?: string;
-    assignedToIds?: string[];
-    farmId?: string;
-    search?: string;
-  }): any {
+  private whereFor(organizationId: string, filters?: TaskListFilters): any {
     const where: any = { organizationId };
     if (filters?.status) where.status = filters.status;
     if (filters?.priority) where.priority = filters.priority;
     if (filters?.assignedToId) where.assignedToId = filters.assignedToId;
     if (filters?.assignedToIds?.length) where.assignedToId = { in: filters.assignedToIds };
     if (filters?.farmId) where.farmId = filters.farmId;
+    if (filters?.departmentId) where.departmentId = filters.departmentId;
+    // Record panels query by the module key + row id the task is linked to.
+    if (filters?.linkedModule) where.linkedModule = filters.linkedModule;
+    if (filters?.linkedRecordId) where.linkedRecordId = filters.linkedRecordId;
     if (filters?.search) {
       where.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },
@@ -189,14 +254,7 @@ export class PrismaTaskRepository implements TaskRepository {
     return prisma.task.findFirst({ where: { id, organizationId } });
   }
 
-  async findByOrganizationId(organizationId: string, filters?: {
-    status?: string;
-    priority?: string;
-    assignedToId?: string;
-    assignedToIds?: string[];
-    farmId?: string;
-    search?: string;
-  }): Promise<Task[]> {
+  async findByOrganizationId(organizationId: string, filters?: TaskListFilters): Promise<Task[]> {
     return prisma.task.findMany({
       where: this.whereFor(organizationId, filters),
       orderBy: [
@@ -207,14 +265,7 @@ export class PrismaTaskRepository implements TaskRepository {
     });
   }
 
-  async findManyWithCount(organizationId: string, filters: {
-    status?: string;
-    priority?: string;
-    assignedToId?: string;
-    assignedToIds?: string[];
-    farmId?: string;
-    search?: string;
-  } | undefined, page: number, limit: number): Promise<{ rows: Task[]; total: number }> {
+  async findManyWithCount(organizationId: string, filters: TaskListFilters | undefined, page: number, limit: number): Promise<{ rows: Task[]; total: number }> {
     const where = this.whereFor(organizationId, filters);
     const [rows, total] = await Promise.all([
       prisma.task.findMany({
@@ -260,9 +311,14 @@ export class PrismaShiftRepository implements ShiftRepository {
     return prisma.shift.findFirst({ where: { id, organizationId } });
   }
 
-  async findByOrganizationId(organizationId: string): Promise<Shift[]> {
+  async findByOrganizationId(
+    organizationId: string,
+    filters?: { departmentId?: string }
+  ): Promise<Shift[]> {
+    const where: any = { organizationId };
+    if (filters?.departmentId) where.departmentId = filters.departmentId;
     return prisma.shift.findMany({
-      where: { organizationId },
+      where,
       include: { _count: { select: { assignments: true } } },
       orderBy: { name: 'asc' },
     });

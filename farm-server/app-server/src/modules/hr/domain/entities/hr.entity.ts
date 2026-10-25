@@ -1,3 +1,14 @@
+export interface Department {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  /** Present on list responses only (see HrApplicationService.getDepartments). */
+  counts?: { workers: number; tasks: number; shifts: number };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Worker {
   id: string;
   organizationId: string;
@@ -9,7 +20,9 @@ export interface Worker {
   email?: string | null;
   phone?: string | null;
   position: string;
+  /** Denormalised name, kept in step with departmentId. */
   department?: string | null;
+  departmentId?: string | null;
   hireDate?: Date | null;
   status: string;
   payRate?: number | null;
@@ -51,6 +64,11 @@ export interface Task {
   createdById: string | null;
   createdByName: string | null;
   farmId: string | null;
+  departmentId: string | null;
+  /** Farm-module record this task was raised against; null = unlinked. */
+  linkedModule: string | null;
+  linkedRecordId: string | null;
+  linkedRecordName: string | null;
   dueDate: Date | null;
   completedAt: Date | null;
   isRecurring: boolean;
@@ -70,6 +88,7 @@ export interface Shift {
   daysOfWeek: string[];
   color: string;
   isActive: boolean;
+  departmentId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

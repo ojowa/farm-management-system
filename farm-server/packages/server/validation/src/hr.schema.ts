@@ -24,6 +24,20 @@ const clockTime = z.string().min(1, 'Time must be HH:MM');
 
 const timeOfDay = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, 'Time must be HH:MM');
 
+// Farm-module records a task can be raised against (Task.linkedModule). The
+// id/name pair travels together — see HrApplicationService.normaliseLink.
+const linkedModule = z.enum([
+  'farm',
+  'field',
+  'crop',
+  'livestock',
+  'poultry',
+  'aquaculture',
+  'equipment',
+  'inventory',
+  'contract',
+]);
+
 // ── Tasks ────────────────────────────────────────────────────────────────
 
 export const createTaskSchema = z.object({
@@ -34,6 +48,10 @@ export const createTaskSchema = z.object({
   assignedToId: z.string().optional().nullable(),
   assignedToName: z.string().optional().nullable(),
   farmId: z.string().optional().nullable(),
+  departmentId: z.string().optional().nullable(),
+  linkedModule: linkedModule.optional().nullable(),
+  linkedRecordId: z.string().optional().nullable(),
+  linkedRecordName: z.string().optional().nullable(),
   dueDate: dateString.optional().nullable(),
   isRecurring: z.boolean().optional(),
   recurrenceRule: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional().nullable(),
@@ -47,6 +65,10 @@ export const updateTaskSchema = z.object({
   assignedToId: z.string().optional().nullable(),
   assignedToName: z.string().optional().nullable(),
   farmId: z.string().optional().nullable(),
+  departmentId: z.string().optional().nullable(),
+  linkedModule: linkedModule.optional().nullable(),
+  linkedRecordId: z.string().optional().nullable(),
+  linkedRecordName: z.string().optional().nullable(),
   dueDate: dateString.optional().nullable(),
   isRecurring: z.boolean().optional(),
   recurrenceRule: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).optional().nullable(),
@@ -91,6 +113,7 @@ export const createShiftSchema = z.object({
   endTime: timeOfDay,
   color: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
+  departmentId: z.string().optional().nullable(),
   // `days` is the legacy/mobile alias for daysOfWeek.
   daysOfWeek: z.array(z.string().max(3)).optional(),
   days: z.array(z.string().max(3)).optional(),
@@ -102,6 +125,7 @@ export const updateShiftSchema = z.object({
   endTime: timeOfDay.optional(),
   color: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
+  departmentId: z.string().optional().nullable(),
   daysOfWeek: z.array(z.string().max(3)).optional(),
   days: z.array(z.string().max(3)).optional(),
 });

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import {
+  DepartmentsController,
   WorkerController,
   AttendanceController,
   TasksController,
@@ -14,6 +15,7 @@ import {
 import { HrApplicationService } from './application/services/hr.service';
 import { HrEventService } from './infrastructure/messaging/hr.event.service';
 import {
+  PrismaDepartmentRepository,
   PrismaWorkerRepository,
   PrismaAttendanceRepository,
   PrismaTaskRepository,
@@ -34,6 +36,7 @@ import { NotificationModule } from '../notification/notification.module';
 @Module({
   imports: [RealtimeModule, EmailModule, NotificationModule],
   controllers: [
+    DepartmentsController,
     WorkerController,
     AttendanceController,
     TasksController,
@@ -48,6 +51,7 @@ import { NotificationModule } from '../notification/notification.module';
   providers: [
     HrApplicationService,
     HrEventService,
+    { provide: 'DepartmentRepository', useClass: PrismaDepartmentRepository },
     { provide: 'WorkerRepository', useClass: PrismaWorkerRepository },
     { provide: 'AttendanceRepository', useClass: PrismaAttendanceRepository },
     { provide: 'TaskRepository', useClass: PrismaTaskRepository },

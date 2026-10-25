@@ -6,6 +6,7 @@ import { EmailService } from '../../../notification/modules/email/email.service'
 import { NotificationApplicationService } from '../../../notification/application/services/notification.service';
 import { CreateNotificationRequest } from '../../../notification/presentation/dto/notification.dto';
 import {
+  DepartmentRepository,
   WorkerRepository,
   AttendanceRepository,
   TaskRepository,
@@ -18,8 +19,9 @@ import {
   MessageRecipientRepository,
   CorrespondenceRepository,
   CorrespondenceAttachmentRepository,
+  TaskListFilters,
 } from '../../domain/repositories/hr.repository';
-import { Worker, Task, Shift } from '../../domain/entities/hr.entity';
+import { Department, Worker, Task, Shift } from '../../domain/entities/hr.entity';
 import { HrEventService } from '../../infrastructure/messaging/hr.event.service';
 
 /** Cryptographically-strong temporary password (~62 bits, 12 chars). */
@@ -31,7 +33,7 @@ function generateTempPassword(): string {
 export class HrApplicationService {
   private readonly logger = new Logger(HrApplicationService.name);
 
-  constructor(@Inject('WorkerRepository') private readonly workerRepo: WorkerRepository, @Inject('AttendanceRepository') private readonly attendanceRepo: AttendanceRepository, @Inject('TaskRepository') private readonly taskRepo: TaskRepository, @Inject('ShiftRepository') private readonly shiftRepo: ShiftRepository, @Inject('ShiftAssignmentRepository') private readonly shiftAssignmentRepo: ShiftAssignmentRepository, @Inject('LeaveTypeRepository') private readonly leaveTypeRepo: LeaveTypeRepository, @Inject('LeaveRequestRepository') private readonly leaveRequestRepo: LeaveRequestRepository, @Inject('LeaveBalanceRepository') private readonly leaveBalanceRepo: LeaveBalanceRepository, @Inject('MessageRepository') private readonly messageRepo: MessageRepository, @Inject('MessageRecipientRepository') private readonly messageRecipientRepo: MessageRecipientRepository, @Inject('CorrespondenceRepository') private readonly correspondenceRepo: CorrespondenceRepository, @Inject('CorrespondenceAttachmentRepository') private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository, 
+  constructor(@Inject('DepartmentRepository') private readonly departmentRepo: DepartmentRepository, @Inject('WorkerRepository') private readonly workerRepo: WorkerRepository, @Inject('AttendanceRepository') private readonly attendanceRepo: AttendanceRepository, @Inject('TaskRepository') private readonly taskRepo: TaskRepository, @Inject('ShiftRepository') private readonly shiftRepo: ShiftRepository, @Inject('ShiftAssignmentRepository') private readonly shiftAssignmentRepo: ShiftAssignmentRepository, @Inject('LeaveTypeRepository') private readonly leaveTypeRepo: LeaveTypeRepository, @Inject('LeaveRequestRepository') private readonly leaveRequestRepo: LeaveRequestRepository, @Inject('LeaveBalanceRepository') private readonly leaveBalanceRepo: LeaveBalanceRepository, @Inject('MessageRepository') private readonly messageRepo: MessageRepository, @Inject('MessageRecipientRepository') private readonly messageRecipientRepo: MessageRecipientRepository, @Inject('CorrespondenceRepository') private readonly correspondenceRepo: CorrespondenceRepository, @Inject('CorrespondenceAttachmentRepository') private readonly correspondenceAttachmentRepo: CorrespondenceAttachmentRepository, 
     private readonly eventService: HrEventService,
     private readonly emailService: EmailService,
     private readonly notificationService: NotificationApplicationService,
@@ -259,20 +261,126 @@ export class HrApplicationService {
     return worker;
   }
 
+  // ── Departments ─────────────────────────────────────────────────────────
+
+  /** Org departments, each with how many workers/tasks/shifts use it. */
+  async getDepartments(organizationId: string): Promise<Department[]> {
+    return this.departmentRepo.findByOrganizationId(organizationId);
+  }
+
+  async createDepartment(organizationId: string, data: { name: string; description?: string | null }) {
+    const name = data.name?.trim();
+    if (!name) throw new BadRequestException('Name is required');
+    const existing = await this.departmentRepo.findByName(organizationId, name);
+    if (existing) throw new ConflictException('Department already exists');
+    const department = await this.departmentRepo.create({
+      organizationId,
+      name,
+      description: data.description?.trim() || null,
+    });
+    await this.eventService.emitHrEvent('created', { entity: 'department', data: department });
+    return department;
+  }
+
+  async updateDepartment(id: string, organizationId: string, data: Partial<{ name: string; description: string | null }>) {
+    const department = await this.departmentRepo.findById(id, organizationId);
+    if (!department) throw new NotFoundException('Department not found');
+    if (data.name !== undefined) {
+      const name = data.name.trim();
+      if (!name) throw new BadRequestException('Name is required');
+      const clash = await this.departmentRepo.findByName(organizationId, name);
+      if (clash && clash.id !== id) throw new ConflictException('Department already exists');
+      // Rename in step with the denormalised Worker.department column so
+      // name-based filters and CSV exports follow the change.
+      await prisma.worker.updateMany({
+        where: { organizationId, department: department.name, departmentId: id },
+        data: { department: name },
+      });
+    }
+    const updated = await this.departmentRepo.update(id, {
+      ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+    });
+    await this.eventService.emitHrEvent('updated', { entity: 'department', data: updated });
+    return updated;
+  }
+
+  async deleteDepartment(id: string, organizationId: string) {
+    const department = await this.departmentRepo.findById(id, organizationId);
+    if (!department) throw new NotFoundException('Department not found');
+    const inUse = await this.departmentRepo.countUsage(id);
+    if (inUse > 0) {
+      throw new ConflictException('Cannot delete a department still assigned to workers, tasks or shifts');
+    }
+    await this.departmentRepo.delete(id);
+    await this.eventService.emitHrEvent('deleted', { entity: 'department', id });
+    return { id, deleted: true };
+  }
+
   /**
-   * Distinct department names of the organization's live workers — the source
-   * for filter chips/datalists. Deriving these from loaded pages only (the
-   * previous client-side approach) missed departments beyond page 1, and the
-   * column is free text so no static list can be complete.
+   * Resolve a department reference from either half of the pair:
+   *  - `departmentId` (new clients) is validated against the organization;
+   *  - a bare `department` name (every client shipped before this entity
+   *    existed) is looked up and, if new, created on the spot — so the
+   *    free-text column normalises itself into Department rows over time
+   *    instead of leaving two sources of truth.
+   * Both null/empty clears the link.
+   */
+  private async resolveDepartment(
+    organizationId: string,
+    departmentId?: string | null,
+    name?: string | null
+  ): Promise<{ departmentId: string | null; department: string | null }> {
+    if (departmentId) {
+      const department = await this.departmentRepo.findById(departmentId, organizationId);
+      if (!department) throw new BadRequestException('Unknown department');
+      return { departmentId: department.id, department: department.name };
+    }
+    const trimmed = name?.trim();
+    if (!trimmed) return { departmentId: null, department: null };
+    const existing = await this.departmentRepo.findByName(organizationId, trimmed);
+    if (existing) return { departmentId: existing.id, department: existing.name };
+    const created = await this.departmentRepo.create({
+      organizationId,
+      name: trimmed,
+      description: null,
+    });
+    return { departmentId: created.id, department: created.name };
+  }
+
+  /**
+   * The linked-record triple travels together: a module key without an id (or
+   * an id without a module) would leave record panels unable to query the
+   * task, so anything short of a complete pair is stored as no link at all.
+   */
+  private static normaliseLink(data: {
+    linkedModule?: string | null;
+    linkedRecordId?: string | null;
+    linkedRecordName?: string | null;
+  }): { linkedModule: string | null; linkedRecordId: string | null; linkedRecordName: string | null } {
+    if (!data.linkedModule || !data.linkedRecordId) {
+      return { linkedModule: null, linkedRecordId: null, linkedRecordName: null };
+    }
+    return {
+      linkedModule: data.linkedModule,
+      linkedRecordId: data.linkedRecordId,
+      linkedRecordName: data.linkedRecordName?.trim() || null,
+    };
+  }
+
+  /**
+   * Distinct department names for filter chips/datalists: the Department
+   * table, unioned with any name still only present on the denormalised
+   * Worker.department column (rows written before the entity existed that
+   * the migration backfill could not catch, e.g. across organizations).
    */
   async getWorkerDepartments(organizationId: string): Promise<string[]> {
-    const rows = await prisma.worker.findMany({
-      where: { organizationId, deletedAt: null, department: { not: null } },
-      distinct: ['department'],
-      select: { department: true },
-      orderBy: { department: 'asc' },
-    });
-    return rows.map((r) => r.department as string).filter(Boolean);
+    const [departments, legacy] = await Promise.all([
+      this.departmentRepo.findByOrganizationId(organizationId),
+      this.departmentRepo.findLegacyWorkerNames(organizationId),
+    ]);
+    const names = [...departments.map((d) => d.name), ...legacy].filter(Boolean);
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b));
   }
 
   async getAllWorkers(
@@ -282,15 +390,24 @@ export class HrApplicationService {
       status?: string;
       farmId?: string;
       department?: string;
+      departmentId?: string;
       position?: string;
       page?: number | string;
       limit?: number | string;
     }
   ) {
-    const filters: { search?: string; status?: string; farmId?: string; department?: string; position?: string } = {};
+    const filters: {
+      search?: string;
+      status?: string;
+      farmId?: string;
+      department?: string;
+      departmentId?: string;
+      position?: string;
+    } = {};
     if (opts?.search) filters.search = String(opts.search).trim();
     if (opts?.farmId) filters.farmId = String(opts.farmId);
     if (opts?.department) filters.department = String(opts.department);
+    if (opts?.departmentId) filters.departmentId = String(opts.departmentId);
     if (opts?.position) filters.position = String(opts.position);
     if (opts?.status) {
       const status = String(opts.status).toUpperCase();
@@ -329,6 +446,7 @@ export class HrApplicationService {
     phone?: string;
     position: string;
     department?: string;
+    departmentId?: string;
     hireDate?: Date;
     roleId?: string;
     payRate?: number;
@@ -392,7 +510,9 @@ export class HrApplicationService {
     }
 
     // The Worker row mirrors the profile and points at the account; roleId
-    // and userId from the raw body never reach it directly.
+    // and userId from the raw body never reach it directly. The department
+    // arrives as an id or a name — resolveDepartment normalises either.
+    const department = await this.resolveDepartment(organizationId, data.departmentId, data.department);
     const worker = await this.workerRepo.create({
       organizationId,
       farmId: data.farmId,
@@ -403,7 +523,8 @@ export class HrApplicationService {
       email,
       phone: data.phone || null,
       position: data.position,
-      department: data.department || null,
+      department: department.department,
+      departmentId: department.departmentId,
       hireDate: data.hireDate,
       status: 'ACTIVE',
       payRate: data.payRate ?? null,
@@ -438,6 +559,7 @@ export class HrApplicationService {
     phone: string;
     position: string;
     department: string;
+    departmentId: string;
     status: string;
     farmId: string;
     hireDate: string;
@@ -483,7 +605,6 @@ export class HrApplicationService {
         'email',
         'phone',
         'position',
-        'department',
         'status',
         'payRate',
         'payType',
@@ -493,6 +614,20 @@ export class HrApplicationService {
         'emergencyContactRelation',
       ] as const
     ).forEach(pick);
+
+    // Department is the one field that arrives in two shapes: an id, a name
+    // (legacy free text) or a clear. Resolve it so Worker.departmentId and
+    // Worker.department can never disagree; `departmentId` wins when both
+    // are sent.
+    if (data.departmentId !== undefined || data.department !== undefined) {
+      const department = await this.resolveDepartment(
+        organizationId,
+        data.departmentId ?? undefined,
+        data.department ?? undefined
+      );
+      allowed.departmentId = department.departmentId;
+      allowed.department = department.department;
+    }
     if (data.farmId !== undefined) allowed.farmId = data.farmId;
     if (data.hireDate !== undefined) allowed.hireDate = data.hireDate ? new Date(data.hireDate) : null;
     if (data.terminationDate !== undefined) {
@@ -900,6 +1035,9 @@ export class HrApplicationService {
     priority?: string;
     assignedToId?: string;
     farmId?: string;
+    departmentId?: string;
+    linkedModule?: string;
+    linkedRecordId?: string;
     search?: string;
     page?: number | string;
     limit?: number | string;
@@ -998,12 +1136,23 @@ export class HrApplicationService {
     assignedToId?: string;
     assignedToName?: string;
     farmId?: string;
+    departmentId?: string;
+    linkedModule?: string | null;
+    linkedRecordId?: string | null;
+    linkedRecordName?: string | null;
     dueDate?: string;
     isRecurring?: boolean;
     recurrenceRule?: string;
   }) {
     const { title, description, priority, status, assignedToId, assignedToName, farmId, dueDate, isRecurring, recurrenceRule } = data;
     if (!title) throw new BadRequestException('Title is required');
+
+    // Department: only the id travels with a task (no denormalised name
+    // column), but it is still validated against this organization.
+    const departmentId = data.departmentId
+      ? (await this.resolveDepartment(organizationId, data.departmentId)).departmentId
+      : null;
+    const link = HrApplicationService.normaliseLink(data);
 
     const task = await this.taskRepo.create({
       organizationId,
@@ -1016,6 +1165,10 @@ export class HrApplicationService {
       createdById: user?.sub || null,
       createdByName: user?.email || null,
       farmId: farmId || null,
+      departmentId,
+      linkedModule: link.linkedModule,
+      linkedRecordId: link.linkedRecordId,
+      linkedRecordName: link.linkedRecordName,
       dueDate: dueDate ? new Date(dueDate) : null,
       completedAt: null,
       isRecurring: Boolean(isRecurring),
@@ -1048,6 +1201,10 @@ export class HrApplicationService {
     assignedToId?: string;
     assignedToName?: string;
     farmId?: string;
+    departmentId?: string | null;
+    linkedModule?: string | null;
+    linkedRecordId?: string | null;
+    linkedRecordName?: string | null;
     dueDate?: string;
     isRecurring?: boolean;
     recurrenceRule?: string;
@@ -1084,6 +1241,28 @@ export class HrApplicationService {
     if (assignedToId !== undefined) updateData.assignedToId = assignedToId || null;
     if (assignedToName !== undefined) updateData.assignedToName = assignedToName || null;
     if (farmId !== undefined) updateData.farmId = farmId || null;
+    if (data.departmentId !== undefined) {
+      updateData.departmentId = data.departmentId
+        ? (await this.resolveDepartment(organizationId, data.departmentId)).departmentId
+        : null;
+    }
+    // Any one of the three fields arriving re-normalises the whole triple
+    // against what is already stored, so a partial form update (or a clear)
+    // can never leave module and id disagreeing.
+    if (
+      data.linkedModule !== undefined ||
+      data.linkedRecordId !== undefined ||
+      data.linkedRecordName !== undefined
+    ) {
+      const link = HrApplicationService.normaliseLink({
+        linkedModule: data.linkedModule !== undefined ? data.linkedModule : existing.linkedModule,
+        linkedRecordId: data.linkedRecordId !== undefined ? data.linkedRecordId : existing.linkedRecordId,
+        linkedRecordName: data.linkedRecordName !== undefined ? data.linkedRecordName : existing.linkedRecordName,
+      });
+      updateData.linkedModule = link.linkedModule;
+      updateData.linkedRecordId = link.linkedRecordId;
+      updateData.linkedRecordName = link.linkedRecordName;
+    }
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
     if (isRecurring !== undefined) updateData.isRecurring = Boolean(isRecurring);
     if (recurrenceRule !== undefined) updateData.recurrenceRule = recurrenceRule || null;
@@ -1160,6 +1339,12 @@ export class HrApplicationService {
         createdById: existing.createdById,
         createdByName: existing.createdByName,
         farmId: existing.farmId,
+        // The next occurrence stays on the same record and department — a
+        // recurring "Inspect pond A" must not drift off its pond.
+        departmentId: existing.departmentId,
+        linkedModule: existing.linkedModule,
+        linkedRecordId: existing.linkedRecordId,
+        linkedRecordName: existing.linkedRecordName,
         dueDate: nextDue,
         completedAt: null,
         isRecurring: true,
@@ -1308,8 +1493,8 @@ export class HrApplicationService {
   }
 
   // Shift operations
-  async getShifts(organizationId: string) {
-    return this.shiftRepo.findByOrganizationId(organizationId);
+  async getShifts(organizationId: string, filters?: { departmentId?: string }) {
+    return this.shiftRepo.findByOrganizationId(organizationId, filters);
   }
 
   async createShift(organizationId: string, data: {
@@ -1317,6 +1502,7 @@ export class HrApplicationService {
     startTime: string;
     endTime: string;
     color?: string;
+    departmentId?: string | null;
     daysOfWeek?: string[];
     days?: string[]; // legacy/mobile alias
   }) {
@@ -1328,6 +1514,12 @@ export class HrApplicationService {
     const existing = await this.shiftRepo.findByName(organizationId, name.trim());
     if (existing) throw new ConflictException('Shift already exists');
 
+    // Optional: a shift may belong to a department (the Maintenance night
+    // shift, the Poultry morning shift) so the roster can filter by one.
+    const departmentId = data.departmentId
+      ? (await this.resolveDepartment(organizationId, data.departmentId)).departmentId
+      : null;
+
     const shift = await this.shiftRepo.create({
       organizationId,
       name: name.trim(),
@@ -1336,6 +1528,7 @@ export class HrApplicationService {
       daysOfWeek: HrApplicationService.normalizeDays(data.daysOfWeek ?? data.days),
       color: color || '#3B82F6',
       isActive: true,
+      departmentId,
     });
     await this.eventService.emitHrEvent('created', { entity: 'shift', data: shift });
     return shift;
@@ -1347,6 +1540,7 @@ export class HrApplicationService {
     endTime: string;
     color: string;
     isActive: boolean;
+    departmentId: string | null;
     daysOfWeek: string[];
     days: string[];
   }>) {
@@ -1359,6 +1553,11 @@ export class HrApplicationService {
     if (data.endTime !== undefined) updateData.endTime = data.endTime;
     if (data.color !== undefined) updateData.color = data.color;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.departmentId !== undefined) {
+      updateData.departmentId = data.departmentId
+        ? (await this.resolveDepartment(organizationId, data.departmentId)).departmentId
+        : null;
+    }
     if (data.daysOfWeek !== undefined || data.days !== undefined) {
       updateData.daysOfWeek = HrApplicationService.normalizeDays(data.daysOfWeek ?? data.days);
     }

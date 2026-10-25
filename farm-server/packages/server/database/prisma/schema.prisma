@@ -580,6 +580,27 @@ model BudgetCategory {
   @@index([budgetId])
 }
 
+// ── HR: Departments ─────────────────────────────────────────
+// A department is an org-level grouping that outlives any single worker.
+// Worker.department keeps the free-text name denormalised (older clients and
+// CSV exports still read it) while departmentId is the real reference.
+model Department {
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+
+  workers Worker[]
+  tasks   Task[]
+  shifts  Shift[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([organizationId])
+}
+
 model Worker {
   id             String @id @default(uuid())
   organizationId String
@@ -592,7 +613,7 @@ model Worker {
   email      String?
   phone      String?
   position   String
-  department String?
+  department String? // denormalised name — kept in step with departmentId
   hireDate   DateTime?
   status     WorkerStatus @default(ACTIVE)
 
@@ -607,6 +628,9 @@ model Worker {
   emergencyContactPhone    String?
   emergencyContactRelation String?
 
+  departmentId String?
+  departmentRef Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
   user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -620,6 +644,7 @@ model Worker {
   @@index([farmId])
   @@index([userId])
   @@index([status])
+  @@index([departmentId])
 }
 
 model AuditLog {
@@ -853,6 +878,17 @@ model Task {
   createdById    String?
   createdByName  String?
 
+  // Which department the work belongs to (a grouping, not the assignee).
+  departmentId String?
+
+  // Cross-module link: the farm-module record this task was raised against.
+  // Polymorphic on purpose — one triple links any module (crop cycle, animal,
+  // poultry house, pond, equipment, …) without a nullable FK per module, and
+  // the denormalised name keeps the task readable after the record is gone.
+  linkedModule     String? // farm | field | crop | livestock | poultry | aquaculture | equipment | inventory | contract
+  linkedRecordId   String?
+  linkedRecordName String?
+
   dueDate     DateTime?
   completedAt DateTime?
 
@@ -865,6 +901,8 @@ model Task {
   comments    TaskComment[]
   attachments TaskAttachment[]
 
+  departmentRef Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -874,6 +912,8 @@ model Task {
   @@index([status])
   @@index([dueDate])
   @@index([farmId])
+  @@index([departmentId])
+  @@index([linkedModule, linkedRecordId])
 }
 
 model TaskComment {
@@ -987,13 +1027,19 @@ model Shift {
   color          String? @default("#3B82F6")
   isActive       Boolean @default(true)
 
-  assignments ShiftAssignment[]
+  // Optional department this shift is run for (e.g. the night shift is the
+  // Maintenance department's) — lets the roster filter by department.
+  departmentId String?
+
+  assignments    ShiftAssignment[]
+  departmentRef Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([organizationId])
+  @@index([departmentId])
 }
 
 model ShiftAssignment {

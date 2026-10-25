@@ -64,6 +64,7 @@ export class AuditLogInterceptor implements NestInterceptor {
     if (segments.includes('crops')) return 'crop';
     if (segments.includes('livestock')) return 'livestock';
     if (segments.includes('workers')) return 'worker';
+    if (segments.includes('departments')) return 'department';
     if (segments.includes('expenses')) return 'expense';
     return undefined;
   }
