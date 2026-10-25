@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { NavTabs } from '@/components/NavTabs';
+import { POULTRY_TABS } from '@/lib/poultryTabs';
 import { Bird, Home, Egg, Syringe, Skull, Pill, DollarSign, X } from 'lucide-react';
 import { farmsAPI } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
@@ -50,6 +52,8 @@ export default function PoultryPage() {
           </button>
         </div>
       )}
+
+      <NavTabs ariaLabel="Poultry section" tabs={POULTRY_TABS} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sections.map((s) => (

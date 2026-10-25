@@ -31,7 +31,12 @@ export function NavTabs({ tabs, ariaLabel = 'Section navigation' }: { tabs: NavT
   );
 
   return (
-    <nav className="mb-6 flex gap-4 border-b border-gray-200 dark:border-gray-700" aria-label={ariaLabel}>
+    // flex-wrap: sections with many tabs (Poultry ships nine) wrap onto a
+    // second row instead of overflowing the content column on narrow screens.
+    <nav
+      className="mb-6 flex flex-wrap gap-4 border-b border-gray-200 dark:border-gray-700"
+      aria-label={ariaLabel}
+    >
       {tabs.map((t) => {
         const active = t.href === activeHref;
         return (

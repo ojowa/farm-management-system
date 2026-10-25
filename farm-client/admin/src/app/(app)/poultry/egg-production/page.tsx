@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { NavTabs } from '@/components/NavTabs';
+import { POULTRY_TABS } from '@/lib/poultryTabs';
 import Link from 'next/link';
 import {
   Plus,
@@ -187,6 +189,8 @@ export default function EggProductionPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Poultry section" tabs={POULTRY_TABS} />
 
       <Card>
         <CardContent className="p-4">
