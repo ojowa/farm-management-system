@@ -34,4 +34,22 @@ describe('POULTRY_TABS', () => {
 
     expect([...POULTRY_TABS.map((t) => t.href)].sort()).toEqual(['/poultry', ...sections].sort());
   });
+
+  // A page can reference the tab list and still never draw it (imported but
+  // not rendered, or dropped behind an early return in a refactor). Assert the
+  // bar is actually in the JSX of every top-level page, not just that its
+  // href resolves.
+  it('renders the shared bar on every top-level poultry page', () => {
+    const BAR = '<NavTabs ariaLabel="Poultry section" tabs={POULTRY_TABS} />';
+
+    for (const { label, href } of POULTRY_TABS) {
+      const file = hrefToFile(href);
+      const source = fs.readFileSync(file, 'utf8');
+      expect(source.includes(BAR), `${label} (${href}) does not render the tab bar`).toBe(true);
+      expect(
+        source.includes("from '@/lib/poultryTabs'"),
+        `${label} (${href}) does not import POULTRY_TABS`
+      ).toBe(true);
+    }
+  });
 });
