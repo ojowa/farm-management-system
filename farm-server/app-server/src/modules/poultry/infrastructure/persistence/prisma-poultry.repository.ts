@@ -39,6 +39,27 @@ function liveFlockScope(organizationId: string) {
     pen: { poultryHouse: { deletedAt: null } },
   };
 }
+
+/**
+ * Flocks come back with their display names attached — breed, pen and farm
+ * (plus the pen's house) — because the flat ids alone leave every detail screen
+ * showing `—`. All three relations live inside the same org-scoped query as the
+ * flock itself, so the joins cannot widen what a caller may see.
+ */
+const FLOCK_INCLUDE = {
+  breed: { select: { id: true, name: true, birdType: true } },
+  pen: {
+    select: {
+      id: true,
+      name: true,
+      poultryHouseId: true,
+      farmId: true,
+      capacity: true,
+      poultryHouse: { select: { id: true, name: true, farmId: true, capacity: true } },
+    },
+  },
+  farm: { select: { id: true, name: true } },
+} as const;
 import {
   PoultryAggregateRepository,
   PoultryHouseFilter,
@@ -58,6 +79,7 @@ import {
   Pen,
   Breed,
   Flock,
+  FlockWrite,
   FeedingRecord,
   VaccinationRecord,
   MortalityRecord,
@@ -125,8 +147,16 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
 
   async findAllPens(filter: PenFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Pen>> {
     const skip = (page - 1) * limit;
+    // Pens resolve their farm through the owning house (Pen → House → Farm).
+    // Filtering on the relation rather than the denormalized `Pen.farmId`
+    // column keeps legacy rows — which may predate that column — correct.
+    const farmScope: Record<string, unknown> = {
+      organizationId: filter.organizationId,
+      deletedAt: null,
+    };
+    if (filter.farmId) farmScope.id = filter.farmId;
     const where: Record<string, unknown> = {
-      poultryHouse: { deletedAt: null, farm: { organizationId: filter.organizationId, deletedAt: null } },
+      poultryHouse: { deletedAt: null, farm: farmScope },
     };
     if (filter.poultryHouseId) where.poultryHouseId = filter.poultryHouseId;
     if (filter.name) where.name = { contains: filter.name, mode: 'insensitive' };
@@ -184,6 +214,7 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
   async findFlockById(id: string, organizationId: string): Promise<Flock | null> {
     return prisma.flock.findFirst({
       where: { id, ...liveFlockScope(organizationId) },
+      include: FLOCK_INCLUDE,
     }) as Promise<Flock | null>;
   }
 
@@ -221,17 +252,17 @@ export class PrismaPoultryRepository implements PoultryAggregateRepository {
     }
 
     const [data, total] = await Promise.all([
-      prisma.flock.findMany({ where, orderBy: safeOrderBy(sortBy, sortOrder, FLOCK_SORTABLE, 'createdAt'), skip, take: limit }),
+      prisma.flock.findMany({ where, orderBy: safeOrderBy(sortBy, sortOrder, FLOCK_SORTABLE, 'createdAt'), skip, take: limit, include: FLOCK_INCLUDE }),
       prisma.flock.count({ where }),
     ]);
     return { data: data as Flock[], total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async createFlock(data: Omit<Flock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flock> {
+  async createFlock(data: Omit<FlockWrite, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flock> {
     return prisma.flock.create({ data }) as Promise<Flock>;
   }
 
-  async updateFlock(id: string, data: Partial<Flock>): Promise<Flock> {
+  async updateFlock(id: string, data: Partial<FlockWrite>): Promise<Flock> {
     return prisma.flock.update({ where: { id }, data }) as Promise<Flock>;
   }
 

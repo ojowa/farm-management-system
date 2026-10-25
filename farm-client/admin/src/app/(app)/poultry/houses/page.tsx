@@ -13,7 +13,7 @@ import {
   Trash2,
   Eye,
 } from 'lucide-react';
-import { poultryHousesAPI, farmsAPI } from '@/lib/api';
+import { poultryHousesAPI, pensAPI, farmsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
-import { poultryHouseFormSchema } from '@/lib/validation';
+import { poultryHouseFormSchema, penFormSchema } from '@/lib/validation';
 
 interface PoultryHouse {
   id: string;
@@ -44,6 +44,13 @@ interface PoultryHouse {
   capacity?: number;
   status?: string;
   createdAt: string;
+}
+
+interface Pen {
+  id: string;
+  poultryHouseId: string;
+  name: string;
+  capacity?: number;
 }
 
 interface Farm {
@@ -66,6 +73,14 @@ export default function PoultryHousesPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  // Pens belong to houses, and houses are what this page manages — so pen
+  // creation lives here alongside house creation (mirrors the mobile
+  // "Houses & Pens" screen, which manages both in one place).
+  const [showAddPen, setShowAddPen] = useState(false);
+  const [penForm, setPenForm] = useState({ poultryHouseId: '', name: '', capacity: '' });
+  const [penFormErrors, setPenFormErrors] = useState<Record<string, string>>({});
+  const [penSaving, setPenSaving] = useState(false);
+
   const {
     data: housesData,
     loading,
@@ -82,8 +97,16 @@ export default function PoultryHousesPage() {
     cacheTime: 60_000,
   });
 
+  // The table only shows one page of houses; the pen form needs every house.
+  const { data: allHousesData } = useFetch<{ data: PoultryHouse[] }>(
+    'poultry-houses-all',
+    () => poultryHousesAPI.list({ limit: 1000 }),
+    { cacheTime: 60_000 }
+  );
+
   const houses = housesData?.data || [];
   const farms = farmsData?.data || [];
+  const allHouses = allHousesData?.data || [];
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -150,6 +173,41 @@ export default function PoultryHousesPage() {
     }
   };
 
+  const handleAddPen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const result = penFormSchema.safeParse(penForm);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        errors[String(issue.path[0])] = issue.message;
+      });
+      setPenFormErrors(errors);
+      return;
+    }
+    setPenFormErrors({});
+    setPenSaving(true);
+    try {
+      await pensAPI.create({
+        poultryHouseId: penForm.poultryHouseId,
+        name: penForm.name.trim(),
+        capacity: Number(penForm.capacity),
+      });
+      toast({ type: 'success', title: 'Pen created successfully' });
+      setShowAddPen(false);
+      setPenForm({ poultryHouseId: '', name: '', capacity: '' });
+      clearFetchCache('poultry-houses');
+      refetch();
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to create pen',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setPenSaving(false);
+    }
+  };
+
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This action cannot be undone.`)) return;
     try {
@@ -174,10 +232,16 @@ export default function PoultryHousesPage() {
           <p className="text-muted-foreground">Manage your poultry houses</p>
         </div>
         {!readOnly && (
-          <Button onClick={() => setShowAdd(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add House
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setShowAddPen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Pen
+            </Button>
+            <Button onClick={() => setShowAdd(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add House
+            </Button>
+          </div>
         )}
       </div>
 
@@ -386,6 +450,69 @@ export default function PoultryHousesPage() {
             </Button>
             <Button type="submit" loading={saving}>
               Create House
+            </Button>
+          </div>
+          </form>
+        </Dialog>
+      )}
+
+      {!readOnly && (
+        <Dialog open={showAddPen} onOpenChange={setShowAddPen} title="Add Pen">
+          <form onSubmit={handleAddPen} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Poultry House <span className="text-destructive">*</span>
+            </label>
+            <Select
+              placeholder="Select a poultry house"
+              options={allHouses.map((h) => {
+                const farm = farms.find((f) => f.id === h.farmId);
+                return { value: h.id, label: farm ? `${h.name} (${farm.name})` : h.name };
+              })}
+              value={penForm.poultryHouseId}
+              onChange={(e) => setPenForm({ ...penForm, poultryHouseId: e.target.value })}
+            />
+            {penFormErrors.poultryHouseId && (
+              <p className="text-sm text-destructive mt-1">{penFormErrors.poultryHouseId}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Pen Name <span className="text-destructive">*</span>
+            </label>
+            <Input
+              placeholder="Pen A"
+              value={penForm.name}
+              onChange={(e) => setPenForm({ ...penForm, name: e.target.value })}
+            />
+            {penFormErrors.name && (
+              <p className="text-sm text-destructive mt-1">{penFormErrors.name}</p>
+            )}
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Capacity (birds) <span className="text-destructive">*</span>
+            </label>
+            <Input
+              type="number"
+              placeholder="1000"
+              value={penForm.capacity}
+              onChange={(e) => setPenForm({ ...penForm, capacity: e.target.value })}
+            />
+            {penFormErrors.capacity && (
+              <p className="text-sm text-destructive mt-1">{penFormErrors.capacity}</p>
+            )}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddPen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={penSaving}>
+              Create Pen
             </Button>
           </div>
           </form>

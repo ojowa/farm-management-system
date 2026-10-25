@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -10,8 +10,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { poultryAPI, poultryHousesAPI, offlinePoultryAPI } from '@/modules/poultry';
-import type { Flock, Pen, Breed, PoultryHouse } from '@/modules/poultry';
+import { poultryAPI, offlinePoultryAPI } from '@/modules/poultry';
+import type { Flock, Pen, PoultryHouse } from '@/modules/poultry';
+import { PickerField } from '@/modules/poultry/FlockFormPickers';
+import {
+  fetchBreedOptions,
+  fetchHousesForFarm,
+  fetchPensForFarm,
+  fetchPensForHouse,
+  toHouseOptions,
+  toPenOptions,
+  unwrapList,
+  unwrapOne,
+  type NameOption,
+} from '@/modules/poultry/flockChain';
 import { farmsAPI } from '@/modules/farm';
 import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
 import { SelectField, SelectOption } from '@/core/ui/SelectField';
@@ -34,6 +46,8 @@ const styles = StyleSheet.create({
   backButton: { padding: 8 },
   backButtonText: { color: '#FFFFFF', fontSize: 16 },
   content: { paddingHorizontal: 20, paddingVertical: 16 },
+  formGroup: { marginBottom: 20 },
+  errorText: { color: colors.error, fontSize: 12, marginTop: 4 },
   submitButton: { marginTop: 20 },
 });
 
@@ -50,6 +64,7 @@ interface FormData {
   currentCount: string;
   arrivalDate: string;
   farmId: string;
+  houseId: string;
   penId: string;
   breedId: string;
   status: string;
@@ -61,39 +76,31 @@ interface FormErrors {
   currentCount?: string;
   arrivalDate?: string;
   farmId?: string;
+  houseId?: string;
   penId?: string;
   breedId?: string;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function unwrapList<T>(payload: any): T[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.items)) return payload.items;
-  return [];
-}
-
-function unwrapOne<T>(payload: any): T | null {
-  if (payload?.id) return payload as T;
-  if (payload?.data?.id) return payload.data as T;
-  return null;
-}
-
 export default function EditFlockScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
-  const { colors: tc, isDark } = useAppTheme();
+  const { colors: tc } = useAppTheme();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [farms, setFarms] = useState<SelectOption[]>([]);
+  const [farms, setFarms] = useState<NameOption[]>([]);
+  const [breeds, setBreeds] = useState<NameOption[]>([]);
   const [houses, setHouses] = useState<PoultryHouse[]>([]);
   const [pens, setPens] = useState<Pen[]>([]);
-  const [breeds, setBreeds] = useState<SelectOption[]>([]);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [chainError, setChainError] = useState<string | null>(null);
+  const [housesLoading, setHousesLoading] = useState(false);
+  const [pensLoading, setPensLoading] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     batchCode: '',
@@ -101,17 +108,109 @@ export default function EditFlockScreen() {
     currentCount: '',
     arrivalDate: '',
     farmId: '',
+    houseId: '',
     penId: '',
     breedId: '',
     status: 'ACTIVE',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    loadAll();
-  }, [id]);
+  // Chain responses can land out of order when the user taps through farms
+  // quickly — only the newest request may write to state.
+  const chainRequestRef = useRef(0);
 
-  const loadAll = async () => {
+  const loadStaticOptions = useCallback(async () => {
+    try {
+      setOptionsError(null);
+      const [farmsRes, breedOptions] = await Promise.all([farmsAPI.list(), fetchBreedOptions()]);
+      setFarms(
+        unwrapList<{ id: string; name: string }>(farmsRes.data).map((f) => ({ id: f.id, name: f.name }))
+      );
+      setBreeds(breedOptions);
+    } catch (error: any) {
+      setOptionsError(describeApiError(error, "Couldn't load farms and breeds."));
+    }
+  }, []);
+
+  /** farm → houses. Clears the house and pen picked further down the chain. */
+  const loadHouses = useCallback(async (farmId: string) => {
+    if (!farmId) return;
+    const requestId = ++chainRequestRef.current;
+    setHousesLoading(true);
+    try {
+      const next = await fetchHousesForFarm(farmId);
+      if (requestId !== chainRequestRef.current) return;
+      setHouses(next);
+      setChainError(null);
+    } catch (error: any) {
+      if (requestId !== chainRequestRef.current) return;
+      setHouses([]);
+      setChainError(describeApiError(error, "Couldn't load poultry houses for this farm."));
+    } finally {
+      if (requestId === chainRequestRef.current) setHousesLoading(false);
+    }
+  }, []);
+
+  /** house → pens. Clears the pen picked for the previous house. */
+  const loadPens = useCallback(async (houseId: string) => {
+    if (!houseId) return;
+    const requestId = ++chainRequestRef.current;
+    setPensLoading(true);
+    try {
+      const next = await fetchPensForHouse(houseId);
+      if (requestId !== chainRequestRef.current) return;
+      setPens(next);
+      setChainError(null);
+    } catch (error: any) {
+      if (requestId !== chainRequestRef.current) return;
+      setPens([]);
+      setChainError(describeApiError(error, "Couldn't load pens for this poultry house."));
+    } finally {
+      if (requestId === chainRequestRef.current) setPensLoading(false);
+    }
+  }, []);
+
+  /**
+   * Opening an existing flock: its pen is known but its house is not (the
+   * flock only stores `penId`), so resolve the whole chain in one pass —
+   * houses for the farm, every pen under it, then the house the saved pen
+   * lives in — and leave the picker exactly where the record already sits.
+   */
+  const prefillChain = useCallback(
+    async (farmId: string, penId: string, onHouseFound: (houseId: string) => void) => {
+      if (!farmId) return;
+      const requestId = ++chainRequestRef.current;
+      setHousesLoading(true);
+      setPensLoading(true);
+      try {
+        const housesList = await fetchHousesForFarm(farmId);
+        if (requestId !== chainRequestRef.current) return;
+        setHouses(housesList);
+
+        const farmPens = await fetchPensForFarm(farmId, housesList);
+        if (requestId !== chainRequestRef.current) return;
+
+        const savedPen = farmPens.find((candidate) => candidate.id === penId);
+        const houseId = savedPen?.poultryHouseId ?? '';
+        setPens(houseId ? farmPens.filter((candidate) => candidate.poultryHouseId === houseId) : []);
+        if (houseId) onHouseFound(houseId);
+        setChainError(null);
+      } catch (error: any) {
+        if (requestId !== chainRequestRef.current) return;
+        setHouses([]);
+        setPens([]);
+        setChainError(describeApiError(error, "Couldn't load this flock's houses and pens."));
+      } finally {
+        if (requestId === chainRequestRef.current) {
+          setHousesLoading(false);
+          setPensLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  const loadAll = useCallback(async () => {
     if (!id) {
       setLoadError('Missing flock id.');
       setLoading(false);
@@ -125,6 +224,8 @@ export default function EditFlockScreen() {
         setLoadError('Flock not found.');
         return;
       }
+      const farmId = record.farmId ?? '';
+      const penId = record.penId ?? '';
       // Prefill from the existing record. Arrival is trimmed to the date part
       // (YYYY-MM-DD) to match the input format.
       setFormData({
@@ -132,61 +233,36 @@ export default function EditFlockScreen() {
         birdCount: record.birdCount != null ? String(record.birdCount) : '',
         currentCount: record.currentCount != null ? String(record.currentCount) : '',
         arrivalDate: record.arrivalDate ? String(record.arrivalDate).slice(0, 10) : '',
-        farmId: record.farmId ?? '',
-        penId: record.penId ?? '',
+        farmId,
+        houseId: '',
+        penId,
         breedId: record.breedId ?? '',
         status: record.status ?? 'ACTIVE',
       });
-      loadOptions();
+      void loadStaticOptions();
+      void prefillChain(farmId, penId, (houseId) => {
+        setFormData((prev) => ({ ...prev, houseId }));
+      });
     } catch (error: any) {
       setLoadError(describeApiError(error, 'Failed to load flock.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, loadStaticOptions, prefillChain]);
 
-  const loadOptions = async () => {
-    try {
-      const [farmsRes, housesRes, pensRes, breedsRes] = await Promise.allSettled([
-        farmsAPI.list(),
-        poultryHousesAPI.list({ limit: 200 }),
-        poultryAPI.listPens({ limit: 200 }),
-        poultryAPI.listBreeds({ limit: 200 }),
-      ]);
-      if (farmsRes.status === 'fulfilled') {
-        setFarms(unwrapList<any>(farmsRes.value.data).map((f: any) => ({ id: f.id, label: f.name })));
-      }
-      if (housesRes.status === 'fulfilled') setHouses(unwrapList<PoultryHouse>(housesRes.value.data));
-      if (pensRes.status === 'fulfilled') setPens(unwrapList<Pen>(pensRes.value.data));
-      if (breedsRes.status === 'fulfilled') {
-        setBreeds(
-          unwrapList<Breed>(breedsRes.value.data).map((b) => ({
-            id: b.id,
-            label: `${b.name}${b.species ? ` · ${b.species}` : ''}`,
-          }))
-        );
-      }
-    } catch {
-      /* individual rejections already handled via allSettled */
-    }
-  };
+  useEffect(() => {
+    void loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-  // Pens live under houses, and houses under farms — so once a farm is chosen
-  // we only offer pens whose house belongs to that farm.
-  const houseFarm: Record<string, string> = {};
-  houses.forEach((h) => {
-    houseFarm[h.id] = h.farmId;
-  });
-  const availablePens: SelectOption[] = formData.farmId
-    ? pens
-        .filter((p) => houseFarm[p.poultryHouseId] === formData.farmId)
-        .map((p) => ({ id: p.id, label: p.name }))
-    : [];
+  const houseOptions = toHouseOptions(houses);
+  const penOptions = toPenOptions(pens, houses);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
     if (!formData.batchCode.trim()) newErrors.batchCode = 'Batch code is required';
     if (!formData.farmId) newErrors.farmId = 'Please select a farm';
+    if (!formData.houseId) newErrors.houseId = 'Please select a poultry house';
     if (!formData.breedId) newErrors.breedId = 'Please select a breed';
     if (!formData.penId) newErrors.penId = 'Please select a pen';
     const count = Number(formData.birdCount);
@@ -233,13 +309,28 @@ export default function EditFlockScreen() {
   };
 
   const updateFormData = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-      // Changing the farm invalidates the selected pen (it may belong elsewhere).
-      ...(field === 'farmId' ? { penId: '' } : null),
-    }));
+    setFormData((prev) => {
+      const next: FormData = { ...prev, [field]: value };
+      // Every step of the chain invalidates the steps below it: a new farm
+      // orphans the house, and a new house orphans the pen.
+      if (field === 'farmId') {
+        next.houseId = '';
+        next.penId = '';
+      } else if (field === 'houseId') {
+        next.penId = '';
+      }
+      return next;
+    });
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+
+    if (field === 'farmId') {
+      setHouses([]);
+      setPens([]);
+      void loadHouses(value);
+    } else if (field === 'houseId') {
+      setPens([]);
+      void loadPens(value);
+    }
   };
 
   if (loading) {
@@ -293,13 +384,83 @@ export default function EditFlockScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <SelectField
+          {!!optionsError && (
+            <TouchableOpacity
+              onPress={() => void loadStaticOptions()}
+              style={styles.formGroup}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading farms and breeds"
+            >
+              <Text style={styles.errorText}>{optionsError} Tap to retry.</Text>
+            </TouchableOpacity>
+          )}
+
+          <PickerField
             label="Farm *"
             placeholder="Select a farm"
-            value={formData.farmId}
+            selectedId={formData.farmId}
             options={farms}
             onSelect={(id) => updateFormData('farmId', id)}
             error={errors.farmId}
+          />
+
+          <PickerField
+            label="Poultry House *"
+            placeholder={formData.farmId ? 'Select a house' : 'Select a farm first'}
+            selectedId={formData.houseId}
+            options={houseOptions}
+            onSelect={(id) => updateFormData('houseId', id)}
+            error={errors.houseId}
+            disabled={!formData.farmId}
+            disabledHint={
+              housesLoading
+                ? undefined
+                : formData.farmId && houseOptions.length === 0
+                  ? 'This farm has no poultry houses yet.'
+                  : 'Houses are loaded for the selected farm.'
+            }
+            loading={housesLoading}
+            onRetry={chainError ? () => void loadHouses(formData.farmId) : undefined}
+          />
+
+          <PickerField
+            label="Pen *"
+            placeholder={
+              !formData.houseId
+                ? 'Select a house first'
+                : penOptions.length === 0
+                  ? 'No pens in this house'
+                  : 'Select a pen'
+            }
+            selectedId={formData.penId}
+            options={penOptions}
+            onSelect={(id) => updateFormData('penId', id)}
+            error={errors.penId}
+            disabled={!formData.houseId || penOptions.length === 0}
+            disabledHint={
+              pensLoading
+                ? undefined
+                : !formData.houseId
+                  ? 'Pens are loaded for the selected poultry house.'
+                  : 'This house has no pens yet.'
+            }
+            loading={pensLoading}
+            onRetry={chainError ? () => void loadPens(formData.houseId) : undefined}
+          />
+
+          {!!chainError && (
+            <View style={styles.formGroup}>
+              <Text style={styles.errorText}>{chainError}</Text>
+            </View>
+          )}
+
+          <PickerField
+            label="Breed *"
+            placeholder="Select a breed"
+            selectedId={formData.breedId}
+            options={breeds}
+            onSelect={(id) => updateFormData('breedId', id)}
+            error={errors.breedId}
           />
 
           <TextInputField
@@ -308,26 +469,6 @@ export default function EditFlockScreen() {
             value={formData.batchCode}
             onChangeText={(v) => updateFormData('batchCode', v)}
             error={errors.batchCode}
-          />
-
-          <SelectField
-            label="Breed *"
-            placeholder="Select a breed"
-            value={formData.breedId}
-            options={breeds}
-            onSelect={(id) => updateFormData('breedId', id)}
-            error={errors.breedId}
-          />
-
-          <SelectField
-            label="Pen *"
-            placeholder={formData.farmId ? 'Select a pen' : 'Select a farm first'}
-            value={formData.penId}
-            options={availablePens}
-            onSelect={(id) => updateFormData('penId', id)}
-            error={errors.penId}
-            disabled={!formData.farmId}
-            disabledHint="Pens are grouped by the selected farm's poultry houses."
           />
 
           <TextInputField
@@ -356,13 +497,15 @@ export default function EditFlockScreen() {
             error={errors.arrivalDate}
           />
 
-          <SelectField
-            label="Status"
-            placeholder="Select a status"
-            value={formData.status}
-            options={FLOCK_STATUS_OPTIONS}
-            onSelect={(v) => updateFormData('status', v)}
-          />
+          <View style={styles.formGroup}>
+            <SelectField
+              label="Status"
+              placeholder="Select a status"
+              value={formData.status}
+              options={FLOCK_STATUS_OPTIONS}
+              onSelect={(v) => updateFormData('status', v)}
+            />
+          </View>
 
           <Button
             title="Save Changes"

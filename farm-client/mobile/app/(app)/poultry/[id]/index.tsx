@@ -219,15 +219,27 @@ export default function FlockDetailScreen() {
           <View style={[styles.detailSection, { borderTopColor: isDark ? tc.surface : '#F5F5F5' }]}>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: tc.text }]}>Breed</Text>
-              <Text style={[styles.detailValue, { color: tc.text }]}>{flock.breed?.name || '—'}</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>
+                {flock.breed?.name
+                  ? `${flock.breed.name}${flock.breed.birdType ? ` · ${flock.breed.birdType}` : ''}`
+                  : '—'}
+              </Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: tc.text }]}>Pen</Text>
               <Text style={[styles.detailValue, { color: tc.text }]}>{flock.pen?.name || '—'}</Text>
             </View>
             <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: tc.text }]}>Poultry House</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>
+                {flock.pen?.poultryHouse?.name || '—'}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: tc.text }]}>Farm</Text>
-              <Text style={[styles.detailValue, { color: tc.text }]}>{farmName || '—'}</Text>
+              <Text style={[styles.detailValue, { color: tc.text }]}>
+                {flock.farm?.name || farmName || '—'}
+              </Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: tc.text }]}>Arrival Date</Text>

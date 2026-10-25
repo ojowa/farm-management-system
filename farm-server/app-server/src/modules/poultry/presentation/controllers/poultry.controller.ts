@@ -158,10 +158,12 @@ export class PensController {
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('poultryHouseId') poultryHouseId?: string,
+    @Query('farmId') farmId?: string,
     @Query('name') name?: string,
   ) {
     const filter: Record<string, unknown> = {};
     if (poultryHouseId) filter.poultryHouseId = poultryHouseId;
+    if (farmId) filter.farmId = farmId;
     if (name) filter.name = name;
     return this.poultryService.getAllPens(getOrgId(req), filter, {
       page: toPositiveInt(page, 1),

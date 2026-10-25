@@ -3,6 +3,7 @@ import {
   Pen,
   Breed,
   Flock,
+  FlockWrite,
   FeedingRecord,
   VaccinationRecord,
   MortalityRecord,
@@ -40,6 +41,8 @@ export interface PoultryHouseFilter {
 export interface PenFilter {
   organizationId: string;
   poultryHouseId?: string;
+  /** Narrow to the pens of a single farm via Pen → House → Farm. */
+  farmId?: string;
   name?: string;
 }
 
@@ -129,8 +132,8 @@ export interface PoultryAggregateRepository {
   /** P6: in-org batchCode lookup so the service can return a clear 409. */
   findFlockByBatchCode(organizationId: string, batchCode: string, excludeId?: string): Promise<Flock | null>;
   findAllFlocks(filter: FlockFilter, sortBy: string, sortOrder: 'asc' | 'desc', page: number, limit: number): Promise<PaginatedResult<Flock>>;
-  createFlock(data: Omit<Flock, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flock>;
-  updateFlock(id: string, data: Partial<Flock>): Promise<Flock>;
+  createFlock(data: Omit<FlockWrite, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flock>;
+  updateFlock(id: string, data: Partial<FlockWrite>): Promise<Flock>;
   deleteFlock(id: string): Promise<void>;
 
   // FeedingRecord

@@ -26,7 +26,19 @@ interface Flock {
   id: string;
   batchCode: string;
   farmId: string;
+  penId?: string;
   breedId: string;
+  /** Read-only joins the server attaches to flock reads (breed, pen + house, farm). */
+  breed?: { id: string; name: string; birdType?: string } | null;
+  pen?:
+    | {
+        id: string;
+        name: string;
+        poultryHouseId?: string;
+        poultryHouse?: { id: string; name: string } | null;
+      }
+    | null;
+  farm?: { id: string; name: string } | null;
   birdCount: number;
   currentCount: number;
   currentAgeDays: number;
@@ -64,8 +76,12 @@ export default function FlockDetailPage() {
   // The service returns the flock bare; accept `{ data }` too so a loaded
   // flock never falls through to the "not found" state.
   const flock = ((flockData as any)?.data ?? flockData ?? null);
-  const farmName = farmsData?.data?.find((farm) => farm.id === flock?.farmId)?.name;
-  const breedName = breedsData?.data?.find((breed) => breed.id === flock?.breedId)?.name;
+  // Prefer the join the server sends; fall back to the lookup lists for
+  // payloads cached before the joins existed.
+  const farmName = flock?.farm?.name ?? farmsData?.data?.find((farm) => farm.id === flock?.farmId)?.name;
+  const breedName = flock?.breed?.name ?? breedsData?.data?.find((breed) => breed.id === flock?.breedId)?.name;
+  const penName = flock?.pen?.name;
+  const houseName = flock?.pen?.poultryHouse?.name;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -233,8 +249,20 @@ export default function FlockDetailPage() {
 
       <Card>
         <CardContent className="p-6">
-          <p className="text-sm text-muted-foreground">Farm</p>
-          <p className="font-medium">{farmName || 'Farm not available'}</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-sm text-muted-foreground">Farm</p>
+              <p className="font-medium">{farmName || 'Farm not available'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Poultry House</p>
+              <p className="font-medium">{houseName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Pen</p>
+              <p className="font-medium">{penName || '—'}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -174,13 +174,24 @@ export const pondHarvestFormSchema = z.object({
 export type PondHarvestFormInput = z.infer<typeof pondHarvestFormSchema>;
 
 export const poultryHouseFormSchema = z.object({
-  name: z.string().min(1, 'House name is required'),
+  name: z.string().min(2, 'House name must be at least 2 characters'),
   farmId: z.string().min(1, 'Farm is required'),
   capacity: z.string()
     .regex(/^[1-9]\d*$/, 'Capacity must be a positive whole number'),
 });
 
 export type PoultryHouseFormInput = z.infer<typeof poultryHouseFormSchema>;
+
+// Pens hang off a house, so the picker needs the house first — the same
+// farm → house → pen chain the flock forms walk.
+export const penFormSchema = z.object({
+  poultryHouseId: z.string().min(1, 'Poultry house is required'),
+  name: z.string().min(1, 'Pen name is required'),
+  capacity: z.string()
+    .regex(/^[1-9]\d*$/, 'Capacity must be a positive whole number'),
+});
+
+export type PenFormInput = z.infer<typeof penFormSchema>;
 
 export const flockFormSchema = z.object({
   batchCode: z.string().min(2, 'Batch code must be at least 2 characters'),

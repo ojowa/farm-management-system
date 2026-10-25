@@ -8,6 +8,13 @@ export interface PoultryHouse {
 export interface Pen {
   id: string;
   poultryHouseId: string;
+  /**
+   * Denormalized on create (`createPen` stamps it from the owning house) so a
+   * pen can be filtered by farm in one query. Optional because the owning
+   * house is the source of truth — always prefer the Pen → House → Farm link
+   * when resolving which farm a pen belongs to.
+   */
+  farmId?: string;
   name: string;
   capacity: number;
 }
@@ -18,7 +25,29 @@ export interface Breed {
   birdType: string;
 }
 
-export interface Flock {
+/**
+ * Read-only joins returned alongside a flock (`GET /flocks`, `GET /flocks/:id`).
+ *
+ * Clients render breed/pen/farm names directly from these; the flat ids above
+ * stay authoritative for writes. Every join is fetched inside the same
+ * organization-scoped query, so nothing extra is ever exposed.
+ */
+export interface FlockRelations {
+  breed?: { id: string; name: string; birdType: string } | null;
+  pen?:
+    | {
+        id: string;
+        name: string;
+        poultryHouseId: string;
+        farmId: string;
+        capacity: number;
+        poultryHouse?: { id: string; name: string; farmId: string; capacity: number } | null;
+      }
+    | null;
+  farm?: { id: string; name: string } | null;
+}
+
+export interface Flock extends FlockRelations {
   id: string;
   organizationId: string;
   farmId: string;
@@ -33,6 +62,9 @@ export interface Flock {
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** What a flock write may carry: the scalars only — the joins are read-only. */
+export type FlockWrite = Omit<Flock, keyof FlockRelations>;
 
 export interface FeedingRecord {
   id: string;

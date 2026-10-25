@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -7,13 +7,21 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Modal,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { poultryAPI, poultryHousesAPI, offlinePoultryAPI } from '@/modules/poultry';
-import type { Pen, Breed, PoultryHouse } from '@/modules/poultry';
+import { offlinePoultryAPI } from '@/modules/poultry';
+import type { Pen, PoultryHouse } from '@/modules/poultry';
+import { PickerField } from '@/modules/poultry/FlockFormPickers';
+import {
+  fetchBreedOptions,
+  fetchHousesForFarm,
+  fetchPensForHouse,
+  toHouseOptions,
+  toPenOptions,
+  unwrapList,
+  type NameOption,
+} from '@/modules/poultry/flockChain';
 import { farmsAPI } from '@/modules/farm';
 import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
 import { useToasts } from '@/core/hooks/useToasts';
@@ -36,69 +44,16 @@ const styles = StyleSheet.create({
   backButtonText: { color: '#FFFFFF', fontSize: 16 },
   content: { paddingHorizontal: 20, paddingVertical: 16 },
   formGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: colors.text },
-  selectButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  selectButtonDisabled: { opacity: 0.5 },
-  selectButtonText: { fontSize: 16, color: colors.text },
-  selectPlaceholder: { fontSize: 16, color: colors.textLight },
-  selectArrow: { fontSize: 12, color: colors.textLight },
-  selectError: { borderColor: colors.error },
   errorText: { color: colors.error, fontSize: 12, marginTop: 4 },
-  hint: { color: colors.textLight, fontSize: 12, marginTop: 4 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    width: '80%',
-    maxHeight: '60%',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.light,
-  },
-  modalItemText: { fontSize: 16, color: colors.text },
-  modalItemEmpty: { paddingVertical: 20, alignItems: 'center' },
-  modalItemEmptyText: { fontSize: 14, color: colors.textLight },
-  modalCloseButton: { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
-  modalCloseButtonText: { fontSize: 16, color: colors.primary, fontWeight: '600' },
   submitButton: { marginTop: 20 },
 });
-
-interface Option {
-  id: string;
-  name: string;
-}
 
 interface FormData {
   batchCode: string;
   birdCount: string;
   arrivalDate: string;
   farmId: string;
+  houseId: string;
   penId: string;
   breedId: string;
 }
@@ -108,200 +63,118 @@ interface FormErrors {
   birdCount?: string;
   arrivalDate?: string;
   farmId?: string;
+  houseId?: string;
   penId?: string;
   breedId?: string;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function unwrapList<T>(payload: any): T[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.items)) return payload.items;
-  return [];
-}
-
-/** Reusable modal picker (label + select button + options list). */
-function PickerField({
-  label,
-  placeholder,
-  selectedId,
-  options,
-  onSelect,
-  error,
-  disabled,
-  disabledHint,
-}: {
-  label: string;
-  placeholder: string;
-  selectedId: string;
-  options: Option[];
-  onSelect: (id: string) => void;
-  error?: string;
-  disabled?: boolean;
-  disabledHint?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const { colors: tc, isDark } = useAppTheme();
-  const selected = options.find((o) => o.id === selectedId);
-
-  return (
-    <View style={styles.formGroup}>
-      <Text style={[styles.label, { color: tc.text }]}>{label}</Text>
-      <TouchableOpacity
-        style={[
-          styles.selectButton,
-          error && styles.selectError,
-          disabled && styles.selectButtonDisabled,
-          { backgroundColor: tc.card },
-          error ? undefined : { borderColor: tc.border },
-        ]}
-        disabled={disabled}
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: !!disabled, expanded: open }}
-      >
-        <Text style={[selected ? styles.selectButtonText : styles.selectPlaceholder, { color: selected ? tc.text : tc.textSecondary }]}>
-          {selected ? selected.name : placeholder}
-        </Text>
-        <Text style={styles.selectArrow}>▼</Text>
-      </TouchableOpacity>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {!error && disabled && disabledHint ? <Text style={[styles.hint, { color: tc.textSecondary }]}>{disabledHint}</Text> : null}
-
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <TouchableOpacity
-          style={[styles.modalOverlay, { backgroundColor: tc.overlay }]}
-          activeOpacity={1}
-          onPress={() => setOpen(false)}
-        >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.modalContent, { backgroundColor: tc.surface }]}>
-              <Text style={[styles.modalTitle, { color: tc.text }]}>{label}</Text>
-              {options.length === 0 ? (
-                <View style={styles.modalItemEmpty}>
-                  <Text style={[styles.modalItemEmptyText, { color: tc.textSecondary }]}>No options available</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={options}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[styles.modalItem, { borderBottomColor: isDark ? tc.surface : '#F5F5F5' }]}
-                      onPress={() => {
-                        onSelect(item.id);
-                        setOpen(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.modalItemText,
-                          item.id === selectedId && { color: colors.primary, fontWeight: '600' },
-                          item.id === selectedId ? undefined : { color: tc.text },
-                        ]}
-                      >
-                        {item.name}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                />
-              )}
-              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setOpen(false)}>
-                <Text style={styles.modalCloseButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-    </View>
-  );
-}
-
 export default function AddFlockScreen() {
   const router = useRouter();
   const { success, error: showError } = useToasts();
-  const { colors: tc, isDark } = useAppTheme();
+  const { colors: tc } = useAppTheme();
   const organizationId = useAppSelector((state) => state.auth.user?.organizationId ?? '');
 
   const [loading, setLoading] = useState(false);
-  const [farms, setFarms] = useState<Option[]>([]);
+  const [farms, setFarms] = useState<NameOption[]>([]);
+  const [breeds, setBreeds] = useState<NameOption[]>([]);
   const [houses, setHouses] = useState<PoultryHouse[]>([]);
   const [pens, setPens] = useState<Pen[]>([]);
-  const [breeds, setBreeds] = useState<Option[]>([]);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [chainError, setChainError] = useState<string | null>(null);
+  const [housesLoading, setHousesLoading] = useState(false);
+  const [pensLoading, setPensLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     batchCode: '',
     birdCount: '',
     arrivalDate: '',
     farmId: '',
+    houseId: '',
     penId: '',
     breedId: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    fetchOptions();
+  // Chain responses can land out of order when the user taps through farms
+  // quickly — only the newest request may write to state.
+  const chainRequestRef = useRef(0);
+
+  const loadStaticOptions = useCallback(async () => {
+    try {
+      setOptionsError(null);
+      const [farmsRes, breedOptions] = await Promise.all([farmsAPI.list(), fetchBreedOptions()]);
+      setFarms(
+        unwrapList<{ id: string; name: string }>(farmsRes.data).map((f) => ({ id: f.id, name: f.name }))
+      );
+      setBreeds(breedOptions);
+    } catch (error: any) {
+      setOptionsError(describeApiError(error, "Couldn't load farms and breeds."));
+    }
   }, []);
 
-  const fetchOptions = async () => {
+  useEffect(() => {
+    void loadStaticOptions();
+  }, [loadStaticOptions]);
+
+  /** farm → houses. Clears the house and pen picked further down the chain. */
+  const loadHouses = useCallback(async (farmId: string) => {
+    if (!farmId) return;
+    const requestId = ++chainRequestRef.current;
+    setHousesLoading(true);
     try {
-      const [farmsRes, housesRes, pensRes, breedsRes] = await Promise.allSettled([
-        farmsAPI.list(),
-        poultryHousesAPI.list({ limit: 200 }),
-        poultryAPI.listPens({ limit: 200 }),
-        poultryAPI.listBreeds({ limit: 200 }),
-      ]);
-
-      if (farmsRes.status === 'fulfilled') {
-        const data = unwrapList<any>(farmsRes.value.data);
-        setFarms(data.map((f: any) => ({ id: f.id, name: f.name })));
-      }
-      if (housesRes.status === 'fulfilled') setHouses(unwrapList<PoultryHouse>(housesRes.value.data));
-      if (pensRes.status === 'fulfilled') setPens(unwrapList<Pen>(pensRes.value.data));
-      if (breedsRes.status === 'fulfilled') {
-        const data = unwrapList<Breed>(breedsRes.value.data);
-        setBreeds(data.map((b) => ({ id: b.id, name: `${b.name}${b.species ? ` · ${b.species}` : ''}` })));
-      }
-    } catch {
-      /* individual rejections already handled via allSettled */
+      const next = await fetchHousesForFarm(farmId);
+      if (requestId !== chainRequestRef.current) return;
+      setHouses(next);
+      setChainError(null);
+    } catch (error: any) {
+      if (requestId !== chainRequestRef.current) return;
+      setHouses([]);
+      setChainError(describeApiError(error, "Couldn't load poultry houses for this farm."));
+    } finally {
+      if (requestId === chainRequestRef.current) setHousesLoading(false);
     }
-  };
+  }, []);
 
-  // Pens live under houses, and houses under farms — so once a farm is chosen
-  // we only offer pens whose house belongs to that farm.
-  const houseFarm = useMemo(() => {
-    const map: Record<string, string> = {};
-    houses.forEach((h) => {
-      map[h.id] = h.farmId;
-    });
-    return map;
-  }, [houses]);
+  /** house → pens. Clears the pen picked for the previous house. */
+  const loadPens = useCallback(async (houseId: string) => {
+    if (!houseId) return;
+    const requestId = ++chainRequestRef.current;
+    setPensLoading(true);
+    try {
+      const next = await fetchPensForHouse(houseId);
+      if (requestId !== chainRequestRef.current) return;
+      setPens(next);
+      setChainError(null);
+    } catch (error: any) {
+      if (requestId !== chainRequestRef.current) return;
+      setPens([]);
+      setChainError(describeApiError(error, "Couldn't load pens for this poultry house."));
+    } finally {
+      if (requestId === chainRequestRef.current) setPensLoading(false);
+    }
+  }, []);
 
-  const availablePens = useMemo(() => {
-    if (!formData.farmId) return [];
-    return pens
-      .filter((p: any) => {
-        if (p.farmId === formData.farmId) return true;
-        const houseId = p.poultryHouseId || p.houseId;
-        return houseId && houseFarm[houseId] === formData.farmId;
-      })
-      .map((p) => ({ id: p.id, name: p.name }));
-  }, [pens, houseFarm, formData.farmId]);
+  const houseOptions = toHouseOptions(houses);
+  const penOptions = toPenOptions(pens, houses);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-    if (!formData.batchCode.trim()) newErrors.batchCode = 'Batch code is required';
     if (!formData.farmId) newErrors.farmId = 'Please select a farm';
-    if (!formData.breedId) newErrors.breedId = 'Please select a breed';
+    if (!formData.houseId) newErrors.houseId = 'Please select a poultry house';
     if (!formData.penId) newErrors.penId = 'Please select a pen';
+    if (!formData.breedId) newErrors.breedId = 'Please select a breed';
+    if (!formData.batchCode.trim()) newErrors.batchCode = 'Batch code is required';
     const count = Number(formData.birdCount);
     if (!formData.birdCount.trim() || isNaN(count) || count <= 0 || !Number.isInteger(count)) {
       newErrors.birdCount = 'Bird count must be a positive whole number';
     }
     if (!formData.arrivalDate.trim()) {
       newErrors.arrivalDate = 'Arrival date is required';
-    } else if (!DATE_RE.test(formData.arrivalDate.trim()) || isNaN(Date.parse(formData.arrivalDate.trim()))) {
+    } else if (
+      !DATE_RE.test(formData.arrivalDate.trim()) ||
+      isNaN(Date.parse(formData.arrivalDate.trim()))
+    ) {
       newErrors.arrivalDate = 'Use YYYY-MM-DD';
     }
     setErrors(newErrors);
@@ -319,7 +192,7 @@ export default function AddFlockScreen() {
       const todayTimestamp = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
       await offlinePoultryAPI.create({
         // Organization is derived from the JWT server-side; included only to
-        // satisfy the request type (the zod schema ignores it).
+        // satisfy the request type (the zod schema strips unknown keys).
         organizationId,
         farmId: formData.farmId,
         penId: formData.penId,
@@ -341,13 +214,28 @@ export default function AddFlockScreen() {
   };
 
   const updateFormData = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-      // Changing the farm invalidates the selected pen (it may belong elsewhere).
-      ...(field === 'farmId' ? { penId: '' } : null),
-    }));
+    setFormData((prev) => {
+      const next: FormData = { ...prev, [field]: value };
+      // Every step of the chain invalidates the steps below it: a new farm
+      // orphans the house, and a new house orphans the pen.
+      if (field === 'farmId') {
+        next.houseId = '';
+        next.penId = '';
+      } else if (field === 'houseId') {
+        next.penId = '';
+      }
+      return next;
+    });
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+
+    if (field === 'farmId') {
+      setHouses([]);
+      setPens([]);
+      void loadHouses(value);
+    } else if (field === 'houseId') {
+      setPens([]);
+      void loadPens(value);
+    }
   };
 
   return (
@@ -365,6 +253,17 @@ export default function AddFlockScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {!!optionsError && (
+            <TouchableOpacity
+              onPress={() => void loadStaticOptions()}
+              style={styles.formGroup}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading farms and breeds"
+            >
+              <Text style={styles.errorText}>{optionsError} Tap to retry.</Text>
+            </TouchableOpacity>
+          )}
+
           <PickerField
             label="Farm *"
             placeholder="Select a farm"
@@ -372,6 +271,65 @@ export default function AddFlockScreen() {
             options={farms}
             onSelect={(id) => updateFormData('farmId', id)}
             error={errors.farmId}
+          />
+
+          <PickerField
+            label="Poultry House *"
+            placeholder={formData.farmId ? 'Select a house' : 'Select a farm first'}
+            selectedId={formData.houseId}
+            options={houseOptions}
+            onSelect={(id) => updateFormData('houseId', id)}
+            error={errors.houseId}
+            disabled={!formData.farmId}
+            disabledHint={
+              housesLoading
+                ? undefined
+                : formData.farmId && houseOptions.length === 0
+                  ? 'This farm has no poultry houses yet. Add one from House/Pen first.'
+                  : 'Houses are loaded for the selected farm.'
+            }
+            loading={housesLoading}
+            onRetry={chainError ? () => void loadHouses(formData.farmId) : undefined}
+          />
+
+          <PickerField
+            label="Pen *"
+            placeholder={
+              !formData.houseId
+                ? 'Select a house first'
+                : penOptions.length === 0
+                  ? 'No pens in this house'
+                  : 'Select a pen'
+            }
+            selectedId={formData.penId}
+            options={penOptions}
+            onSelect={(id) => updateFormData('penId', id)}
+            error={errors.penId}
+            disabled={!formData.houseId || penOptions.length === 0}
+            disabledHint={
+              pensLoading
+                ? undefined
+                : !formData.houseId
+                  ? 'Pens are loaded for the selected poultry house.'
+                  : 'This house has no pens yet. Add one from House/Pen first.'
+            }
+            loading={pensLoading}
+            onRetry={chainError ? () => void loadPens(formData.houseId) : undefined}
+          />
+
+          {!!chainError && (
+            <View style={styles.formGroup}>
+              <Text style={styles.errorText}>{chainError}</Text>
+            </View>
+          )}
+
+          <PickerField
+            label="Breed *"
+            placeholder="Select a breed"
+            selectedId={formData.breedId}
+            options={breeds}
+            onSelect={(id) => updateFormData('breedId', id)}
+            error={errors.breedId}
           />
 
           <View style={styles.formGroup}>
@@ -383,26 +341,6 @@ export default function AddFlockScreen() {
               error={errors.batchCode}
             />
           </View>
-
-          <PickerField
-            label="Breed *"
-            placeholder="Select a breed"
-            selectedId={formData.breedId}
-            options={breeds}
-            onSelect={(id) => updateFormData('breedId', id)}
-            error={errors.breedId}
-          />
-
-          <PickerField
-            label="Pen *"
-            placeholder={formData.farmId ? (availablePens.length === 0 ? 'No pens for this farm' : 'Select a pen') : 'Select a farm first'}
-            selectedId={formData.penId}
-            options={availablePens}
-            onSelect={(id) => updateFormData('penId', id)}
-            error={errors.penId}
-            disabled={!formData.farmId || availablePens.length === 0}
-            disabledHint={formData.farmId && availablePens.length === 0 ? 'No pens found under this farm\'s houses.' : 'Pens are grouped by the selected farm\'s poultry houses.'}
-          />
 
           <View style={styles.formGroup}>
             <TextInputField

@@ -313,6 +313,12 @@ export interface PoultryHouse {
 export interface Pen {
   id: string;
   poultryHouseId: string;
+  /**
+   * Denormalized by the server on create. Optional: the owning
+   * `poultryHouseId` (and that house's `farmId`) is the source of truth for
+   * which farm a pen belongs to — see `flockChain.ts`.
+   */
+  farmId?: string;
   name: string;
   capacity: number;
   createdAt: string;
@@ -322,7 +328,10 @@ export interface Pen {
 export interface Breed {
   id: string;
   name: string;
-  species: string;
+  /** BROILER / LAYER / … — what the API actually returns. */
+  birdType: string;
+  /** Legacy client-side alias kept so older call sites keep compiling. */
+  species?: string;
   description?: string;
   createdAt: string;
   updatedAt: string;
@@ -334,8 +343,11 @@ export interface Flock {
   farmId: string;
   penId: string;
   breedId: string;
-  pen?: Pen;
-  breed?: Breed;
+  /** Read-only joins the server attaches to flock reads (`Partial`: only the
+   *  display fields are guaranteed — see `FLOCK_INCLUDE` on the server). */
+  pen?: Partial<Pen> & { poultryHouse?: Partial<PoultryHouse> } | null;
+  breed?: Partial<Breed> | null;
+  farm?: { id: string; name: string } | null;
   batchCode: string;
   birdCount: number;
   currentCount: number;

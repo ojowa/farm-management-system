@@ -35,11 +35,14 @@ interface Farm {
 interface PoultryHouse {
   id: string;
   farmId: string;
+  name: string;
 }
 
 interface Pen {
   id: string;
   poultryHouseId: string;
+  /** Denormalized by the server; optional — the house link is authoritative. */
+  farmId?: string;
   name: string;
 }
 
@@ -86,8 +89,11 @@ export default function EditFlockPage() {
     { cacheTime: 60_000 }
   );
   const { data: pensData } = useFetch<{ data: Pen[] }>(
-    'poultry-flock-pens',
-    () => pensAPI.list({ limit: 1000 }),
+    // Scoped server-side by farm (the `/pens` handler filters through
+    // Pen → House → Farm); the empty value fetches everything before the
+    // flock loads, and the client filter below still narrows it.
+    `poultry-flock-edit-pens-${form.farmId}`,
+    () => pensAPI.list({ farmId: form.farmId || undefined, limit: 1000 }),
     { cacheTime: 60_000 }
   );
   const { data: breedsData } = useFetch<{ data: Breed[] }>(
@@ -103,14 +109,28 @@ export default function EditFlockPage() {
   const houses = housesData?.data || [];
   const pens = pensData?.data || [];
   const breeds = breedsData?.data || [];
-  const houseFarms = useMemo(
-    () => new Map(houses.map((house) => [house.id, house.farmId])),
+  const houseNames = useMemo(
+    () => new Map(houses.map((house) => [house.id, house.name])),
     [houses]
   );
-  const availablePens = useMemo(
-    () => pens.filter((pen) => houseFarms.get(pen.poultryHouseId) === form.farmId),
-    [pens, houseFarms, form.farmId]
-  );
+
+  // farm → house → pen, identical to the Add Flock dialog: a pen is only
+  // offerable when it hangs off one of the selected farm's houses. Union of
+  // the two links (owning house, or the farmId the server stamps on create),
+  // so an unfiltered `/pens` response can never leak another farm's pens in.
+  const farmHouseIds = useMemo(() => {
+    if (!form.farmId) return new Set<string>();
+    return new Set(
+      houses.filter((house) => house.farmId === form.farmId).map((house) => house.id)
+    );
+  }, [houses, form.farmId]);
+
+  const availablePens = useMemo(() => {
+    if (!form.farmId) return [];
+    return pens.filter(
+      (pen) => farmHouseIds.has(pen.poultryHouseId) || pen.farmId === form.farmId
+    );
+  }, [pens, farmHouseIds, form.farmId]);
 
   useEffect(() => {
     if (!flock) return;
@@ -251,13 +271,27 @@ export default function EditFlockPage() {
             <div>
               <label className="mb-1 block text-sm font-medium">Pen *</label>
               <Select
-                placeholder={form.farmId ? 'Select a pen' : 'Select a farm first'}
-                options={availablePens.map((pen) => ({ value: pen.id, label: pen.name }))}
+                placeholder={
+                  !form.farmId
+                    ? 'Select a farm first'
+                    : availablePens.length === 0
+                      ? 'No pens in this farm yet'
+                      : 'Select a pen'
+                }
+                options={availablePens.map((pen) => {
+                  const houseName = houseNames.get(pen.poultryHouseId);
+                  return { value: pen.id, label: houseName ? `${pen.name} (${houseName})` : pen.name };
+                })}
                 value={form.penId}
                 disabled={!form.farmId || availablePens.length === 0}
                 onChange={(event) => setForm({ ...form, penId: event.target.value })}
               />
               {formErrors.penId && <p className="mt-1 text-sm text-destructive">{formErrors.penId}</p>}
+              {!formErrors.penId && form.farmId && availablePens.length === 0 && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This farm has no houses or pens yet — add one under Poultry Houses.
+                </p>
+              )}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>

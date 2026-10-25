@@ -61,6 +61,8 @@ interface PoultryHouse {
 interface Pen {
   id: string;
   poultryHouseId: string;
+  /** Denormalized by the server; optional — the house link is authoritative. */
+  farmId?: string;
   name: string;
 }
 
@@ -152,8 +154,11 @@ export default function FlocksPage() {
   );
 
   const { data: pensData } = useFetch<{ data: Pen[] }>(
-    'poultry-flock-pens',
-    () => pensAPI.list({ limit: 500 }),
+    // Scoped server-side by farm (the `/pens` handler filters through
+    // Pen → House → Farm); the empty value fetches everything and the client
+    // filter below still narrows it, so a build without the filter is safe.
+    `poultry-flock-pens-${form.farmId}`,
+    () => pensAPI.list({ farmId: form.farmId || undefined, limit: 1000 }),
     { cacheTime: 60_000 }
   );
 
@@ -170,7 +175,21 @@ export default function FlocksPage() {
   const breeds = breedsData?.data || [];
   const farmNames = useMemo(() => new Map(farms.map((farm) => [farm.id, farm.name])), [farms]);
   const breedNames = useMemo(() => new Map(breeds.map((breed) => [breed.id, breed.name])), [breeds]);
-  const availablePens = pens;
+  const houseNames = useMemo(() => new Map(houses.map((house) => [house.id, house.name])), [houses]);
+
+  // farm → house → pen: a pen is only offerable when it hangs off one of the
+  // selected farm's houses. A pen matches either through its owning house or
+  // through the farmId the server stamps on create — union, so an unfiltered
+  // `/pens` response (older build) can never leak another farm's pens in.
+  const farmHouseIds = useMemo(() => {
+    if (!form.farmId) return new Set<string>();
+    return new Set(houses.filter((house) => house.farmId === form.farmId).map((house) => house.id));
+  }, [houses, form.farmId]);
+
+  const availablePens = useMemo(() => {
+    if (!form.farmId) return [];
+    return pens.filter((pen) => farmHouseIds.has(pen.poultryHouseId) || pen.farmId === form.farmId);
+  }, [pens, farmHouseIds, form.farmId]);
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -486,17 +505,28 @@ export default function FlocksPage() {
               Pen <span className="text-destructive">*</span>
             </label>
             <Select
-              placeholder={form.farmId ? 'Select a pen' : 'Select a farm first'}
+              placeholder={
+                !form.farmId
+                  ? 'Select a farm first'
+                  : availablePens.length === 0
+                    ? 'No pens in this farm yet'
+                    : 'Select a pen'
+              }
               options={availablePens.map((pen) => {
-                const house = houses.find((h) => h.id === pen.poultryHouseId);
-                return { value: pen.id, label: house ? `${pen.name} (${house.name})` : pen.name };
+                const houseName = houseNames.get(pen.poultryHouseId);
+                return { value: pen.id, label: houseName ? `${pen.name} (${houseName})` : pen.name };
               })}
               value={form.penId}
-              disabled={!form.farmId}
+              disabled={!form.farmId || availablePens.length === 0}
               onChange={(e) => setForm({ ...form, penId: e.target.value })}
             />
             {formErrors.penId && (
               <p className="text-sm text-destructive mt-1">{formErrors.penId}</p>
+            )}
+            {!formErrors.penId && form.farmId && availablePens.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-1">
+                This farm has no houses or pens yet — add one under Poultry Houses.
+              </p>
             )}
           </div>
           <div>

@@ -54,6 +54,22 @@ export class PoultryApplicationService {
     }
   }
 
+  /**
+   * A flock's farm must be the farm that owns its pen, otherwise a client can
+   * place a flock on farm A while pointing at a pen in farm B. Resolves the
+   * pen → house → farm chain, the same path the list endpoints filter on.
+   */
+  private async assertPenBelongsToFarm(organizationId: string, penId: string, farmId: string): Promise<void> {
+    if (!penId) throw new BadRequestException('penId is required');
+    const pen = await this.getPenById(organizationId, penId);
+    const house = await this.getPoultryHouseById(organizationId, pen.poultryHouseId);
+    if (house.farmId !== farmId) {
+      throw new BadRequestException(
+        `Pen "${pen.name}" sits in poultry house "${house.name}" on a different farm`,
+      );
+    }
+  }
+
   // ── PoultryHouse ──
   async createPoultryHouse(organizationId: string, data: Omit<PoultryHouse, 'id'>): Promise<PoultryHouse> {
     this.requireOrg(organizationId);
@@ -159,9 +175,9 @@ export class PoultryApplicationService {
     data: Omit<Flock, 'id' | 'createdAt' | 'updatedAt' | 'organizationId'> & { arrivalDate: Date | string },
   ): Promise<Flock> {
     this.requireOrg(organizationId);
-    await this.getPenById(organizationId, data.penId);
-    await this.getBreedById(data.breedId);
     await this.assertFarmInOrg(data.farmId, organizationId);
+    await this.assertPenBelongsToFarm(organizationId, data.penId, data.farmId);
+    await this.getBreedById(data.breedId);
     const arrivalDate = typeof data.arrivalDate === 'string' ? new Date(data.arrivalDate) : data.arrivalDate;
     // P6: batch codes are unique per organization. The DB enforces it with a
     // partial unique index; check first so a duplicate returns a clear 409
@@ -193,10 +209,19 @@ export class PoultryApplicationService {
   }
 
   async updateFlock(organizationId: string, id: string, data: Partial<Flock> & { arrivalDate?: Date | string }): Promise<Flock> {
-    await this.getFlockById(organizationId, id);
-    if (data.penId) await this.getPenById(organizationId, data.penId);
+    const current = await this.getFlockById(organizationId, id);
     if (data.breedId) await this.getBreedById(data.breedId);
     if (data.farmId) await this.assertFarmInOrg(data.farmId, organizationId);
+    // Validate the pair the way it will land: a partial update may move only
+    // the pen or only the farm, so resolve both against the stored record
+    // before checking the chain (and re-check when nothing moves either).
+    if (data.penId || data.farmId) {
+      await this.assertPenBelongsToFarm(
+        organizationId,
+        data.penId ?? current.penId,
+        data.farmId ?? current.farmId,
+      );
+    }
     // A flock can never change tenancy — drop any organizationId from input.
     const { organizationId: _ignored, arrivalDate: rawArrivalDate, ...rest } = data;
     // P6: re-check batchCode uniqueness when it changes.
