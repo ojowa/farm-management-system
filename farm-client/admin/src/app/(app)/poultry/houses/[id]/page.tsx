@@ -1,25 +1,37 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
   Home,
   Calendar,
+  Plus,
   Users,
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { poultryHousesAPI } from '@/lib/api';
+import { poultryHousesAPI, pensAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
+import { Dialog } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { penFormSchema } from '@/lib/validation';
 
 interface PoultryHouse {
   id: string;
@@ -33,9 +45,18 @@ interface PoultryHouse {
   updatedAt?: string;
 }
 
+interface Pen {
+  id: string;
+  poultryHouseId: string;
+  name: string;
+  capacity: number;
+}
+
 export default function PoultryHouseDetailPage() {
-  const { canCreate } = usePermission();
+  const { canCreate, canUpdate, canDelete } = usePermission();
   const readOnly = !canCreate('poultry');
+  const canEditPen = canUpdate('poultry');
+  const canRemovePen = canDelete('poultry');
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
@@ -47,6 +68,100 @@ export default function PoultryHouseDetailPage() {
   } = useFetch<{ data: PoultryHouse }>(`poultry-house-${id}`, () => poultryHousesAPI.get(id), {
     cacheTime: 30_000,
   });
+
+  // Pens live under this house, so they are scoped by `poultryHouseId` rather
+  // than loaded wholesale — this page only ever manages its own house's pens.
+  const {
+    data: pensData,
+    loading: pensLoading,
+    refetch: refetchPens,
+  } = useFetch<{ data: Pen[] }>(`poultry-house-pens-${id}`, () =>
+    pensAPI.list({ poultryHouseId: id, limit: 1000 })
+  );
+  const pens: Pen[] = (pensData as any)?.data ?? (Array.isArray(pensData) ? pensData : []);
+
+  const [showPenForm, setShowPenForm] = useState(false);
+  const [editingPenId, setEditingPenId] = useState<string | null>(null);
+  const [penForm, setPenForm] = useState({ name: '', capacity: '' });
+  const [penFormErrors, setPenFormErrors] = useState<Record<string, string>>({});
+  const [penSaving, setPenSaving] = useState(false);
+
+  const resetPenForm = () => {
+    setPenForm({ name: '', capacity: '' });
+    setPenFormErrors({});
+  };
+
+  const openAddPen = () => {
+    setEditingPenId(null);
+    resetPenForm();
+    setShowPenForm(true);
+  };
+
+  const openEditPen = (pen: Pen) => {
+    setEditingPenId(pen.id);
+    resetPenForm();
+    setPenForm({ name: pen.name, capacity: String(pen.capacity ?? '') });
+    setShowPenForm(true);
+  };
+
+  const dropPenCaches = () => {
+    clearFetchCache('poultry-house-pens-');
+    // The flock forms cache their own pen lists, keyed by farm.
+    clearFetchCache('poultry-flock-pens');
+  };
+
+  const handleSavePen = async (event: React.FormEvent) => {
+    event.preventDefault();
+    // The house is this page's route param, so it is fixed rather than picked.
+    const result = penFormSchema.safeParse({ ...penForm, poultryHouseId: id });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        errors[String(issue.path[0])] = issue.message;
+      });
+      setPenFormErrors(errors);
+      return;
+    }
+    setPenFormErrors({});
+    setPenSaving(true);
+    try {
+      const payload = { name: penForm.name.trim(), capacity: Number(penForm.capacity) };
+      if (editingPenId) {
+        await pensAPI.update(editingPenId, payload);
+        toast({ type: 'success', title: 'Pen updated' });
+      } else {
+        await pensAPI.create({ poultryHouseId: id, ...payload });
+        toast({ type: 'success', title: 'Pen created' });
+      }
+      setShowPenForm(false);
+      dropPenCaches();
+      refetchPens();
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: editingPenId ? 'Failed to update pen' : 'Failed to create pen',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setPenSaving(false);
+    }
+  };
+
+  const handleDeletePen = async (pen: Pen) => {
+    if (!confirm(`Delete pen "${pen.name}"? Flocks assigned to it must be moved first.`)) return;
+    try {
+      await pensAPI.delete(pen.id);
+      toast({ type: 'success', title: 'Pen deleted' });
+      dropPenCaches();
+      refetchPens();
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to delete pen',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
+  };
 
   // The service returns the house bare; accept `{ data }` too so a loaded
   // house never falls through to the "not found" state.
@@ -186,6 +301,148 @@ export default function PoultryHouseDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>
+            Pens
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({pens.length})
+            </span>
+          </CardTitle>
+          {!readOnly && (
+            <Button variant="outline" size="sm" onClick={openAddPen}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Pen
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent>
+          {pensLoading ? (
+            <div className="flex justify-center py-8">
+              <LoadingSpinner className="h-6 w-6" />
+            </div>
+          ) : pens.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">
+                This house has no pens yet. Pens are what flocks are assigned to.
+              </p>
+              {!readOnly && (
+                <Button variant="outline" size="sm" className="mt-4" onClick={openAddPen}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add the first pen
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pen</TableHead>
+                    <TableHead>Capacity</TableHead>
+                    <TableHead className="w-[120px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pens.map((pen) => (
+                    <TableRow key={pen.id}>
+                      <TableCell>
+                        <span className="font-medium">{pen.name}</span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {pen.capacity != null ? `${pen.capacity.toLocaleString()} birds` : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {!readOnly && (
+                          <div className="flex items-center gap-1">
+                            {canEditPen && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditPen(pen)}
+                                aria-label={`Edit ${pen.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canRemovePen && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => void handleDeletePen(pen)}
+                                aria-label={`Delete ${pen.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {!readOnly && (
+        <Dialog
+          open={showPenForm}
+          onOpenChange={(open) => {
+            setShowPenForm(open);
+            if (!open) resetPenForm();
+          }}
+          title={editingPenId ? 'Edit Pen' : `Add Pen — ${house.name}`}
+        >
+          <form onSubmit={handleSavePen} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Pen Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="Pen A"
+                value={penForm.name}
+                onChange={(event) => setPenForm({ ...penForm, name: event.target.value })}
+              />
+              {penFormErrors.name && (
+                <p className="mt-1 text-sm text-destructive">{penFormErrors.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Capacity (birds) <span className="text-destructive">*</span>
+              </label>
+              <Input
+                type="number"
+                placeholder="1000"
+                value={penForm.capacity}
+                onChange={(event) => setPenForm({ ...penForm, capacity: event.target.value })}
+              />
+              {penFormErrors.capacity && (
+                <p className="mt-1 text-sm text-destructive">{penFormErrors.capacity}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowPenForm(false);
+                  resetPenForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" loading={penSaving}>
+                {editingPenId ? 'Save Pen' : 'Create Pen'}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
 
       {house.description && (
         <Card>

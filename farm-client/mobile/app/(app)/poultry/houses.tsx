@@ -250,12 +250,19 @@ export default function PoultryHousesScreen() {
         renderItem={({ item: house }) => {
           const housePens = pens.filter((pen) => pen.poultryHouseId === house.id);
           return (
-            <Card style={[styles.houseCard, { backgroundColor: themeColors.card }]}>
+            <Card
+              style={[styles.houseCard, { backgroundColor: themeColors.card }]}
+              onPress={() => router.push(`/poultry/houses/${house.id}`)}
+              accessibilityLabel={`Manage pens in ${house.name}`}
+            >
               <View style={styles.houseHeading}>
                 <View style={styles.houseCopy}>
                   <Text style={[styles.houseName, { color: themeColors.text }]}>{house.name}</Text>
                   <Text style={[styles.meta, { color: themeColors.textSecondary }]}>
                     {farmNames.get(house.farmId) || 'Farm'} · Capacity {house.capacity}
+                  </Text>
+                  <Text style={[styles.manageLink, { color: themeColors.primary }]}>
+                    Manage pens ({housePens.length}) ›
                   </Text>
                 </View>
                 {canDelete && (
@@ -448,6 +455,7 @@ const styles = StyleSheet.create({
   houseHeading: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   houseCopy: { flex: 1 },
   houseName: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
+  manageLink: { fontSize: 13, fontWeight: '600', marginTop: 6 },
   meta: { fontSize: 13 },
   penDivider: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 14, paddingTop: 12 },
   penHeading: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
