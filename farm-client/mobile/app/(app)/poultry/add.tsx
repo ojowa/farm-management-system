@@ -281,7 +281,11 @@ export default function AddFlockScreen() {
   const availablePens = useMemo(() => {
     if (!formData.farmId) return [];
     return pens
-      .filter((p) => houseFarm[p.poultryHouseId] === formData.farmId)
+      .filter((p: any) => {
+        if (p.farmId === formData.farmId) return true;
+        const houseId = p.poultryHouseId || p.houseId;
+        return houseId && houseFarm[houseId] === formData.farmId;
+      })
       .map((p) => ({ id: p.id, name: p.name }));
   }, [pens, houseFarm, formData.farmId]);
 
