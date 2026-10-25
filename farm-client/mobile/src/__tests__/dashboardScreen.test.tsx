@@ -130,10 +130,13 @@ describe('DashboardScreen', () => {
   beforeEach(() => {
     mockRootState.sync.isOnline = true;
     mockAuthUser.permissions = [];
-    mockFarmsList.mockResolvedValue({ data: [{ id: 'f1', status: 'active' }] });
-    mockCropsList.mockResolvedValue({ data: [{ id: 'c1' }, { id: 'c2' }] });
-    mockLivestockList.mockResolvedValue({ data: [{ id: 'l1', quantity: 12 }] });
-    mockPoultryList.mockResolvedValue({ data: [{ id: 'p1', quantity: 30 }] });
+    // Count-only queries ask for one row and read the server's `total`, so the
+    // mocks answer the way the real endpoints do: a paginated body carrying
+    // `total` alongside the rows.
+    mockFarmsList.mockResolvedValue({ data: { farms: [{ id: 'f1', status: 'active' }], total: 1 } });
+    mockCropsList.mockResolvedValue({ data: { crops: [{ id: 'c1' }, { id: 'c2' }], total: 2 } });
+    mockLivestockList.mockResolvedValue({ data: { data: [{ id: 'l1', quantity: 12 }], total: 1 } });
+    mockPoultryList.mockResolvedValue({ data: { data: [{ id: 'p1', quantity: 30 }], total: 1 } });
     // listPonds answers `{ data: { data, total } }` — one level deeper than
     // the plain list endpoints.
     mockListPonds.mockResolvedValue({ data: { data: [{ id: 'pond1' }], total: 4 } });
@@ -151,10 +154,17 @@ describe('DashboardScreen', () => {
     mockUnreadCount.mockResolvedValue({ data: { count: 0 } });
   });
 
-  it('falls back to sales/expenses sums and splits livestock from poultry', async () => {
+  it('reads every stat from the server total instead of counting loaded rows', async () => {
     mockGetToday.mockResolvedValue({
       data: [{ status: 'PRESENT' }, { status: 'PRESENT' }, { status: 'ABSENT' }, { status: 'LATE' }],
     });
+    // Deliberately make the server's answers disagree with the rows it sends:
+    // the farms body holds no active farm but reports 5, and the livestock /
+    // poultry rows carry quantities of 12 and 30 while the server counts 3
+    // and 4 records.
+    mockFarmsList.mockResolvedValue({ data: { farms: [{ id: 'f1', status: 'idle' }], total: 5 } });
+    mockLivestockList.mockResolvedValue({ data: { data: [{ id: 'l1', quantity: 12 }], total: 3 } });
+    mockPoultryList.mockResolvedValue({ data: { data: [{ id: 'p1', quantity: 30 }], total: 4 } });
 
     render(<DashboardScreen />);
 
@@ -166,9 +176,24 @@ describe('DashboardScreen', () => {
     expect(screen.getByLabelText('Total Expenses: $0')).toBeTruthy();
     expect(screen.getByLabelText('Net Profit: $50')).toBeTruthy();
 
-    // Livestock and poultry are now separate stats (admin parity).
-    expect(screen.getByLabelText('Livestock: 12')).toBeTruthy();
-    expect(screen.getByLabelText('Poultry: 30')).toBeTruthy();
+    // The cards quote the server's totals — no local `status === 'active'`
+    // filter, no `quantity` sum over the first page of rows.
+    expect(screen.getByLabelText('Total Farms: 5')).toBeTruthy();
+    expect(screen.getByLabelText('Total Crops: 2')).toBeTruthy();
+    expect(screen.getByLabelText('Livestock: 3')).toBeTruthy();
+    expect(screen.getByLabelText('Poultry: 4')).toBeTruthy();
+
+    // Each count query asks for a single row: the total is all it needs, and
+    // it can never be truncated by the server's default page size.
+    expect(mockFarmsList).toHaveBeenCalledWith({ limit: 1 });
+    expect(mockCropsList).toHaveBeenCalledWith({ limit: 1 });
+    expect(mockLivestockList).toHaveBeenCalledWith({ limit: 1 });
+    expect(mockPoultryList).toHaveBeenCalledWith({ limit: 1 });
+
+    // The finance fallback sums the full ledger it asked for rather than the
+    // server's default page of 20 rows.
+    expect(mockListSales).toHaveBeenCalledWith({ limit: 1000 });
+    expect(mockListExpenses).toHaveBeenCalledWith({ limit: 1000 });
 
     // Attendance shows the previously-dropped Late count and the total.
     expect(screen.getByLabelText('Late: 1')).toBeTruthy();
@@ -200,6 +225,8 @@ describe('DashboardScreen', () => {
     // No full-screen error, and the stats read through the wrappers.
     expect(await screen.findByLabelText('Poultry: 7')).toBeTruthy();
     expect(screen.getByLabelText('Livestock: 5')).toBeTruthy();
+    expect(screen.getByLabelText('Total Farms: 2')).toBeTruthy();
+    expect(screen.getByLabelText('Total Crops: 9')).toBeTruthy();
     expect(screen.queryByText(/Couldn.t load your dashboard/)).toBeNull();
   });
 
@@ -232,7 +259,7 @@ describe('DashboardScreen', () => {
     expect(screen.queryByText('No recent activity')).toBeNull();
 
     // Core sections still render, and silent failures stay silent (no toast).
-    expect(screen.getByLabelText('Active Farms: 1')).toBeTruthy();
+    expect(screen.getByLabelText('Total Farms: 1')).toBeTruthy();
     expect(mockShowError).not.toHaveBeenCalled();
   });
 

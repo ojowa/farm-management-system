@@ -83,7 +83,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stats, setStats] = useState({
-    activeFarms: 0,
+    totalFarms: 0,
     totalCrops: 0,
     totalLivestock: 0,
     totalPoultry: 0,
@@ -120,17 +120,24 @@ export default function DashboardScreen() {
         notifsRes,
         unreadRes,
       ] = await Promise.allSettled([
-        farmsAPI.list(),
-        cropsAPI.list(),
-        livestockAPI.list(),
-        poultryAPI.list(),
+        // `limit: 1` on the count-only queries: the card reads the server's
+        // `total`, so there is no reason to pull a page of rows the screen
+        // never renders (and never did — it only counted them).
+        farmsAPI.list({ limit: 1 }),
+        cropsAPI.list({ limit: 1 }),
+        livestockAPI.list({ limit: 1 }),
+        poultryAPI.list({ limit: 1 }),
         // Ponds were the one farm module the landing page never asked about,
         // so Aquaculture had no Overview presence at all. It rides the same
         // allSettled batch as the rest: an unentitled caller (no
         // aquaculture.read) just rejects and falls back to 0.
         aquacultureAPI.listPonds({ page: 1, limit: 1 }),
-        financeAPI.listSales(),
-        financeAPI.listExpenses(),
+        // The profitability summary is the primary financial source; these two
+        // only matter as its fallback, and the fallback used to sum just the
+        // server's default page (20 rows). Ask for the full ledger so the
+        // fallback can't disagree with the summary it stands in for.
+        financeAPI.listSales({ limit: 1000 }),
+        financeAPI.listExpenses({ limit: 1000 }),
         profitabilityAPI.summary(),
         tasksAPI.list({ status: 'PENDING', limit: 5 }),
         attendanceAPI.getToday(),
@@ -156,26 +163,22 @@ export default function DashboardScreen() {
       const livestock = livestockRes.status === 'fulfilled' ? unwrapList(livestockRes.value?.data) : [];
       const poultry = poultryRes.status === 'fulfilled' ? unwrapList(poultryRes.value?.data) : [];
 
-      const totalLivestock = livestock.reduce(
-        (sum: number, item: any) => sum + (item.quantity || 0),
-        0
-      );
-      const totalPoultry = poultry.reduce(
-        (sum: number, item: any) => sum + (item.quantity || 0),
-        0
-      );
-
-      // listPonds answers `{ data: Pond[], total }`; unwrapList already picks
-      // the rows out, so only the count needs the raw body.
+      // Every Overview number is the server's own `total` for a `limit: 1`
+      // list call — the same figure the section's list page shows. These cards
+      // used to count the rows the client received: filtering farms on
+      // `status`, summing livestock/poultry `quantity`. The server paginates
+      // by default (10 farms, 20 livestock/poultry rows), so from the 11th
+      // farm on, the cards silently under-reported what the server had.
       const pondsRows = pondsRes.status === 'fulfilled' ? unwrapList(pondsRes.value?.data) : [];
-      const totalPonds = totalOf(pondsRes, pondsRows);
 
       setStats({
-        activeFarms: farms.filter((f: any) => f.status === 'active').length,
+        totalFarms: totalOf(farmsRes, farms),
         totalCrops: totalOf(cropsRes, crops),
-        totalLivestock,
-        totalPoultry,
-        totalPonds,
+        totalLivestock: totalOf(livestockRes, livestock),
+        totalPoultry: totalOf(poultryRes, poultry),
+        // listPonds answers `{ data: Pond[], total }`; unwrapList already picks
+        // the rows out, so only the count needs the raw body.
+        totalPonds: totalOf(pondsRes, pondsRows),
       });
 
       // ── Financial summary ──────────────────────────────────────────────
@@ -529,17 +532,18 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.content}>
-          {/* Overview */}
+          {/* Overview — five cards whose labels and queries mirror the admin
+              dashboard's stat row, each value the server's own `total`. */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Overview</Text>
             <View style={styles.statsRow}>
               <Card
                 style={[styles.statCard, dynamicStyles.cardBackground]}
                 onPress={() => router.push('/farms')}
-                accessibilityLabel={`Active Farms: ${stats.activeFarms}`}
+                accessibilityLabel={`Total Farms: ${stats.totalFarms}`}
               >
-                <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🌾 Active Farms</Text>
-                <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.activeFarms}</Text>
+                <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🌾 Total Farms</Text>
+                <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalFarms}</Text>
               </Card>
               <Card
                 style={[styles.statCard, dynamicStyles.cardBackground]}
