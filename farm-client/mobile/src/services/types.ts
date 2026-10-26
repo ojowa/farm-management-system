@@ -794,8 +794,8 @@ export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 /**
  * Farm-module record a task was raised against (Task.linkedModule).
  * Must stay in step with the server's zod enum (hr.schema.ts). `field` and
- * `contract` are valid on the wire but the mobile picker offers only the six
- * modules that own a detail screen.
+ * `inventory` are valid on the wire but the mobile picker offers only the
+ * seven modules that own a detail screen.
  */
 export type TaskLinkModule =
   | 'farm'

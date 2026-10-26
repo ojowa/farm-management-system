@@ -7,6 +7,7 @@ import { Button, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
 import { useToasts } from '@/core/hooks/useToasts';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { describeApiError } from '@/core/utils/apiError';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
@@ -241,6 +242,8 @@ export default function ContractDetailScreen() {
             </>
           )}
         </View>
+
+        <RecordTasksCard moduleKey="contract" recordId={contract.id} recordName={partyOf(contract)} />
 
         {canDelete && (
           <View style={styles.actions}>

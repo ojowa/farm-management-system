@@ -5,16 +5,17 @@ import {
   poultryHousesAPI,
   aquacultureAPI,
   equipmentAPI,
+  contractsAPI,
 } from '../../services/api';
 
 /**
  * Task.linkedModule — the farm-module record a task was raised against.
  * Must stay in step with the server's zod enum (hr.schema.ts). The mobile
- * picker offers only the six modules that own a detail screen, so every link
- * it writes is also openable ("field", "inventory" and "contract" are valid
- * on the wire but have no mobile record page to jump to).
+ * picker offers only the seven modules that own a detail screen, so every link
+ * it writes is also openable ("field" and "inventory" are valid on the wire
+ * but have no mobile record page to jump to).
  */
-export type LinkedModule = 'farm' | 'crop' | 'livestock' | 'poultry' | 'aquaculture' | 'equipment';
+export type LinkedModule = 'farm' | 'crop' | 'livestock' | 'poultry' | 'aquaculture' | 'equipment' | 'contract';
 
 export interface RecordOption {
   id: string;
@@ -98,6 +99,21 @@ export const RECORD_SOURCES: RecordSource[] = [
     load: async () =>
       rows(await equipmentAPI.list({ limit: 200 })).map((r) => ({ id: r.id, name: r.name })),
     href: (id) => `/equipment/${id}`,
+  },
+  {
+    key: 'contract',
+    label: 'Contract',
+    plural: 'Contracts',
+    // contractsAPI.list takes only { type, status } — no limit — so the picker
+    // reads the endpoint's default first page.
+    load: async () =>
+      rows(await contractsAPI.list()).map((r) => ({
+        id: r.id,
+        // Same party the contract screens show: buyerSellerName at the DB
+        // level, with the legacy DTO aliases behind it.
+        name: labelOf(r, r.type, r.buyerSellerName || r.counterpartyName || r.title),
+      })),
+    href: (id) => `/contracts/${id}`,
   },
 ];
 
