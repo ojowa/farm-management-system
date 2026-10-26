@@ -1,5 +1,6 @@
 import {
   farmsAPI,
+  fieldsAPI,
   cropsAPI,
   livestockAPI,
   aquacultureAPI,
@@ -11,9 +12,10 @@ import {
 
 /**
  * Task.linkedModule — the farm-module record a task was raised against.
- * The key set must stay in step with the server's zod enum (hr.schema.ts);
- * `field` is valid on the wire but absent from the picker below, because its
- * list API only accepts a farmId and there is no field detail page to open.
+ * The key set must stay in step with the server's zod enum (hr.schema.ts):
+ * all nine modules are offered here, `field` included. A source may omit
+ * `href` while its module has no detail page (`equipment`), but it still has
+ * to *load*, otherwise a link could be picked but never re-chosen.
  */
 export type LinkedModule =
   | 'farm'
@@ -60,6 +62,19 @@ export const RECORD_SOURCES: RecordSource[] = [
     load: async () =>
       rows(await farmsAPI.list({ limit: 200 })).map((r) => ({ id: r.id, name: r.name })),
     href: (id) => `/farms/${id}`,
+  },
+  {
+    key: 'field',
+    label: 'Field',
+    plural: 'Fields',
+    // No farmId: the server answers with the whole organisation's parcels,
+    // each carrying its farm so two parcels called "North" stay apart.
+    load: async () =>
+      rows(await fieldsAPI.list({})).map((r) => ({
+        id: r.id,
+        name: labelOf(r, r.name, r.farm?.name),
+      })),
+    href: (id) => `/fields/${id}`,
   },
   {
     key: 'crop',
@@ -124,14 +139,14 @@ export const RECORD_SOURCES: RecordSource[] = [
         id: r.id,
         name: labelOf(r, r.type, r.counterpartyName || r.buyerSellerName),
       })),
+    href: (id) => `/contracts/${id}`,
   },
 ];
 
-/** Every module key the server accepts, including the ones the picker skips. */
-export const LINKED_MODULE_LABELS: Record<string, string> = {
-  ...Object.fromEntries(RECORD_SOURCES.map((s) => [s.key, s.label])),
-  field: 'Field',
-};
+/** Every module key the server accepts — all nine are now pickable. */
+export const LINKED_MODULE_LABELS: Record<string, string> = Object.fromEntries(
+  RECORD_SOURCES.map((s) => [s.key, s.label])
+);
 
 export function linkedModuleLabel(key?: string | null): string {
   if (!key) return '';

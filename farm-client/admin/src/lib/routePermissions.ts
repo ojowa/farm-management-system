@@ -39,6 +39,9 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
 
   // Farm operations
   { prefix: '/farms', permissions: ['farm.read'] },
+  // Parcels are read through the farm controller (`farm.read`), like the
+  // inventory/equipment views below.
+  { prefix: '/fields', permissions: ['farm.read'] },
   { prefix: '/crops', permissions: ['crop.read'] },
   { prefix: '/irrigation', permissions: ['crop.read'] },
   { prefix: '/livestock', permissions: ['livestock.read'] },

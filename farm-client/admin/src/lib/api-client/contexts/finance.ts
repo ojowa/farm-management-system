@@ -42,6 +42,8 @@ export function createProfitabilityAPI(client: AxiosInstance): ProfitabilityAPI 
 
 export interface ContractsAPI {
   list: (params?: any) => Promise<any>;
+  /** GET /contracts/:id — one contract for the detail screen. */
+  get: (id: string) => Promise<any>;
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
   delete: (id: string) => Promise<any>;
@@ -50,6 +52,7 @@ export interface ContractsAPI {
 export function createContractsAPI(client: AxiosInstance): ContractsAPI {
   return {
     list: (params) => client.get('/contracts', { params }),
+    get: (id) => client.get(`/contracts/${id}`),
     create: (data) => client.post('/contracts', data),
     update: (id, data) => client.put(`/contracts/${id}`, data),
     delete: (id) => client.delete(`/contracts/${id}`),

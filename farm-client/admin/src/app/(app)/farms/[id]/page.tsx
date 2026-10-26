@@ -521,7 +521,13 @@ export default function FarmDetailPage() {
               <ul className="divide-y">
                 {fields.map((field) => (
                   <li key={field.id} className="flex items-center justify-between gap-3 py-2">
-                    <span className="font-medium truncate">{field.name}</span>
+                    {/* Parcels have their own record page (tasks link to it). */}
+                    <Link
+                      href={`/fields/${field.id}`}
+                      className="font-medium truncate hover:underline"
+                    >
+                      {field.name}
+                    </Link>
                     <span className="text-sm text-muted-foreground shrink-0">
                       {field.size != null ? `${field.size} acres` : '—'}
                     </span>

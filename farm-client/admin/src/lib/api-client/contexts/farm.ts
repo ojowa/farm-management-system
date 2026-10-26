@@ -31,12 +31,13 @@ export function createFarmsAPI(client: AxiosInstance): FarmsAPI {
 }
 
 /**
- * Fields are the parcels that belong to a farm (GET /fields?farmId=… — the
- * server REQUIRES farmId, so every call must pass it). The farm detail page
- * uses `list` to show the farm's parcels.
+ * Fields are the parcels that belong to a farm (GET /fields?farmId=…). With
+ * no farmId the server returns every parcel of the caller's organization —
+ * that is the shape the task-link picker loads, since no farm is chosen yet.
+ * The farm detail page passes `farmId` to scope its own list.
  */
 export interface FieldsAPI {
-  list: (params?: { farmId: string }) => Promise<any>;
+  list: (params?: { farmId?: string }) => Promise<any>;
   get: (id: string) => Promise<any>;
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
