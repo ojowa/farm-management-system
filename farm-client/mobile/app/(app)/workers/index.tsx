@@ -10,8 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { workersAPI } from '@/modules/hr';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { workersAPI, departmentsAPI } from '@/modules/hr';
 import type { Worker } from '@/modules/hr';
 import { farmsAPI } from '@/modules/farm';
 import { Card, Button, TextInputField, colors } from '@/core/ui/UIComponents';
@@ -129,6 +129,12 @@ const fullName = (w: Worker) => [w.firstName, w.middleName, w.lastName].filter(B
 
 export default function WorkersScreen() {
   const router = useRouter();
+  // A task's Department row lands here so the roster of that department is
+  // one tap away.
+  const routeParams = useLocalSearchParams<{ department?: string }>();
+  const routeDepartment = Array.isArray(routeParams.department)
+    ? routeParams.department[0]
+    : routeParams.department || '';
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
   const { colors: tc, isDark } = useAppTheme();
@@ -147,7 +153,7 @@ export default function WorkersScreen() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<WorkerStatusFilter>('all');
   const [farmFilter, setFarmFilter] = useState('all');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState(routeDepartment || 'all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -262,6 +268,30 @@ export default function WorkersScreen() {
 
   const fetchDepartments = async () => {
     try {
+      // Prefer GET /departments — it names rows nobody is assigned to yet,
+      // so the chips match the pickers on the worker form. Guarded because
+      // the hr barrel is mocked without departmentsAPI in tests.
+      const list = (departmentsAPI as any)?.list;
+      if (typeof list === 'function') {
+        const response = await list();
+        const payload: any = response.data;
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+        const names = rows
+          .map((d: any) => (typeof d === 'string' ? d : d?.name))
+          .filter((d: any) => typeof d === 'string' && !!d);
+        if (names.length) {
+          setServerDepartments(names);
+          return;
+        }
+      }
+    } catch {
+      /* fall through to the legacy distinct-of-workers endpoint */
+    }
+    try {
       const response = await workersAPI.departments();
       const payload: any = response.data;
       const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
@@ -281,6 +311,15 @@ export default function WorkersScreen() {
     fetchFarms();
     fetchDepartments();
   }, []);
+
+  // Re-read the URL's department only when it changes — clearing a chip must
+  // not be undone by the param still sitting in the address bar.
+  const appliedRouteDept = useRef(routeDepartment);
+  useEffect(() => {
+    if (appliedRouteDept.current === routeDepartment) return;
+    appliedRouteDept.current = routeDepartment;
+    setDepartmentFilter(routeDepartment || 'all');
+  }, [routeDepartment]);
 
   // Any filter change restarts pagination from page 1.
   useEffect(() => {

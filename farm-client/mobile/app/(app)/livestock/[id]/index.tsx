@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { offlineLivestockAPI } from '@/modules/livestock';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { offlinePoultryAPI } from '@/modules/poultry';
 import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
@@ -241,6 +242,8 @@ export default function AnimalDetailScreen() {
             <Text style={[styles.checkupValue, { color: tc.text }]}>{animal.lastCheckup || 'No checkup recorded'}</Text>
           </View>
         </Card>
+
+        <RecordTasksCard moduleKey="livestock" recordId={animal.id} recordName={animal.name} />
 
         <View style={styles.actionsContainer}>
           <Button

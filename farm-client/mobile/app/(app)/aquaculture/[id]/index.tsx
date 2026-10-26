@@ -21,6 +21,7 @@ import type {
   PondHarvest,
 } from '@/modules/aquaculture';
 import { farmsAPI } from '@/modules/farm';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { TextInputField, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
@@ -1106,6 +1107,10 @@ export default function PondDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        {/* Tasks raised against this pond — above the activity sections, so
+            planned work is read before the log of what already happened. */}
+        <RecordTasksCard moduleKey="aquaculture" recordId={pond.id} recordName={pond.name} />
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>

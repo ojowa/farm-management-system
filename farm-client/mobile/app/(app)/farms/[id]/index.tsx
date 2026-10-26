@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useGetFarmQuery, useDeleteFarmMutation, fieldsAPI, type Field } from '@/modules/farm';
 import { poultryHousesAPI, type PoultryHouse } from '@/modules/poultry';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { unwrapList } from '@/modules/poultry/flockChain';
 import { Card, Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
@@ -505,6 +506,9 @@ export default function FarmDetailScreen() {
             ))
           )}
         </Card>
+
+        {/* Tasks raised against this farm, with the headcount beside them. */}
+        <RecordTasksCard moduleKey="farm" recordId={id} recordName={farm.name} farmId={id} />
 
         {relatedLinks.length > 0 && (
           <Card style={[styles.relatedCard, dynamicStyles.cardBackground]}>

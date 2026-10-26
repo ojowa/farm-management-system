@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { rosterAPI, workersAPI } from '@/modules/hr';
+import { rosterAPI, workersAPI, departmentsAPI } from '@/modules/hr';
 import type { Shift, ShiftAssignment } from '@/modules/hr';
 import { Card, Button, TextInputField, Modal, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
@@ -148,9 +148,18 @@ interface ShiftForm {
   endTime: string;
   daysOfWeek: string[];
   color: string;
+  /** Owning Department row id ('' = none). */
+  departmentId: string;
 }
 
-const EMPTY_FORM: ShiftForm = { name: '', startTime: '', endTime: '', daysOfWeek: [], color: SHIFT_COLORS[0] };
+const EMPTY_FORM: ShiftForm = {
+  name: '',
+  startTime: '',
+  endTime: '',
+  daysOfWeek: [],
+  color: SHIFT_COLORS[0],
+  departmentId: '',
+};
 
 export default function RosterScreen() {
   const { success, error: showError } = useToasts();
@@ -242,6 +251,36 @@ export default function RosterScreen() {
   const [workersLoading, setWorkersLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
+  // Department chips: source for the filter row and the shift form.
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  // loadAll runs from retries and after writes, so the active filter is read
+  // through a ref instead of being captured by those callbacks.
+  const departmentFilterRef = useRef('all');
+
+  useEffect(() => {
+    // Guarded: the hr barrel is mocked without departmentsAPI in tests.
+    const list = (departmentsAPI as any)?.list;
+    if (typeof list !== 'function') return;
+    list()
+      .then((res: any) => {
+        const payload = res?.data;
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : [];
+        setDepartments(
+          rows
+            .filter((d: any) => d?.id && d?.name)
+            .map((d: any) => ({ id: d.id, name: d.name }))
+        );
+      })
+      .catch(() => {
+        if (__DEV__) console.warn('[Roster] Failed to load departments');
+      });
+  }, []);
+
   useEffect(() => {
     loadAll();
   }, []);
@@ -250,7 +289,12 @@ export default function RosterScreen() {
     try {
       setLoadError(null);
       const [shiftsRes, assignmentsRes] = await Promise.allSettled([
-        rosterAPI.listShifts(),
+        // Server-side department filter — GET /shifts?departmentId=.
+        rosterAPI.listShifts(
+          departmentFilterRef.current !== 'all'
+            ? { departmentId: departmentFilterRef.current }
+            : undefined
+        ),
         rosterAPI.listAssignments(),
       ]);
       if (shiftsRes.status === 'fulfilled') {
@@ -295,6 +339,9 @@ export default function RosterScreen() {
     endTime: form.endTime.trim(),
     daysOfWeek: form.daysOfWeek,
     color: form.color,
+    // Null, not undefined: clearing a department must reach the server, which
+    // only writes a field it is actually given.
+    departmentId: form.departmentId || null,
   });
 
   const submitForm = async () => {
@@ -379,9 +426,17 @@ export default function RosterScreen() {
       endTime: shift.endTime ?? '',
       daysOfWeek: (shift as any).daysOfWeek ?? (shift as any).days ?? [],
       color: (shift as any).color ?? SHIFT_COLORS[0],
+      departmentId: (shift as any).departmentId ?? '',
     });
     setFormErrors({});
     setCreateOpen(true);
+  };
+
+  /** Server-side department filter — re-queries /shifts with departmentId. */
+  const selectDepartment = (id: string) => {
+    departmentFilterRef.current = id;
+    setDepartmentFilter(id);
+    loadAll();
   };
 
   const closeForm = () => {
@@ -467,6 +522,7 @@ export default function RosterScreen() {
       const days = (item as any).daysOfWeek ?? (item as any).days ?? [];
       const color = (item as any).color;
       const count = assignmentCounts[item.id] ?? 0;
+      const departmentName = departments.find((d) => d.id === (item as any).departmentId)?.name;
       return (
         <Card style={[styles.shiftCard, dynamicStyles.cardBackground]}>
           <View style={styles.shiftRow}>
@@ -479,6 +535,9 @@ export default function RosterScreen() {
                 {item.startTime} – {item.endTime}
               </Text>
               <Text style={[styles.shiftDays, dynamicStyles.shiftDays]}>{describeDays(days)}</Text>
+              {departmentName ? (
+                <Text style={[styles.shiftDays, dynamicStyles.shiftDays]}>Department: {departmentName}</Text>
+              ) : null}
             </View>
             <View style={isActive ? styles.activeBadge : styles.inactiveBadge}>
               <Text style={isActive ? styles.activeBadgeText : styles.inactiveBadgeText}>
@@ -526,7 +585,7 @@ export default function RosterScreen() {
         </Card>
       );
     },
-    [assignmentCounts, canWrite, canDelete, deleteShift, dynamicStyles]
+    [assignmentCounts, canWrite, canDelete, deleteShift, departments, dynamicStyles]
   );
 
   if (loading) {
@@ -575,6 +634,46 @@ export default function RosterScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Server-side department filter — GET /shifts?departmentId= */}
+      {departments.length > 0 && (
+        <View style={[styles.chipRow, { paddingHorizontal: 20, paddingTop: 16, marginBottom: 12 }]}>
+          <TouchableOpacity
+            onPress={() => selectDepartment('all')}
+            style={[styles.chip, dynamicStyles.chip, departmentFilter === 'all' && styles.chipActive]}
+            accessibilityRole="button"
+            accessibilityLabel="All departments"
+            accessibilityState={{ selected: departmentFilter === 'all' }}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                dynamicStyles.chipText,
+                departmentFilter === 'all' && styles.chipTextActive,
+              ]}
+            >
+              All depts
+            </Text>
+          </TouchableOpacity>
+          {departments.map((dept) => {
+            const active = departmentFilter === dept.id;
+            return (
+              <TouchableOpacity
+                key={dept.id}
+                onPress={() => selectDepartment(active ? 'all' : dept.id)}
+                style={[styles.chip, dynamicStyles.chip, active && styles.chipActive]}
+                accessibilityRole="button"
+                accessibilityLabel={`Filter by department ${dept.name}`}
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.chipText, dynamicStyles.chipText, active && styles.chipTextActive]}>
+                  {dept.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       <FlatList
         data={shifts}
@@ -626,6 +725,47 @@ export default function RosterScreen() {
           onChangeText={(v) => updateForm('endTime', v)}
           error={formErrors.endTime}
         />
+        {departments.length > 0 && (
+          <>
+            <Text style={[styles.label, dynamicStyles.label]}>Department</Text>
+            <View style={styles.chipRow}>
+              <TouchableOpacity
+                onPress={() => updateForm('departmentId', '')}
+                style={[styles.chip, dynamicStyles.chip, !form.departmentId && styles.chipActive]}
+                accessibilityRole="button"
+                accessibilityLabel="No department"
+                accessibilityState={{ selected: !form.departmentId }}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    dynamicStyles.chipText,
+                    !form.departmentId && styles.chipTextActive,
+                  ]}
+                >
+                  None
+                </Text>
+              </TouchableOpacity>
+              {departments.map((dept) => {
+                const active = form.departmentId === dept.id;
+                return (
+                  <TouchableOpacity
+                    key={dept.id}
+                    onPress={() => updateForm('departmentId', dept.id)}
+                    style={[styles.chip, dynamicStyles.chip, active && styles.chipActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Department ${dept.name}`}
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[styles.chipText, dynamicStyles.chipText, active && styles.chipTextActive]}>
+                      {dept.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
         <Text style={[styles.label, dynamicStyles.label]}>Repeating days (none = every day)</Text>
         <View style={styles.chipRow}>
           {DAY_TOKENS.map((token) => {

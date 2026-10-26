@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { offlineCropsAPI } from '@/modules/crop';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { Card, Button, colors } from '../../../../src/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
@@ -513,6 +514,9 @@ export default function CropDetailScreen() {
             </View>
           </View>
         </Card>
+
+        {/* Tasks about this exact cycle — the record the picker calls a crop. */}
+        <RecordTasksCard moduleKey="crop" recordId={crop.id} recordName={crop.name} />
 
         {crop.fieldId && crop.farmId && (
           <Button

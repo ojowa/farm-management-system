@@ -18,6 +18,7 @@ import { pensAPI, poultryHousesAPI } from '@/modules/poultry';
 import type { Pen, PoultryHouse } from '@/modules/poultry';
 import { unwrapList } from '@/modules/poultry/flockChain';
 import { Button, Card, TextInputField } from '@/core/ui/UIComponents';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { MenuButton } from '@/core/ui/MenuButton';
 import { usePermission } from '@/core/hooks/usePermission';
@@ -213,6 +214,7 @@ export default function PoultryHousePensScreen() {
                 />
               )}
             </Card>
+            <RecordTasksCard moduleKey="poultry" recordId={id} recordName={house?.name} />
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Pens in this house</Text>
           </View>
         }

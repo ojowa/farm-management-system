@@ -7,6 +7,15 @@
  */
 export { tasksAPI } from '../../services/api';
 export { offlineTasksAPI } from '../../services/offlineApi';
+export { TaskLinkFields } from './TaskLinkFields';
+export { DepartmentField } from './DepartmentField';
+export { RecordTasksCard } from './RecordTasksCard';
+export {
+  linkedModuleLabel,
+  linkedRecordHref,
+  linkedTasksPath,
+} from './taskLinks';
+export type { LinkedModule, RecordOption } from './taskLinks';
 export {
   tasksApi,
   useListTasksQuery,

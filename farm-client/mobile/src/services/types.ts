@@ -710,6 +710,8 @@ export interface Worker {
   phone?: string;
   position: string;
   department?: string;
+  /** Owning Department row — the server keeps `department` (name) in sync. */
+  departmentId?: string | null;
   hireDate?: string;
   /** Server enum: ACTIVE | INACTIVE | PROBATION | TERMINATED. */
   status: string;
@@ -736,6 +738,8 @@ export interface CreateWorkerRequest {
   phone?: string;
   position: string;
   department?: string;
+  /** Owning Department row id — resolves server-side; wins over `department`. */
+  departmentId?: string;
   hireDate?: string;
   /** Login role — org-applicable roles only; omitted means system WORKER. */
   roleId?: string;
@@ -787,6 +791,34 @@ export interface ClockInRequest {
 export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
+/**
+ * Farm-module record a task was raised against (Task.linkedModule).
+ * Must stay in step with the server's zod enum (hr.schema.ts). `field` and
+ * `contract` are valid on the wire but the mobile picker offers only the six
+ * modules that own a detail screen.
+ */
+export type TaskLinkModule =
+  | 'farm'
+  | 'field'
+  | 'crop'
+  | 'livestock'
+  | 'poultry'
+  | 'aquaculture'
+  | 'equipment'
+  | 'inventory'
+  | 'contract';
+
+/** A department row (GET /departments), each carrying usage counts. */
+export interface Department {
+  id: string;
+  name: string;
+  description?: string | null;
+  /** Present on list responses only (hr.service getDepartments). */
+  counts?: { workers: number; tasks: number; shifts: number };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -798,6 +830,13 @@ export interface Task {
   createdByName?: string | null;
   assignee?: Worker;
   farmId?: string;
+  /** Owning department — travels as an id; resolve it through departmentsAPI. */
+  departmentId?: string | null;
+  /** Farm-module record this task was raised against; null/absent = unlinked. */
+  linkedModule?: TaskLinkModule | string | null;
+  linkedRecordId?: string | null;
+  /** Denormalised so the task stays readable when the record itself is gone. */
+  linkedRecordName?: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   dueDate?: string;
@@ -808,6 +847,28 @@ export interface Task {
   nextDueAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Body accepted by POST /tasks (createTaskSchema). */
+export interface CreateTaskRequest {
+  title: string;
+  description?: string | null;
+  priority?: TaskPriority;
+  assignedToId?: string | null;
+  assignedToName?: string | null;
+  farmId?: string | null;
+  departmentId?: string | null;
+  linkedModule?: TaskLinkModule | null;
+  linkedRecordId?: string | null;
+  linkedRecordName?: string | null;
+  dueDate?: string | null;
+  isRecurring?: boolean;
+  recurrenceRule?: string | null;
+}
+
+/** Body accepted by PUT /tasks/:id (updateTaskSchema) — every field optional. */
+export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
+  status?: TaskStatus;
 }
 
 export interface TaskComment {
@@ -840,6 +901,8 @@ export interface Shift {
   /** Legacy DTO field — same content as daysOfWeek. */
   days?: string[];
   color?: string | null;
+  /** Owning department (create/update bodies accept `departmentId: string|null`). */
+  departmentId?: string | null;
   isActive?: boolean;
   createdAt: string;
   updatedAt: string;

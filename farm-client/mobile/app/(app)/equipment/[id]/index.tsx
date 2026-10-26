@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { equipmentAPI } from '@/modules/inventory';
 import type { Equipment } from '@/modules/inventory';
+import { RecordTasksCard } from '@/modules/worker/RecordTasksCard';
 import { farmsAPI } from '@/modules/farm';
 import { Button, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
@@ -255,6 +256,8 @@ export default function EquipmentDetailScreen() {
             ) : null}
           </View>
         </View>
+
+        <RecordTasksCard moduleKey="equipment" recordId={item.id} recordName={item.name} />
 
         {(canWrite || canDelete) && (
           <View style={styles.actions}>

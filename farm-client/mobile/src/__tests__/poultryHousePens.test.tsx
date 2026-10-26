@@ -12,6 +12,7 @@ const mockPensList = jest.fn();
 const mockPenCreate = jest.fn();
 const mockFarmGet = jest.fn();
 const mockHasPermission = jest.fn();
+const mockCanCreate = jest.fn();
 const mockPush = jest.fn();
 
 jest.mock('@/modules/poultry', () => ({
@@ -30,7 +31,15 @@ jest.mock('@/modules/farm', () => ({
 }));
 
 jest.mock('@/core/hooks/usePermission', () => ({
-  usePermission: () => ({ hasPermission: mockHasPermission }),
+  usePermission: () => ({ hasPermission: mockHasPermission, canCreate: mockCanCreate }),
+}));
+
+// The record panel on this screen asks /tasks for the house's linked tasks.
+const mockTasksList = jest.fn();
+
+jest.mock('@/services/api', () => ({
+  tasksAPI: { list: (...a: any[]) => mockTasksList(...a) },
+  workersAPI: { list: jest.fn() },
 }));
 
 jest.mock('@/core/hooks/useToasts', () => ({
@@ -82,8 +91,10 @@ describe('PoultryHousePensScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHasPermission.mockReturnValue(true);
+    mockCanCreate.mockReturnValue(false);
     mockHouseGet.mockResolvedValue({ data: HOUSE });
     mockFarmGet.mockResolvedValue({ data: { name: 'Sunrise Farm' } });
+    mockTasksList.mockResolvedValue({ data: { data: [] } });
   });
 
   it('loads only this house and lists its pens', async () => {

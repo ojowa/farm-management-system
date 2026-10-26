@@ -68,6 +68,7 @@ import type {
   EggProductionRecord,
   PoultrySale,
   Organization,
+  Department,
   ListParams,
   Pond,
   CreatePondRequest,
@@ -653,6 +654,20 @@ export const profitabilityAPI = {
     http.get<ProfitabilitySummary>('/profitability/summary', { params }),
 };
 
+// ─── Departments ──────────────────────────────────────────────────────────────
+
+export const departmentsAPI = {
+  list: () =>
+    http.get<Department[]>('/departments'),
+  create: (data: { name: string; description?: string }) =>
+    http.post<Department>('/departments', data),
+  update: (id: string, data: { name?: string; description?: string }) =>
+    http.put<Department>(`/departments/${id}`, data),
+  // DELETE answers 409 while a worker/task/shift still references the row.
+  remove: (id: string) =>
+    http.delete(`/departments/${id}`),
+};
+
 // ─── Workers ──────────────────────────────────────────────────────────────────
 
 export const workersAPI = {
@@ -701,7 +716,7 @@ export const attendanceAPI = {
 // ─── Tasks ─────────────────────────────────────────────────────────────────────
 
 export const tasksAPI = {
-  list: (params?: ListParams & { status?: string; priority?: string; assignedTo?: string; assignedToId?: string; search?: string }) =>
+  list: (params?: ListParams & { status?: string; priority?: string; assignedTo?: string; assignedToId?: string; search?: string; departmentId?: string; linkedModule?: string; linkedRecordId?: string }) =>
     http.get<Task[]>('/tasks', { params }),
   get: (id: string) =>
     http.get<Task>(`/tasks/${id}`),
@@ -732,8 +747,8 @@ export const tasksAPI = {
 // ─── Shifts ────────────────────────────────────────────────────────────────────
 
 export const rosterAPI = {
-  listShifts: () =>
-    http.get<Shift[]>('/shifts'),
+  listShifts: (params?: { departmentId?: string }) =>
+    http.get<Shift[]>('/shifts', { params }),
   createShift: (data: any) =>
     http.post<Shift>('/shifts', data),
   updateShift: (id: string, data: any) =>

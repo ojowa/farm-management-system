@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { workersAPI } from '@/modules/hr';
+import { DepartmentField } from '@/modules/worker/DepartmentField';
 import { farmsAPI } from '@/modules/farm';
 import { orgAdminAPI } from '@/modules/settings';
 import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
@@ -116,6 +117,8 @@ export default function AddWorkerScreen() {
     emergencyContactRelation: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  // Department row behind formData.department ('' = free text / not set).
+  const [departmentId, setDepartmentId] = useState('');
 
   const dynamicStyles = {
     container: {
@@ -188,6 +191,9 @@ export default function AddWorkerScreen() {
         lastName: formData.lastName.trim(),
         middleName: formData.middleName.trim() || undefined,
         position: formData.position.trim(),
+        // The server resolves either shape (id wins) and keeps the name on the
+        // row in step with it.
+        departmentId: departmentId || undefined,
         department: formData.department.trim() || undefined,
         email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
@@ -272,11 +278,13 @@ export default function AddWorkerScreen() {
             error={errors.position}
           />
 
-          <TextInputField
-            label="Department"
-            placeholder="e.g. Dairy"
+          <DepartmentField
             value={formData.department}
-            onChangeText={(v) => updateFormData('department', v)}
+            departmentId={departmentId}
+            onChange={(change) => {
+              updateFormData('department', change.department);
+              setDepartmentId(change.departmentId);
+            }}
           />
 
           <TextInputField

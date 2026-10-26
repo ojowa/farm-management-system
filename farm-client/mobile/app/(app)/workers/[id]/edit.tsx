@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { workersAPI } from '@/modules/hr';
+import { DepartmentField } from '@/modules/worker/DepartmentField';
 import type { Worker } from '@/modules/hr';
 import { farmsAPI } from '@/modules/farm';
 import { TextInputField, Button, colors } from '@/core/ui/UIComponents';
@@ -136,6 +137,8 @@ export default function EditWorkerScreen() {
     emergencyContactRelation: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  // Department row behind formData.department ('' = free text / not set).
+  const [departmentId, setDepartmentId] = useState('');
 
   const dynamicStyles = {
     container: {
@@ -185,6 +188,7 @@ export default function EditWorkerScreen() {
         emergencyContactPhone: record.emergencyContactPhone ?? '',
         emergencyContactRelation: record.emergencyContactRelation ?? '',
       });
+      setDepartmentId(record.departmentId ?? '');
       loadFarms();
     } catch (error: any) {
       setLoadError(describeApiError(error, 'Failed to load worker.'));
@@ -242,6 +246,9 @@ export default function EditWorkerScreen() {
         lastName: formData.lastName.trim(),
         middleName: formData.middleName.trim(),
         position: formData.position.trim(),
+        // `departmentId` only travels when a known row is picked — the server
+        // prefers the id and otherwise resolves the name (blank clears it).
+        departmentId: departmentId || undefined,
         department: formData.department.trim(),
         // Blank must mean "leave unchanged" — an empty string would wipe the
         // worker's login email.
@@ -365,11 +372,13 @@ export default function EditWorkerScreen() {
             error={errors.position}
           />
 
-          <TextInputField
-            label="Department"
-            placeholder="e.g. Dairy"
+          <DepartmentField
             value={formData.department}
-            onChangeText={(v) => updateFormData('department', v)}
+            departmentId={departmentId}
+            onChange={(change) => {
+              updateFormData('department', change.department);
+              setDepartmentId(change.departmentId);
+            }}
           />
 
           <TextInputField

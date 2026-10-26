@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { workersAPI } from '@/modules/hr';
+import { workersAPI, departmentsAPI } from '@/modules/hr';
 import type { Worker } from '@/modules/hr';
 import { farmsAPI } from '@/modules/farm';
 import { Button, colors } from '@/core/ui/UIComponents';
@@ -92,6 +92,7 @@ export default function WorkerDetailScreen() {
   const [worker, setWorker] = useState<Worker | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [farmName, setFarmName] = useState<string>('');
+  const [departmentName, setDepartmentName] = useState<string>('');
 
   const dynamicStyles = {
     container: {
@@ -117,6 +118,27 @@ export default function WorkerDetailScreen() {
   useEffect(() => {
     fetchWorker();
   }, [id]);
+
+  // Rows written from the picker can carry departmentId without the
+  // denormalised name — resolve it so the detail row is not a bare "—".
+  useEffect(() => {
+    const deptId = worker?.departmentId;
+    setDepartmentName('');
+    if (!deptId || worker?.department) return;
+    // Guarded: the hr barrel is mocked without departmentsAPI in tests.
+    const list = (departmentsAPI as any)?.list;
+    if (typeof list !== 'function') return;
+    list()
+      .then((res: any) => {
+        const body = res?.data;
+        const rows = Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : [];
+        const match = rows.find((d: any) => d?.id === deptId);
+        if (match?.name) setDepartmentName(match.name);
+      })
+      .catch(() => {
+        if (__DEV__) console.warn('[WorkerDetail] Failed to load departments');
+      });
+  }, [worker?.departmentId, worker?.department]);
 
   const fetchWorker = async () => {
     if (!id) {
@@ -279,7 +301,9 @@ export default function WorkerDetailScreen() {
           <View style={[styles.detailSection, dynamicStyles.divider]}>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Department</Text>
-              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{worker.department || '—'}</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>
+                {worker.department || departmentName || '—'}
+              </Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Email</Text>

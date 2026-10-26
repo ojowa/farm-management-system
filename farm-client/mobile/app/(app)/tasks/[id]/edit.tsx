@@ -12,6 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { tasksAPI } from '@/modules/worker';
+// Direct path (not the barrel) so a test that mocks '@/modules/worker' still
+// gets the picker itself.
+import { TaskLinkFields } from '@/modules/worker/TaskLinkFields';
 import { workersAPI } from '@/modules/hr';
 import { Button, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
@@ -117,6 +120,11 @@ export default function TaskEditScreen() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState('WEEKLY');
   const [workers, setWorkers] = useState<any[]>([]);
+  // Owning department + the record this task was raised against.
+  const [departmentId, setDepartmentId] = useState('');
+  const [linkedModule, setLinkedModule] = useState('');
+  const [linkedRecordId, setLinkedRecordId] = useState('');
+  const [linkedRecordName, setLinkedRecordName] = useState<string | null>(null);
 
   const load = async () => {
     if (!id) {
@@ -139,6 +147,10 @@ export default function TaskEditScreen() {
       setDueDate(task.dueDate ? String(task.dueDate).split('T')[0] : '');
       setIsRecurring(!!task.isRecurring);
       setRecurrenceRule(task.recurrenceRule || 'WEEKLY');
+      setDepartmentId(task.departmentId || '');
+      setLinkedModule(task.linkedModule || '');
+      setLinkedRecordId(task.linkedRecordId || '');
+      setLinkedRecordName(task.linkedRecordName || null);
     } catch (err: any) {
       setLoadError(describeApiError(err, "Couldn't load this task"));
     } finally {
@@ -174,6 +186,12 @@ export default function TaskEditScreen() {
         dueDate: dueDate || undefined,
         isRecurring,
         recurrenceRule: isRecurring ? recurrenceRule : null,
+        // Null, not undefined: clearing a department or link must reach the
+        // server, which only writes a field it is actually given.
+        departmentId: departmentId || null,
+        linkedModule: linkedModule && linkedRecordId ? linkedModule : null,
+        linkedRecordId: linkedModule && linkedRecordId ? linkedRecordId : null,
+        linkedRecordName: linkedModule && linkedRecordId ? linkedRecordName || null : null,
       };
       if (assignedToId) {
         payload.assignedToId = assignedToId;
@@ -332,6 +350,19 @@ export default function TaskEditScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          <TaskLinkFields
+            departmentId={departmentId}
+            onDepartmentChange={setDepartmentId}
+            linkedModule={linkedModule}
+            linkedRecordId={linkedRecordId}
+            linkedRecordName={linkedRecordName}
+            onLinkChange={(change) => {
+              setLinkedModule(change.linkedModule);
+              setLinkedRecordId(change.linkedRecordId);
+              setLinkedRecordName(change.linkedRecordName);
+            }}
+          />
 
           <View style={styles.actions}>
             <Button title={saving ? 'Saving…' : 'Save Changes'} onPress={handleSave} disabled={saving} />

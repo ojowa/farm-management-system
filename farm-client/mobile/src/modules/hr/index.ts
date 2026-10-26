@@ -7,11 +7,12 @@
  * bundled into the old `task` module. They are now correctly split: `worker`
  * owns tasks, `hr` owns the people.
  */
-export { workersAPI, rosterAPI, leaveAPI, attendanceAPI } from '../../services/api';
+export { workersAPI, rosterAPI, leaveAPI, attendanceAPI, departmentsAPI } from '../../services/api';
 export { offlineAttendanceAPI } from '../../services/offlineApi';
 export type {
   Worker,
   CreateWorkerRequest,
+  Department,
   Shift,
   ShiftAssignment,
   LeaveRequest,

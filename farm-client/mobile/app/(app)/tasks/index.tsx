@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -13,13 +13,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
 import { StateView } from '@/core/ui/feedback';
 import { tasksAPI } from '@/modules/worker';
+// Direct path (not the barrel) so a test that mocks '@/modules/worker' still
+// gets the picker itself.
+import { TaskLinkFields } from '@/modules/worker/TaskLinkFields';
+import { linkedModuleLabel } from '@/modules/worker/taskLinks';
 import { workersAPI } from '@/modules/hr';
 import { offlineTasksAPI } from '@/modules/worker';
 import { describeApiError } from '@/core/utils/apiError';
@@ -154,6 +158,28 @@ export default function TasksScreen() {
   const canManageTasks = canCreate('hr');
   const canRemoveTasks = canDelete('hr');
 
+  // A record page's "View all" / "＋ New task" arrives as query params — the
+  // list then shows exactly this record's tasks until the chip is cleared.
+  const routeParams = useLocalSearchParams<{
+    linkedModule?: string;
+    linkedRecordId?: string;
+    linkedRecordName?: string;
+    newTask?: string;
+  }>();
+  const pick = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value) || '';
+  const routeModule = pick(routeParams.linkedModule);
+  const routeRecordId = pick(routeParams.linkedRecordId);
+  const routeRecordName = pick(routeParams.linkedRecordName);
+  const routeNewTask = pick(routeParams.newTask) === '1' || pick(routeParams.newTask) === 'true';
+  const routeLink =
+    routeModule && routeRecordId
+      ? { module: routeModule, id: routeRecordId, name: routeRecordName }
+      : null;
+
+  const [linkFilter, setLinkFilter] = useState<{ module: string; id: string; name: string } | null>(
+    routeLink
+  );
+
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -172,6 +198,11 @@ export default function TasksScreen() {
   const [recurrenceRule, setRecurrenceRule] = useState('WEEKLY');
   const [saving, setSaving] = useState(false);
   const [workers, setWorkers] = useState<any[]>([]);
+  // Task create/edit: owning department + the record this task is about.
+  const [departmentId, setDepartmentId] = useState('');
+  const [linkedModule, setLinkedModule] = useState('');
+  const [linkedRecordId, setLinkedRecordId] = useState('');
+  const [linkedRecordName, setLinkedRecordName] = useState<string | null>(null);
   const { colors: tc, isDark } = useAppTheme();
 
   const dynamicStyles = {
@@ -235,6 +266,12 @@ export default function TasksScreen() {
       const params: any = {};
       if (filter !== 'all') params.status = filter.toUpperCase();
       if (recurringOnly) params.isRecurring = true;
+      // Server-side link filter — the badge on a card and the chip above the
+      // list both narrow to one record without paging through everything.
+      if (linkFilter) {
+        params.linkedModule = linkFilter.module;
+        params.linkedRecordId = linkFilter.id;
+      }
       const res = await offlineTasksAPI.list(params);
       // GET /tasks answers `{ data, stats }` (hr.service.ts:896) — an object,
       // not a bare array. `res.data || []` therefore yielded the object and the
@@ -248,9 +285,20 @@ export default function TasksScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filter, recurringOnly]);
+  }, [filter, recurringOnly, linkFilter]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // Re-read the URL's link only when it actually changes: clearing the chip
+  // must not be undone by the params still sitting in the address bar.
+  const routeKey = `${routeModule}|${routeRecordId}`;
+  const appliedRouteKey = useRef(routeKey);
+  useEffect(() => {
+    if (appliedRouteKey.current === routeKey) return;
+    appliedRouteKey.current = routeKey;
+    setLinkFilter(routeLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey]);
 
   useEffect(() => {
     if (canManageTasks) {
@@ -263,7 +311,7 @@ export default function TasksScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadTasks(); };
 
-  const openModal = (task?: any) => {
+  const openModal = (task?: any, link?: { module: string; id: string; name: string }) => {
     if (task) {
       setEditingTask(task);
       setTitle(task.title);
@@ -273,6 +321,10 @@ export default function TasksScreen() {
       setDueDate(task.dueDate ? task.dueDate.split('T')[0] : '');
       setIsRecurring(!!task.isRecurring);
       setRecurrenceRule(task.recurrenceRule || 'WEEKLY');
+      setDepartmentId(task.departmentId || '');
+      setLinkedModule(task.linkedModule || '');
+      setLinkedRecordId(task.linkedRecordId || '');
+      setLinkedRecordName(task.linkedRecordName || null);
     } else {
       setEditingTask(null);
       setTitle('');
@@ -282,9 +334,26 @@ export default function TasksScreen() {
       setDueDate('');
       setIsRecurring(false);
       setRecurrenceRule('WEEKLY');
+      setDepartmentId('');
+      // You asked for a task about this record — prefill the link rather than
+      // making the author pick it again.
+      setLinkedModule(link?.module || '');
+      setLinkedRecordId(link?.id || '');
+      setLinkedRecordName(link?.name || null);
     }
     setShowModal(true);
   };
+
+  // Arriving from a record page's "＋ New task": open the form straight away
+  // with the record already linked.
+  const openedRouteTask = useRef(false);
+  useEffect(() => {
+    if (!routeNewTask || openedRouteTask.current) return;
+    openedRouteTask.current = true;
+    if (!canManageTasks) return;
+    openModal(undefined, routeLink || linkFilter || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeNewTask]);
 
   const handleSave = async () => {
     if (!title.trim()) { Alert.alert('Error', 'Title is required'); return; }
@@ -297,6 +366,12 @@ export default function TasksScreen() {
         dueDate: dueDate || undefined,
         isRecurring,
         recurrenceRule: isRecurring ? recurrenceRule : null,
+        // Null, not undefined: clearing a department or link must reach the
+        // server, which only writes a field it is actually given.
+        departmentId: departmentId || null,
+        linkedModule: linkedModule && linkedRecordId ? linkedModule : null,
+        linkedRecordId: linkedModule && linkedRecordId ? linkedRecordId : null,
+        linkedRecordName: linkedModule && linkedRecordId ? linkedRecordName || null : null,
       };
       if (assignedToId) {
         payload.assignedToId = assignedToId;
@@ -417,6 +492,17 @@ export default function TasksScreen() {
                   ⟳ Recurring
                 </Text>
               </TouchableOpacity>
+              {linkFilter && (
+                <TouchableOpacity
+                  onPress={() => setLinkFilter(null)}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, styles.filterBtnActive]}
+                  accessibilityLabel={`Clear linked record filter ${linkFilter.name || linkedModuleLabel(linkFilter.module)}`}
+                >
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, styles.filterBtnTextActive]}>
+                    🔗 {linkFilter.name || linkedModuleLabel(linkFilter.module)} ✕
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         }
@@ -435,10 +521,10 @@ export default function TasksScreen() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>✅</Text>
               <Text style={[styles.emptyText, dynamicStyles.emptyText]}>
-                {searchTerm || filter !== 'all' || recurringOnly ? 'No matching tasks' : 'No tasks'}
+                {searchTerm || filter !== 'all' || recurringOnly || linkFilter ? 'No matching tasks' : 'No tasks'}
               </Text>
               <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
-                {searchTerm || filter !== 'all' || recurringOnly
+                {searchTerm || filter !== 'all' || recurringOnly || linkFilter
                   ? 'Try a different search or filter.'
                   : canManageTasks
                   ? 'Tap + to create a task'
@@ -470,6 +556,27 @@ export default function TasksScreen() {
                   <View style={[styles.badge, { backgroundColor: '#8B5CF6' }]}>
                     <Text style={styles.badgeText}>⟳ {task.recurrenceRule || 'RECURRING'}</Text>
                   </View>
+                )}
+                {task.linkedModule && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      setLinkFilter({
+                        module: task.linkedModule,
+                        id: task.linkedRecordId || '',
+                        name: task.linkedRecordName || '',
+                      })
+                    }
+                    style={[styles.badge, { backgroundColor: '#0284C7' }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filter by tasks linked to ${
+                      task.linkedRecordName || linkedModuleLabel(task.linkedModule)
+                    }`}
+                  >
+                    <Text style={styles.badgeText} numberOfLines={1}>
+                      🔗 {linkedModuleLabel(task.linkedModule)}
+                      {task.linkedRecordName ? ` · ${task.linkedRecordName}` : ''}
+                    </Text>
+                  </TouchableOpacity>
                 )}
               </View>
               {task.description ? <Text style={[styles.taskDesc, dynamicStyles.taskDesc]}>{task.description}</Text> : null}
@@ -527,70 +634,84 @@ export default function TasksScreen() {
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={[styles.modalOverlay, dynamicStyles.modalOverlay]}>
           <View style={[styles.modalContent, dynamicStyles.modalContent]}>
-            <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{editingTask ? 'Edit Task' : 'New Task'}</Text>
-            <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
-            <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} multiline />
-            <Text style={[styles.label, dynamicStyles.label]}>Priority</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-              {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
-                <TouchableOpacity
-                  key={p}
-                  onPress={() => setPriority(p)}
-                  style={[styles.filterBtn, dynamicStyles.filterBtn, priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] }]}
-                >
-                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, priority === p && { color: '#FFFFFF' }]}>{p}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {canManageTasks && workers.length > 0 && (
-              <>
-                <Text style={[styles.label, dynamicStyles.label]}>Assign To</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>{editingTask ? 'Edit Task' : 'New Task'}</Text>
+              <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
+              <TextInput value={desc} onChangeText={setDesc} placeholder="Description (optional)" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} multiline />
+              <Text style={[styles.label, dynamicStyles.label]}>Priority</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
                   <TouchableOpacity
-                    onPress={() => setAssignedToId('')}
-                    style={[styles.filterBtn, dynamicStyles.filterBtn, !assignedToId && styles.filterBtnActive, { marginRight: 8 }]}
+                    key={p}
+                    onPress={() => setPriority(p)}
+                    style={[styles.filterBtn, dynamicStyles.filterBtn, priority === p && { backgroundColor: PRIORITY_COLORS[p], borderColor: PRIORITY_COLORS[p] }]}
                   >
-                    <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, !assignedToId && styles.filterBtnTextActive]}>None</Text>
+                    <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, priority === p && { color: '#FFFFFF' }]}>{p}</Text>
                   </TouchableOpacity>
-                  {workers.map((w) => (
+                ))}
+              </View>
+              {canManageTasks && workers.length > 0 && (
+                <>
+                  <Text style={[styles.label, dynamicStyles.label]}>Assign To</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                     <TouchableOpacity
-                      key={w.id}
-                      onPress={() => setAssignedToId(w.id)}
-                      style={[styles.filterBtn, dynamicStyles.filterBtn, assignedToId === w.id && styles.filterBtnActive, { marginRight: 8 }]}
+                      onPress={() => setAssignedToId('')}
+                      style={[styles.filterBtn, dynamicStyles.filterBtn, !assignedToId && styles.filterBtnActive, { marginRight: 8 }]}
                     >
-                      <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, assignedToId === w.id && styles.filterBtnTextActive]}>
-                        {w.firstName} {w.lastName}
-                      </Text>
+                      <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, !assignedToId && styles.filterBtnTextActive]}>None</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            )}
-            <TextInput value={dueDate} onChangeText={setDueDate} placeholder="Due date (YYYY-MM-DD)" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
-            <Text style={[styles.label, dynamicStyles.label]}>Repeats</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-              <TouchableOpacity
-                onPress={() => setIsRecurring(false)}
-                style={[styles.filterBtn, dynamicStyles.filterBtn, !isRecurring && styles.filterBtnActive]}
-                accessibilityLabel="Does not repeat"
-              >
-                <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, !isRecurring && styles.filterBtnTextActive]}>Never</Text>
-              </TouchableOpacity>
-              {RECURRENCE_RULES.map((r) => (
+                    {workers.map((w) => (
+                      <TouchableOpacity
+                        key={w.id}
+                        onPress={() => setAssignedToId(w.id)}
+                        style={[styles.filterBtn, dynamicStyles.filterBtn, assignedToId === w.id && styles.filterBtnActive, { marginRight: 8 }]}
+                      >
+                        <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, assignedToId === w.id && styles.filterBtnTextActive]}>
+                          {w.firstName} {w.lastName}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+              <TextInput value={dueDate} onChangeText={setDueDate} placeholder="Due date (YYYY-MM-DD)" style={[styles.input, dynamicStyles.input]} placeholderTextColor={tc.placeholder} />
+              <Text style={[styles.label, dynamicStyles.label]}>Repeats</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <TouchableOpacity
-                  key={r}
-                  onPress={() => { setIsRecurring(true); setRecurrenceRule(r); }}
-                  style={[styles.filterBtn, dynamicStyles.filterBtn, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
-                  accessibilityLabel={`Repeat ${r.toLowerCase()}`}
+                  onPress={() => setIsRecurring(false)}
+                  style={[styles.filterBtn, dynamicStyles.filterBtn, !isRecurring && styles.filterBtnActive]}
+                  accessibilityLabel="Does not repeat"
                 >
-                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
+                  <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, !isRecurring && styles.filterBtnTextActive]}>Never</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.modalActions}>
-              <Button title="Cancel" onPress={() => setShowModal(false)} variant="secondary" style={{ flex: 1 }} />
-              <Button title={saving ? 'Saving...' : editingTask ? 'Update' : 'Create'} onPress={handleSave} disabled={saving} style={{ flex: 1 }} />
-            </View>
+                {RECURRENCE_RULES.map((r) => (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => { setIsRecurring(true); setRecurrenceRule(r); }}
+                    style={[styles.filterBtn, dynamicStyles.filterBtn, isRecurring && recurrenceRule === r && { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]}
+                    accessibilityLabel={`Repeat ${r.toLowerCase()}`}
+                  >
+                    <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, isRecurring && recurrenceRule === r && { color: '#FFFFFF' }]}>{r}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TaskLinkFields
+                departmentId={departmentId}
+                onDepartmentChange={setDepartmentId}
+                linkedModule={linkedModule}
+                linkedRecordId={linkedRecordId}
+                linkedRecordName={linkedRecordName}
+                onLinkChange={(change) => {
+                  setLinkedModule(change.linkedModule);
+                  setLinkedRecordId(change.linkedRecordId);
+                  setLinkedRecordName(change.linkedRecordName);
+                }}
+              />
+              <View style={styles.modalActions}>
+                <Button title="Cancel" onPress={() => setShowModal(false)} variant="secondary" style={{ flex: 1 }} />
+                <Button title={saving ? 'Saving...' : editingTask ? 'Update' : 'Create'} onPress={handleSave} disabled={saving} style={{ flex: 1 }} />
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

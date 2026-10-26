@@ -36,6 +36,16 @@ jest.mock('@/modules/poultry', () => ({
   poultryHousesAPI: { list: (...a: any[]) => mockHousesList(...a) },
 }));
 
+// The record panel next to the houses pulls this farm's tasks and worker
+// headcount — both answered from the shared services module.
+const mockTasksList = jest.fn();
+const mockWorkersList = jest.fn();
+
+jest.mock('@/services/api', () => ({
+  tasksAPI: { list: (...a: any[]) => mockTasksList(...a) },
+  workersAPI: { list: (...a: any[]) => mockWorkersList(...a) },
+}));
+
 jest.mock('@/modules/poultry/flockChain', () => ({
   unwrapList: (payload: any) => {
     if (Array.isArray(payload)) return payload;
@@ -105,6 +115,8 @@ describe('FarmDetailScreen — poultry houses', () => {
     mockCanDelete.mockReturnValue(false);
     mockFieldsList.mockResolvedValue({ data: [{ id: 'field-1', name: 'North Field', size: 4 }] });
     mockHousesList.mockResolvedValue({ data: HOUSES });
+    mockTasksList.mockResolvedValue({ data: { data: [] } });
+    mockWorkersList.mockResolvedValue({ data: [], total: 3 });
   });
 
   it('lists the farm\'s houses beside the fields, both scoped by farmId', async () => {

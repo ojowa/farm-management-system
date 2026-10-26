@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { tasksAPI } from '@/modules/worker';
+import { linkedModuleLabel, linkedRecordHref } from '@/modules/worker/taskLinks';
+import { departmentsAPI } from '@/modules/hr';
 import { Button, Card, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { usePermission } from '@/core/hooks/usePermission';
@@ -137,6 +139,12 @@ interface TaskDetail {
   priority: string;
   assignedToId?: string | null;
   assignedToName?: string | null;
+  /** Owning department — travels as an id; resolved to a name for display. */
+  departmentId?: string | null;
+  /** Farm-module record this task was raised against; null = unlinked. */
+  linkedModule?: string | null;
+  linkedRecordId?: string | null;
+  linkedRecordName?: string | null;
   dueDate?: string | null;
   completedAt?: string | null;
   isRecurring?: boolean;
@@ -167,6 +175,27 @@ export default function TaskDetailScreen() {
   const [attachmentName, setAttachmentName] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [addingAttachment, setAddingAttachment] = useState(false);
+  const [departmentName, setDepartmentName] = useState('');
+
+  // departmentId travels alone on tasks — resolve it to a name for display.
+  useEffect(() => {
+    const deptId = task?.departmentId;
+    setDepartmentName('');
+    if (!deptId) return;
+    // Guarded: the hr barrel is mocked without departmentsAPI in tests.
+    const list = (departmentsAPI as any)?.list;
+    if (typeof list !== 'function') return;
+    list()
+      .then((res: any) => {
+        const body = res?.data;
+        const rows = Array.isArray(body) ? body : Array.isArray(body?.data) ? body.data : [];
+        const match = rows.find((d: any) => d?.id === deptId);
+        if (match?.name) setDepartmentName(match.name);
+      })
+      .catch(() => {
+        if (__DEV__) console.warn('[TaskDetail] Failed to load departments');
+      });
+  }, [task?.departmentId]);
 
   const dynamicStyles = {
     container: {
@@ -397,6 +426,11 @@ export default function TaskDetailScreen() {
   const comments = task.comments || [];
   const attachments = task.attachments || [];
 
+  const recordHref = linkedRecordHref(task.linkedModule, task.linkedRecordId);
+  const recordLabel = task.linkedRecordId
+    ? `${linkedModuleLabel(task.linkedModule)}${task.linkedRecordName ? ` · ${task.linkedRecordName}` : ''}`
+    : null;
+
   return (
     <SafeAreaView style={[styles.container, dynamicStyles.container]}>
       <View style={[styles.header, { backgroundColor: tc.headerBg || tc.primary }]}>
@@ -438,6 +472,38 @@ export default function TaskDetailScreen() {
               <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Assigned To</Text>
               <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{task.assignedToName || '—'}</Text>
             </View>
+            {/* Who owns it and what it is about — both open the record behind
+                the row instead of making the reader go hunting. */}
+            <TouchableOpacity
+              style={styles.detailRow}
+              onPress={
+                departmentName
+                  ? () => router.push(`/workers?department=${encodeURIComponent(departmentName)}` as any)
+                  : undefined
+              }
+              disabled={!departmentName}
+              accessibilityRole={departmentName ? 'link' : 'text'}
+              accessibilityLabel={departmentName ? `Open department ${departmentName}` : 'Department'}
+            >
+              <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Department</Text>
+              <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{departmentName || '—'}</Text>
+            </TouchableOpacity>
+            {recordLabel && recordHref ? (
+              <TouchableOpacity
+                style={styles.detailRow}
+                onPress={() => router.push(recordHref as any)}
+                accessibilityRole="link"
+                accessibilityLabel={`Open linked record ${recordLabel}`}
+              >
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Linked record</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{recordLabel}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Linked record</Text>
+                <Text style={[styles.detailValue, dynamicStyles.detailValue]}>{recordLabel || '—'}</Text>
+              </View>
+            )}
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, dynamicStyles.detailLabel]}>Due Date</Text>
               <Text style={[styles.detailValue, dynamicStyles.detailValue, overdue && { color: '#DC2626', fontWeight: '700' }]}>
