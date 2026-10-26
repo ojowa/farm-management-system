@@ -20,6 +20,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { RecordTasksCard } from '@/components/RecordTasksCard';
 
 interface Livestock {
   id: string;
@@ -252,6 +253,14 @@ export default function LivestockDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tasks raised against this animal. */}
+      <RecordTasksCard
+        moduleKey="livestock"
+        recordId={livestock.id}
+        recordName={[livestock.species, livestock.breed].filter(Boolean).join(' · ')}
+        farmId={livestock.farmId}
+      />
     </div>
   );
 }

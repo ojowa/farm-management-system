@@ -22,7 +22,7 @@ import {
   Link2,
   RotateCcw,
 } from 'lucide-react';
-import { tasksAPI, farmsAPI } from '@/lib/api';
+import { tasksAPI, farmsAPI, departmentsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { linkedModuleLabel, linkedRecordHref } from '@/lib/taskLinks';
 
 interface TaskComment {
   id: string;
@@ -61,6 +62,11 @@ interface Task {
   createdByName?: string;
   farmId?: string;
   farmName?: string;
+  departmentId?: string | null;
+  /** Farm-module record this task was raised against; null = unlinked. */
+  linkedModule?: string | null;
+  linkedRecordId?: string | null;
+  linkedRecordName?: string | null;
   dueDate?: string;
   completedAt?: string;
   isRecurring?: boolean;
@@ -124,6 +130,21 @@ export default function TaskDetailPage() {
   const farmName = task?.farmId
     ? farmsData?.data?.find((f) => f.id === task.farmId)?.name
     : undefined;
+
+  // departmentId travels alone on tasks — resolve it to a name for display.
+  const { data: departmentsData } = useFetch<{ data: Array<{ id: string; name: string }> }>(
+    'departments-list',
+    () => departmentsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+  const departmentName = task?.departmentId
+    ? departmentsData?.data?.find((d) => d.id === task.departmentId)?.name
+    : undefined;
+
+  const recordHref = linkedRecordHref(task?.linkedModule, task?.linkedRecordId);
+  const recordLabel = task?.linkedRecordId
+    ? `${linkedModuleLabel(task.linkedModule)}${task.linkedRecordName ? ` · ${task.linkedRecordName}` : ''}`
+    : null;
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -620,6 +641,25 @@ export default function TaskDetailPage() {
             <div>
               <span className="text-muted-foreground">Created at: </span>
               <span>{new Date(task.createdAt).toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Department: </span>
+              <span>{departmentName || '—'}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Linked record: </span>
+              {recordLabel ? (
+                recordHref ? (
+                  <Link href={recordHref} className="font-medium hover:underline">
+                    {recordLabel}
+                  </Link>
+                ) : (
+                  // Module without a detail page — the name still says it all.
+                  <span className="font-medium">{recordLabel}</span>
+                )
+              ) : (
+                <span>—</span>
+              )}
             </div>
             {task.updatedAt && (
               <div>

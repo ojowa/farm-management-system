@@ -23,6 +23,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { RecordTasksCard } from '@/components/RecordTasksCard';
 
 interface InventoryItem {
   id: string;
@@ -228,6 +229,14 @@ export default function InventoryDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tasks raised against this item. */}
+      <RecordTasksCard
+        moduleKey="inventory"
+        recordId={item.id}
+        recordName={item.name}
+        farmId={item.farmId}
+      />
     </div>
   );
 }

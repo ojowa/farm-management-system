@@ -24,6 +24,23 @@ export function createWorkersAPI(client: AxiosInstance): WorkersAPI {
   };
 }
 
+export interface DepartmentsAPI {
+  list: () => Promise<any>;
+  create: (data: { name: string; description?: string | null }) => Promise<any>;
+  update: (id: string, data: { name?: string; description?: string | null }) => Promise<any>;
+  /** 409 while any worker, task or shift still references the department. */
+  delete: (id: string) => Promise<any>;
+}
+
+export function createDepartmentsAPI(client: AxiosInstance): DepartmentsAPI {
+  return {
+    list: () => client.get('/departments'),
+    create: (data) => client.post('/departments', data),
+    update: (id, data) => client.put(`/departments/${id}`, data),
+    delete: (id) => client.delete(`/departments/${id}`),
+  };
+}
+
 export interface TasksAPI {
   list: (params?: any) => Promise<any>;
   get: (id: string) => Promise<any>;
@@ -80,8 +97,9 @@ export function createAttendanceAPI(client: AxiosInstance): AttendanceAPI {
 }
 
 export interface RosterAPI {
-  listShifts: () => Promise<any>;
-  createShift: (data: { name: string; startTime: string; endTime: string; color?: string; daysOfWeek?: string[] }) => Promise<any>;
+  /** `departmentId` narrows the roster to one department's shifts. */
+  listShifts: (params?: { departmentId?: string }) => Promise<any>;
+  createShift: (data: { name: string; startTime: string; endTime: string; color?: string; departmentId?: string | null; daysOfWeek?: string[] }) => Promise<any>;
   updateShift: (id: string, data: any) => Promise<any>;
   deleteShift: (id: string) => Promise<any>;
   listAssignments: (params?: { startDate?: string; endDate?: string; userId?: string }) => Promise<any>;
@@ -93,7 +111,7 @@ export interface RosterAPI {
 
 export function createRosterAPI(client: AxiosInstance): RosterAPI {
   return {
-    listShifts: () => client.get('/shifts'),
+    listShifts: (params) => client.get('/shifts', { params }),
     createShift: (data) => client.post('/shifts', data),
     updateShift: (id, data) => client.put(`/shifts/${id}`, data),
     deleteShift: (id) => client.delete(`/shifts/${id}`),

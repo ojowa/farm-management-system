@@ -23,7 +23,7 @@ import { createPoultryAPI, createPoultryHousesAPI, createFeedingRecordsAPI, crea
 import { createFinanceAPI, createProfitabilityAPI, createContractsAPI, createMarketplaceAPI, FinanceAPI, ProfitabilityAPI, ContractsAPI, MarketplaceAPI } from './contexts/finance';
 
 // ── HR & Workforce Context ───────────────────────────────────────
-import { createWorkersAPI, createTasksAPI, createAttendanceAPI, createRosterAPI, createMessagesAPI, createCorrespondenceAPI, createLeaveAPI, WorkersAPI, TasksAPI, AttendanceAPI, RosterAPI, MessagesAPI, CorrespondenceAPI, LeaveAPI } from './contexts/hr';
+import { createWorkersAPI, createDepartmentsAPI, createTasksAPI, createAttendanceAPI, createRosterAPI, createMessagesAPI, createCorrespondenceAPI, createLeaveAPI, WorkersAPI, DepartmentsAPI, TasksAPI, AttendanceAPI, RosterAPI, MessagesAPI, CorrespondenceAPI, LeaveAPI } from './contexts/hr';
 
 // ── Inventory Context ────────────────────────────────────────────
 import { createInventoryAPI, createLowStockAPI, createEquipmentAPI, InventoryAPI, LowStockAPI, EquipmentAPI } from './contexts/inventory';
@@ -80,6 +80,7 @@ export interface FarmManagementClient {
   contracts: ContractsAPI;
   marketplace: MarketplaceAPI;
   workers: WorkersAPI;
+  departments: DepartmentsAPI;
   tasks: TasksAPI;
   attendance: AttendanceAPI;
   roster: RosterAPI;
@@ -130,6 +131,7 @@ export function createFarmManagementClient(config: APIClientConfig = {}): FarmMa
     contracts: createContractsAPI(client),
     marketplace: createMarketplaceAPI(client),
     workers: createWorkersAPI(client),
+    departments: createDepartmentsAPI(client),
     tasks: createTasksAPI(client),
     attendance: createAttendanceAPI(client),
     roster: createRosterAPI(client),

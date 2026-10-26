@@ -383,6 +383,7 @@ export default function AttendancePage() {
         tabs={[
           { label: 'Workers', href: '/workers' },
           { label: 'Attendance', href: '/workers/attendance' },
+          { label: 'Departments', href: '/workers/departments' },
         ]}
       />
 

@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePermission } from '@/lib/usePermission';
-import { rosterAPI, orgAdminAPI } from '@/lib/api';
+import { rosterAPI, orgAdminAPI, departmentsAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
@@ -19,6 +20,13 @@ interface Shift {
   daysOfWeek?: string[];
   color: string;
   isActive: boolean;
+  /** Optional department this shift is run for — the roster filters on it. */
+  departmentId?: string | null;
+}
+
+interface Department {
+  id: string;
+  name: string;
 }
 
 interface Assignment {
@@ -102,7 +110,10 @@ export default function RosterPage() {
     endTime: '16:00',
     color: '#3B82F6',
     daysOfWeek: [] as string[],
+    departmentId: '',
   });
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [saving, setSaving] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState<string | null>(null);
   const [assignNote, setAssignNote] = useState('');
@@ -116,7 +127,7 @@ export default function RosterPage() {
     setLoadError(null);
     try {
       const [sRes, aRes] = await Promise.all([
-        rosterAPI.listShifts(),
+        rosterAPI.listShifts(departmentFilter ? { departmentId: departmentFilter } : undefined),
         rosterAPI.listAssignments({
           startDate: dateKey(weekDates[0]),
           endDate: dateKey(weekDates[6]),
@@ -142,9 +153,30 @@ export default function RosterPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateKey(weekDates[0]), dateKey(weekDates[6]), canManage]);
+  }, [dateKey(weekDates[0]), dateKey(weekDates[6]), canManage, departmentFilter]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Names for the legend, the filter and the form — loaded once, they never
+  // change within a session, so no refetch on week navigation.
+  useEffect(() => {
+    let cancelled = false;
+    departmentsAPI
+      .list()
+      .then((res: any) => {
+        if (cancelled) return;
+        setDepartments(res?.data?.data ?? res?.data ?? []);
+      })
+      .catch(() => {
+        /* Filter and legend just show fewer labels. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const departmentName = (id?: string | null) =>
+    id ? departments.find((d) => d.id === id)?.name || null : null;
 
   const prevWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); };
   const nextWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); };
@@ -175,10 +207,18 @@ export default function RosterPage() {
         endTime: shift.endTime,
         color: shift.color,
         daysOfWeek: shift.daysOfWeek || [],
+        departmentId: shift.departmentId || '',
       });
     } else {
       setEditingShift(null);
-      setShiftForm({ name: '', startTime: '08:00', endTime: '16:00', color: '#3B82F6', daysOfWeek: [] });
+      setShiftForm({
+        name: '',
+        startTime: '08:00',
+        endTime: '16:00',
+        color: '#3B82F6',
+        daysOfWeek: [],
+        departmentId: '',
+      });
     }
     setShowShiftForm(true);
   };
@@ -202,6 +242,8 @@ export default function RosterPage() {
       endTime: shiftForm.endTime,
       color: shiftForm.color,
       daysOfWeek: shiftForm.daysOfWeek,
+      // Null clears the link — the server only writes what it is given.
+      departmentId: shiftForm.departmentId || null,
     };
     try {
       if (editingShift) { await rosterAPI.updateShift(editingShift.id, payload); toast({ title: 'Shift updated', type: 'success' }); }
@@ -329,9 +371,21 @@ export default function RosterPage() {
           <button onClick={goToday} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">Today</button>
           <button onClick={nextWeek} className="p-2 rounded-lg hover:bg-gray-100" aria-label="Next week">→</button>
         </div>
-        <p className="text-sm font-medium text-gray-700">
-          {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm font-medium text-gray-700">
+            {weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — {weekDates[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+          <Select
+            aria-label="Filter shifts by department"
+            className="w-48"
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            options={[
+              { value: '', label: 'All departments' },
+              ...departments.map((d) => ({ value: d.id, label: d.name })),
+            ]}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -352,13 +406,17 @@ export default function RosterPage() {
         /* Explicit empty state — no silent blank grid. */
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-lg font-medium text-muted-foreground">No shifts yet.</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {canManage
-                ? 'Create a shift (e.g. Morning Shift), then assign workers to days.'
-                : 'Ask a manager to create shifts for the roster to appear.'}
+            <p className="text-lg font-medium text-muted-foreground">
+              {departmentFilter ? 'No shifts for that department.' : 'No shifts yet.'}
             </p>
-            {canManage && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {departmentFilter
+                ? 'Pick another department or clear the filter to see the whole roster.'
+                : canManage
+                  ? 'Create a shift (e.g. Morning Shift), then assign workers to days.'
+                  : 'Ask a manager to create shifts for the roster to appear.'}
+            </p>
+            {!departmentFilter && canManage && (
               <Button className="mt-4" onClick={() => openShiftForm()}>+ New Shift</Button>
             )}
           </CardContent>
@@ -371,6 +429,9 @@ export default function RosterPage() {
                 <span className={`w-3 h-3 rounded-full ${SHIFT_COLORS[shift.color] || 'bg-gray-400'}`} />
                 <span className="text-gray-700">
                   {shift.name} ({shift.startTime}–{shift.endTime})
+                  {shift.departmentId && (
+                    <span className="text-gray-400"> · {departmentName(shift.departmentId) || 'Dept'}</span>
+                  )}
                   {shift.daysOfWeek && shift.daysOfWeek.length > 0 && (
                     <span className="text-gray-400"> · {shift.daysOfWeek.map((d) => d[0] + d.slice(1).toLowerCase()).join(',')}</span>
                   )}
@@ -456,6 +517,19 @@ export default function RosterPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
                   <Input type="time" value={shiftForm.endTime} onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })} required />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <Select
+                  value={shiftForm.departmentId}
+                  onChange={(e) => setShiftForm({ ...shiftForm, departmentId: e.target.value })}
+                  options={[
+                    // Plain option, not `placeholder`: an empty department must
+                    // stay selectable so a link can be cleared again.
+                    { value: '', label: 'No department' },
+                    ...departments.map((d) => ({ value: d.id, label: d.name })),
+                  ]}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Runs On</label>

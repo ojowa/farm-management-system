@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
-import { tasksAPI, workersAPI, farmsAPI } from '@/lib/api';
+import { ArrowLeft, Link2, Save } from 'lucide-react';
+import { tasksAPI, workersAPI, farmsAPI, departmentsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { RECORD_SOURCES, RecordOption, linkedModuleLabel } from '@/lib/taskLinks';
 
 interface Farm {
   id: string;
@@ -24,6 +25,11 @@ interface Worker {
   id: string;
   firstName: string;
   lastName: string;
+}
+
+interface Department {
+  id: string;
+  name: string;
 }
 
 export default function EditTaskPage() {
@@ -62,11 +68,18 @@ export default function EditTaskPage() {
     { cacheTime: 60_000 }
   );
 
+  const { data: departmentsData } = useFetch<{ data: Department[] }>(
+    'departments-list',
+    () => departmentsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
   // The service returns the task (plus comments/attachments) bare; accept
   // `{ data }` too so a loaded task never falls through to "Task not found".
   const task = ((taskData as any)?.data ?? taskData ?? null);
   const farms = farmsData?.data || [];
   const workers = workersData?.data || [];
+  const departments = departmentsData?.data || [];
 
   const [form, setForm] = useState({
     title: '',
@@ -74,10 +87,16 @@ export default function EditTaskPage() {
     priority: '',
     assignedToId: '',
     farmId: '',
+    departmentId: '',
     dueDate: '',
     isRecurring: false,
     recurrenceRule: 'WEEKLY',
   });
+  const [linkModule, setLinkModule] = useState('');
+  const [recordId, setRecordId] = useState('');
+  const [recordName, setRecordName] = useState('');
+  const [recordOptions, setRecordOptions] = useState<RecordOption[] | null>(null);
+  const [loadingRecords, setLoadingRecords] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -89,12 +108,58 @@ export default function EditTaskPage() {
         priority: task.priority || '',
         assignedToId: task.assignedToId || '',
         farmId: task.farmId || '',
+        departmentId: task.departmentId || '',
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
         isRecurring: Boolean(task.isRecurring),
         recurrenceRule: task.recurrenceRule || 'WEEKLY',
       });
+      setLinkModule(task.linkedModule || '');
+      setRecordId(task.linkedRecordId || '');
+      setRecordName(task.linkedRecordName || '');
     }
   }, [task]);
+
+  // Options load only for the chosen module, and the task's own module may be
+  // one the picker does not offer (`field`) — keep it selectable either way.
+  useEffect(() => {
+    const source = RECORD_SOURCES.find((s) => s.key === linkModule);
+    if (!source) {
+      setRecordOptions(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingRecords(true);
+    source
+      .load()
+      .then((options) => {
+        if (cancelled) return;
+        setRecordOptions(options);
+        setLoadingRecords(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRecordOptions([]);
+        setLoadingRecords(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [linkModule]);
+
+  const moduleOptions: Array<{ value: string; label: string }> = RECORD_SOURCES.map((s) => ({
+    value: s.key,
+    label: s.label,
+  }));
+  if (linkModule && !moduleOptions.some((o) => o.value === linkModule)) {
+    moduleOptions.push({ value: linkModule, label: linkedModuleLabel(linkModule) });
+  }
+
+  const recordSelectOptions = [...(recordOptions || [])];
+  if (recordId && !recordSelectOptions.some((o) => o.id === recordId)) {
+    // Beyond the picker's page, or a module without a source: show it anyway
+    // rather than rendering a select whose current value has no option.
+    recordSelectOptions.push({ id: recordId, name: recordName || recordId });
+  }
 
   const selectedWorker = workers.find((w) => w.id === form.assignedToId);
   const assignedToName = selectedWorker
@@ -118,6 +183,17 @@ export default function EditTaskPage() {
         // Flat display name kept on the row — required for the tasks list.
         assignedToName,
         farmId: form.farmId || undefined,
+        // Null, not undefined: clearing a department or link must reach the
+        // server, which only writes a field it is actually given.
+        departmentId: form.departmentId || null,
+        linkedModule: linkModule && recordId ? linkModule : null,
+        linkedRecordId: linkModule && recordId ? recordId : null,
+        linkedRecordName:
+          linkModule && recordId
+            ? recordName ||
+              recordOptions?.find((o) => o.id === recordId)?.name ||
+              null
+            : null,
         dueDate: form.dueDate || undefined,
         isRecurring: form.isRecurring,
         recurrenceRule: form.isRecurring ? form.recurrenceRule : null,
@@ -267,6 +343,62 @@ export default function EditTaskPage() {
                 value={form.farmId}
                 onChange={(e) => setForm({ ...form, farmId: e.target.value })}
               />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">Department</label>
+              <Select
+                placeholder="No department"
+                options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                value={form.departmentId}
+                onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
+              />
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Link2 className="h-4 w-4" />
+                Link to a record
+              </label>
+              <p className="text-xs text-muted-foreground">
+                The task then shows on that record&apos;s page, filtered to it.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Module</label>
+                  <Select
+                    placeholder="No link"
+                    options={moduleOptions}
+                    value={linkModule}
+                    onChange={(e) => {
+                      setLinkModule(e.target.value);
+                      setRecordId('');
+                      setRecordName('');
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Record</label>
+                  <Select
+                    placeholder={
+                      !linkModule
+                        ? 'Choose a module first'
+                        : loadingRecords
+                          ? 'Loading…'
+                          : 'Select a record'
+                    }
+                    disabled={!linkModule || loadingRecords}
+                    options={recordSelectOptions.map((o) => ({ value: o.id, label: o.name }))}
+                    value={recordId}
+                    onChange={(e) => {
+                      setRecordId(e.target.value);
+                      setRecordName(
+                        recordOptions?.find((o) => o.id === e.target.value)?.name || ''
+                      );
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
             <div>

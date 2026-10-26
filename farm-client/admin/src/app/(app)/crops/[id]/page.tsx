@@ -20,6 +20,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { RecordTasksCard } from '@/components/RecordTasksCard';
 
 interface CropCycle {
   id: string;
@@ -245,6 +246,13 @@ export default function CropDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Tasks raised against this exact cycle. */}
+      <RecordTasksCard
+        moduleKey="crop"
+        recordId={cycle.id}
+        recordName={[cycle.cropName, cycle.fieldName].filter(Boolean).join(' · ')}
+      />
     </div>
   );
 }

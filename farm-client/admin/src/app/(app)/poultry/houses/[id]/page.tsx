@@ -31,6 +31,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { RecordTasksCard } from '@/components/RecordTasksCard';
 import { penFormSchema } from '@/lib/validation';
 
 interface PoultryHouse {
@@ -482,6 +483,9 @@ export default function PoultryHouseDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Tasks raised against this house. */}
+      <RecordTasksCard moduleKey="poultry" recordId={id} recordName={house?.name} />
     </div>
   );
 }

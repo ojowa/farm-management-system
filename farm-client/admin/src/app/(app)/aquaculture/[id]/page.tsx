@@ -42,6 +42,7 @@ import {
   pondHarvestFormSchema,
 } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
+import { RecordTasksCard } from '@/components/RecordTasksCard';
 
 interface Pond {
   id: string;
@@ -1602,6 +1603,14 @@ export default function PondDetailPage() {
           </form>
         </Dialog>
       )}
+
+      {/* Tasks raised against this pond. */}
+      <RecordTasksCard
+        moduleKey="aquaculture"
+        recordId={id}
+        recordName={pond?.name}
+        farmId={pond?.farmId}
+      />
     </div>
   );
 }

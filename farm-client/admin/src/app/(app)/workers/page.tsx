@@ -95,7 +95,10 @@ export default function WorkersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [farmFilter, setFarmFilter] = useState(() => searchParams.get('farmId') || '');
-  const [departmentFilter, setDepartmentFilter] = useState('');
+  // Seeded too: the Departments tab links here filtered to its own name.
+  const [departmentFilter, setDepartmentFilter] = useState(
+    () => searchParams.get('department') || ''
+  );
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '', roleId: '' });
@@ -340,6 +343,7 @@ export default function WorkersPage() {
         tabs={[
           { label: 'Workers', href: '/workers' },
           { label: 'Attendance', href: '/workers/attendance' },
+          { label: 'Departments', href: '/workers/departments' },
         ]}
       />
 

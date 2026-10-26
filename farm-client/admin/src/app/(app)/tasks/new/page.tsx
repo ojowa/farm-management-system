@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
-import { tasksAPI, workersAPI, farmsAPI } from '@/lib/api';
+import { ArrowLeft, Link2, Save, X } from 'lucide-react';
+import { tasksAPI, workersAPI, farmsAPI, departmentsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { RECORD_SOURCES, RecordOption } from '@/lib/taskLinks';
 
 interface Farm {
   id: string;
@@ -26,8 +27,14 @@ interface Worker {
   lastName: string;
 }
 
+interface Department {
+  id: string;
+  name: string;
+}
+
 export default function NewTaskPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const canManage = canCreate('hr');
@@ -39,16 +46,24 @@ export default function NewTaskPage() {
     if (!canManage) router.push('/tasks');
   }, [canManage, router]);
 
+  // Arriving from a record's "New task" button means the link is already
+  // decided; the form still lets it be cleared below.
   const [form, setForm] = useState({
     title: '',
     description: '',
     priority: '',
     assignedToId: '',
     farmId: '',
+    departmentId: searchParams.get('departmentId') || '',
     dueDate: '',
     isRecurring: false,
     recurrenceRule: 'WEEKLY',
   });
+  const [linkModule, setLinkModule] = useState(searchParams.get('linkedModule') || '');
+  const [recordId, setRecordId] = useState(searchParams.get('linkedRecordId') || '');
+  const [recordName, setRecordName] = useState(searchParams.get('linkedRecordName') || '');
+  const [recordOptions, setRecordOptions] = useState<RecordOption[] | null>(null);
+  const [loadingRecords, setLoadingRecords] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -64,8 +79,42 @@ export default function NewTaskPage() {
     { cacheTime: 60_000 }
   );
 
+  const { data: departmentsData } = useFetch<{ data: Department[] }>(
+    'departments-list',
+    () => departmentsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
+  // Record options load only for the chosen module — fetching every module's
+  // rows up front would put eight list calls on the form's critical path.
+  useEffect(() => {
+    const source = RECORD_SOURCES.find((s) => s.key === linkModule);
+    if (!source) {
+      setRecordOptions(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingRecords(true);
+    source
+      .load()
+      .then((options) => {
+        if (cancelled) return;
+        setRecordOptions(options);
+        setLoadingRecords(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRecordOptions([]);
+        setLoadingRecords(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [linkModule]);
+
   const farms = farmsData?.data || [];
   const workers = workersData?.data || [];
+  const departments = departmentsData?.data || [];
 
   const selectedWorker = workers.find((w) => w.id === form.assignedToId);
   const assignedToName = selectedWorker
@@ -81,6 +130,10 @@ export default function NewTaskPage() {
     setErrors({});
     setSaving(true);
     try {
+      // The server stores the link only when module and id agree, and the
+      // name is denormalised so the task stays readable on its own.
+      const linkedRecordName =
+        recordName || recordOptions?.find((o) => o.id === recordId)?.name || '';
       await tasksAPI.create({
         title: form.title,
         description: form.description || undefined,
@@ -90,6 +143,10 @@ export default function NewTaskPage() {
         // tasks list would show "—" for every assignment.
         assignedToName,
         farmId: form.farmId || undefined,
+        departmentId: form.departmentId || undefined,
+        linkedModule: linkModule && recordId ? linkModule : undefined,
+        linkedRecordId: linkModule && recordId ? recordId : undefined,
+        linkedRecordName: linkModule && recordId ? linkedRecordName || undefined : undefined,
         dueDate: form.dueDate || undefined,
         isRecurring: form.isRecurring,
         recurrenceRule: form.isRecurring ? form.recurrenceRule : undefined,
@@ -210,6 +267,79 @@ export default function NewTaskPage() {
                   value={form.farmId}
                   onChange={(e) => setForm({ ...form, farmId: e.target.value })}
                 />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">Department</label>
+              <Select
+                placeholder="No department"
+                options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                value={form.departmentId}
+                onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
+              />
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Link2 className="h-4 w-4" />
+                  Link to a record
+                </label>
+                {(linkModule || recordId) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setLinkModule('');
+                      setRecordId('');
+                      setRecordName('');
+                    }}
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Clear link
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The task then shows on that record&apos;s page, filtered to it.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Module</label>
+                  <Select
+                    placeholder="No link"
+                    options={RECORD_SOURCES.map((s) => ({ value: s.key, label: s.label }))}
+                    value={linkModule}
+                    onChange={(e) => {
+                      setLinkModule(e.target.value);
+                      setRecordId('');
+                      setRecordName('');
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Record</label>
+                  <Select
+                    placeholder={
+                      !linkModule
+                        ? 'Choose a module first'
+                        : loadingRecords
+                          ? 'Loading…'
+                          : 'Select a record'
+                    }
+                    disabled={!linkModule || loadingRecords}
+                    options={(recordOptions || []).map((o) => ({ value: o.id, label: o.name }))}
+                    value={recordId}
+                    onChange={(e) => {
+                      setRecordId(e.target.value);
+                      setRecordName(
+                        recordOptions?.find((o) => o.id === e.target.value)?.name || ''
+                      );
+                    }}
+                  />
+                </div>
               </div>
             </div>
 

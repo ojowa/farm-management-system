@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { tasksAPI } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { tasksAPI, departmentsAPI } from '@/lib/api';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +18,8 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Search, ListTodo } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ListTodo, Link2, X } from 'lucide-react';
+import { linkedModuleLabel, linkedRecordHref } from '@/lib/taskLinks';
 
 const PAGE_SIZE = 10;
 
@@ -30,6 +31,10 @@ interface TaskItem {
   assignedToName?: string | null;
   dueDate?: string | null;
   isRecurring?: boolean;
+  departmentId?: string | null;
+  linkedModule?: string | null;
+  linkedRecordId?: string | null;
+  linkedRecordName?: string | null;
 }
 
 const priorityColors: Record<string, string> = {
@@ -64,6 +69,7 @@ const priorityOptions = [
 
 export default function TasksPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { canCreate, canDelete } = usePermission();
   const canManage = canCreate('hr');
   const canRemove = canDelete('hr');
@@ -72,7 +78,22 @@ export default function TasksPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  // Arriving from a record's "View all linked tasks" bakes the link into the
+  // URL; these two never drift apart because the chip clears both at once.
+  const [linkedModule, setLinkedModule] = useState(searchParams.get('linkedModule') || '');
+  const [linkedRecordId, setLinkedRecordId] = useState(searchParams.get('linkedRecordId') || '');
+  const [linkedRecordName, setLinkedRecordName] = useState(
+    searchParams.get('linkedRecordName') || ''
+  );
+  const [departmentId, setDepartmentId] = useState(searchParams.get('departmentId') || '');
   const [page, setPage] = useState(1);
+
+  const { data: departmentsData } = useFetch<{ data: Array<{ id: string; name: string }> }>(
+    'departments-list',
+    () => departmentsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+  const departments = departmentsData?.data || [];
 
   // Debounce so typing doesn't fire a request per keystroke; filters reset paging.
   useEffect(() => {
@@ -83,7 +104,13 @@ export default function TasksPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchKey = `tasks-list-${debouncedSearch}-${statusFilter}-${priorityFilter}-${page}`;
+  const filterKey = [statusFilter, priorityFilter, linkedModule, linkedRecordId, departmentId].join('-');
+  // New filters mean a new page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [filterKey]);
+
+  const fetchKey = `tasks-list-${debouncedSearch}-${filterKey}-${page}`;
 
   const { data, loading: isLoading, error, refetch } = useFetch<{
     data: TaskItem[];
@@ -96,14 +123,28 @@ export default function TasksPage() {
         search: debouncedSearch || undefined,
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
+        linkedModule: linkedModule || undefined,
+        linkedRecordId: linkedRecordId || undefined,
+        departmentId: departmentId || undefined,
         page,
         limit: PAGE_SIZE,
       });
-    }, [debouncedSearch, statusFilter, priorityFilter, page])
+    }, [debouncedSearch, statusFilter, priorityFilter, linkedModule, linkedRecordId, departmentId, page])
   );
 
   const tasks = data?.data || [];
   const totalPages = data?.totalPages || 1;
+
+  const clearLink = () => {
+    setLinkedModule('');
+    setLinkedRecordId('');
+    setLinkedRecordName('');
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('linkedModule');
+    params.delete('linkedRecordId');
+    params.delete('linkedRecordName');
+    router.replace(`/tasks${params.toString() ? `?${params}` : ''}`);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
@@ -132,7 +173,19 @@ export default function TasksPage() {
           <h1 className="text-2xl font-bold">Tasks</h1>
         </div>
         {canManage && (
-          <Button onClick={() => router.push('/tasks/new')}>
+          <Button
+            onClick={() => {
+              // Carrying the active link into the form keeps "add another task
+              // for this pond" a two-click job.
+              const params = new URLSearchParams();
+              if (linkedModule) params.set('linkedModule', linkedModule);
+              if (linkedRecordId) params.set('linkedRecordId', linkedRecordId);
+              if (linkedRecordName) params.set('linkedRecordName', linkedRecordName);
+              if (departmentId) params.set('departmentId', departmentId);
+              const qs = params.toString();
+              router.push(`/tasks/new${qs ? `?${qs}` : ''}`);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Task
           </Button>
@@ -153,7 +206,32 @@ export default function TasksPage() {
             </div>
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} options={statusOptions} />
             <Select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} options={priorityOptions} />
+            <Select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              options={[
+                { value: '', label: 'All Departments' },
+                ...departments.map((d) => ({ value: d.id, label: d.name })),
+              ]}
+            />
           </div>
+          {(linkedModule || linkedRecordId) && (
+            <div className="mt-4 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
+                <Link2 className="h-3.5 w-3.5" />
+                Linked to {linkedModuleLabel(linkedModule)}
+                {linkedRecordName ? ` · ${linkedRecordName}` : ''}
+                <button
+                  type="button"
+                  aria-label="Clear linked record filter"
+                  onClick={clearLink}
+                  className="rounded-full p-0.5 hover:bg-muted"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -183,7 +261,7 @@ export default function TasksPage() {
             <ListTodo className="mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-lg font-medium text-muted-foreground">No tasks found</p>
             <p className="text-sm text-muted-foreground">
-              {debouncedSearch || statusFilter || priorityFilter
+              {debouncedSearch || statusFilter || priorityFilter || linkedModule || departmentId
                 ? 'Try adjusting your filters'
                 : 'Create your first task to get started'}
             </p>
@@ -197,6 +275,7 @@ export default function TasksPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
+                    <TableHead>Linked record</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Assigned To</TableHead>
@@ -220,6 +299,36 @@ export default function TasksPage() {
                             </span>
                           )}
                         </span>
+                      </TableCell>
+                      {/* Denormalised link name — readable even if the record went. */}
+                      <TableCell className="text-sm text-muted-foreground">
+                        {task.linkedRecordId ? (
+                          (() => {
+                            const href = linkedRecordHref(task.linkedModule, task.linkedRecordId);
+                            const label = `${linkedModuleLabel(task.linkedModule)}${
+                              task.linkedRecordName ? ` · ${task.linkedRecordName}` : ''
+                            }`;
+                            return href ? (
+                              <span
+                                className="inline-flex items-center gap-1 hover:text-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(href);
+                                }}
+                              >
+                                <Link2 className="h-3.5 w-3.5" />
+                                {label}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1">
+                                <Link2 className="h-3.5 w-3.5" />
+                                {label}
+                              </span>
+                            );
+                          })()
+                        ) : (
+                          '—'
+                        )}
                       </TableCell>
                       <TableCell>
                         <span

@@ -47,6 +47,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { clearFarmCaches } from '@/lib/farmCaches';
 import { fieldFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
+import { RecordTasksCard } from '@/components/RecordTasksCard';
 
 import { FARM_TYPE_MAP as FARM_TYPE_CONFIG } from '@/lib/farmTypes';
 
@@ -701,6 +702,9 @@ export default function FarmDetailPage() {
         onConfirm={handleArchiveToggle}
         onCancel={() => setShowArchive(false)}
       />
+
+      {/* People: tasks raised against this farm + its worker headcount. */}
+      <RecordTasksCard moduleKey="farm" recordId={id} recordName={farm.name} farmId={id} />
     </div>
   );
 }

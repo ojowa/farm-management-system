@@ -80,6 +80,7 @@ export const aquacultureAPI = client.aquaculture;
 export const poultryAPI = client.poultry;
 export const inventoryAPI = client.inventory;
 export const workersAPI = client.workers;
+export const departmentsAPI = client.departments;
 export const financeAPI = client.finance;
 export const tasksAPI = client.tasks;
 export const attendanceAPI = client.attendance;
