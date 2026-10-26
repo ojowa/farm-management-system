@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { scopedPrisma as prisma } from '@farm/database';
 import { FarmRepository, FieldRepository } from '../../domain/repositories/farm.repository';
-import { Farm, Field } from '../../domain/entities/farm.entity';
+import { Farm, Field, FieldWithFarm } from '../../domain/entities/farm.entity';
 
 @Injectable()
 export class PrismaFarmRepository implements FarmRepository {
@@ -60,12 +60,27 @@ export class PrismaFarmRepository implements FarmRepository {
 
 @Injectable()
 export class PrismaFieldRepository implements FieldRepository {
-  async findById(id: string, organizationId: string): Promise<Field | null> {
-    return prisma.field.findFirst({ where: { id, farm: { organizationId } } });
+  // The parcel name alone is ambiguous outside one farm (two farms can both
+  // have "North"), so reads carry the parent farm for labelling.
+  private readonly withFarm = { include: { farm: { select: { id: true, name: true } } } } as const;
+
+  async findById(id: string, organizationId: string): Promise<FieldWithFarm | null> {
+    return prisma.field.findFirst({ where: { id, farm: { organizationId } }, ...this.withFarm });
   }
 
-  async findByFarmId(farmId: string, organizationId: string): Promise<Field[]> {
-    return prisma.field.findMany({ where: { farmId, farm: { organizationId } } });
+  async findByFarmId(farmId: string, organizationId: string): Promise<FieldWithFarm[]> {
+    return prisma.field.findMany({
+      where: { farmId, farm: { organizationId } },
+      ...this.withFarm,
+    });
+  }
+
+  async findByOrganizationId(organizationId: string): Promise<FieldWithFarm[]> {
+    return prisma.field.findMany({
+      where: { farm: { organizationId } },
+      orderBy: { name: 'asc' },
+      ...this.withFarm,
+    });
   }
 
   async create(data: Omit<Field, 'id'>): Promise<Field> {

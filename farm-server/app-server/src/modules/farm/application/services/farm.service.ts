@@ -266,9 +266,11 @@ export class FarmApplicationService {
   }
 
   async getAllFields(farmId: string | undefined, organizationId: string) {
-    // Prisma strips `undefined` filters, so a missing farmId would otherwise
-    // return every tenant's fields.
-    if (!farmId) throw new BadRequestException('farmId query parameter is required');
+    // The task-link picker lists the org's parcels before any farm is chosen.
+    // Field carries no organizationId, so the no-farmId branch still scopes
+    // through the parent farm — a missing farmId must never widen to a
+    // cross-tenant read (that is what the old 400 was guarding against).
+    if (!farmId) return this.fieldRepo.findByOrganizationId(organizationId);
     await this.getFarmById(farmId, organizationId);
     return this.fieldRepo.findByFarmId(farmId, organizationId);
   }

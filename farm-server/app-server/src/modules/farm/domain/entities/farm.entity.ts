@@ -18,3 +18,8 @@ export interface Field {
   name: string;
   size: number;
 }
+
+/** A read of a field joined to its parent farm (parcel lists and detail pages). */
+export interface FieldWithFarm extends Field {
+  farm?: { id: string; name: string };
+}

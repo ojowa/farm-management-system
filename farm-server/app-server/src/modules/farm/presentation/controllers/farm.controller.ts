@@ -189,6 +189,8 @@ export class FieldController {
 
   @Permission('farm.read')
   @Get()
+  // `farmId` is optional: with it the list is one farm's parcels, without it
+  // every parcel of the caller's organization (the task-link picker's load).
   findAll(@Req() req: any, @Query('farmId') farmId?: string) {
     return this.farmService.getAllFields(farmId, String(req.user?.organizationId || ''));
   }

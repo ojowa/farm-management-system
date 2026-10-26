@@ -156,6 +156,15 @@ export class ContractController {
     return this.financeService.getAllContracts({ organizationId: getOrgId(req), type, status });
   }
 
+  // Single-contract read: the contract detail screen (admin and mobile) and
+  // the task-link "open record" jump both need one row, not a client-side
+  // filter of the whole list.
+  @Permission('finance.read')
+  @Get(':id')
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.financeService.getContractById(id, getOrgId(req));
+  }
+
   @Permission('finance.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)

@@ -1,4 +1,4 @@
-import { Farm, Field } from '../entities/farm.entity';
+import { Farm, Field, FieldWithFarm } from '../entities/farm.entity';
 
 /**
  * Every read/write is organization-scoped: `organizationId` is the caller's
@@ -26,8 +26,13 @@ export interface FarmRepository {
 
 export interface FieldRepository {
   /** Field has no organizationId of its own; scope through the parent farm. */
-  findById(id: string, organizationId: string): Promise<Field | null>;
-  findByFarmId(farmId: string, organizationId: string): Promise<Field[]>;
+  findById(id: string, organizationId: string): Promise<FieldWithFarm | null>;
+  findByFarmId(farmId: string, organizationId: string): Promise<FieldWithFarm[]>;
+  /**
+   * Every field of one tenant, still scoped through the parent farm — the
+   * task-link picker needs the whole parcel list before a farm is chosen.
+   */
+  findByOrganizationId(organizationId: string): Promise<FieldWithFarm[]>;
   create(data: Omit<Field, 'id'>): Promise<Field>;
   /** Callers must verify scoped existence first (service does via findById). */
   update(id: string, data: Partial<Field>): Promise<Field>;
