@@ -55,7 +55,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:4000/v1",
+        "EXPO_PUBLIC_API_URL": "https://farm-management-system-farm-server-vert.vercel.app/v1",
         "EXPO_PUBLIC_SUPPORT_EMAIL": "support@farmmanagement.com"
       },
       "ios": {
