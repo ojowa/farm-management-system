@@ -68,7 +68,7 @@ const QUICK_ACTIONS = [
   { key: 'poultry', label: 'Add Poultry', icon: '🥚', route: '/poultry/add', permission: 'poultry.write' },
   { key: 'aquaculture', label: 'Stock Pond', icon: '🐟', route: '/aquaculture/add', permission: 'aquaculture.write' },
   { key: 'finance', label: 'Record Transaction', icon: '💰', route: '/finance/add', permission: 'finance.write' },
-  { key: 'worker', label: 'Add Worker', icon: '👷', route: '/workers/add', permission: 'hr.write' },
+  { key: 'worker', label: 'Add Worker', icon: '👷', route: '/workers/add', permission: 'worker.write' },
 ];
 
 export default function DashboardScreen() {

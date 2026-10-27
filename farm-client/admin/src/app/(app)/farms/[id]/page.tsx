@@ -97,8 +97,12 @@ export default function FarmDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
-  const { canCreate, canDelete } = usePermission();
+  const { canCreate, canDelete, canRead } = usePermission();
   const readOnly = !canCreate('farm');
+  // The Workers tile counts and links into the worker directory (worker.read);
+  // hide it for users without it so the fetch doesn't 403 and the link can't
+  // bounce to AccessDenied.
+  const canReadWorkers = canRead('worker');
   const [showDelete, setShowDelete] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [showAddField, setShowAddField] = useState(false);
@@ -166,7 +170,7 @@ export default function FarmDetailPage() {
   const { data: workersStat } = useFetch<{ data: any[]; total?: number }>(
     `farm-stat-workers-${id}`,
     () => workersAPI.list({ farmId: id, limit: 1 }),
-    { enabled: loaded, cacheTime: 30_000 }
+    { enabled: loaded && canReadWorkers, cacheTime: 30_000 }
   );
 
   const fields: Field[] = fieldsData?.data || [];
@@ -309,13 +313,17 @@ export default function FarmDetailPage() {
 
   // Live per-module counts for this farm — each tile links to the target
   // list pre-filtered with ?farmId=. A count the viewer's role can't read
-  // (or that hasn't loaded yet) renders as an em dash.
+  // (or that hasn't loaded yet) renders as an em dash. The Workers tile is
+  // omitted entirely without worker.read: it would link into the directory
+  // the route guard would bounce them from.
   const statTiles = [
     { label: 'Crop Cycles', count: cyclesData?.total, href: `/crops?farmId=${id}`, icon: Sprout, bg: 'bg-green-100 dark:bg-green-900/30', color: 'text-green-600 dark:text-green-400' },
     { label: 'Livestock', count: livestockStat?.total, href: `/livestock?farmId=${id}`, icon: Beef, bg: 'bg-amber-100 dark:bg-amber-900/30', color: 'text-amber-600 dark:text-amber-400' },
     { label: 'Ponds', count: pondsStat?.total, href: `/aquaculture?farmId=${id}`, icon: Fish, bg: 'bg-cyan-100 dark:bg-cyan-900/30', color: 'text-cyan-600 dark:text-cyan-400' },
     { label: 'Flocks', count: flocksStat?.total, href: `/poultry?farmId=${id}`, icon: Egg, bg: 'bg-orange-100 dark:bg-orange-900/30', color: 'text-orange-600 dark:text-orange-400' },
-    { label: 'Workers', count: workersStat?.total, href: `/workers?farmId=${id}`, icon: Users, bg: 'bg-blue-100 dark:bg-blue-900/30', color: 'text-blue-600 dark:text-blue-400' },
+    ...(canReadWorkers
+      ? [{ label: 'Workers', count: workersStat?.total, href: `/workers?farmId=${id}`, icon: Users, bg: 'bg-blue-100 dark:bg-blue-900/30', color: 'text-blue-600 dark:text-blue-400' }]
+      : []),
   ];
 
   // Mirrors the crop list's status-badge convention (completed → success,

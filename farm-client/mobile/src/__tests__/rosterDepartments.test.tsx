@@ -26,7 +26,10 @@ jest.mock('@/modules/hr', () => ({
     deleteShift: jest.fn(),
     deleteAssignment: jest.fn(),
   },
-  workersAPI: { list: (...a: any[]) => mockWorkersList(...a) },
+  workersAPI: {
+    list: (...a: any[]) => mockWorkersList(...a),
+    names: (...a: any[]) => mockWorkersList(...a),
+  },
   departmentsAPI: { list: (...a: any[]) => mockDeptList(...a) },
 }));
 

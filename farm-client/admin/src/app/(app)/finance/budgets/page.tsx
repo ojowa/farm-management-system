@@ -57,8 +57,10 @@ interface Budget {
 }
 
 export default function BudgetsPage() {
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('finance');
+  // Deleting budgets/categories is finance.delete on the API, not finance.write.
+  const canRemove = canDelete('finance');
   const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
@@ -286,10 +288,12 @@ export default function BudgetsPage() {
                       <Button variant="ghost" size="sm" onClick={() => startEdit(budget)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(budget.id, budget.name)} className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </>
+                  )}
+                  {canRemove && (
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(budget.id, budget.name)} className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
               </CardHeader>
@@ -303,7 +307,7 @@ export default function BudgetsPage() {
                         <TableHead>Spent</TableHead>
                         <TableHead>Remaining</TableHead>
                         <TableHead>Status</TableHead>
-                        {!readOnly && <TableHead className="w-[60px]" />}
+                        {canRemove && <TableHead className="w-[60px]" />}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -326,7 +330,7 @@ export default function BudgetsPage() {
                                 {status === 'over' ? 'Over Budget' : status === 'near' ? 'Near Limit' : 'On Track'}
                               </Badge>
                             </TableCell>
-                            {!readOnly && (
+                            {canRemove && (
                               <TableCell>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDeleteCategory(cat.id)}>
                                   <Trash2 className="h-3 w-3" />

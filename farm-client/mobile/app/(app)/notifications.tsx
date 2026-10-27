@@ -16,6 +16,7 @@ import { notificationsAPI, resolveNotificationRoute } from '@/modules/notificati
 import { socketService, RealtimePayload } from '@/services/socketService';
 import { syncBadgeFromServer } from '@/modules/notification';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { usePermission } from '@/core/hooks/usePermission';
 import { describeApiError } from '@/core/utils/apiError';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
@@ -107,6 +108,11 @@ export default function NotificationsScreen() {
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id;
   const { colors: tc, isDark } = useAppTheme();
+  // Deleting a notification is notification.write on the API
+  // (notification.controller DELETE :id) — gate the button or it 403s for
+  // readers. (Not notification.delete: that key is not what the API demands.)
+  const { hasPermission } = usePermission();
+  const canRemove = hasPermission('notification.write');
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -398,13 +404,15 @@ export default function NotificationsScreen() {
               </Text>
               <View style={styles.itemFooter}>
                 <Text style={[styles.itemTime, dynamicStyles.itemTime]}>{formatTime(item.createdAt)}</Text>
-                <TouchableOpacity
-                  onPress={() => removeItem(item)}
-                  style={styles.deleteBtn}
-                  accessibilityLabel={`Delete notification: ${item.title}`}
-                >
-                  <Text style={styles.deleteBtnText}>Delete</Text>
-                </TouchableOpacity>
+                {canRemove && (
+                  <TouchableOpacity
+                    onPress={() => removeItem(item)}
+                    style={styles.deleteBtn}
+                    accessibilityLabel={`Delete notification: ${item.title}`}
+                  >
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </TouchableOpacity>
           </Card>

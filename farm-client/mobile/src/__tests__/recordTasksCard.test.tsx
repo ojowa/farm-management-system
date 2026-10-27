@@ -10,6 +10,7 @@ import { RecordTasksCard } from '../modules/worker/RecordTasksCard';
 const mockTasksList = jest.fn();
 const mockWorkersList = jest.fn();
 const mockCanCreate = jest.fn();
+const mockCanRead = jest.fn();
 const mockPush = jest.fn();
 
 jest.mock('@/services/api', () => ({
@@ -18,7 +19,7 @@ jest.mock('@/services/api', () => ({
 }));
 
 jest.mock('@/core/hooks/usePermission', () => ({
-  usePermission: () => ({ canCreate: mockCanCreate }),
+  usePermission: () => ({ canCreate: mockCanCreate, canRead: mockCanRead }),
 }));
 
 jest.mock('@/core/theme/ThemeContext', () => ({
@@ -56,6 +57,9 @@ describe('RecordTasksCard', () => {
     mockTasksList.mockResolvedValue({ data: [] });
     mockWorkersList.mockResolvedValue({ data: { total: 12 } });
     mockCanCreate.mockReturnValue(true);
+    // The headcount reads the worker directory (worker.read) — allow it by
+    // default so the "12 workers" case passes; one test overrides this.
+    mockCanRead.mockReturnValue(true);
   });
 
   it('queries server-side by linkedModule + linkedRecordId and shows the empty state', async () => {
@@ -122,6 +126,17 @@ describe('RecordTasksCard', () => {
 
     expect(screen.queryByText(/workers/)).toBeNull();
     expect(mockWorkersList).not.toHaveBeenCalled();
+  });
+
+  it('skips the headcount fetch (no 403) without worker.read', async () => {
+    mockCanRead.mockReturnValue(false);
+
+    render(<RecordTasksCard moduleKey="farm" recordId="f1" recordName="Sunrise Farm" farmId="f1" />);
+    await screen.findByText('No tasks linked to Sunrise Farm');
+
+    // The directory call is skipped entirely, so the badge never 403s.
+    expect(mockWorkersList).not.toHaveBeenCalled();
+    expect(screen.queryByText(/workers/)).toBeNull();
   });
 
   it('gates "＋ New task" on hr write permission', async () => {

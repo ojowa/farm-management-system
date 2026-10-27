@@ -162,10 +162,11 @@ export default function TaskDetailScreen() {
   const { colors: tc, isDark } = useAppTheme();
 
   // Mirrors the API: create/edit are hr.write, delete is hr.delete, comments
-  // and attachments accept hr.write / worker.write.
+  // and attachments accept hr.write / worker.self (the self-service key a
+  // field worker holds; the server scopes them to tasks assigned to them).
   const canManage = hasPermission('hr.write');
   const canRemove = hasPermission('hr.delete');
-  const canComment = hasAnyPermission('hr.write', 'worker.write');
+  const canComment = hasAnyPermission('hr.write', 'worker.self');
 
   const [loading, setLoading] = useState(true);
   const [task, setTask] = useState<TaskDetail | null>(null);

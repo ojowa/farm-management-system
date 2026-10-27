@@ -34,10 +34,11 @@ type RecipientOption = { id: string; firstName: string; lastName: string; role: 
 
 export default function MessagesScreen() {
   const { user } = useAuth();
-  const { canCreate } = usePermission();
-  // The seeded permission family is `communication.*` — `messaging.write`
-  // never existed, so compose was hidden for everyone.
-  const canSend = canCreate('communication');
+  const { hasAnyPermission } = usePermission();
+  // Sending accepts Any(hr.write, communication.write) on the API (the HR
+  // controller serves messages and lets HR managers reply) — mirror both, or
+  // an hr.write-only manager can't send from mobile.
+  const canSend = hasAnyPermission('hr.write', 'communication.write');
 
   const [view, setView] = useState<ScreenView>('inbox');
   const [inbox, setInbox] = useState<Message[]>([]);

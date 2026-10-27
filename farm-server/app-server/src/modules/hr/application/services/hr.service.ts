@@ -22,6 +22,7 @@ import {
   TaskListFilters,
 } from '../../domain/repositories/hr.repository';
 import { Department, Worker, Task, Shift } from '../../domain/entities/hr.entity';
+import { matchesPermission, hasAnyPermission } from '../../../../shared/auth/permission-any.guard';
 import { HrEventService } from '../../infrastructure/messaging/hr.event.service';
 
 /** Cryptographically-strong temporary password (~62 bits, 12 chars). */
@@ -67,6 +68,23 @@ export class HrApplicationService {
         }
       }
     });
+  }
+
+  /**
+   * Wildcard-aware permission check, mirroring the route guards (`*` satisfies
+   * anything, `hr.*` satisfies `hr.read`/`hr.write`/…). Every in-handler
+   * scoping decision — "can this caller see ORGANIZATION-wide data?", "may
+   * they file/modify leave for someone else?" — goes through here rather than
+   * a raw `.includes`, so a custom role granted `hr.*` behaves identically to
+   * one granted the concrete keys.
+   */
+  private hasPermission(granted: string[] | undefined, required: string): boolean {
+    return (granted ?? []).some((g) => matchesPermission(g, required));
+  }
+
+  /** True when the caller holds ANY of `required` (wildcard-aware). */
+  private hasAny(granted: string[] | undefined, ...required: string[]): boolean {
+    return hasAnyPermission(granted ?? [], required);
   }
 
   /** Users whose role carries `permission` inside `organizationId`. */
@@ -241,6 +259,30 @@ export class HrApplicationService {
   }
 
   /**
+   * Ownership gate for a task's sub-resources (comments, attachments). A
+   * caller without `hr.write` may only touch a task assigned to them — the
+   * same rule `getTaskById`/`updateTask` apply — so a field worker holding
+   * `worker.self` cannot read or comment on someone else's task by guessing
+   * its id. Managers (`hr.write`) pass through untouched.
+   */
+  private async assertTaskVisibleTo(
+    organizationId: string,
+    taskId: string,
+    userPermissions: string[],
+    userId: string,
+  ) {
+    const task = await this.taskRepo.findById(taskId, organizationId);
+    if (!task) throw new NotFoundException('Task not found');
+    if (this.hasPermission(userPermissions, 'hr.write')) return task;
+    const self = await this.selfWorker(organizationId, userId);
+    const visibleTo = [userId, ...(self ? [self.id] : [])].filter(Boolean);
+    if (!task.assignedToId || !visibleTo.includes(task.assignedToId)) {
+      throw new ForbiddenException('Task not assigned to you');
+    }
+    return task;
+  }
+
+  /**
    * Liveness guard for attendance writes: rows may only be created for a
    * live worker in this organization. Without it a soft-deleted worker's ID
    * still accepted clock-ins and manual records that the list/summary
@@ -381,6 +423,39 @@ export class HrApplicationService {
     ]);
     const names = [...departments.map((d) => d.name), ...legacy].filter(Boolean);
     return [...new Set(names)].sort((a, b) => a.localeCompare(b));
+  }
+
+  /**
+   * Minimal id + display-name + position + farm listing for ASSIGNMENT
+   * pickers (task assignee, shift worker, farm staff count). Deliberately
+   * NOT the worker directory: it returns no email, phone, payroll or
+   * emergency-contact fields, and is gated on the HR surface
+   * (`@PermissionAny('hr.read','hr.write')`) rather than `worker.read`, so
+   * supervisors/veterinarians can still assign work without being able to
+   * open the directory.
+   */
+  async listWorkerNames(
+    organizationId: string,
+    opts?: { farmId?: string; limit?: number | string }
+  ) {
+    const limitRaw = Math.floor(Number(opts?.limit));
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 500) : 200;
+    const rows = await prisma.worker.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        ...(opts?.farmId ? { farmId: String(opts.farmId) } : {}),
+      },
+      select: { id: true, firstName: true, lastName: true, position: true, farmId: true },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+      take: limit,
+    });
+    return rows.map((w) => ({
+      id: w.id,
+      name: `${w.firstName} ${w.lastName}`.trim(),
+      position: w.position,
+      farmId: w.farmId,
+    }));
   }
 
   async getAllWorkers(
@@ -739,7 +814,7 @@ export class HrApplicationService {
     }
 
     // Self-service (worker.* without hr.read): only ever your own records.
-    if (caller && !caller.permissions.includes('hr.read')) {
+    if (caller && !this.hasPermission(caller.permissions, 'hr.read')) {
       const self = await this.selfWorker(organizationId, caller.userId);
       processedFilters.workerId = self?.id ?? '__no_worker_profile__';
     }
@@ -762,7 +837,7 @@ export class HrApplicationService {
       startDate: start,
       endDate: end,
     };
-    if (caller && !caller.permissions.includes('hr.read')) {
+    if (caller && !this.hasPermission(caller.permissions, 'hr.read')) {
       const self = await this.selfWorker(organizationId, caller.userId);
       filters.workerId = self?.id ?? '__no_worker_profile__';
     }
@@ -793,7 +868,7 @@ export class HrApplicationService {
     caller?: { userId: string; permissions: string[] }
   ) {
     let targetWorkerId = workerId;
-    if (caller && !caller.permissions.includes('hr.read')) {
+    if (caller && !this.hasPermission(caller.permissions, 'hr.read')) {
       const self = await this.selfWorker(organizationId, caller.userId);
       targetWorkerId = self?.id;
       if (!targetWorkerId) throw new ForbiddenException('No worker profile is linked to your account');
@@ -872,7 +947,7 @@ export class HrApplicationService {
     workerId: string,
     caller?: { userId: string; permissions: string[] }
   ): Promise<{ workerId: string; workerName: string }> {
-    if (!caller || caller.permissions.includes('hr.write')) {
+    if (!caller || this.hasPermission(caller.permissions, 'hr.write')) {
       return { workerId, workerName: '' };
     }
     const self = await this.selfWorker(organizationId, caller.userId);
@@ -1064,7 +1139,7 @@ export class HrApplicationService {
     // Self-service (worker.* / no hr.write): see your own tasks whether the
     // admin assigned by user id or by worker id, and compute stats from that
     // same set instead of the org-wide count.
-    const scoped = !userPermissions.includes('hr.write');
+    const scoped = !this.hasPermission(userPermissions, 'hr.write');
     if (scoped) {
       const self = await this.selfWorker(organizationId, userId);
       processedFilters.assignedToIds = [userId, ...(self ? [self.id] : [])];
@@ -1106,7 +1181,7 @@ export class HrApplicationService {
     const task = await this.taskRepo.findById(id, organizationId);
     if (!task) throw new NotFoundException('Task not found');
 
-    if (userPermissions && !userPermissions.includes('hr.write')) {
+    if (userPermissions && !this.hasPermission(userPermissions, 'hr.write')) {
       const self = await this.selfWorker(organizationId, userId ?? '');
       const visibleTo = [userId, ...(self ? [self.id] : [])].filter(Boolean);
       if (!task.assignedToId || !visibleTo.includes(task.assignedToId)) {
@@ -1212,7 +1287,7 @@ export class HrApplicationService {
     const existing = await this.taskRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Task not found');
 
-    if (!userPermissions.includes('hr.write')) {
+    if (!this.hasPermission(userPermissions, 'hr.write')) {
       if (existing.assignedToId !== userId && existing.assignedToId !== (await this.selfWorker(organizationId, userId))?.id) {
         throw new ForbiddenException('Cannot update tasks not assigned to you');
       }
@@ -1367,9 +1442,17 @@ export class HrApplicationService {
 
   // ── Task comments & attachments ────────────────────────────────────────
 
-  async getTaskComments(organizationId: string, taskId: string) {
-    const task = await this.taskRepo.findById(taskId, organizationId);
-    if (!task) throw new NotFoundException('Task not found');
+  async getTaskComments(
+    organizationId: string,
+    taskId: string,
+    caller?: { userId: string; permissions: string[] }
+  ) {
+    if (caller) {
+      await this.assertTaskVisibleTo(organizationId, taskId, caller.permissions, caller.userId);
+    } else {
+      const task = await this.taskRepo.findById(taskId, organizationId);
+      if (!task) throw new NotFoundException('Task not found');
+    }
     return prisma.taskComment.findMany({
       where: { taskId, organizationId, deletedAt: null },
       orderBy: { createdAt: 'asc' },
@@ -1380,9 +1463,12 @@ export class HrApplicationService {
     organizationId: string,
     taskId: string,
     author: { id: string | null; name: string },
-    body: string
+    body: string,
+    caller?: { userId: string; permissions: string[] }
   ) {
-    const task = await this.taskRepo.findById(taskId, organizationId);
+    const task = caller
+      ? await this.assertTaskVisibleTo(organizationId, taskId, caller.permissions, caller.userId)
+      : await this.taskRepo.findById(taskId, organizationId);
     if (!task) throw new NotFoundException('Task not found');
     if (!body?.trim()) throw new BadRequestException('Comment body is required');
 
@@ -1421,7 +1507,7 @@ export class HrApplicationService {
 
     const isAuthor = Boolean(comment.authorId) && comment.authorId === caller.userId;
     const canModerate =
-      caller.permissions.includes('hr.delete') || caller.permissions.includes('hr.write');
+      this.hasAny(caller.permissions, 'hr.delete', 'hr.write');
     if (!isAuthor && !canModerate) {
       throw new ForbiddenException('You can only delete your own comments');
     }
@@ -1431,9 +1517,17 @@ export class HrApplicationService {
     return { id: commentId, deleted: true };
   }
 
-  async getTaskAttachments(organizationId: string, taskId: string) {
-    const task = await this.taskRepo.findById(taskId, organizationId);
-    if (!task) throw new NotFoundException('Task not found');
+  async getTaskAttachments(
+    organizationId: string,
+    taskId: string,
+    caller?: { userId: string; permissions: string[] }
+  ) {
+    if (caller) {
+      await this.assertTaskVisibleTo(organizationId, taskId, caller.permissions, caller.userId);
+    } else {
+      const task = await this.taskRepo.findById(taskId, organizationId);
+      if (!task) throw new NotFoundException('Task not found');
+    }
     return prisma.taskAttachment.findMany({
       where: { taskId, organizationId, deletedAt: null },
       orderBy: { createdAt: 'asc' },
@@ -1444,9 +1538,12 @@ export class HrApplicationService {
     organizationId: string,
     taskId: string,
     uploader: { id: string | null; name: string },
-    data: { fileName: string; fileUrl: string; fileSize?: number }
+    data: { fileName: string; fileUrl: string; fileSize?: number },
+    caller?: { userId: string; permissions: string[] }
   ) {
-    const task = await this.taskRepo.findById(taskId, organizationId);
+    const task = caller
+      ? await this.assertTaskVisibleTo(organizationId, taskId, caller.permissions, caller.userId)
+      : await this.taskRepo.findById(taskId, organizationId);
     if (!task) throw new NotFoundException('Task not found');
     if (!data.fileName?.trim() || !data.fileUrl?.trim()) {
       throw new BadRequestException('fileName and fileUrl are required');
@@ -1479,7 +1576,7 @@ export class HrApplicationService {
 
     const isOwner = Boolean(attachment.uploadedById) && attachment.uploadedById === caller.userId;
     const canModerate =
-      caller.permissions.includes('hr.delete') || caller.permissions.includes('hr.write');
+      this.hasAny(caller.permissions, 'hr.delete', 'hr.write');
     if (!isOwner && !canModerate) {
       throw new ForbiddenException('You can only remove your own attachments');
     }
@@ -1882,7 +1979,13 @@ export class HrApplicationService {
       processedFilters.endDate = new Date(Date.UTC(y, 11, 31, 23, 59, 59, 999));
     }
 
-    if (!userPermissions.includes('hr.write')) {
+    // Leave privacy: only managers (hr.write) and the dedicated approvers
+    // (leave.approve) see the whole organization's queue; everyone else is
+    // pinned to their own requests, so a worker can never read a colleague's
+    // leave — the route accepts leave.read for self-service, this is the
+    // backstop. The filters.userId override is a manager power too.
+    const seesAllRequests = this.hasAny(userPermissions, 'hr.write', 'leave.approve');
+    if (!seesAllRequests) {
       processedFilters.userId = userId;
     } else if (filters?.userId) {
       processedFilters.userId = filters.userId;
@@ -1933,7 +2036,7 @@ export class HrApplicationService {
     // bypassed by a future route that loosens the decorator.
     let targetUserId = userId;
     if (workerId) {
-      if (!callerPermissions.includes('hr.write')) {
+      if (!this.hasPermission(callerPermissions, 'hr.write')) {
         throw new ForbiddenException('Only managers can file leave on behalf of a worker');
       }
       const worker = await this.workerRepo.findById(workerId, organizationId);
@@ -2043,7 +2146,7 @@ export class HrApplicationService {
     const existing = await this.leaveRequestRepo.findById(id, organizationId);
     if (!existing) throw new NotFoundException('Leave request not found');
 
-    const isManager = callerPermissions.includes('hr.write');
+    const isManager = this.hasPermission(callerPermissions, 'hr.write');
     if (!isManager && existing.userId !== callerUserId) {
       throw new ForbiddenException('Cannot modify leave requests from other users');
     }

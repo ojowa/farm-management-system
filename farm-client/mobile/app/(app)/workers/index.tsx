@@ -139,10 +139,12 @@ export default function WorkersScreen() {
   const { hasPermission } = usePermission();
   const { colors: tc, isDark } = useAppTheme();
 
-  // Worker actions mirror the server's HR controller: hr.write creates/edits,
-  // hr.delete removes. Missing permissions default to hidden — the API would 403.
-  const canWrite = hasPermission('hr.write');
-  const canDelete = hasPermission('hr.delete');
+  // Worker-directory actions mirror the server's WorkerController: worker.write
+  // creates/edits, worker.delete removes (the same keys the admin app gates
+  // its Add/Edit/Delete buttons on). Missing permissions default to hidden —
+  // the API would 403.
+  const canWrite = hasPermission('worker.write');
+  const canDelete = hasPermission('worker.delete');
 
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [farmsList, setFarmsList] = useState<{ id: string; name: string }[]>([]);

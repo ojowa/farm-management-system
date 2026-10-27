@@ -95,9 +95,13 @@ describe('sidebar nav items', () => {
     expect(uncovered).toEqual([]);
   });
 
-  it('gates /workers/departments (the new tab) on hr.read like its siblings', () => {
-    expect(requiredPermissionsForPath('/workers/departments')).toEqual(['hr.read']);
-    expect(requiredPermissionsForPath('/workers/attendance')).toEqual(['hr.read']);
+  it('gates /workers/departments on worker.read (the directory) and /workers/attendance on the attendance keys', () => {
+    expect(requiredPermissionsForPath('/workers/departments')).toEqual(['worker.read']);
+    // Served by the attendance controller, not the directory (see the map).
+    expect(requiredPermissionsForPath('/workers/attendance')).toEqual([
+      'hr.read',
+      'worker.self',
+    ]);
     expect(requiredPermissionsForPath('/roster')).toEqual(['hr.read']);
     expect(requiredPermissionsForPath('/tasks')).toEqual(['hr.read']);
   });
@@ -119,7 +123,8 @@ describe('admin ↔ mobile parity', () => {
   it('Workers: same href, module and permissions', () => {
     const chunk = mobileItem('/workers');
     expect(chunk).toContain("module: 'hr'");
-    expect(chunk).toContain("permissions: ['hr.read']");
+    // Directory access on both clients — the same worker.read the API enforces.
+    expect(chunk).toContain("permissions: ['worker.read']");
     expect(adminItems.find((i) => i.name === 'Workers')?.href).toBe('/workers');
   });
 
@@ -130,12 +135,13 @@ describe('admin ↔ mobile parity', () => {
     expect(adminItems.find((i) => i.name === 'Roster')?.href).toBe('/roster');
   });
 
-  it('Tasks: same href and module; mobile widens to worker.read deliberately', () => {
+  it('Tasks: same href and module; mobile widens to worker.self deliberately', () => {
     const chunk = mobileItem('/tasks');
     expect(chunk).toContain("module: 'worker'");
     // Admin gates /tasks on hr.read alone (routePermissions); mobile accepts
-    // either because its tab bar also serves workers. Both must include hr.read.
-    expect(chunk).toContain("permissions: ['hr.read', 'worker.read']");
+    // worker.self too because its tab bar also serves field workers (their own
+    // tasks, ownership-scoped server-side). Both must include hr.read.
+    expect(chunk).toContain("permissions: ['hr.read', 'worker.self']");
     expect(requiredPermissionsForPath('/tasks')).toEqual(['hr.read']);
     expect(adminItems.find((i) => i.name === 'Tasks')?.href).toBe('/tasks');
   });
@@ -151,11 +157,19 @@ describe('admin ↔ mobile parity', () => {
 });
 
 describe('routePermissions coverage', () => {
-  it('keeps the HR family on hr.read', () => {
-    for (const prefix of ['/workers', '/tasks', '/roster', '/correspondence']) {
+  it('keeps the HR family on hr.read, with the worker directory on worker.read', () => {
+    for (const prefix of ['/tasks', '/roster', '/correspondence']) {
       expect(ROUTE_PERMISSIONS.find((r) => r.prefix === prefix)?.permissions).toEqual([
         'hr.read',
       ]);
     }
+    // The directory moved off hr.read so supervisors/vets (hr.read) no longer
+    // see the roster; attendance mirrors its own controller's keys.
+    expect(ROUTE_PERMISSIONS.find((r) => r.prefix === '/workers')?.permissions).toEqual([
+      'worker.read',
+    ]);
+    expect(
+      ROUTE_PERMISSIONS.find((r) => r.prefix === '/workers/attendance')?.permissions
+    ).toEqual(['hr.read', 'worker.self']);
   });
 });

@@ -26,7 +26,7 @@ import { TextInputField, Button, colors } from '../../../../src/core/ui/UICompon
 import { ScreenLoading, StateView } from '../../../../src/core/ui/feedback';
 import { useToasts } from '../../../../src/core/hooks/useToasts';
 import { describeApiError } from '../../../../src/core/utils/apiError';
-import { useAppSelector } from '../../../../src/modules/auth/hooks/useAuth';
+import { usePermission } from '../../../../src/core/hooks/usePermission';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const styles = StyleSheet.create({
@@ -185,14 +185,15 @@ export default function PondDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { success, error: showError } = useToasts();
-  const user = useAppSelector((state) => state.auth.user);
   const { colors: tc, isDark } = useAppTheme();
 
   // Pond actions mirror the server's permission checks: only aquaculture.write
-  // may add/edit records, aquaculture.delete may delete them. Missing
-  // permissions default to hidden (same pattern as farms.tsx).
-  const canWrite = user?.permissions?.includes('aquaculture.write') ?? false;
-  const canDelete = user?.permissions?.includes('aquaculture.delete') ?? false;
+  // may add/edit records, aquaculture.delete may delete them. usePermission is
+  // wildcard-aware ("*" and "aquaculture.*" both grant write) where a raw
+  // permissions.includes() was not; missing permissions default to hidden.
+  const { canCreate, canDelete: canDeletePermission } = usePermission();
+  const canWrite = canCreate('aquaculture');
+  const canDelete = canDeletePermission('aquaculture');
 
   const [loading, setLoading] = useState(true);
   const [pond, setPond] = useState<Pond | null>(null);

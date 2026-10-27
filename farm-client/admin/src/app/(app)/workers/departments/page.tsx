@@ -38,8 +38,8 @@ export default function DepartmentsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { canCreate, canDelete } = usePermission();
-  const readOnly = !canCreate('hr');
-  const canRemove = canDelete('hr');
+  const readOnly = !canCreate('worker');
+  const canRemove = canDelete('worker');
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

@@ -64,7 +64,7 @@ jest.mock('@/store/slices/uiSlice', () => ({
 }));
 
 jest.mock('@/core/hooks/usePermission', () => ({
-  usePermission: () => ({ canCreate: mockCanCreate, canDelete: mockCanDelete }),
+  usePermission: () => ({ canCreate: mockCanCreate, canDelete: mockCanDelete, canRead: () => true }),
 }));
 
 jest.mock('@/core/hooks/useToasts', () => ({

@@ -1,19 +1,25 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { Drawer } from 'react-native-drawer-layout';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { Sidebar } from '@/core/ui/Sidebar';
+import { AccessDenied } from '@/core/ui/AccessDenied';
 import { SidebarContext } from '@/core/navigation/SidebarContext';
+import { requiredPermissionsForPath } from '@/core/navigation/routePermissions';
+import { usePermission } from '@/core/hooks/usePermission';
 
 // Navigation is sidebar-first: a plain <Stack> (no bottom tab bar) with the
 // drawer overlaying it on top. Every screen opens the drawer via MenuButton
-// (or a left-edge swipe); the Sidebar itself filters items by permission and
-// plan, so no route gating is needed here.
+// (or a left-edge swipe); the Sidebar filters items by permission and plan,
+// and the route guard below denies screens a deep link could still reach —
+// the same route → permission map the admin portal enforces.
 export default function AppLayout() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const { colors: themeColors } = useAppTheme();
+  const pathname = usePathname();
+  const { hasPermission } = usePermission();
 
   // Sidebar drawer state. Any screen can open it via MenuButton (which reads
   // this context); the drawer itself is also swipe-openable from the left edge.
@@ -33,6 +39,23 @@ export default function AppLayout() {
     return (
       <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
         <ActivityIndicator size="large" color={themeColors.primary} />
+      </View>
+    );
+  }
+
+  // Route-level authorization (mirrors admin's AppLayout): never render a
+  // screen the user has no permission for, including routes the sidebar does
+  // not link to. ANY-of the route's permissions grants access.
+  const requiredPermissions = requiredPermissionsForPath(pathname);
+  const isDenied =
+    !!requiredPermissions &&
+    requiredPermissions.length > 0 &&
+    !requiredPermissions.some((p) => hasPermission(p));
+
+  if (isDenied) {
+    return (
+      <View style={{ flex: 1, backgroundColor: themeColors.background }}>
+        <AccessDenied permission={requiredPermissions.join(' or ')} />
       </View>
     );
   }

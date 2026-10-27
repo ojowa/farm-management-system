@@ -62,8 +62,10 @@ export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('finance');
+  // Delete is finance.delete on the API (finance.controller), not finance.write.
+  const canRemove = canDelete('finance');
 
   const {
     data,
@@ -150,19 +152,19 @@ export default function ContractDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             {!readOnly && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/contracts/${contract.id}/edit`)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button variant="destructive" onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/contracts/${contract.id}/edit`)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
+            {canRemove && (
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
             )}
           </div>
         </div>

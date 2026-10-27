@@ -42,7 +42,10 @@ jest.mock('@/modules/worker', () => ({
 }));
 
 jest.mock('@/modules/hr', () => ({
-  workersAPI: { list: (...a: any[]) => mockWorkersList(...a) },
+  workersAPI: {
+    list: (...a: any[]) => mockWorkersList(...a),
+    names: (...a: any[]) => mockWorkersList(...a),
+  },
   departmentsAPI: { list: (...a: any[]) => mockDeptList(...a) },
 }));
 

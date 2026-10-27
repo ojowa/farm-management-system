@@ -31,7 +31,7 @@ interface RoleOption {
 export default function NewWorkerPage() {
   const router = useRouter();
   const { canCreate } = usePermission();
-  const readOnly = !canCreate('hr');
+  const readOnly = !canCreate('worker');
   const { isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [form, setForm] = useState({

@@ -84,8 +84,8 @@ const statusFilterOptions = [
 export default function WorkersPage() {
   const router = useRouter();
   const { canCreate, canDelete } = usePermission();
-  const readOnly = !canCreate('hr');
-  const canRemove = canDelete('hr');
+  const readOnly = !canCreate('worker');
+  const canRemove = canDelete('worker');
   const { toast } = useToast();
   // Arrives from the farm detail page's linked tiles (?farmId=) — seed the
   // farm filter so the list opens pre-filtered to that farm instead of

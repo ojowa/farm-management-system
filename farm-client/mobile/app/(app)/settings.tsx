@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useAuth, useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { usePermission } from '@/core/hooks/usePermission';
 import { Card, Button, colors } from '@/core/ui/UIComponents';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import {
@@ -152,8 +153,11 @@ export default function SettingsScreen() {
   const [roleDesc, setRoleDesc] = useState('');
   const [roleSaving, setRoleSaving] = useState(false);
 
-  const canManageRoles = user?.permissions?.includes('organization.manage') ?? false;
-  const canManageBilling = user?.permissions?.includes('billing.manage') ?? false;
+  // usePermission is wildcard-aware ("*" and "organization.*" both grant
+  // organization.manage) where a raw permissions.includes() was not.
+  const { hasPermission } = usePermission();
+  const canManageRoles = hasPermission('organization.manage');
+  const canManageBilling = hasPermission('billing.manage');
 
   useEffect(() => {
     checkNotificationStatus();

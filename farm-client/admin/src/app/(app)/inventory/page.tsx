@@ -51,8 +51,10 @@ const PAGE_SIZE = 10;
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('farm');
+  // Deleting inventory is farm.delete on the API (asset.controller), not farm.write.
+  const canRemove = canDelete('farm');
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -298,26 +300,26 @@ export default function InventoryPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           {!readOnly && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  router.push(`/inventory/${item.id}/edit`)
-                                }
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => handleDelete(item.id, item.name)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                router.push(`/inventory/${item.id}/edit`)
+                              }
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canRemove && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(item.id, item.name)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>

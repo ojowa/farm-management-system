@@ -40,8 +40,10 @@ interface InventoryItem {
 export default function InventoryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('farm');
+  // Deleting is farm.delete on the API (asset.controller), not farm.write.
+  const canRemove = canDelete('farm');
   const { toast } = useToast();
 
   const {
@@ -125,19 +127,19 @@ export default function InventoryDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             {!readOnly && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/inventory/${id}/edit`)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button variant="destructive" onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/inventory/${id}/edit`)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )}
+            {canRemove && (
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
             )}
           </div>
         </div>

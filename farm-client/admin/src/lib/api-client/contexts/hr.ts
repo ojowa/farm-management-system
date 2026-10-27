@@ -2,6 +2,13 @@ import { AxiosInstance } from 'axios';
 
 export interface WorkersAPI {
   list: (params?: any) => Promise<any>;
+  /**
+   * Minimal id+name+position listing for assignment pickers (task assignee,
+   * shift worker, farm staff count). Gated on hr.read/hr.write server-side —
+   * use this instead of `list` wherever only a name is needed, so users with
+   * the HR surface but not the worker directory (worker.read) still work.
+   */
+  names: (params?: { farmId?: string; limit?: number }) => Promise<any>;
   get: (id: string) => Promise<any>;
   create: (data: any) => Promise<any>;
   update: (id: string, data: any) => Promise<any>;
@@ -15,6 +22,7 @@ export interface WorkersAPI {
 export function createWorkersAPI(client: AxiosInstance): WorkersAPI {
   return {
     list: (params) => client.get('/workers', { params }),
+    names: (params) => client.get('/workers/names', { params }),
     get: (id) => client.get(`/workers/${id}`),
     create: (data) => client.post('/workers', data),
     update: (id, data) => client.put(`/workers/${id}`, data),

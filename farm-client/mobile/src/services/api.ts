@@ -673,6 +673,15 @@ export const departmentsAPI = {
 export const workersAPI = {
   list: (params?: ListParams & { farmId?: string }) =>
     http.get<Worker[]>('/workers', { params }),
+  // Minimal id+name+position listing for assignment pickers (task assignee,
+  // shift worker). Gated on hr.read/hr.write server-side — use this instead
+  // of `list` wherever only a name is needed, so users with the HR surface
+  // but not the worker directory (worker.read) still work.
+  names: (params?: { farmId?: string; limit?: number }) =>
+    http.get<{ id: string; name: string; position: string; farmId: string }[]>(
+      '/workers/names',
+      { params }
+    ),
   get: (id: string) =>
     http.get<Worker>(`/workers/${id}`),
   create: (data: CreateWorkerRequest) =>

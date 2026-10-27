@@ -90,9 +90,10 @@ async function main() {
     { name: 'finance.read', description: 'View expenses, sales, and financial data', category: 'Finance' },
     { name: 'finance.write', description: 'Create and edit financial records', category: 'Finance' },
     { name: 'finance.delete', description: 'Delete financial records', category: 'Finance' },
-    { name: 'worker.read', description: 'View worker profiles, tasks and attendance', category: 'Worker' },
-    { name: 'worker.write', description: 'Edit worker data and record own attendance', category: 'Worker' },
-    { name: 'worker.delete', description: 'Delete worker records', category: 'Worker' },
+    { name: 'worker.read', description: 'View the worker directory (roster of worker profiles)', category: 'Worker' },
+    { name: 'worker.write', description: 'Add and edit worker profiles in the directory', category: 'Worker' },
+    { name: 'worker.delete', description: 'Delete worker profiles from the directory', category: 'Worker' },
+    { name: 'worker.self', description: 'Access your own worker records (attendance, tasks, clock in/out)', category: 'Worker' },
     { name: 'communication.read', description: 'View messages and correspondence', category: 'Communication' },
     { name: 'communication.write', description: 'Send messages and correspondence', category: 'Communication' },
     { name: 'reporting.read', description: 'View reports and analytics', category: 'Reporting' },
@@ -145,7 +146,7 @@ async function main() {
       'aquaculture.read', 'aquaculture.write', 'aquaculture.delete',
       'inventory.read', 'inventory.write', 'inventory.delete',
       'finance.read', 'finance.write', 'finance.delete',
-      'worker.read', 'worker.write', 'worker.delete',
+      'worker.read', 'worker.write', 'worker.delete', 'worker.self',
       'communication.read', 'communication.write',
       'reporting.read', 'reporting.write', 'reporting.delete',
       'notification.read', 'notification.write', 'notification.delete',
@@ -161,25 +162,31 @@ async function main() {
       'aquaculture.read', 'aquaculture.write', 'aquaculture.delete',
       'inventory.read', 'inventory.write',
       'finance.read', 'finance.write',
-      'worker.read', 'worker.write',
+      'worker.read', 'worker.write', 'worker.self',
       'communication.read', 'communication.write',
       'reporting.read',
       'notification.read', 'notification.write',
       'hr.read', 'hr.write', 'leave.read', 'leave.write',
     ],
-    ACCOUNTANT: ['finance.read', 'finance.write', 'farm.read', 'inventory.read', 'reporting.read', 'notification.read', 'hr.read'],
+    // Accountant views the worker directory (worker.read) but cannot add/edit.
+    ACCOUNTANT: ['finance.read', 'finance.write', 'farm.read', 'inventory.read', 'reporting.read', 'notification.read', 'hr.read', 'worker.read'],
     SUPERVISOR: [
       'farm.read', 'crop.read', 'crop.write',
       'livestock.read', 'livestock.write',
       'poultry.read', 'poultry.write',
       'aquaculture.read', 'aquaculture.write',
-      'worker.read', 'worker.write',
+      // No directory access (worker.read/write/delete) by default — supervisors
+      // see the roster through hr.read, not the directory surface. worker.self
+      // keeps their own clock-in/tasks working.
+      'worker.self',
       'communication.read', 'reporting.read',
       'notification.read',
       'hr.read', 'leave.read', 'leave.write',
     ],
     VETERINARIAN: ['livestock.read', 'livestock.write', 'poultry.read', 'poultry.write', 'aquaculture.read', 'aquaculture.write', 'farm.read', 'hr.read', 'notification.read'],
-    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'aquaculture.read', 'inventory.read', 'worker.read', 'worker.write', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
+    // Field workers only ever touch their OWN records: worker.self covers
+    // own attendance/tasks/clock; the directory stays out of reach.
+    WORKER: ['farm.read', 'crop.read', 'livestock.read', 'poultry.read', 'aquaculture.read', 'inventory.read', 'worker.self', 'communication.read', 'communication.write', 'notification.read', 'leave.read', 'leave.write'],
   }
 
   for (const [roleName, perms] of Object.entries(rolePermissions)) {

@@ -42,8 +42,12 @@ interface RecordTasksCardProps {
  */
 export function RecordTasksCard({ moduleKey, recordId, recordName, farmId }: RecordTasksCardProps) {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canRead } = usePermission();
   const canManage = canCreate('hr');
+  // The headcount badge reads the worker directory (GET /workers → worker.read);
+  // skip the fetch entirely for users without it so it doesn't 403 on every
+  // record page. The badge hides itself when the count is absent.
+  const canReadWorkers = canRead('worker');
   const label = linkedModuleLabel(moduleKey);
   const heading = recordName || label;
 
@@ -63,7 +67,7 @@ export function RecordTasksCard({ moduleKey, recordId, recordName, farmId }: Rec
   const { data: workersStat } = useFetch<{ data: any[]; total?: number }>(
     `record-workers-${farmId}`,
     () => workersAPI.list({ farmId, page: 1, limit: 1 }),
-    { enabled: Boolean(farmId), cacheTime: 30_000 }
+    { enabled: Boolean(farmId) && canReadWorkers, cacheTime: 30_000 }
   );
 
   const tasks = data?.data || [];

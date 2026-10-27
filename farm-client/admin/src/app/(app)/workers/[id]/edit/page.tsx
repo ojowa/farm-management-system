@@ -23,7 +23,7 @@ export default function EditWorkerPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { canCreate } = usePermission();
-  const readOnly = !canCreate('hr');
+  const readOnly = !canCreate('worker');
   const { toast } = useToast();
 
   const {

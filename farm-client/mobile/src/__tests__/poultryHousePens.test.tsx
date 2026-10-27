@@ -31,7 +31,7 @@ jest.mock('@/modules/farm', () => ({
 }));
 
 jest.mock('@/core/hooks/usePermission', () => ({
-  usePermission: () => ({ hasPermission: mockHasPermission, canCreate: mockCanCreate }),
+  usePermission: () => ({ hasPermission: mockHasPermission, canCreate: mockCanCreate, canRead: () => true }),
 }));
 
 // The record panel on this screen asks /tasks for the house's linked tasks.

@@ -1,8 +1,15 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards } from '@nestjs/common';
 import { ApiKeysService } from '../../application/services/api-keys.service';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
+import { PlatformAdminGuard } from '../../../platform/presentation/guards/platform-admin.guard';
 
-@UseGuards(JwtAuthGuard, AuthorizationGuard)
+// Platform console only. This controller manages the PLATFORM-WIDE key store
+// (`listAll`, create/toggle/delete), so it needs the same PlatformAdminGuard
+// as its nine sibling platform controllers — `apikey.read`/`apikey.write`
+// alone are NOT enough: those keys are also granted to org roles for their
+// own Settings → Integrations tab, and would otherwise let any org user
+// adminstrate platform-wide keys by calling this endpoint directly.
+@UseGuards(JwtAuthGuard, AuthorizationGuard, PlatformAdminGuard)
 @Controller('platform-api-keys')
 export class PlatformApiKeysController {
   constructor(private readonly apiKeysService: ApiKeysService) {}

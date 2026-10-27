@@ -25,7 +25,14 @@ export const PERMISSION_ANY_KEY = 'permissionAny';
 export const PermissionAny = (...permissions: string[]) =>
   SetMetadata(PERMISSION_ANY_KEY, permissions);
 
-function matches(granted: string, required: string): boolean {
+/**
+ * Wildcard-aware single match, exported so services apply the exact same rule
+ * the route guard does when scoping data inside a handler: `*` satisfies
+ * anything, `hr.*` satisfies `hr` and everything under it. Raw
+ * `permissions.includes('hr.write')` misses both, so in-handler checks should
+ * go through this (or `hasAnyPermission`) rather than `.includes`.
+ */
+export function matchesPermission(granted: string, required: string): boolean {
   if (granted === '*') return true;
   if (granted === required) return true;
   if (granted.endsWith('.*')) {
@@ -33,6 +40,11 @@ function matches(granted: string, required: string): boolean {
     return required === prefix || required.startsWith(`${prefix}.`);
   }
   return false;
+}
+
+/** True when the caller holds ANY of `required`, honouring wildcards. */
+export function hasAnyPermission(granted: string[], required: string[]): boolean {
+  return required.some((req) => granted.some((g) => matchesPermission(g, req)));
 }
 
 @Injectable()
@@ -51,7 +63,7 @@ export class PermissionAnyGuard implements CanActivate {
     if (!user) throw new UnauthorizedException('Authentication required');
 
     const granted: string[] = user.permissions ?? [];
-    if (required.some((p) => granted.some((g) => matches(g, p)))) {
+    if (hasAnyPermission(granted, required)) {
       return true;
     }
     throw new ForbiddenException('Insufficient permission');

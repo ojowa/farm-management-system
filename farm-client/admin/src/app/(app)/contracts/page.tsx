@@ -74,8 +74,12 @@ const PAGE_SIZE = 10;
 
 export default function ContractsPage() {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('finance');
+  // Deleting is finance.delete on the API, not finance.write — gate the
+  // Delete affordance on it so a write-only user never sees a button that
+  // 403s, and a delete-only user sees the one they may use.
+  const canRemove = canDelete('finance');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState('');
@@ -261,31 +265,31 @@ export default function ContractsPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {!readOnly && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  router.push(`/contracts/${contract.id}/edit`)
-                                }
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() =>
-                                  handleDelete(
-                                    contract.id,
-                                    contract.buyerSellerName || contract.counterpartyName || ''
-                                  )
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                router.push(`/contracts/${contract.id}/edit`)
+                              }
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canRemove && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() =>
+                                handleDelete(
+                                  contract.id,
+                                  contract.buyerSellerName || contract.counterpartyName || ''
+                                )
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>

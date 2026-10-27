@@ -78,9 +78,13 @@ export interface RecordTasksCardProps {
  */
 export function RecordTasksCard({ moduleKey, recordId, recordName, farmId }: RecordTasksCardProps) {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canRead } = usePermission();
   const { colors: tc, isDark } = useAppTheme();
   const canManage = canCreate('hr');
+  // The headcount badge reads the worker directory (GET /workers → worker.read);
+  // skip the fetch for users without it so it doesn't 403. The badge hides
+  // itself when the count is absent.
+  const canReadWorkers = canRead('worker');
   const label = linkedModuleLabel(moduleKey);
   const heading = recordName || label;
 
@@ -116,7 +120,7 @@ export function RecordTasksCard({ moduleKey, recordId, recordName, farmId }: Rec
   }, [load]);
 
   useEffect(() => {
-    if (!farmId) return;
+    if (!farmId || !canReadWorkers) return;
     let cancelled = false;
     // limit:1 keeps the payload to one row; `total` is the real headcount.
     workersAPI
@@ -133,7 +137,7 @@ export function RecordTasksCard({ moduleKey, recordId, recordName, farmId }: Rec
     return () => {
       cancelled = true;
     };
-  }, [farmId]);
+  }, [farmId, canReadWorkers]);
 
   const openCount = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length;
   const shown = tasks.slice(0, PREVIEW_LIMIT);

@@ -21,10 +21,12 @@ interface Farm {
   name: string;
 }
 
+// Minimal worker shape served by GET /workers/names (assignment picker) —
+// id + display name only, gated on hr.read/hr.write so a supervisor without
+// the worker directory (worker.read) can still assign work.
 interface Worker {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
 }
 
 interface Department {
@@ -63,8 +65,8 @@ export default function EditTaskPage() {
     data: workersData,
     loading: loadingWorkers,
   } = useFetch<{ data: Worker[] }>(
-    'workers-list',
-    () => workersAPI.list({ limit: 200 }),
+    'worker-names',
+    () => workersAPI.names({ limit: 200 }),
     { cacheTime: 60_000 }
   );
 
@@ -162,9 +164,7 @@ export default function EditTaskPage() {
   }
 
   const selectedWorker = workers.find((w) => w.id === form.assignedToId);
-  const assignedToName = selectedWorker
-    ? `${selectedWorker.firstName} ${selectedWorker.lastName}`
-    : undefined;
+  const assignedToName = selectedWorker ? selectedWorker.name : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,7 +328,7 @@ export default function EditTaskPage() {
                 placeholder="Select a worker"
                 options={workers.map((w) => ({
                   value: w.id,
-                  label: `${w.firstName} ${w.lastName}`,
+                  label: w.name,
                 }))}
                 value={form.assignedToId}
                 onChange={(e) => setForm({ ...form, assignedToId: e.target.value })}

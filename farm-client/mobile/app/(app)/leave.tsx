@@ -265,6 +265,8 @@ export default function LeaveScreen() {
   // Server: approvals/bulk accept hr.write OR leave.approve; the org-wide
   // on-leave list and team ledger are hr.read only.
   const canApprove = hasAnyPermission('hr.write', 'leave.approve');
+  // Requesting own leave is Any(leave.write, hr.write) on the API.
+  const canRequestLeave = hasAnyPermission('leave.write', 'hr.write');
   const canReadOrg = hasPermission('hr.read');
   const isManager = hasPermission('hr.write');
 
@@ -584,9 +586,13 @@ export default function LeaveScreen() {
             <Text style={styles.headerActionText}>Types</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.headerAction} onPress={openModal} accessibilityLabel="Request leave">
-          <Text style={styles.headerActionText}>+</Text>
-        </TouchableOpacity>
+        {/* Requesting leave needs Any(leave.write, hr.write) on the API —
+            gate the button or it 403s for read-only members. */}
+        {canRequestLeave && (
+          <TouchableOpacity style={styles.headerAction} onPress={openModal} accessibilityLabel="Request leave">
+            <Text style={styles.headerActionText}>+</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList

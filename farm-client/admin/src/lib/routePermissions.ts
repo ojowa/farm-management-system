@@ -25,8 +25,12 @@ export interface RoutePermission {
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // Identity & authorization
   { prefix: '/users', permissions: ['users.manage'] },
-  { prefix: '/roles', permissions: ['role.read', 'organization.read'] },
-  { prefix: '/permissions', permissions: ['role.read', 'organization.read'] },
+  // The org roles/permissions APIs require organization.read
+  // (roles.controller / org-admin.controller); role.read is only ever
+  // enforced behind PlatformAdminGuard on /platform-roles, so including it
+  // here would promise a view the org API refuses.
+  { prefix: '/roles', permissions: ['organization.read'] },
+  { prefix: '/permissions', permissions: ['organization.read'] },
   // Owner-only billing management, mirroring @Permission('billing.manage')
   // on GET/PATCH /organizations/subscription.
   { prefix: '/subscription', permissions: ['billing.manage'] },
@@ -47,12 +51,26 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { prefix: '/livestock', permissions: ['livestock.read'] },
   { prefix: '/aquaculture', permissions: ['aquaculture.read'] },
   { prefix: '/poultry', permissions: ['poultry.read'] },
-  // Served by asset.controller (`farm.*`), not an inventory controller.
-  { prefix: '/inventory', permissions: ['farm.read', 'inventory.read'] },
-  { prefix: '/equipment', permissions: ['farm.read', 'inventory.read'] },
+  // Served by asset.controller (`farm.*`), not an inventory controller: the
+  // API enforces farm.read exclusively, so the gate demands it too — gating
+  // on inventory.read alone would render a page whose every request 403s
+  // (swallowed by useFetch into a misleading "no data" state).
+  { prefix: '/inventory', permissions: ['farm.read'] },
+  { prefix: '/equipment', permissions: ['farm.read'] },
 
   // Served by hr.controller (`hr.*`), not worker/communication controllers.
-  { prefix: '/workers', permissions: ['hr.read'] },
+  // The worker directory is the exception: it is gated on the dedicated
+  // `worker.read` key (mirroring @Permission('worker.read') on WorkerController)
+  // so directory access is independent of the broader HR surface supervisors
+  // and veterinarians legitimately hold via `hr.read`. The role → permission
+  // mapping lives in the database, so any role can be granted worker.read
+  // from the Roles UI without a code change.
+  { prefix: '/workers', permissions: ['worker.read'] },
+  // Attendance is a child of the Workers section in the nav but its data is
+  // served by the attendance controller (@PermissionAny('hr.read',
+  // 'worker.self')), NOT the directory — mirror that exactly, or an hr.read
+  // holder without worker.read would be bounced from a view the API allows.
+  { prefix: '/workers/attendance', permissions: ['hr.read', 'worker.self'] },
   { prefix: '/tasks', permissions: ['hr.read'] },
   { prefix: '/roster', permissions: ['hr.read'] },
   { prefix: '/correspondence', permissions: ['hr.read'] },

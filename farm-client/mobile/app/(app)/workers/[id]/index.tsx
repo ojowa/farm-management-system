@@ -85,8 +85,10 @@ export default function WorkerDetailScreen() {
   const { hasPermission } = usePermission();
   const { colors: tc, isDark } = useAppTheme();
 
-  const canDelete = hasPermission('hr.delete');
-  const canWrite = hasPermission('hr.write');
+  // Same keys the server enforces on WorkerController (and the admin app
+  // mirrors): worker.write to edit, worker.delete to remove.
+  const canDelete = hasPermission('worker.delete');
+  const canWrite = hasPermission('worker.write');
 
   const [loading, setLoading] = useState(true);
   const [worker, setWorker] = useState<Worker | null>(null);

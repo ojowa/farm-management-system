@@ -168,7 +168,7 @@ export default function AttendanceScreen() {
   const params = useLocalSearchParams<{ workerId?: string }>();
   const workerId = typeof params.workerId === 'string' ? params.workerId : undefined;
   const { success, error: showError } = useToasts();
-  const { hasPermission, canCreate } = usePermission();
+  const { hasPermission, hasAnyPermission, canCreate } = usePermission();
   const { colors: tc, isDark } = useAppTheme();
 
   const dynamicStyles = {
@@ -236,8 +236,14 @@ export default function AttendanceScreen() {
     },
   };
 
-  const canReadWorkers = hasPermission('hr.read');
+  // The worker directory (GET /workers) is worker.read — gate the roster
+  // merge on it (records still carry names for everyone the API serves).
+  const canReadWorkers = hasPermission('worker.read');
+  // Manual record creation (POST /attendance) is hr.write only…
   const canWrite = canCreate('hr');
+  // …but clock-in/out accept Any(hr.write, worker.self): the service pins a
+  // worker.self caller to their own profile, so workers get the buttons too.
+  const canClock = hasAnyPermission('hr.write', 'worker.self');
 
   const today = useMemo(() => formatDateParam(new Date()), []);
   const [dateInput, setDateInput] = useState(today);
@@ -755,7 +761,7 @@ export default function AttendanceScreen() {
                   <Text style={[styles.rowMetaText, dynamicStyles.rowMetaText]}>{Number(row.hoursWorked).toFixed(1)}h</Text>
                 )}
               </View>
-              {canWrite && (
+              {canClock && (
                 <View style={styles.rowActions}>
                   {!row.clockIn && (
                     <TouchableOpacity

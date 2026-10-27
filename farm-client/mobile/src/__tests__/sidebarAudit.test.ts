@@ -32,27 +32,29 @@ const findItem = (label: string) => {
 
 describe('sidebarConfig audit', () => {
   it('routes the People entries a task or department row links to', () => {
-    // The task detail's Department row pushes /workers?department=…
+    // The task detail's Department row pushes /workers?department=… — gated on
+    // the directory key (worker.read) exactly like the admin Workers view.
     expect(findItem('Workers')).toMatchObject({
       route: '/workers',
       module: 'hr',
-      permissions: ['hr.read'],
+      permissions: ['worker.read'],
     });
     expect(findItem('Roster')).toMatchObject({
       route: '/roster',
       module: 'hr',
       permissions: ['hr.read'],
     });
-    // Tasks widens to worker.read so the tab bar and the menu agree.
+    // Tasks widens to worker.self so the tab bar and the menu agree (a field
+    // worker's own tasks, ownership-scoped server-side).
     expect(findItem('Tasks')).toMatchObject({
       route: '/tasks',
       module: 'worker',
-      permissions: ['hr.read', 'worker.read'],
+      permissions: ['hr.read', 'worker.self'],
     });
     expect(findItem('Attendance')).toMatchObject({
       route: '/attendance',
       module: 'hr',
-      permissions: ['hr.read', 'worker.read'],
+      permissions: ['hr.read', 'worker.self'],
     });
   });
 
@@ -74,14 +76,14 @@ describe('sidebarConfig audit', () => {
 
   it('keeps isSidebarItemVisible in step with the module + permission gates', () => {
     const tasks = findItem('Tasks');
-    const hasWorkerRead = (perm: string) => perm === 'worker.read';
+    const hasWorkerSelf = (perm: string) => perm === 'worker.self';
 
     // Module gate: a plan that does not list `worker` hides the entry …
-    expect(isSidebarItemVisible(tasks, ['farm'], hasWorkerRead)).toBe(false);
+    expect(isSidebarItemVisible(tasks, ['farm'], hasWorkerSelf)).toBe(false);
     // … an empty list means "no plan linked" and hides nothing …
-    expect(isSidebarItemVisible(tasks, [], hasWorkerRead)).toBe(true);
-    // … and permission is ANY-of, so worker.read alone still shows it.
-    expect(isSidebarItemVisible(tasks, ['worker'], hasWorkerRead)).toBe(true);
+    expect(isSidebarItemVisible(tasks, [], hasWorkerSelf)).toBe(true);
+    // … and permission is ANY-of, so worker.self alone still shows it.
+    expect(isSidebarItemVisible(tasks, ['worker'], hasWorkerSelf)).toBe(true);
     expect(isSidebarItemVisible(tasks, ['worker'], () => false)).toBe(false);
   });
 });

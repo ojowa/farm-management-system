@@ -13,7 +13,7 @@ import { ROUTE_PERMISSIONS, requiredPermissionsForPath } from '@/lib/routePermis
  * a regression fails CI rather than surfacing as a silent 403 or an empty
  * page in production:
  *
- *  1. the catalog parses to the expected 50 keys;
+ *  1. the catalog parses to the expected 51 keys;
  *  2. every permission `routePermissions.ts` demands exists in the catalog;
  *  3. every permission literal the admin views check exists in the catalog
  *     (a typo'd or renamed key renders a control nobody can ever use);
@@ -77,8 +77,8 @@ function literalsByFile(dir: string): Array<{ file: string; keys: string[] }> {
 }
 
 describe('permission catalog', () => {
-  it('parses to the 50 keys the seed declares', () => {
-    expect(catalog.size).toBe(50);
+  it('parses to the 51 keys the seed declares', () => {
+    expect(catalog.size).toBe(51);
   });
 
   it('covers every permission routePermissions demands', () => {
@@ -208,6 +208,6 @@ describe('mobile parity', () => {
   it('keeps the documented widening on /tasks (both include hr.read)', () => {
     const tasks = mobileItems.find((item) => item.route === '/tasks');
     expect(requiredPermissionsForPath('/tasks')).toEqual(['hr.read']);
-    expect(tasks?.permissions).toEqual(['hr.read', 'worker.read']);
+    expect(tasks?.permissions).toEqual(['hr.read', 'worker.self']);
   });
 });

@@ -302,7 +302,10 @@ export default function TasksScreen() {
 
   useEffect(() => {
     if (canManageTasks) {
-      workersAPI.list().then((res) => setWorkers(res.data)).catch(() => {
+      // Assignment picker: the minimal names endpoint (hr.read/hr.write), not
+      // the worker directory — a supervisor with the HR surface but not
+      // worker.read must still be able to assign a task.
+      workersAPI.names().then((res) => setWorkers(res.data)).catch(() => {
         if (__DEV__) console.warn('[TasksScreen] Failed to load workers');
       });
     }
@@ -376,7 +379,7 @@ export default function TasksScreen() {
       if (assignedToId) {
         payload.assignedToId = assignedToId;
         const w = workers.find((w) => w.id === assignedToId);
-        payload.assignedToName = w ? `${w.firstName} ${w.lastName}` : '';
+        payload.assignedToName = w ? w.name : '';
       }
       if (editingTask) {
         await offlineTasksAPI.update(editingTask.id, payload);
@@ -667,7 +670,7 @@ export default function TasksScreen() {
                         style={[styles.filterBtn, dynamicStyles.filterBtn, assignedToId === w.id && styles.filterBtnActive, { marginRight: 8 }]}
                       >
                         <Text style={[styles.filterBtnText, dynamicStyles.filterBtnText, assignedToId === w.id && styles.filterBtnTextActive]}>
-                          {w.firstName} {w.lastName}
+                          {w.name}
                         </Text>
                       </TouchableOpacity>
                     ))}

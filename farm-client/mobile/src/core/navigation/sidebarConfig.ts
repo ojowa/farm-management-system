@@ -13,9 +13,12 @@
  * `permissions` mirror admin's routePermissions.ts (the strings the API
  * actually enforces), matched with ANY-of semantics; an empty list means every
  * signed-in user. Tasks is the one deliberate widening: the admin gates
- * /tasks on hr.read while the mobile tab bar gates Tasks on worker.read, so
- * both are accepted here — otherwise a user who sees the Tasks tab would not
- * see the Tasks menu item.
+ * /tasks on hr.read while the mobile tab bar gates Tasks on hr.read or
+ * worker.self (a worker's own-task view), so both are accepted here —
+ * otherwise a user who sees the Tasks tab would not see the Tasks menu item.
+ * Workers mirrors admin exactly on worker.read (the directory), which field
+ * workers do NOT hold — their self-service (own attendance/tasks) is
+ * worker.self, ownership-scoped server-side.
  */
 
 export interface SidebarItem {
@@ -48,7 +51,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
         label: 'Roles',
         icon: '🛡️',
         route: '/roles',
-        permissions: ['role.read', 'organization.read'],
+        permissions: ['organization.read'],
         module: null,
       },
     ],
@@ -82,14 +85,14 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
         label: 'Inventory',
         icon: '📦',
         route: '/inventory',
-        permissions: ['farm.read', 'inventory.read'],
+        permissions: ['farm.read'],
         module: 'inventory',
       },
       {
         label: 'Equipment',
         icon: '🔧',
         route: '/equipment',
-        permissions: ['farm.read', 'inventory.read'],
+        permissions: ['farm.read'],
         module: 'inventory',
       },
     ],
@@ -97,27 +100,30 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: 'People',
     items: [
-      { label: 'Workers', icon: '👷', route: '/workers', permissions: ['hr.read'], module: 'hr' },
+      // Worker directory — gated exactly like admin (`worker.read`), so field
+      // workers (no worker.read) never see the roster; hr.read supervisors and
+      // vets don't either, unless granted worker.read from the Roles UI.
+      { label: 'Workers', icon: '👷', route: '/workers', permissions: ['worker.read'], module: 'hr' },
       { label: 'Roster', icon: '📅', route: '/roster', permissions: ['hr.read'], module: 'hr' },
       {
         label: 'Tasks',
         icon: '✅',
         route: '/tasks',
-        permissions: ['hr.read', 'worker.read'],
+        permissions: ['hr.read', 'worker.self'],
         module: 'worker',
       },
       // Attendance is a first-class mobile screen (`/attendance`) that the
       // dashboard links to via "View all", but it had no sidebar entry — so
       // the only way in was that one link. Mirrors admin, where attendance is
       // a child of Workers; on mobile it earns its own row because clocking
-      // in/out is a worker's primary daily action. `worker.read` is included
+      // in/out is a worker's primary daily action. `worker.self` is included
       // so a worker (no hr.read) still reaches their own records, matching the
-      // server's PermissionAny('hr.read', 'worker.read') on /attendance.
+      // server's PermissionAny('hr.read', 'worker.self') on /attendance.
       {
         label: 'Attendance',
         icon: '🕒',
         route: '/attendance',
-        permissions: ['hr.read', 'worker.read'],
+        permissions: ['hr.read', 'worker.self'],
         module: 'hr',
       },
       {

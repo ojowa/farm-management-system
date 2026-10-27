@@ -80,7 +80,9 @@ type Tab = 'buyers' | 'listings';
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
+  // Deletes are finance.delete on the API (finance.controller), not finance.write.
+  const canRemove = canDelete('finance');
   const readOnly = !canCreate('finance');
   const [activeTab, setActiveTab] = useState<Tab>('buyers');
   const [search, setSearch] = useState('');
@@ -388,30 +390,30 @@ export default function MarketplacePage() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               {!readOnly && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      router.push(
-                                        `/marketplace/buyers/${buyer.id}/edit`
-                                      )
-                                    }
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                    onClick={() =>
-                                      handleDeleteBuyer(buyer.id, buyer.name)
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() =>
+                                    router.push(
+                                      `/marketplace/buyers/${buyer.id}/edit`
+                                    )
+                                  }
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {canRemove && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    handleDeleteBuyer(buyer.id, buyer.name)
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               )}
                             </div>
                           </TableCell>
@@ -472,33 +474,33 @@ export default function MarketplacePage() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               {!readOnly && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() =>
-                                      router.push(
-                                        `/marketplace/listings/${listing.id}/edit`
-                                      )
-                                    }
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                    onClick={() =>
-                                      handleDeleteListing(
-                                        listing.id,
-                                        listing.title
-                                      )
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() =>
+                                    router.push(
+                                      `/marketplace/listings/${listing.id}/edit`
+                                    )
+                                  }
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {canRemove && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() =>
+                                    handleDeleteListing(
+                                      listing.id,
+                                      listing.title
+                                    )
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               )}
                             </div>
                           </TableCell>

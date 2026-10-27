@@ -65,8 +65,8 @@ export default function WorkerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { canCreate, canDelete } = usePermission();
-  const readOnly = !canCreate('hr');
-  const canRemove = canDelete('hr');
+  const readOnly = !canCreate('worker');
+  const canRemove = canDelete('worker');
   const { toast } = useToast();
   const [reinvite, setReinvite] = useState<{ email?: string; tempPassword: string } | null>(null);
   const [reinviting, setReinviting] = useState(false);

@@ -107,8 +107,12 @@ function StatusBadge({ status }: { status: string | null }) {
 export default function AttendancePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { canCreate } = usePermission();
+  const { canCreate, canRead, hasAnyPermission } = usePermission();
+  // Manual record create/edit (POST/PATCH /attendance) is hr.write only…
   const canWrite = canCreate('hr');
+  // …but clock-in/out accept Any(hr.write, worker.self): the service pins a
+  // worker.self caller to their own profile.
+  const canClock = hasAnyPermission('hr.write', 'worker.self');
   const today = useMemo(() => formatDate(new Date()), []);
 
   const [selectedDate, setSelectedDate] = useState(today);
@@ -159,10 +163,16 @@ export default function AttendancePage() {
     { cacheTime: 30_000 }
   );
 
+  // The worker list is the directory (GET /workers → worker.read). An
+  // hr.read-only user without it still gets attendance rows (names come
+  // with the records); only the picker/roster join is skipped instead of
+  // firing a 403 useFetch would swallow into an empty list.
+  const canReadWorkers = canRead('worker');
+
   const { data: workersData } = useFetch<{ data: Worker[] }>(
     'workers-list',
     () => workersAPI.list({ limit: 200 }),
-    { cacheTime: 60_000 }
+    { cacheTime: 60_000, enabled: canReadWorkers }
   );
 
   // The endpoint returns a bare array (or an envelope) — useFetch normalises
@@ -550,7 +560,7 @@ export default function AttendancePage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {canWrite && !row.clockIn && (
+                        {canClock && !row.clockIn && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -563,7 +573,7 @@ export default function AttendancePage() {
                             In
                           </Button>
                         )}
-                        {canWrite && row.clockIn && !row.clockOut && (
+                        {canClock && row.clockIn && !row.clockOut && (
                           <Button
                             variant="ghost"
                             size="sm"

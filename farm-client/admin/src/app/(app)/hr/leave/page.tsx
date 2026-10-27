@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/lib/toasts';
 import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
 
 interface LeaveRequest {
   id: string;
@@ -24,6 +25,9 @@ interface LeaveRequest {
   // Attached by the server list endpoint so managers can tell requests apart.
   requesterName?: string | null;
   workerId?: string | null;
+  // The requester — needed so a worker's own rows can be told apart from
+  // colleagues' (only managers/approvers ever receive other users' rows).
+  userId?: string | null;
   createdAt: string;
 }
 
@@ -62,6 +66,7 @@ export default function LeavePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { hasAnyPermission, hasPermission } = usePermission();
+  const { user } = useAuth();
   // Submitting and cancelling your own requests is leave.write on the server.
   const canRequest = hasAnyPermission('leave.write', 'hr.write');
   // The on-leave roster lists the whole org, so it's a manager view (hr.read).
@@ -140,6 +145,10 @@ export default function LeavePage() {
   // also fix rejected ones (resubmitted as pending) and adjust approved ones.
   const canEdit = (req: LeaveRequest) =>
     req.status !== 'CANCELLED' && canRequest && (canFileForWorker || req.status === 'PENDING');
+
+  // Cancelling is requester-only on the server (managers reject instead), so
+  // only ever offer it for your own rows — anyone else's would 403.
+  const isOwn = (req: LeaveRequest) => Boolean(req.userId) && req.userId === user?.id;
 
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,7 +305,7 @@ export default function LeavePage() {
                     </div>
                     <div className="flex items-center gap-3">
                       {canEdit(req) && <button onClick={() => openEdit(req)} className="text-xs text-green-700 hover:text-green-900">Edit</button>}
-                      {req.status === 'PENDING' && <button onClick={() => handleCancel(req.id)} className="text-xs text-red-600 hover:text-red-800">Cancel</button>}
+                      {req.status === 'PENDING' && canRequest && isOwn(req) && <button onClick={() => handleCancel(req.id)} className="text-xs text-red-600 hover:text-red-800">Cancel</button>}
                     </div>
                   </div>
                 </Card>

@@ -229,7 +229,7 @@ export default function RosterScreen() {
     },
   };
 
-  // Server: GET /shifts is hr.read|worker.read, POST/PUT hr.write, DELETE
+  // Server: GET /shifts is hr.read|worker.self, POST/PUT hr.write, DELETE
   // hr.delete; assignments create is hr.write and delete is hr.delete.
   const canWrite = hasPermission('hr.write');
   const canDelete = hasPermission('hr.delete');
@@ -451,12 +451,14 @@ export default function RosterScreen() {
     setAvailableWorkers(null);
   };
 
-  /** Load the roster picker lazily — only when someone asks to add a worker. */
+  /** Load the roster picker lazily — only when someone asks to add a worker.
+   *  Uses the minimal names endpoint (hr.read/hr.write), not the worker
+   *  directory, so a supervisor without worker.read can still staff a shift. */
   const loadWorkers = async () => {
     if (availableWorkers || workersLoading) return;
     setWorkersLoading(true);
     try {
-      const res = await workersAPI.list({ limit: 500 });
+      const res = await workersAPI.names({ limit: 500 });
       setAvailableWorkers(unwrapList<any>(res.data));
     } catch (error: any) {
       showError(describeApiError(error, "Couldn't load workers."));
@@ -480,7 +482,7 @@ export default function RosterScreen() {
     if (!manageShift) return;
     setAssigning(true);
     try {
-      const workerName = `${worker.firstName ?? ''} ${worker.lastName ?? ''}`.trim();
+      const workerName = (worker.name ?? `${worker.firstName ?? ''} ${worker.lastName ?? ''}`).trim();
       await rosterAPI.createAssignment({
         shiftId: manageShift.id,
         userId: worker.id,
@@ -860,7 +862,7 @@ export default function RosterScreen() {
                     <View style={styles.chipRow}>
                       {availableWorkers.map((w) => {
                         const already = assignedUserIds.has(w.id);
-                        const name = `${w.firstName ?? ''} ${w.lastName ?? ''}`.trim() || w.email || 'Worker';
+                        const name = (w.name ?? `${w.firstName ?? ''} ${w.lastName ?? ''}`).trim() || w.email || 'Worker';
                         return (
                           <TouchableOpacity
                             key={w.id}

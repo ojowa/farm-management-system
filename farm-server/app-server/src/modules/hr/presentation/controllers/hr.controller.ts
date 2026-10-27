@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
-import { PermissionAny, PermissionAnyGuard } from '../../../../shared/auth/permission-any.guard';
+import { PermissionAny, PermissionAnyGuard, hasAnyPermission } from '../../../../shared/auth/permission-any.guard';
 import { ZodValidationPipe } from '@farm/utils';
 import {
   createWorkerSchema,
@@ -94,12 +94,24 @@ export class DepartmentsController {
   }
 }
 
+/**
+ * Worker directory (the roster of worker profiles).
+ *
+ * Gated on the dedicated `worker.*` family rather than `hr.*` so directory
+ * access is independent of the broader HR surface (attendance, tasks, leave…),
+ * which supervisors/veterinarians legitimately need via `hr.read`. The role →
+ * permission mapping lives in the database, so any role can be granted
+ * `worker.read` / `worker.write` / `worker.delete` from the Roles UI without a
+ * code change. Self-service (a worker clocking in or reading their own tasks)
+ * is ownership-scoped and does NOT require these keys — see the attendance and
+ * tasks controllers below.
+ */
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
 @Controller('workers')
 export class WorkerController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @Permission('hr.read')
+  @Permission('worker.read')
   @Get()
   findAll(
     @Req() req: any,
@@ -124,20 +136,33 @@ export class WorkerController {
     });
   }
 
-  @Permission('hr.read')
+  @Permission('worker.read')
   // Declared before `:id` — otherwise Nest would match 'departments' as an id.
   @Get('departments')
   departments(@Req() req: any) {
     return this.hrService.getWorkerDepartments(getOrgId(req));
   }
 
-  @Permission('hr.read')
+  // Assignment pickers (task assignee, shift worker, farm staff count) need
+  // id + name only — NOT the directory. Gated on the HR surface rather than
+  // worker.read so supervisors/veterinarians (hr.read) can still assign work
+  // after the directory moved to worker.*; the service returns no profile,
+  // payroll or contact fields.
+  @PermissionAny('hr.read', 'hr.write')
+  @UseGuards(PermissionAnyGuard)
+  // Declared before `:id` — otherwise Nest would match 'names' as an id.
+  @Get('names')
+  names(@Req() req: any, @Query('farmId') farmId?: string, @Query('limit') limit?: string) {
+    return this.hrService.listWorkerNames(getOrgId(req), { farmId, limit });
+  }
+
+  @Permission('worker.read')
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.hrService.getWorkerById(id, getOrgId(req));
   }
 
-  @Permission('hr.write')
+  @Permission('worker.write')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createWorkerSchema))
@@ -145,7 +170,7 @@ export class WorkerController {
     return this.hrService.createWorker({ ...body, organizationId: getOrgId(req) });
   }
 
-  @Permission('hr.write')
+  @Permission('worker.write')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateWorkerSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
@@ -153,14 +178,14 @@ export class WorkerController {
   }
 
   // Rotate the linked login's password and resend the invitation email.
-  @Permission('hr.write')
+  @Permission('worker.write')
   @Post(':id/reinvite')
   @HttpCode(HttpStatus.CREATED)
   reinvite(@Param('id') id: string, @Req() req: any) {
     return this.hrService.reinviteWorker(id, getOrgId(req));
   }
 
-  @Permission('hr.delete')
+  @Permission('worker.delete')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @Req() req: any) {
@@ -173,9 +198,9 @@ export class WorkerController {
 export class AttendanceController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  // Workers see their own records (worker.read, pinned to their own profile
+  // Workers see their own records (worker.self, pinned to their own profile
   // in the service); managers see everyone (hr.read).
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get()
   findAll(
     @Req() req: any,
@@ -192,7 +217,7 @@ export class AttendanceController {
     );
   }
 
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get('today')
   today(@Req() req: any) {
     return this.hrService.getTodayAttendance(getOrgId(req), {
@@ -203,7 +228,7 @@ export class AttendanceController {
 
   // workerId omitted → org-wide summary for managers; workers are always
   // pinned to their own profile regardless of what they pass.
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get('summary')
   summary(
     @Req() req: any,
@@ -228,10 +253,10 @@ export class AttendanceController {
     return this.hrService.createAttendance(getOrgId(req), body);
   }
 
-  // The WORKER role clocks itself in/out with worker.write; managers can clock
+  // The WORKER role clocks itself in/out with worker.self; managers can clock
   // any worker with hr.write. The service pins non-hr.write callers to their
   // own profile, so the body's workerId is only honoured for managers.
-  @PermissionAny('hr.write', 'worker.write')
+  @PermissionAny('hr.write', 'worker.self')
   @Post('clock-in')
   @HttpCode(HttpStatus.CREATED)
   clockIn(@Req() req: any, @Body() body: { workerId: string; workerName: string }) {
@@ -241,7 +266,7 @@ export class AttendanceController {
     });
   }
 
-  @PermissionAny('hr.write', 'worker.write')
+  @PermissionAny('hr.write', 'worker.self')
   @Post('clock-out')
   clockOut(@Req() req: any, @Body() body: { workerId: string }) {
     return this.hrService.clockOut(getOrgId(req), body.workerId, {
@@ -272,9 +297,9 @@ export class AttendanceController {
 export class TasksController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  // Workers list their own tasks (worker.read → scoped to their user/worker id
+  // Workers list their own tasks (worker.self → scoped to their user/worker id
   // in the service); managers see the org's board (hr.read).
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get()
   findAll(
     @Req() req: any,
@@ -305,7 +330,7 @@ export class TasksController {
     });
   }
 
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.hrService.getTaskById(id, getOrgId(req), getUserPermissions(req), getUserId(req));
@@ -322,7 +347,7 @@ export class TasksController {
   // Managers edit the task in full; the assigned worker may still push their
   // own task through statuses — the service's self-service branch (below)
   // restricts non-hr.write callers to status-only updates on their own tasks.
-  @PermissionAny('hr.write', 'worker.write')
+  @PermissionAny('hr.write', 'worker.self')
   @Put(':id')
   @UsePipes(new ZodValidationPipe(updateTaskSchema))
   update(@Param('id') id: string, @Req() req: any, @Body() body: any) {
@@ -344,13 +369,16 @@ export class TasksController {
 
   // ── Comments ──────────────────────────────────────────────────────────
 
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get(':id/comments')
   listComments(@Param('id') id: string, @Req() req: any) {
-    return this.hrService.getTaskComments(getOrgId(req), id);
+    return this.hrService.getTaskComments(getOrgId(req), id, {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
   }
 
-  @PermissionAny('hr.write', 'worker.write')
+  @PermissionAny('hr.write', 'worker.self')
   @Post(':id/comments')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createTaskCommentSchema))
@@ -360,10 +388,11 @@ export class TasksController {
       id,
       { id: getUserId(req), name: getUserName(req) },
       body.body,
+      { userId: getUserId(req), permissions: getUserPermissions(req) },
     );
   }
 
-  @PermissionAny('hr.write', 'hr.delete', 'worker.write')
+  @PermissionAny('hr.write', 'hr.delete', 'worker.self')
   @Delete('comments/:id')
   removeComment(@Param('id') id: string, @Req() req: any) {
     return this.hrService.deleteTaskComment(getOrgId(req), id, {
@@ -374,13 +403,16 @@ export class TasksController {
 
   // ── Attachments ───────────────────────────────────────────────────────
 
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get(':id/attachments')
   listAttachments(@Param('id') id: string, @Req() req: any) {
-    return this.hrService.getTaskAttachments(getOrgId(req), id);
+    return this.hrService.getTaskAttachments(getOrgId(req), id, {
+      userId: getUserId(req),
+      permissions: getUserPermissions(req),
+    });
   }
 
-  @PermissionAny('hr.write', 'worker.write')
+  @PermissionAny('hr.write', 'worker.self')
   @Post(':id/attachments')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createTaskAttachmentSchema))
@@ -394,10 +426,11 @@ export class TasksController {
       id,
       { id: getUserId(req), name: getUserName(req) },
       body,
+      { userId: getUserId(req), permissions: getUserPermissions(req) },
     );
   }
 
-  @PermissionAny('hr.write', 'hr.delete', 'worker.write')
+  @PermissionAny('hr.write', 'hr.delete', 'worker.self')
   @Delete('attachments/:id')
   removeAttachment(@Param('id') id: string, @Req() req: any) {
     return this.hrService.deleteTaskAttachment(getOrgId(req), id, {
@@ -414,7 +447,7 @@ export class ShiftsController {
 
   // Readable by workers too (mobile roster view); management routes below
   // stay hr.write/hr.delete.
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get()
   findAll(@Req() req: any, @Query('departmentId') departmentId?: string) {
     return this.hrService.getShifts(getOrgId(req), { departmentId });
@@ -448,7 +481,7 @@ export class ShiftsController {
 export class ShiftAssignmentsController {
   constructor(private readonly hrService: HrApplicationService) {}
 
-  @PermissionAny('hr.read', 'worker.read')
+  @PermissionAny('hr.read', 'worker.self')
   @Get()
   findAll(
     @Req() req: any,
@@ -543,8 +576,11 @@ export class LeaveRequestsController {
   }
 
   // Managers see everyone (hr.read); workers see only their own — the service
-  // scopes non-hr.write callers to their own userId.
-  @PermissionAny('leave.read', 'hr.read')
+  // scopes anyone holding neither hr.write nor leave.approve to their own
+  // userId. The approve keys are accepted here as well so a leave.approve-only
+  // role can reach the pending queue it is allowed to decide (the approvals
+  // view); the scoping above still keeps leave.read-only callers on their own.
+  @PermissionAny('leave.read', 'hr.read', 'leave.approve', 'hr.write')
   @Get()
   findAll(
     @Req() req: any,
@@ -632,7 +668,10 @@ export class LeaveBalanceController {
     @Query('year') yearStr?: string,
   ) {
     const permissions = getUserPermissions(req);
-    const userId = permissions.includes('hr.read')
+    // Only an hr.read holder may read SOMEONE ELSE's balance (?userId=);
+    // everyone else (leave.read workers) is pinned to their own. Wildcard-aware
+    // to match the route guard.
+    const userId = hasAnyPermission(permissions, ['hr.read'])
       ? (queryUserId || getUserId(req))
       : getUserId(req);
     const year = yearStr ? parseInt(yearStr) : undefined;

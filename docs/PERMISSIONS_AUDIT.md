@@ -2,6 +2,62 @@
 Date: 2026-10-26
 Scope: `farm-server/app-server` + `farm-server/packages/server` (server of record) · `farm-client/admin` (90 routes) · `farm-client/mobile` (24 nav items) · `farm-client/console` (13 platform views)
 
+> **Remediation status (2026-10-27):** the findings below drove a follow-up
+> hardening pass. Fixed: **S1** (`PlatformAdminGuard` on platform-api-keys),
+> **S2** (`realtime/emit` now uses `PlatformAdminGuard` instead of the dead
+> role-name check), **A1** (8 views' Delete buttons now gate on
+> `<domain>.delete`), **A2/A3** (inventory/equipment/roles/permissions view
+> gates now match what the API accepts), **A5** (`/workers` moved to
+> `worker.read` — see the directory/self-service split below), **M1** (mobile
+> gained a route-level guard in `(app)/_layout.tsx` driven by the same
+> route → permission map), **M2** (raw `includes` replaced with the
+> wildcard-aware hook), **M3/M4** (clock-in, send, request-leave and
+> notification-delete buttons now mirror the API's `PermissionAny`/write
+> keys). Open/policy: **S3** (`/health/routes` public), **S6** (odd key
+> semantics), **A4** (`/users` fails closed on `users.manage`), **A6/A7**
+> (orphan views), **C1** (console all-or-nothing — coherent as-is), and the
+> catalog-hygiene question for `inventory.*`/`notification.delete`/
+> `organization.delete` (note `worker.delete` is now enforced).
+>
+> **Worker directory / self-service split (same pass):** `worker.read`,
+> `worker.write` and `worker.delete` now gate ONLY the `/workers` directory
+> (`WorkerController`), and a new 51st key **`worker.self`** gates
+> self-service (own attendance/tasks/clock) with ownership scoping in the
+> service. Seed grants: ORGANIZATION_OWNER r/w/d+self, FARM_MANAGER r/w+self,
+> ACCOUNTANT read, SUPERVISOR self only, WORKER self only. Migration
+> `20261027000000_worker_directory_self_service_split` brings existing
+> databases in line (system roles only; custom roles untouched). The role →
+> permission mapping stays fully reassignable from the Roles UI — nothing is
+> hardcoded to a role name.
+>
+> **Assignment pickers keep working without directory access:** because the
+> directory moved to `worker.*`, a new minimal **`GET /workers/names`** route
+> (`@PermissionAny('hr.read','hr.write')`, service `listWorkerNames`) returns
+> id+name+position+farmId only — no profile, payroll or contact fields. Task
+> and roster assignee pickers on both clients call it instead of the full
+> `GET /workers`, so supervisors/veterinarians (hr.read, no worker.read) can
+> still assign work. Worker-*headcount* badges still use `GET /workers?limit=1`
+> for its `total`, but each is now gated on `canRead('worker')` so it skips
+> cleanly rather than 403-ing for users without the directory.
+>
+> **Leave privacy (same pass):** a worker now only ever sees THEIR OWN leave.
+> `getLeaveRequests` scopes anyone holding neither `hr.write` nor
+> `leave.approve` to their own `userId` server-side (the backstop under both
+> clients' already-gated UIs), so an `hr.read`-free, `leave.read`-only role
+> cannot read colleagues' requests. `GET /leave/requests` additionally accepts
+> `leave.approve`/`hr.write`, so an approver-only role can finally reach the
+> pending queue it is allowed to decide (previously the route demanded
+> `leave.read`/`hr.read` while the approvals views gate on
+> `leave.approve`/`hr.write`). The balance `?userId=` override and every
+> remaining in-handler check in `hr.service.ts` (task/attendance/comment
+> scoping included) now use the **exported** wildcard-aware matcher
+> (`hasAnyPermission`/`matchesPermission` from `permission-any.guard.ts`)
+> instead of raw `includes`, so a custom role granted `hr.*` behaves exactly
+> like one granted the concrete keys. Admin's leave Cancel button is now
+> own-only (`canRequest && req.userId === user.id`) to match the server's
+> requester-only `cancelLeaveRequest`; managers reject others' rows via the
+> approvals queue instead.
+
 ## Executive Summary
 
 Authorization is **server-enforced and client-decorated**: the Nest app has no global auth guard — every controller opts in with `@UseGuards(JwtAuthGuard, AuthorizationGuard)` plus a `@Permission`/`@PermissionAny` decorator, and the admin/mobile/console clients gate their chrome (routes, nav rows, buttons) with the *same* permission strings. The good news first:
@@ -37,13 +93,13 @@ Wildcards (`*`, `prefix.*`) are matched by `matchesPermission` (`roles.ts:28-44`
 
 ## Permission Catalog (source of record)
 
-`farm-server/packages/server/database/prisma/seed.ts:71-122` — **50 keys**, upserted into the `Permission` table.
+`farm-server/packages/server/database/prisma/seed.ts:71-122` — **50 keys** (51 as of the 2026-10-27 pass, which added `worker.self`), upserted into the `Permission` table.
 
 | Family | Keys |
 |---|---|
 | Farm domains | `farm/read/write/delete`, `crop.*`, `livestock.*`, `poultry.*`, `aquaculture.*`, `inventory.*` |
 | Finance | `finance.read/write/delete` |
-| Workforce | `worker.read/write/delete`, `hr.read/write/delete`, `leave.read/write/approve` |
+| Workforce | `worker.read/write/delete`, `worker.self` (new), `hr.read/write/delete`, `leave.read/write/approve` |
 | Communication | `communication.read/write` (no `.delete`) |
 | Reporting / notifications | `reporting.*`, `notification.*` |
 | Administration | `organization.read/write/delete/manage`, `users.read`, `users.manage`, `billing.manage`, `role.read/write`, `apikey.read/write` |
@@ -54,7 +110,7 @@ Wildcards (`*`, `prefix.*`) are matched by `matchesPermission` (`roles.ts:28-44`
 | Fact | Detail |
 |---|---|
 | ✅ No orphan API keys | every `@Permission`/`@PermissionAny` literal in `app-server/src` exists in the catalog |
-| ⚠️ Dead keys (granted, never enforced by any route) | `inventory.read/write/delete`, `worker.delete`, `notification.delete`, `organization.delete` (`DELETE /organizations/:id` requires `organization.write`, `organization.controller.ts:127-128`). `inventory.*` is actively **granted** to ORGANIZATION_OWNER, FARM_MANAGER, ACCOUNTANT and WORKER (`seed.ts:146,162,170,182`) — four roles carry keys that do nothing. |
+| ⚠️ Dead keys (granted, never enforced by any route) — *updated 2026-10-27* | `inventory.read/write/delete`, `notification.delete`, `organization.delete` (`DELETE /organizations/:id` requires `organization.write`, `organization.controller.ts:127-128`). `worker.delete` is **no longer dead**: it now gates `DELETE /workers/:id`. `inventory.*` is actively **granted** to ORGANIZATION_OWNER, FARM_MANAGER, ACCOUNTANT and WORKER (`seed.ts`) — three roles still carry keys that do nothing (the view gates that used to accept `inventory.read` were removed in the A2 fix). |
 | ⚠️ `hr.manage` does not exist | zero hits repo-wide. (Admin's `canApprove(domain)` derives `<domain>.manage`; it is currently unused, so nothing breaks — but the helper would silently return false for HR.) |
 
 ---

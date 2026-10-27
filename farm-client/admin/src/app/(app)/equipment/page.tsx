@@ -62,8 +62,10 @@ const PAGE_SIZE = 10;
 
 export default function EquipmentPage() {
   const router = useRouter();
-  const { canCreate } = usePermission();
+  const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('farm');
+  // Deleting equipment is farm.delete on the API (asset.controller), not farm.write.
+  const canRemove = canDelete('farm');
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -223,7 +225,7 @@ export default function EquipmentPage() {
                           className="flex items-center gap-1"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {!readOnly && (
+                          {canRemove && (
                             <Button
                               variant="ghost"
                               size="icon"
