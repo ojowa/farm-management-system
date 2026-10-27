@@ -34,7 +34,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   // Every authenticated user keeps these
   { prefix: '/dashboard', permissions: [] },
   { prefix: '/weather', permissions: [] },
-  { prefix: '/settings', permissions: [] }, // profile/password; Integrations tab gated on apikey.*
+  { prefix: '/settings', permissions: [] }, // profile/password/2FA
   { prefix: '/notifications', permissions: [] },
 
   // Farm operations

@@ -9,50 +9,29 @@ import {
   Eye,
   EyeOff,
   Shield,
-  Globe,
   Key,
   CheckCircle,
-  Link,
-  Copy,
-  Trash2,
-  Plus,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/toasts';
-import { usePermission } from '@/lib/usePermission';
 import { settingsAPI } from '@/lib/api';
 
-type Tab = 'profile' | 'notifications' | 'security' | 'integrations';
+type Tab = 'profile' | 'notifications' | 'security';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'profile', label: 'Profile', icon: User, description: 'Personal information' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Alert preferences' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password & 2FA' },
-  { id: 'integrations', label: 'Integrations', icon: Link, description: 'API keys' },
 ];
-
-interface ApiKey {
-  id: string;
-  name: string;
-  keyPrefix: string;
-  service: string;
-  isActive: boolean;
-  key?: string;
-}
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { hasPermission } = usePermission();
   // Profile, password, notification and 2FA settings only affect the signed-in
-  // user's own account, so they stay editable for everyone. API keys are org
-  // resources and are permission-gated (apikey.read to see, apikey.write to change).
-  const canManageKeys = hasPermission('apikey.read');
-  const canWriteKeys = hasPermission('apikey.write');
+  // user's own account, so they stay editable for everyone.
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -84,14 +63,6 @@ export default function SettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [securityErrors, setSecurityErrors] = useState<Record<string, string>>({});
-
-  // API Keys state
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [showApiKey, setShowApiKey] = useState<string | null>(null);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [newKeyService, setNewKeyService] = useState('weather');
-  const [showNewKeyForm, setShowNewKeyForm] = useState(false);
-  const [creatingKey, setCreatingKey] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -130,27 +101,14 @@ export default function SettingsPage() {
     }
   }, [toast]);
 
-  const loadApiKeys = useCallback(async () => {
-    try {
-      const res = await settingsAPI.listApiKeys();
-      setApiKeys(res.data);
-    } catch (err: any) {
-      toast({
-        type: 'error',
-        title: 'Failed to load API keys',
-        message: err.response?.data?.message || 'An error occurred',
-      });
-    }
-  }, [toast]);
-
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([loadProfile(), loadPreferences(), loadApiKeys()]);
+      await Promise.all([loadProfile(), loadPreferences()]);
       setLoading(false);
     };
     init();
-  }, [loadProfile, loadPreferences, loadApiKeys]);
+  }, [loadProfile, loadPreferences]);
 
   const handleProfileSave = async () => {
     const errors: Record<string, string> = {};
@@ -264,64 +222,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAddApiKey = async () => {
-    if (!newKeyName.trim()) {
-      toast({ type: 'error', title: 'API key name is required' });
-      return;
-    }
-    setCreatingKey(true);
-    try {
-      const res = await settingsAPI.createApiKey({ name: newKeyName, service: newKeyService });
-      const newKey = res.data;
-      setApiKeys([...apiKeys, { id: newKey.id, name: newKey.name, keyPrefix: newKey.keyPrefix, service: newKey.service, isActive: newKey.isActive, key: newKey.key }]);
-      setNewKeyName('');
-      setShowNewKeyForm(false);
-      toast({ type: 'success', title: 'API key created', message: 'Copy your key now - it won\'t be shown again.' });
-      setShowApiKey(newKey.id);
-    } catch (err: any) {
-      toast({
-        type: 'error',
-        title: 'Failed to create API key',
-        message: err.response?.data?.message || 'An error occurred',
-      });
-    } finally {
-      setCreatingKey(false);
-    }
-  };
-
-  const handleDeleteApiKey = async (id: string) => {
-    if (!confirm('Delete this API key? Any service using it will stop working.')) return;
-    try {
-      await settingsAPI.deleteApiKey(id);
-      setApiKeys(apiKeys.filter((k) => k.id !== id));
-      toast({ type: 'success', title: 'API key deleted' });
-    } catch (err: any) {
-      toast({
-        type: 'error',
-        title: 'Failed to delete API key',
-        message: err.response?.data?.message || 'An error occurred',
-      });
-    }
-  };
-
-  const handleToggleApiKey = async (id: string) => {
-    try {
-      await settingsAPI.toggleApiKey(id);
-      setApiKeys(apiKeys.map((k) => (k.id === id ? { ...k, isActive: !k.isActive } : k)));
-    } catch (err: any) {
-      toast({
-        type: 'error',
-        title: 'Failed to toggle API key',
-        message: err.response?.data?.message || 'An error occurred',
-      });
-    }
-  };
-
-  const handleCopyKey = (key: string) => {
-    navigator.clipboard.writeText(key);
-    toast({ type: 'success', title: 'API key copied to clipboard' });
-  };
-
   const ToggleSwitch = ({
     enabled,
     onToggle,
@@ -370,9 +270,7 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b overflow-x-auto">
-        {tabs
-          .filter((tab) => tab.id !== 'integrations' || canManageKeys)
-          .map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -705,166 +603,6 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Integrations Tab */}
-      {activeTab === 'integrations' && (
-        <div className="space-y-6">
-          {/* API Keys */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5" />
-                  API Keys
-                </CardTitle>
-                <CardDescription>
-                  Manage API keys for external service connections
-                </CardDescription>
-              </div>
-              {canWriteKeys && (
-                <Button size="sm" onClick={() => setShowNewKeyForm(!showNewKeyForm)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Key
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="p-6">
-              {/* New Key Form */}
-              <Dialog
-                open={showNewKeyForm}
-                onOpenChange={setShowNewKeyForm}
-                title="Create New API Key"
-                description="Keys are shown once, right after they are created."
-              >
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Key Name</label>
-                      <Input
-                        placeholder="e.g., Weather Service"
-                        value={newKeyName}
-                        onChange={(e) => setNewKeyName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Service Type</label>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        value={newKeyService}
-                        onChange={(e) => setNewKeyService(e.target.value)}
-                      >
-                        <option value="weather">Weather API</option>
-                        <option value="payment">Payment Gateway</option>
-                        <option value="sms">SMS Service</option>
-                        <option value="maps">Maps / Geolocation</option>
-                        <option value="analytics">Analytics</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleAddApiKey} disabled={creatingKey}>
-                      {creatingKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Create Key
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowNewKeyForm(false)}>Cancel</Button>
-                  </div>
-                </div>
-              </Dialog>
-
-              {/* Keys List */}
-              {apiKeys.length === 0 ? (
-                <div className="text-center py-8">
-                  <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium text-muted-foreground">No API keys yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Add an API key to connect external services
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {apiKeys.map((apiKey) => {
-                    const serviceIcons: Record<string, React.ElementType> = {
-                      weather: Globe,
-                      payment: Globe,
-                      sms: Globe,
-                      maps: Globe,
-                      analytics: Globe,
-                      other: Link,
-                    };
-                    const ServiceIcon = serviceIcons[apiKey.service] || Link;
-                    return (
-                      <div
-                        key={apiKey.id}
-                        className="flex items-center gap-4 p-4 border rounded-lg"
-                      >
-                        <div className="p-2 rounded-lg bg-muted">
-                          <ServiceIcon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{apiKey.name}</p>
-                            <Badge variant={apiKey.isActive ? 'success' : 'secondary'}>
-                              {apiKey.isActive ? 'Active' : 'Disabled'}
-                            </Badge>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <code className="text-xs bg-muted px-2 py-1 rounded font-mono break-all">
-                              {showApiKey === apiKey.id && apiKey.key
-                                ? apiKey.key
-                                : `${apiKey.keyPrefix}••••••••`}
-                            </code>
-                            <button
-                              onClick={() =>
-                                setShowApiKey(showApiKey === apiKey.id ? null : apiKey.id)
-                              }
-                              className="text-muted-foreground hover:text-foreground"
-                              title={showApiKey === apiKey.id ? 'Hide' : 'Reveal'}
-                            >
-                              {showApiKey === apiKey.id ? (
-                                <EyeOff className="h-3 w-3" />
-                              ) : (
-                                <Eye className="h-3 w-3" />
-                              )}
-                            </button>
-                            {showApiKey === apiKey.id && apiKey.key && (
-                              <button
-                                onClick={() => handleCopyKey(apiKey.key!)}
-                                className="text-muted-foreground hover:text-foreground"
-                                title="Copy"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ToggleSwitch
-                            enabled={apiKey.isActive}
-                            onToggle={() => {
-                              if (!canWriteKeys) return;
-                              handleToggleApiKey(apiKey.id);
-                            }}
-                          />
-                          {canWriteKeys && (
-                            <button
-                              onClick={() => handleDeleteApiKey(apiKey.id)}
-                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

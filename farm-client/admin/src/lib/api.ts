@@ -200,11 +200,6 @@ export const settingsAPI = {
   getSessions: () => apiClient.get('/auth/sessions'),
   revokeSession: (tokenId: string) => apiClient.delete(`/auth/sessions/${tokenId}`),
   revokeAllSessions: () => apiClient.delete('/auth/sessions'),
-  getApiKeys: () => apiClient.get('/api-keys'),
-  listApiKeys: () => apiClient.get('/api-keys'),
-  createApiKey: (data: any) => apiClient.post('/api-keys', data),
-  toggleApiKey: (id: string) => apiClient.patch(`/api-keys/${id}/toggle`),
-  deleteApiKey: (id: string) => apiClient.delete(`/api-keys/${id}`),
   // Device token management (from web)
   registerDeviceToken: (token: string, platform: 'web' | 'ios' | 'android' = 'web') =>
     apiClient.post('/devices/tokens', { token, platform }),
