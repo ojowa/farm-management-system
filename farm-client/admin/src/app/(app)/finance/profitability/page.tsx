@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/table';
 import { ChartCard, FarmBarChart, FarmPieChart } from '@/components/charts';
 import { useToast } from '@/lib/toasts';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
 
 interface ProfitSummary {
   totalRevenue: number;
@@ -116,6 +118,8 @@ export default function ProfitabilityPage() {
           Refresh
         </Button>
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">

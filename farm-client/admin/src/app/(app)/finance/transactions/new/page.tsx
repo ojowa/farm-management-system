@@ -17,6 +17,8 @@ import { useToast } from '@/lib/toasts';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 import { clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
 
 export default function NewTransactionPage() {
   const router = useRouter();
@@ -127,6 +129,8 @@ export default function NewTransactionPage() {
         </h1>
         <p className="text-muted-foreground">Record a new expense or sale</p>
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       {/* Type Toggle */}
       <Card>

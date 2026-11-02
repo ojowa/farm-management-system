@@ -16,6 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/lib/toasts';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
 
 const reportTypes = [
   {
@@ -94,6 +96,8 @@ export default function FinanceReportsPage() {
           </p>
         </div>
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       {/* Date Range Selector */}
       <Card>

@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
 import {
   Plus,
   Search,
@@ -16,6 +17,8 @@ import {
   Trash2,
   Calendar,
   Download,
+  Banknote,
+  PiggyBank,
 } from 'lucide-react';
 import { financeAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -98,13 +101,20 @@ export default function FinancePage() {
   const sales = salesData?.data || [];
 
   const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
-  const totalIncome = sales.reduce((sum: number, s: any) => sum + (s.amount || 0), 0);
+  const totalIncome = sales.reduce(
+    (sum: number, s: any) => sum + (s.total ?? s.amount ?? 0),
+    0
+  );
   const netProfit = totalIncome - totalExpenses;
 
   const recentTransactions = useMemo(() => {
     const allTransactions = [
       ...expenses.map((e: any) => ({ ...e, type: 'expense' })),
-      ...sales.map((s: any) => ({ ...s, type: 'sale' })),
+      ...sales.map((s: any) => ({
+        ...s,
+        amount: s.total ?? s.amount,
+        type: 'sale',
+      })),
     ];
     return allTransactions
       .sort((a: any, b: any) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime())
@@ -154,13 +164,7 @@ export default function FinancePage() {
         </div>
       </div>
 
-      <NavTabs
-        ariaLabel="Finance section"
-        tabs={[
-          { label: 'Finance', href: '/finance' },
-          { label: 'Profitability', href: '/finance/profitability' },
-        ]}
-      />
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -258,6 +262,24 @@ export default function FinancePage() {
               <Button variant="outline">
                 <DollarSign className="mr-2 h-4 w-4" />
                 View All Transactions
+              </Button>
+            </Link>
+            <Link href="/finance/sales">
+              <Button variant="outline">
+                <TrendingUp className="mr-2 h-4 w-4" />
+                All Sales
+              </Button>
+            </Link>
+            <Link href="/finance/salary">
+              <Button variant="outline">
+                <Banknote className="mr-2 h-4 w-4" />
+                Salary Payments
+              </Button>
+            </Link>
+            <Link href="/finance/budgets">
+              <Button variant="outline">
+                <PiggyBank className="mr-2 h-4 w-4" />
+                Budgets
               </Button>
             </Link>
             <Link href="/finance/reports">

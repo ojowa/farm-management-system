@@ -37,6 +37,8 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 
 interface Transaction {
@@ -105,7 +107,11 @@ export default function TransactionsPage() {
   const refetch = () => { refetchExpenses(); refetchSales(); };
 
   const expenses = (expensesData?.data || []).map((e: any) => ({ ...e, type: 'expense' as const }));
-  const sales = (salesData?.data || []).map((s: any) => ({ ...s, type: 'sale' as const }));
+  const sales = (salesData?.data || []).map((s: any) => ({
+    ...s,
+    amount: s.total ?? s.amount,
+    type: 'sale' as const,
+  }));
   const transactions = [...expenses, ...sales];
 
   const handleRealtimeEvent = useCallback(
@@ -263,6 +269,8 @@ export default function TransactionsPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       {/* Filters */}
       <Card>

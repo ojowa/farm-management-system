@@ -33,6 +33,8 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -200,6 +202,8 @@ export default function BudgetsPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-3">
