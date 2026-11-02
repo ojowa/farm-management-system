@@ -11,8 +11,10 @@ import {
   Pencil,
   Trash2,
   User,
+  Wallet,
 } from 'lucide-react';
 import { contractsAPI } from '@/lib/api';
+import { transactionDraftUrl } from '@/lib/financeLinks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -127,6 +129,29 @@ export default function ContractDetailPage() {
 
   const counterparty = contract.buyerSellerName || contract.counterpartyName || 'Unknown';
 
+  const recordInFinance = () => {
+    const value = Number(contract.value) || 0;
+    const date = contract.startDate ? contract.startDate.slice(0, 10) : undefined;
+    const isSale = (contract.type || '').toLowerCase() === 'sell';
+    router.push(
+      isSale
+        ? transactionDraftUrl({
+            type: 'sale',
+            item: counterparty,
+            quantity: value > 0 ? 1 : undefined,
+            price: value > 0 ? value : undefined,
+            total: value > 0 ? value : undefined,
+            date,
+          })
+        : transactionDraftUrl({
+            type: 'expense',
+            title: counterparty,
+            amount: value > 0 ? value : undefined,
+            date,
+          })
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -151,6 +176,12 @@ export default function ContractDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {!readOnly && (
+              <Button variant="outline" onClick={recordInFinance}>
+                <Wallet className="mr-2 h-4 w-4" />
+                Record in Finance
+              </Button>
+            )}
             {!readOnly && (
               <Button
                 variant="outline"

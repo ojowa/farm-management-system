@@ -19,8 +19,10 @@ import {
   Download,
   Banknote,
   PiggyBank,
+  FileText,
+  Store,
 } from 'lucide-react';
-import { financeAPI } from '@/lib/api';
+import { financeAPI, contractsAPI, marketplaceAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +59,20 @@ interface FinanceSummary {
   transactions: Transaction[];
 }
 
+interface ContractRow {
+  id: string;
+  type?: string;
+  status?: string;
+  value?: number;
+}
+
+interface ListingRow {
+  id: string;
+  status?: string;
+  price?: number;
+  quantity?: number;
+}
+
 export default function FinancePage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -83,8 +99,34 @@ export default function FinancePage() {
     { cacheTime: 30_000 }
   );
 
+  const {
+    data: contractsData,
+    loading: loadingContracts,
+    refetch: refetchContracts,
+  } = useFetch<{ data: ContractRow[] }>(
+    'finance-contracts-summary',
+    () => contractsAPI.list(),
+    { cacheTime: 30_000 }
+  );
+
+  const {
+    data: listingsData,
+    loading: loadingListings,
+    refetch: refetchListings,
+  } = useFetch<{ data: ListingRow[] }>(
+    'finance-marketplace-summary',
+    () => marketplaceAPI.listListings(),
+    { cacheTime: 30_000 }
+  );
+
   const loading = loadingExpenses || loadingSales;
-  const refetch = () => { refetchExpenses(); refetchSales(); };
+  const loadingOther = loadingContracts || loadingListings;
+  const refetch = () => {
+    refetchExpenses();
+    refetchSales();
+    refetchContracts();
+    refetchListings();
+  };
 
   const handleRealtimeEvent = useCallback(
     (event: { entity: string; action: string; data: any }) => {
@@ -106,6 +148,35 @@ export default function FinancePage() {
     0
   );
   const netProfit = totalIncome - totalExpenses;
+
+  const contracts = contractsData?.data || [];
+  const listings = listingsData?.data || [];
+
+  const contractValue = (kind: 'SELL' | 'BUY') =>
+    contracts
+      .filter((contract) => {
+        const status = (contract.status || '').toUpperCase();
+        return (
+          (contract.type || '').toUpperCase() === kind &&
+          status !== 'TERMINATED' &&
+          status !== 'CANCELLED'
+        );
+      })
+      .reduce((sum, contract) => sum + (Number(contract.value) || 0), 0);
+
+  const listingValue = (status: 'ACTIVE' | 'SOLD') =>
+    listings
+      .filter((listing) => (listing.status || '').toUpperCase() === status)
+      .reduce(
+        (sum, listing) =>
+          sum + (Number(listing.price) || 0) * (Number(listing.quantity) || 0),
+        0
+      );
+
+  const expectedContractIncome = contractValue('SELL');
+  const committedContractSpend = contractValue('BUY');
+  const activeListingValue = listingValue('ACTIVE');
+  const soldListingValue = listingValue('SOLD');
 
   const recentTransactions = useMemo(() => {
     const allTransactions = [
@@ -289,6 +360,79 @@ export default function FinancePage() {
               </Button>
             </Link>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Contracts & Marketplace */}
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle>Contracts &amp; Marketplace</CardTitle>
+          <div className="flex gap-1">
+            <Link href="/contracts">
+              <Button variant="ghost" size="sm">
+                <FileText className="mr-2 h-4 w-4" />
+                Contracts
+              </Button>
+            </Link>
+            <Link href="/marketplace">
+              <Button variant="ghost" size="sm">
+                <Store className="mr-2 h-4 w-4" />
+                Marketplace
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Sell contracts</p>
+              <p className="mt-1 text-xl font-bold text-green-600">
+                {loadingOther ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  formatCurrency(expectedContractIncome)
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">Expected income</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Buy contracts</p>
+              <p className="mt-1 text-xl font-bold text-red-600">
+                {loadingOther ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  formatCurrency(committedContractSpend)
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">Committed spend</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Marketplace active</p>
+              <p className="mt-1 text-xl font-bold text-blue-600">
+                {loadingOther ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  formatCurrency(activeListingValue)
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">Asking value</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Marketplace sold</p>
+              <p className="mt-1 text-xl font-bold text-green-600">
+                {loadingOther ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  formatCurrency(soldListingValue)
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">Realized value</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            These values stay outside net profit until you post them as a sale
+            or expense from their pages.
+          </p>
         </CardContent>
       </Card>
 

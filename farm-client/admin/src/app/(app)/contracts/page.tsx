@@ -9,8 +9,12 @@ import {
   Calendar,
   Trash2,
   Pencil,
+  Wallet,
 } from 'lucide-react';
 import { contractsAPI } from '@/lib/api';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
+import { transactionDraftUrl } from '@/lib/financeLinks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -125,6 +129,31 @@ export default function ContractsPage() {
     }).format(value);
   };
 
+  const recordInFinance = (contract: Contract) => {
+    const name =
+      contract.buyerSellerName || contract.counterpartyName || 'Contract';
+    const value = Number(contract.value) || 0;
+    const date = contract.startDate ? contract.startDate.slice(0, 10) : undefined;
+    const isSale = (contract.type || '').toLowerCase() === 'sell';
+    router.push(
+      isSale
+        ? transactionDraftUrl({
+            type: 'sale',
+            item: name,
+            quantity: value > 0 ? 1 : undefined,
+            price: value > 0 ? value : undefined,
+            total: value > 0 ? value : undefined,
+            date,
+          })
+        : transactionDraftUrl({
+            type: 'expense',
+            title: name,
+            amount: value > 0 ? value : undefined,
+            date,
+          })
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -139,6 +168,8 @@ export default function ContractsPage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       <Card>
         <CardContent className="p-4">
@@ -265,16 +296,27 @@ export default function ContractsPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {!readOnly && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() =>
-                                router.push(`/contracts/${contract.id}/edit`)
-                              }
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Record in finance"
+                                onClick={() => recordInFinance(contract)}
+                              >
+                                <Wallet className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  router.push(`/contracts/${contract.id}/edit`)
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
                           {canRemove && (
                             <Button

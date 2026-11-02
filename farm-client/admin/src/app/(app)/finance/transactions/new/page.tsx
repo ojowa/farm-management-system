@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -65,13 +65,31 @@ export default function NewTransactionPage() {
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
+  const searchParams = useSearchParams();
 
   React.useEffect(() => {
     if (readOnly) router.replace('/finance');
   }, [readOnly, router]);
 
-  const [type, setType] = useState<TransactionType>('expense');
-  const [form, setForm] = useState<FormState>(initialForm);
+  const [type, setType] = useState<TransactionType>(() =>
+    searchParams.get('type') === 'sale' ? 'sale' : 'expense'
+  );
+  const [form, setForm] = useState<FormState>(() => {
+    const base = initialForm();
+    const quantity = searchParams.get('quantity') || base.quantity;
+    const price = searchParams.get('price') || base.price;
+    return {
+      ...base,
+      title: searchParams.get('title') || base.title,
+      item: searchParams.get('item') || base.item,
+      amount: searchParams.get('amount') || base.amount,
+      quantity,
+      price,
+      total: searchParams.get('total') || recalcTotal(quantity, price),
+      date: searchParams.get('date') || base.date,
+      farmId: searchParams.get('farmId') || base.farmId,
+    };
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 

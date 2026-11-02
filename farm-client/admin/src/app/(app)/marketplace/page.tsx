@@ -10,8 +10,12 @@ import {
   Trash2,
   Pencil,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { marketplaceAPI } from '@/lib/api';
+import { NavTabs } from '@/components/NavTabs';
+import { FINANCE_TABS } from '@/lib/financeTabs';
+import { transactionDraftUrl } from '@/lib/financeLinks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +50,7 @@ interface Listing {
   price?: number;
   quantity?: string;
   status: string;
+  soldDate?: string;
   buyer?: { id: string; name: string };
 }
 
@@ -243,6 +248,22 @@ export default function MarketplacePage() {
     setPage(1);
   };
 
+  const recordListingSale = (listing: Listing) => {
+    const quantity = Number(listing.quantity) || 1;
+    const price = Number(listing.price) || 0;
+    const date = listing.soldDate ? listing.soldDate.slice(0, 10) : undefined;
+    router.push(
+      transactionDraftUrl({
+        type: 'sale',
+        item: listing.title,
+        quantity,
+        price: price > 0 ? price : undefined,
+        total: price > 0 ? Number((price * quantity).toFixed(2)) : undefined,
+        date,
+      })
+    );
+  };
+
   const currentData = activeTab === 'buyers' ? buyersData : listingsData;
   const currentLoading = activeTab === 'buyers' ? buyersLoading : listingsLoading;
   const currentItems = activeTab === 'buyers' ? buyers : listings;
@@ -267,6 +288,8 @@ export default function MarketplacePage() {
           </Button>
         )}
       </div>
+
+      <NavTabs ariaLabel="Finance section" tabs={FINANCE_TABS} />
 
       <Card>
         <CardContent className="p-4">
@@ -473,6 +496,17 @@ export default function MarketplacePage() {
                               className="flex items-center gap-1"
                               onClick={(e) => e.stopPropagation()}
                             >
+                              {!readOnly && listing.status === 'SOLD' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Record sale in finance"
+                                  onClick={() => recordListingSale(listing)}
+                                >
+                                  <Wallet className="h-4 w-4" />
+                                </Button>
+                              )}
                               {!readOnly && (
                                 <Button
                                   variant="ghost"
