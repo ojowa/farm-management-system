@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "express",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "env": {
+    "PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK": "true"
+  }
 }
