@@ -61,7 +61,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4">
       <div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">FarmMS</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Farm Management System</h2>
         <p className="text-sm text-gray-500 mb-6">Create your farm&apos;s organization account</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">{error}</div>}

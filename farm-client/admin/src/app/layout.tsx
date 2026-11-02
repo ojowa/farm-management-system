@@ -19,8 +19,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata = {
-  title: 'Farm Management Admin',
-  description: 'Farm Management Admin Console',
+  title: 'Farm Management System',
+  description: 'Farm Management System Console',
 };
 
 export default function RootLayout({

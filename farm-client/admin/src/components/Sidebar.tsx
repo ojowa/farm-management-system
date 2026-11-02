@@ -159,7 +159,7 @@ export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNaviga
         {!collapsed && (
           <Link href="/" onClick={onNavigate} className="flex items-center gap-2">
             <Tractor className="h-8 w-8 text-primary" />
-            <span className="font-bold text-xl text-gray-900 dark:text-white">Farm Admin</span>
+            <span className="font-bold text-base leading-tight text-gray-900 dark:text-white">Farm Management System</span>
           </Link>
         )}
         <button
