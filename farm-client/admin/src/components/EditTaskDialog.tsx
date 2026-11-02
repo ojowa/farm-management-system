@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { ArrowLeft, Link2, Save } from 'lucide-react';
 import { tasksAPI, workersAPI, farmsAPI, departmentsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
