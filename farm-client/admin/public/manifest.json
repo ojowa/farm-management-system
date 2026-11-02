@@ -1,6 +1,6 @@
 {
   "name": "Farm Management System",
-  "short_name": "Farm Management System",
+  "short_name": "FMS",
   "description": "Complete farm management platform",
   "start_url": "/",
   "display": "standalone",
