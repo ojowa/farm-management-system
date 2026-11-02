@@ -289,7 +289,7 @@ function DashboardContent() {
     attendanceSummary && value !== undefined ? String(value) : '—';
 
   const quickActions = [
-    { name: 'Add Farm', href: '/farms/new', permission: 'farm.write', icon: Home, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+    { name: 'Add Farm', href: '/farms', permission: 'farm.write', icon: Home, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
     { name: 'New Crop', href: '/crops/new', permission: 'crop.write', icon: Sprout, color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
     { name: 'Add Livestock', href: '/livestock/new', permission: 'livestock.write', icon: Beef, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
     { name: 'New Task', href: '/tasks/new', permission: 'hr.write', icon: ListTodo, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' },
@@ -311,7 +311,7 @@ function DashboardContent() {
           <p className="text-muted-foreground">Overview of your farm operations</p>
         </div>
         {canAddFarm && (
-          <Link href="/farms/new" className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+          <Link href="/farms" className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
             <Plus className="mr-2 h-4 w-4" />Add Farm
           </Link>
         )}
