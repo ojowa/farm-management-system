@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, Search, ListTodo, Link2, X } from 'lucide-react';
 import { linkedModuleLabel, linkedRecordHref } from '@/lib/taskLinks';
+import EditTaskDialog from '@/components/EditTaskDialog';
 
 const PAGE_SIZE = 10;
 
@@ -87,6 +88,7 @@ export default function TasksPage() {
   );
   const [departmentId, setDepartmentId] = useState(searchParams.get('departmentId') || '');
   const [page, setPage] = useState(1);
+  const [editTarget, setEditTarget] = useState<string | null>(null);
 
   const { data: departmentsData } = useFetch<{ data: Array<{ id: string; name: string }> }>(
     'departments-list',
@@ -364,7 +366,7 @@ export default function TasksPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => router.push(`/tasks/${task.id}/edit`)}
+                              onClick={() => setEditTarget(task.id)}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -397,6 +399,21 @@ export default function TasksPage() {
             </div>
           )}
         </>
+      )}
+      
+      {/* Edit Task Dialog */}
+      {editTarget && (
+        <EditTaskDialog
+          open={Boolean(editTarget)}
+          taskId={editTarget}
+          onOpenChange={(open) => {
+            if (!open) setEditTarget(null);
+          }}
+          onSave={() => {
+            setEditTarget(null);
+            refetch();
+          }}
+        />
       )}
     </div>
   );

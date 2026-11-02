@@ -36,6 +36,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import EditWorkerDialog from '@/components/EditWorkerDialog';
 import {
   workerFormSchema,
   WORKER_POSITION_OPTIONS,
@@ -101,6 +102,7 @@ export default function WorkersPage() {
   );
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<string | null>(null);
   const [form, setForm] = useState({ firstName: '', middleName: '', lastName: '', email: '', phone: '', position: '', department: '', farmId: '', roleId: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -495,9 +497,7 @@ export default function WorkersPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() =>
-                                router.push(`/workers/${worker.id}/edit`)
-                              }
+                              onClick={() => setEditTarget(worker.id)}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -679,6 +679,21 @@ export default function WorkersPage() {
             </div>
           </form>
         </Dialog>
+      )}
+
+      {/* Edit Worker Dialog */}
+      {editTarget && (
+        <EditWorkerDialog
+          open={Boolean(editTarget)}
+          workerId={editTarget}
+          onOpenChange={(open) => {
+            if (!open) setEditTarget(null);
+          }}
+          onSave={() => {
+            setEditTarget(null);
+            refetch();
+          }}
+        />
       )}
 
       {/* Credentials dialog — shown once the login has been created */}

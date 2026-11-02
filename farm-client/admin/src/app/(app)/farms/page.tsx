@@ -50,6 +50,7 @@ import { clearFarmCaches } from '@/lib/farmCaches';
 import { usePermission } from '@/lib/usePermission';
 import { useAuth } from '@/lib/auth';
 import { exportToCSV, exportToJSON } from '@/lib/export';
+import EditFarmDialog from '@/components/EditFarmDialog';
 
 import {
   FARM_TYPE_ROWS as FARM_TYPES,
@@ -148,6 +149,7 @@ export default function FarmsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', farmType: '', location: '', size: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -597,9 +599,7 @@ export default function FarmsPage() {
                                   size="icon"
                                   className="h-8 w-8"
                                   aria-label={`Edit ${farm.name}`}
-                                  onClick={() =>
-                                    router.push(`/farms/${farm.id}/edit`)
-                                  }
+                                  onClick={() => setEditTarget(farm.id)}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
@@ -768,6 +768,21 @@ export default function FarmsPage() {
             </div>
           </form>
         </Dialog>
+      )}
+
+      {/* Edit Farm Dialog */}
+      {editTarget && (
+        <EditFarmDialog
+          open={Boolean(editTarget)}
+          farmId={editTarget}
+          onOpenChange={(open) => {
+            if (!open) setEditTarget(null);
+          }}
+          onSave={() => {
+            setEditTarget(null);
+            refetch();
+          }}
+        />
       )}
     </div>
   );
