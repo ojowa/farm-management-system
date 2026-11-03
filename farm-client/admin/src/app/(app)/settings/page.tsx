@@ -42,8 +42,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { canCreate, hasPermission } = usePermission();
   const { user } = useAuth();
-  const organizationId = user?.organizationId || '';
-  // View org settings requires organization.read; editing requires organization.write
+  const [organizationId, setOrganizationId] = useState(user?.organizationId || '');
   const canViewOrganization = hasPermission('organization.read');
   const canEditOrganization = canCreate('organization');
   // Profile, password, notification and 2FA settings only affect the signed-in
@@ -158,6 +157,12 @@ export default function SettingsPage() {
     }
   }, [toast, canViewOrganization, organizationId]);
 
+  // Keep organizationId in sync with user.auth changes (e.g., after login or
+  // token refresh populates user.organizationId).
+  useEffect(() => {
+    setOrganizationId(user?.organizationId || '');
+  }, [user]);
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -166,7 +171,7 @@ export default function SettingsPage() {
       setLoading(false);
     };
     init();
-  }, [loadProfile, loadPreferences, loadOrganization, canViewOrganization]);
+  }, [loadProfile, loadPreferences, loadOrganization, canViewOrganization, organizationId]);
 
   const handleProfileSave = async () => {
     const errors: Record<string, string> = {};
