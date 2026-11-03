@@ -10,7 +10,7 @@ import {
   TrendingDown,
   Wallet,
 } from 'lucide-react';
-import { financeAPI, farmsAPI } from '@/lib/api';
+import { financeAPI, farmsAPI, budgetsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,7 @@ interface FormState {
   total: string;
   date: string;
   farmId: string;
+  budgetCategoryId: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -50,6 +51,7 @@ const initialForm = (): FormState => ({
   total: '',
   date: today(),
   farmId: '',
+  budgetCategoryId: '',
 });
 
 const recalcTotal = (quantity: string, price: string) => {
@@ -96,6 +98,19 @@ export default function NewTransactionPage() {
   const { data: farmsData, loading: loadingFarms } = useFetch<{
     data: { id: string; name: string }[];
   }>('farms-list', () => farmsAPI.list({ limit: 100 }), { cacheTime: 60_000 });
+
+  const { data: budgetsData } = useFetch<{ data: any[] }>(
+    'budgets-list',
+    () => budgetsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
+  const budgetCategoryOptions = (budgetsData?.data || []).flatMap((b: any) =>
+    (b.categories || []).map((c: any) => ({
+      value: c.id as string,
+      label: `${b.name} · ${c.name}`,
+    }))
+  );
 
   const farms = farmsData?.data || [];
   const selectedFarm = farms.find((farm) => farm.id === form.farmId);
@@ -230,6 +245,7 @@ export default function NewTransactionPage() {
           amount: Number(form.amount),
           date: form.date,
           farmId: form.farmId,
+          budgetCategoryId: form.budgetCategoryId || undefined,
         });
         toast({ type: 'success', title: 'Expense added successfully' });
       } else {
@@ -403,6 +419,30 @@ export default function NewTransactionPage() {
                         className={invalid('title')}
                       />
                       {fieldError('title')}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="budgetCategoryId" className="mb-1 block">
+                        Budget category
+                      </Label>
+                      <Select
+                        id="budgetCategoryId"
+                        placeholder={
+                          budgetCategoryOptions.length
+                            ? 'Not linked (optional)'
+                            : 'No budget categories yet'
+                        }
+                        options={budgetCategoryOptions}
+                        value={form.budgetCategoryId}
+                        onChange={(e) =>
+                          update('budgetCategoryId', e.target.value)
+                        }
+                        disabled={!budgetCategoryOptions.length}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Links this expense to a budget line so its spend counts
+                        there.
+                      </p>
                     </div>
                   </>
                 ) : (

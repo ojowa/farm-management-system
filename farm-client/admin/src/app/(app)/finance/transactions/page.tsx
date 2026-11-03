@@ -15,8 +15,9 @@ import {
   Trash2,
   Calendar,
   Download,
+  Link2,
 } from 'lucide-react';
-import { financeAPI } from '@/lib/api';
+import { financeAPI, budgetsAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,6 +55,11 @@ interface Transaction {
   farmId?: string;
   farmName?: string;
   createdAt: string;
+  budgetCategory?: {
+    id: string;
+    name: string;
+    budget: { id: string; name: string };
+  } | null;
 }
 
 const PAGE_SIZE = 10;
@@ -79,9 +85,25 @@ export default function TransactionsPage() {
     total: '',
     date: '',
     farmId: '',
+    budgetCategoryId: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [linkTx, setLinkTx] = useState<{ id: string; categoryId: string } | null>(null);
+  const [savingLink, setSavingLink] = useState(false);
+
+  const { data: budgetsData } = useFetch<{ data: any[] }>(
+    'budgets-list',
+    () => budgetsAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
+  const budgetCategoryOptions = (budgetsData?.data || []).flatMap((b: any) =>
+    (b.categories || []).map((c: any) => ({
+      value: c.id as string,
+      label: `${b.name} · ${c.name}`,
+    }))
+  );
 
   const {
     data: expensesData,
@@ -180,6 +202,7 @@ export default function TransactionsPage() {
           amount: Number(form.amount),
           date: form.date,
           farmId: form.farmId || undefined,
+          budgetCategoryId: form.budgetCategoryId || undefined,
         });
         toast({ type: 'success', title: 'Expense added successfully' });
       } else {
@@ -212,7 +235,7 @@ export default function TransactionsPage() {
         toast({ type: 'success', title: 'Sale recorded successfully' });
       }
       setShowAdd(false);
-      setForm({ title: '', item: '', amount: '', quantity: '', price: '', total: '', date: '', farmId: '' });
+      setForm({ title: '', item: '', amount: '', quantity: '', price: '', total: '', date: '', farmId: '', budgetCategoryId: '' });
       clearFetchCache('finance');
       clearFetchCache('budgets-list');
       refetch();
@@ -245,6 +268,34 @@ export default function TransactionsPage() {
         title: 'Failed to delete transaction',
         message: err.response?.data?.message || 'An error occurred',
       });
+    }
+  };
+
+  const handleLinkSave = async () => {
+    if (!linkTx) return;
+    setSavingLink(true);
+    try {
+      await financeAPI.updateExpense(linkTx.id, {
+        budgetCategoryId: linkTx.categoryId || null,
+      });
+      toast({
+        type: 'success',
+        title: linkTx.categoryId
+          ? 'Expense linked to budget'
+          : 'Expense unlinked from budget',
+      });
+      setLinkTx(null);
+      clearFetchCache('finance');
+      clearFetchCache('budgets-list');
+      refetch();
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to link expense',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setSavingLink(false);
     }
   };
 
@@ -352,7 +403,7 @@ export default function TransactionsPage() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Farm</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[140px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -369,6 +420,11 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell className="font-medium">
                         {tx.title || tx.item || '—'}
+                        {tx.type === 'expense' && tx.budgetCategory && (
+                          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                            {tx.budgetCategory.budget.name} · {tx.budgetCategory.name}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span
@@ -393,6 +449,26 @@ export default function TransactionsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          {!readOnly && tx.type === 'expense' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={
+                                tx.budgetCategory
+                                  ? 'Change budget link'
+                                  : 'Link to budget'
+                              }
+                              onClick={() =>
+                                setLinkTx({
+                                  id: tx.id,
+                                  categoryId: tx.budgetCategory?.id || '',
+                                })
+                              }
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           {!readOnly && (
                             <Button
                               variant="ghost"
@@ -612,6 +688,31 @@ export default function TransactionsPage() {
             />
           </div>
 
+          {addType === 'expense' && (
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Budget category
+              </label>
+              <Select
+                placeholder={
+                  budgetCategoryOptions.length
+                    ? 'Not linked'
+                    : 'No budget categories yet'
+                }
+                options={budgetCategoryOptions}
+                value={form.budgetCategoryId}
+                onChange={(e) =>
+                  setForm({ ...form, budgetCategoryId: e.target.value })
+                }
+                disabled={!budgetCategoryOptions.length}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional — links this expense to a budget line so its spend
+                counts there.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <Button
               type="button"
@@ -625,6 +726,54 @@ export default function TransactionsPage() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Link expense to budget dialog */}
+      <Dialog
+        open={Boolean(linkTx)}
+        onOpenChange={(open) => {
+          if (!open) setLinkTx(null);
+        }}
+        title="Link expense to budget"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              Budget category
+            </label>
+            <Select
+              placeholder={
+                budgetCategoryOptions.length
+                  ? 'Not linked'
+                  : 'No budget categories yet'
+              }
+              options={budgetCategoryOptions}
+              value={linkTx?.categoryId || ''}
+              onChange={(e) =>
+                setLinkTx((prev) =>
+                  prev ? { ...prev, categoryId: e.target.value } : prev
+                )
+              }
+              disabled={!budgetCategoryOptions.length}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              The expense counts against this budget line from now on. Leave
+              it as &ldquo;Not linked&rdquo; to only match by title.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setLinkTx(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={savingLink}
+              disabled={!budgetCategoryOptions.length}
+              onClick={handleLinkSave}
+            >
+              Save link
+            </Button>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

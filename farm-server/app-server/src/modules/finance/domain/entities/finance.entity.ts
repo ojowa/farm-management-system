@@ -6,7 +6,17 @@ export interface Expense {
   amount: number;
   date: Date;
   createdAt: Date;
+  budgetCategoryId?: string | null;
 }
+
+/** Expense rows read with the manual budget-category link joined in. */
+export type ExpenseWithBudget = Expense & {
+  budgetCategory?: {
+    id: string;
+    name: string;
+    budget: { id: string; name: string };
+  } | null;
+};
 
 export interface Sale {
   id: string;

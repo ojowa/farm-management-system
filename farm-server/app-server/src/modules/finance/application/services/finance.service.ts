@@ -25,6 +25,15 @@ export class FinanceApplicationService {
     if (!buyer) throw new NotFoundException(`Buyer with ID ${buyerId} not found`);
   }
 
+  private async assertBudgetCategoryExists(categoryId: string, organizationId: string) {
+    const { prisma } = await import('@farm/database');
+    const category = await prisma.budgetCategory.findFirst({
+      where: { id: categoryId, budget: { organizationId } },
+      select: { id: true },
+    });
+    if (!category) throw new NotFoundException(`Budget category with ID ${categoryId} not found`);
+  }
+
   private toDate(value: Date | string): Date {
     return typeof value === 'string' ? new Date(value) : value;
   }
@@ -51,14 +60,16 @@ export class FinanceApplicationService {
 
   // ── Expense CRUD ──────────────────────────────────────
 
-  async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string },  organizationId: string) {
+  async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string; budgetCategoryId?: string | null },  organizationId: string) {
     await this.assertFarmExists(data.farmId, organizationId);
+    if (data.budgetCategoryId) await this.assertBudgetCategoryExists(data.budgetCategoryId, organizationId);
     const expense = await this.expenseRepo.create({
       farmId: data.farmId,
       organizationId,
       title: data.title,
       amount: data.amount,
       date: this.toDate(data.date),
+      budgetCategoryId: data.budgetCategoryId || null,
     });
     await this.eventService.emitExpenseCreatedEvent(expense);
     await this.syncBudgetsWithExpenses(organizationId);
@@ -81,9 +92,10 @@ export class FinanceApplicationService {
     return this.expenseRepo.findAll({ filter, sortBy, sortOrder, page, limit });
   }
 
-  async updateExpense(id: string, organizationId: string, data: { farmId?: string; title?: string; amount?: number; date?: Date | string }) {
+  async updateExpense(id: string, organizationId: string, data: { farmId?: string; title?: string; amount?: number; date?: Date | string; budgetCategoryId?: string | null }) {
     await this.getExpenseById(id, organizationId);
     if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
+    if (data.budgetCategoryId) await this.assertBudgetCategoryExists(data.budgetCategoryId, organizationId);
     const updateData: any = { ...data };
     delete updateData.id;
     delete updateData.organizationId;
@@ -438,10 +450,19 @@ export class FinanceApplicationService {
    * Recompute `spentAmount` for every category of a budget from the expenses
    * recorded in the budget window.
    *
-   * Expenses carry no category column, so spending is attributed by matching
-   * the expense title against the category name first; whatever is left over
-   * is distributed proportionally to each category's `budgetAmount` so the
-   * category totals always add up to the real spend.
+   * Attribution order per expense:
+   *   1. A manual link (`expense.budgetCategoryId`) wins — but only counts
+   *      here if that category belongs to THIS budget; expenses linked to
+   *      another budget are not double-counted by title.
+   *   2. Otherwise the expense title is matched against category names: the
+   *      full category name if it appears in the title, else any word of the
+   *      category name of 4+ characters ("Staff Salary" matches a title
+   *      containing "salary").
+   *
+   * Expenses that match nothing are deliberately left out: they used to be
+   * spread across the categories proportionally to their budgetAmount, which
+   * invented spend nobody recorded (e.g. a 260,000 salary run smearing
+   * 65,000 onto "Farming Feed").
    */
   async refreshBudget(budgetId: string, organizationId: string) {
     const { prisma } = await import('@farm/database');
@@ -459,53 +480,48 @@ export class FinanceApplicationService {
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
     const spentById = new Map<string, number>(categories.map((c) => [c.id, 0]));
-    let matched = 0;
 
     for (const expense of expenses) {
       const amount = Number(expense.amount) || 0;
-      const title = String(expense.title || '').toLowerCase();
-      const hit = categories.find((c) => {
-        const name = String(c.name || '').trim().toLowerCase();
-        return name.length > 0 && title.includes(name);
-      });
-      if (hit) {
-        spentById.set(hit.id, (spentById.get(hit.id) || 0) + amount);
-        matched = round2(matched + amount);
-      }
-    }
-
-    const totalSpent = expenses.reduce(
-      (sum: number, e: { amount?: unknown }) => sum + (Number(e.amount) || 0),
-      0,
-    );
-    const remainder = round2(totalSpent - matched);
-    const targets = categories.map((c) => round2(spentById.get(c.id) || 0));
-
-    if (remainder > 0) {
-      const totalBudgeted = categories.reduce((s, c) => s + (Number(c.budgetAmount) || 0), 0);
-      if (totalBudgeted > 0) {
-        let distributed = 0;
-        categories.forEach((c, i) => {
-          const share = round2(remainder * ((Number(c.budgetAmount) || 0) / totalBudgeted));
-          targets[i] = round2(targets[i] + share);
-          distributed = round2(distributed + share);
-        });
-        const drift = round2(remainder - distributed);
-        if (drift !== 0) {
-          let largest = 0;
-          categories.forEach((c, i) => {
-            if ((Number(c.budgetAmount) || 0) > (Number(categories[largest].budgetAmount) || 0)) largest = i;
-          });
-          targets[largest] = round2(targets[largest] + drift);
+      const linkedId = expense.budgetCategoryId;
+      if (linkedId) {
+        if (spentById.has(linkedId)) {
+          spentById.set(linkedId, round2((spentById.get(linkedId) || 0) + amount));
         }
-      } else {
-        targets[0] = round2(targets[0] + remainder);
+        continue;
+      }
+      const title = String(expense.title || '').toLowerCase();
+      let hit: any = null;
+      let bestScore = 0;
+      for (const c of categories) {
+        const name = String(c.name || '').trim().toLowerCase();
+        if (!name) continue;
+        let score = 0;
+        if (title.includes(name)) {
+          score = 2;
+        } else if (
+          name
+            .split(/\s+/)
+            .some((w: string) => w.length >= 4 && title.includes(w))
+        ) {
+          score = 1;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          hit = c;
+        }
+      }
+      if (hit) {
+        spentById.set(hit.id, round2((spentById.get(hit.id) || 0) + amount));
       }
     }
 
     await Promise.all(
-      categories.map((c, i) =>
-        prisma.budgetCategory.update({ where: { id: c.id }, data: { spentAmount: targets[i] } }),
+      categories.map((c) =>
+        prisma.budgetCategory.update({
+          where: { id: c.id },
+          data: { spentAmount: spentById.get(c.id) || 0 },
+        }),
       ),
     );
 

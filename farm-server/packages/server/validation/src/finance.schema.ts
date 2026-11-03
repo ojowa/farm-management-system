@@ -7,6 +7,7 @@ export const createExpenseSchema = z.object({
   title: z.string().min(2),
   amount: z.number().positive(),
   date: dateSchema,
+  budgetCategoryId: z.string().uuid().nullish(),
 });
 
 export const updateExpenseSchema = z.object({
@@ -14,6 +15,7 @@ export const updateExpenseSchema = z.object({
   title: z.string().min(2).optional(),
   amount: z.number().positive().optional(),
   date: dateSchema.optional(),
+  budgetCategoryId: z.string().uuid().nullish(),
 });
 
 export const createSaleSchema = z.object({

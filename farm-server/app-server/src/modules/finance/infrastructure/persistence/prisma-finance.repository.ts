@@ -8,12 +8,22 @@ import {
   MarketListingRepository,
   FarmLookupRepository,
 } from '../../domain/repositories/finance.repository';
-import { Expense, Sale, Contract, Buyer, MarketListing } from '../../domain/entities/finance.entity';
+import { Expense, ExpenseWithBudget, Sale, Contract, Buyer, MarketListing } from '../../domain/entities/finance.entity';
+
+// Return the manual budget-category link (and its budget name) with every
+// expense so the UI can show which budget line an expense belongs to.
+const expenseInclude = {
+  include: {
+    budgetCategory: {
+      include: { budget: { select: { id: true, name: true } } },
+    },
+  },
+} as const;
 
 @Injectable()
 export class PrismaExpenseRepository implements ExpenseRepository {
-  async findById(id: string, organizationId: string): Promise<Expense | null> {
-    return scopedPrisma.expense.findFirst({ where: { id, organizationId } });
+  async findById(id: string, organizationId: string): Promise<ExpenseWithBudget | null> {
+    return scopedPrisma.expense.findFirst({ where: { id, organizationId }, ...expenseInclude });
   }
 
   async findAll(options?: {
@@ -22,7 +32,7 @@ export class PrismaExpenseRepository implements ExpenseRepository {
     sortOrder?: 'asc' | 'desc';
     page?: number;
     limit?: number;
-  }): Promise<{ data: Expense[]; total: number; page: number; totalPages: number }> {
+  }): Promise<{ data: ExpenseWithBudget[]; total: number; page: number; totalPages: number }> {
     const { filter = {}, sortBy = 'date', sortOrder = 'desc', page = 1, limit = 20 } = options || {};
     const skip = (page - 1) * limit;
     const where: any = {};
@@ -32,7 +42,7 @@ export class PrismaExpenseRepository implements ExpenseRepository {
     where.organizationId = filter.organizationId || '';
     if (filter.search) where.OR = [{ title: { contains: filter.search, mode: 'insensitive' as const } }];
     const [data, total] = await Promise.all([
-      scopedPrisma.expense.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit }),
+      scopedPrisma.expense.findMany({ where, orderBy: { [sortBy]: sortOrder }, skip, take: limit, ...expenseInclude }),
       scopedPrisma.expense.count({ where }),
     ]);
     return { data, total, page, totalPages: Math.ceil(total / limit) };

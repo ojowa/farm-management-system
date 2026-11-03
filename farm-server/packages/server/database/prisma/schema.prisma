@@ -508,6 +508,11 @@ model Expense {
   amount Float
   date   DateTime
 
+  // Optional manual link to a budget category; when set it wins over
+  // title-based matching in refreshBudget.
+  budgetCategoryId String?
+  budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
@@ -516,6 +521,7 @@ model Expense {
 
   @@index([organizationId])
   @@index([farmId])
+  @@index([budgetCategoryId])
 }
 
 model Sale {
@@ -571,7 +577,8 @@ model BudgetCategory {
   budgetAmount Float
   spentAmount  Float  @default(0)
 
-  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  budget   Budget     @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  expenses Expense[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
