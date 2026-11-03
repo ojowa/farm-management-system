@@ -43,10 +43,10 @@ export class ProfitabilityService {
     const results = [];
 
     for (const farm of farms) {
-      const expenseWhere: Record<string, any> = { farmId: farm.id };
+      const expenseWhere: Record<string, any> = { farmId: farm.id, organizationId };
       if (Object.keys(dateFilter).length) expenseWhere.date = dateFilter;
 
-      const saleWhere: Record<string, any> = { farmId: farm.id };
+      const saleWhere: Record<string, any> = { farmId: farm.id, organizationId };
       if (Object.keys(dateFilter).length) saleWhere.date = dateFilter;
 
       const [expenses, sales] = await Promise.all([
@@ -86,7 +86,7 @@ export class ProfitabilityService {
     if (startDate) dateFilter.gte = new Date(startDate);
     if (endDate) dateFilter.lte = new Date(endDate);
 
-    const whereBase: Record<string, any> = {};
+    const whereBase: Record<string, any> = { organizationId };
     if (Object.keys(dateFilter).length) whereBase.date = dateFilter;
 
     const [expenses, sales] = await Promise.all([

@@ -20,6 +20,11 @@ export class FinanceApplicationService {
     if (!farm) throw new NotFoundException(`Farm with ID ${farmId} not found`);
   }
 
+  private async assertBuyerExists(buyerId: string, organizationId: string) {
+    const buyer = await this.buyerRepo.findById(buyerId, organizationId);
+    if (!buyer) throw new NotFoundException(`Buyer with ID ${buyerId} not found`);
+  }
+
   private toDate(value: Date | string): Date {
     return typeof value === 'string' ? new Date(value) : value;
   }
@@ -80,6 +85,8 @@ export class FinanceApplicationService {
     await this.getExpenseById(id, organizationId);
     if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
     const updateData: any = { ...data };
+    delete updateData.id;
+    delete updateData.organizationId;
     if (data.date) updateData.date = this.toDate(data.date);
     const expense = await this.expenseRepo.update(id, updateData);
     await this.eventService.emitExpenseUpdatedEvent(expense);
@@ -90,7 +97,7 @@ export class FinanceApplicationService {
   async deleteExpense(id: string, organizationId: string) {
     await this.getExpenseById(id, organizationId);
     await this.expenseRepo.delete(id);
-    await this.eventService.emitExpenseDeletedEvent(id);
+    await this.eventService.emitExpenseDeletedEvent(id, organizationId);
     await this.syncBudgetsWithExpenses(organizationId);
     return { deleted: true };
   }
@@ -132,6 +139,8 @@ export class FinanceApplicationService {
     await this.getSaleById(id, organizationId);
     if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
     const updateData: any = { ...data };
+    delete updateData.id;
+    delete updateData.organizationId;
     if (data.date) updateData.date = this.toDate(data.date);
     const sale = await this.saleRepo.update(id, updateData);
     await this.eventService.emitSaleUpdatedEvent(sale);
@@ -141,7 +150,7 @@ export class FinanceApplicationService {
   async deleteSale(id: string, organizationId: string) {
     await this.getSaleById(id, organizationId);
     await this.saleRepo.delete(id);
-    await this.eventService.emitSaleDeletedEvent(id);
+    await this.eventService.emitSaleDeletedEvent(id, organizationId);
     return { deleted: true };
   }
 
@@ -178,10 +187,15 @@ export class FinanceApplicationService {
 
   async updateContract(id: string, organizationId: string, data: { type?: string; buyerSellerName?: string; startDate?: Date | string; endDate?: Date | string | null; value?: number; status?: string; terms?: string }) {
     await this.getContractById(id, organizationId);
-    const updateData: any = { ...data };
+    // Allowlist: the body is unvalidated beyond auth, so never spread it
+    // straight into the update (it could carry organizationId / id).
+    const updateData: any = {};
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.buyerSellerName !== undefined) updateData.buyerSellerName = data.buyerSellerName;
     if (data.startDate) updateData.startDate = this.toDate(data.startDate);
     if (data.endDate !== undefined) updateData.endDate = data.endDate ? this.toDate(data.endDate) : null;
     if (data.value !== undefined) updateData.value = Number(data.value);
+    if (data.status !== undefined) updateData.status = data.status;
     if (data.terms !== undefined) updateData.terms = data.terms?.trim() || null;
     const contract = await this.contractRepo.update(id, updateData);
     await this.eventService.emitContractUpdatedEvent(contract);
@@ -191,7 +205,7 @@ export class FinanceApplicationService {
   async deleteContract(id: string, organizationId: string) {
     await this.getContractById(id, organizationId);
     await this.contractRepo.delete(id);
-    await this.eventService.emitContractDeletedEvent(id);
+    await this.eventService.emitContractDeletedEvent(id, organizationId);
     return { deleted: true };
   }
 
@@ -224,7 +238,13 @@ export class FinanceApplicationService {
 
   async updateBuyer(id: string, organizationId: string, data: { name?: string; contactPerson?: string; email?: string; phone?: string; address?: string; type?: string; notes?: string }) {
     await this.getBuyerById(id, organizationId);
-    const updateData: any = { ...data };
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.contactPerson !== undefined) updateData.contactPerson = data.contactPerson;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.type !== undefined) updateData.type = data.type;
     if (data.notes !== undefined) updateData.notes = data.notes?.trim() || null;
     const buyer = await this.buyerRepo.update(id, updateData);
     await this.eventService.emitBuyerUpdatedEvent(buyer);
@@ -234,13 +254,14 @@ export class FinanceApplicationService {
   async deleteBuyer(id: string, organizationId: string) {
     await this.getBuyerById(id, organizationId);
     await this.buyerRepo.delete(id);
-    await this.eventService.emitBuyerDeletedEvent(id);
+    await this.eventService.emitBuyerDeletedEvent(id, organizationId);
     return { deleted: true };
   }
 
   // ── Market Listing CRUD ───────────────────────────────
 
   async createMarketListing(data: { buyerId?: string; entityType: string; entityId?: string; title: string; price: number; unit?: string; quantity: number }, organizationId: string) {
+    if (data.buyerId) await this.assertBuyerExists(data.buyerId, organizationId);
     const listing = await this.marketListingRepo.create({
       organizationId,
       buyerId: data.buyerId || null,
@@ -268,12 +289,20 @@ export class FinanceApplicationService {
     return this.marketListingRepo.findAll({ filter, include: { buyer: true } });
   }
 
-  async updateMarketListing(id: string, organizationId: string, data: { status?: string; soldDate?: Date | string | null; price?: number; quantity?: number }) {
+  async updateMarketListing(id: string, organizationId: string, data: { entityType?: string; title?: string; price?: number; quantity?: number; unit?: string; status?: string; soldDate?: Date | string | null; listedDate?: Date | string; buyerId?: string }) {
     await this.getMarketListingById(id, organizationId);
-    const updateData: any = { ...data };
-    if (data.soldDate !== undefined) updateData.soldDate = data.soldDate ? this.toDate(data.soldDate) : null;
+    if (data.buyerId) await this.assertBuyerExists(data.buyerId, organizationId);
+    // Allowlist — never spread the raw body (organizationId / id must not pass through).
+    const updateData: any = {};
+    if (data.entityType !== undefined) updateData.entityType = data.entityType;
+    if (data.title !== undefined) updateData.title = data.title;
     if (data.price !== undefined) updateData.price = Number(data.price);
     if (data.quantity !== undefined) updateData.quantity = Number(data.quantity);
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.soldDate !== undefined) updateData.soldDate = data.soldDate ? this.toDate(data.soldDate) : null;
+    if (data.listedDate) updateData.listedDate = this.toDate(data.listedDate);
+    if (data.buyerId !== undefined) updateData.buyerId = data.buyerId || null;
     const listing = await this.marketListingRepo.update(id, updateData);
     await this.eventService.emitMarketListingUpdatedEvent(listing);
     return listing;
@@ -282,13 +311,14 @@ export class FinanceApplicationService {
   async deleteMarketListing(id: string, organizationId: string) {
     await this.getMarketListingById(id, organizationId);
     await this.marketListingRepo.delete(id);
-    await this.eventService.emitMarketListingDeletedEvent(id);
+    await this.eventService.emitMarketListingDeletedEvent(id, organizationId);
     return { deleted: true };
   }
 
   // ── Budget CRUD ──────────────────────────────────────
 
   async createBudget(data: { organizationId: string; farmId?: string; name: string; description?: string; startDate: Date | string; endDate: Date | string; status?: string }) {
+    if (data.farmId) await this.assertFarmExists(data.farmId, data.organizationId);
     const { prisma } = await import('@farm/database');
     const budget = await prisma.budget.create({
       data: {
@@ -328,12 +358,27 @@ export class FinanceApplicationService {
     });
   }
 
-  async updateBudget(id: string, organizationId: string, data: { name?: string; description?: string; status?: string; farmId?: string }) {
+  async updateBudget(id: string, organizationId: string, data: { name?: string; description?: string; status?: string; farmId?: string; startDate?: Date | string; endDate?: Date | string }) {
     const { prisma } = await import('@farm/database');
     await this.getBudgetById(id, organizationId);
+    // Allowlist — never spread the raw body (organizationId / id must not pass through).
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.startDate) updateData.startDate = this.toDate(data.startDate);
+    if (data.endDate) updateData.endDate = this.toDate(data.endDate);
+    if (data.farmId !== undefined) {
+      if (data.farmId) {
+        await this.assertFarmExists(data.farmId, organizationId);
+        updateData.farmId = data.farmId;
+      } else {
+        updateData.farmId = null;
+      }
+    }
     const budget = await prisma.budget.update({
       where: { id },
-      data,
+      data: updateData,
       include: { categories: true },
     });
     await this.eventService.emitBudgetUpdatedEvent(budget);
@@ -344,7 +389,7 @@ export class FinanceApplicationService {
     const { prisma } = await import('@farm/database');
     await this.getBudgetById(id, organizationId);
     await prisma.budget.delete({ where: { id } });
-    await this.eventService.emitBudgetDeletedEvent(id);
+    await this.eventService.emitBudgetDeletedEvent(id, organizationId);
     return { deleted: true };
   }
 

@@ -14,8 +14,8 @@ export class FinanceEventService {
     this.events.emitDomainEvent('finance', 'updated', expense);
   }
 
-  emitExpenseDeletedEvent(expenseId: string) {
-    this.events.emitDomainEvent('finance', 'deleted', { id: expenseId });
+  emitExpenseDeletedEvent(expenseId: string, organizationId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: expenseId, organizationId });
   }
 
   emitSaleCreatedEvent(sale: Sale) {
@@ -26,8 +26,8 @@ export class FinanceEventService {
     this.events.emitDomainEvent('finance', 'updated', sale);
   }
 
-  emitSaleDeletedEvent(saleId: string) {
-    this.events.emitDomainEvent('finance', 'deleted', { id: saleId });
+  emitSaleDeletedEvent(saleId: string, organizationId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: saleId, organizationId });
   }
 
   emitContractCreatedEvent(contract: Contract) {
@@ -38,8 +38,8 @@ export class FinanceEventService {
     this.events.emitDomainEvent('finance', 'updated', contract);
   }
 
-  emitContractDeletedEvent(contractId: string) {
-    this.events.emitDomainEvent('finance', 'deleted', { id: contractId });
+  emitContractDeletedEvent(contractId: string, organizationId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: contractId, organizationId });
   }
 
   emitBuyerCreatedEvent(buyer: Buyer) {
@@ -50,8 +50,8 @@ export class FinanceEventService {
     this.events.emitDomainEvent('finance', 'updated', buyer);
   }
 
-  emitBuyerDeletedEvent(buyerId: string) {
-    this.events.emitDomainEvent('finance', 'deleted', { id: buyerId });
+  emitBuyerDeletedEvent(buyerId: string, organizationId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: buyerId, organizationId });
   }
 
   emitMarketListingCreatedEvent(listing: MarketListing) {
@@ -62,8 +62,8 @@ export class FinanceEventService {
     this.events.emitDomainEvent('finance', 'updated', listing);
   }
 
-  emitMarketListingDeletedEvent(listingId: string) {
-    this.events.emitDomainEvent('finance', 'deleted', { id: listingId });
+  emitMarketListingDeletedEvent(listingId: string, organizationId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: listingId, organizationId });
   }
 
   emitBudgetCreatedEvent(budget: any) {
@@ -74,7 +74,7 @@ export class FinanceEventService {
     this.events.emitDomainEvent('finance', 'updated', budget);
   }
 
-  emitBudgetDeletedEvent(budgetId: string) {
-    this.events.emitDomainEvent('finance', 'deleted', { id: budgetId });
+  emitBudgetDeletedEvent(budgetId: string, organizationId: string) {
+    this.events.emitDomainEvent('finance', 'deleted', { id: budgetId, organizationId });
   }
 }
