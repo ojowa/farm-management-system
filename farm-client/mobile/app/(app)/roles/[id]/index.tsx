@@ -362,11 +362,19 @@ export default function RoleDetailScreen() {
         {canManage && !editingPerms && (
           <View style={styles.actions}>
             {canEditPerms && (
-              <Button
-                title="Edit permissions"
-                onPress={openPermEditor}
-                accessibilityLabel="Edit role permissions"
-              />
+              <>
+                <Button
+                  title="Edit role details"
+                  variant="secondary"
+                  onPress={() => router.push(`/roles/${role.id}/edit`)}
+                  accessibilityLabel="Edit role details"
+                />
+                <Button
+                  title="Edit permissions"
+                  onPress={openPermEditor}
+                  accessibilityLabel="Edit role permissions"
+                />
+              </>
             )}
             <Button
               title="Delete Role"

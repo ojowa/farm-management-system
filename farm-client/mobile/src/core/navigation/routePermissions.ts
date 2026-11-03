@@ -65,9 +65,13 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { prefix: '/leave', permissions: ['hr.read', 'leave.read'] },
 
   // Money & reporting
+  { prefix: '/finance/transactions/new', permissions: ['finance.write'] },
   { prefix: '/finance', permissions: ['finance.read'] },
+  { prefix: '/contracts/new', permissions: ['finance.write'] },
   { prefix: '/contracts', permissions: ['finance.read'] },
+  { prefix: '/marketplace/listings/new', permissions: ['finance.write'] },
   { prefix: '/marketplace', permissions: ['finance.read'] },
+  { prefix: '/reports/builder', permissions: ['reporting.read'] },
   { prefix: '/reports', permissions: ['reporting.read'] },
 ];
 
@@ -77,6 +81,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
  */
 export function requiredPermissionsForPath(pathname: string): string[] | null {
   const path = pathname.replace(/\/+$/, '') || '/';
+  if (/^\/roles\/[^/]+\/edit$/.test(path)) return ['organization.manage'];
   // Longest prefix wins so /finance/123 beats /finance.
   const match = ROUTE_PERMISSIONS.filter(
     (r) => path === r.prefix || path.startsWith(`${r.prefix}/`)

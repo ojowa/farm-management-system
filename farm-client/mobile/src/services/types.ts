@@ -616,6 +616,7 @@ export interface CreateExpenseRequest {
   currency: string;
   date: string;
   category?: string;
+  budgetCategoryId?: string;
 }
 
 export interface Sale {
@@ -640,6 +641,7 @@ export interface CreateSaleRequest {
   total: number;
   date: string;
   buyerId?: string;
+  currency?: string;
 }
 
 export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'TERMINATED';

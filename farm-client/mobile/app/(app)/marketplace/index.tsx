@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { marketplaceAPI } from '@/modules/finance';
 import type { Buyer, MarketListing } from '@/modules/finance';
 import { Card, Button, TextInputField, Modal, colors } from '@/core/ui/UIComponents';
@@ -218,6 +219,7 @@ function BuyerCard({
 }
 
 export default function MarketplaceScreen() {
+  const router = useRouter();
   const { success, error: showError } = useToasts();
   const { hasPermission } = usePermission();
   const { colors: tc, isDark } = useAppTheme();
@@ -444,7 +446,7 @@ export default function MarketplaceScreen() {
   };
 
   const openAdd = () => {
-    if (segment === 'listings') setListingModalOpen(true);
+    if (segment === 'listings') router.push('/marketplace/listings/new');
     else setBuyerModalOpen(true);
   };
 
@@ -558,7 +560,7 @@ export default function MarketplaceScreen() {
                   {!listingSearch && statusFilter === 'all' && canWrite && (
                     <Button
                       title="New Listing"
-                      onPress={() => setListingModalOpen(true)}
+                      onPress={() => router.push('/marketplace/listings/new')}
                       accessibilityLabel="Create your first listing"
                     />
                   )}

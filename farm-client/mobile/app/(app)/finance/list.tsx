@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
   headerTitleRow: { flexDirection: 'row', alignItems: 'center' },
   backButton: { color: '#FFFFFF', fontSize: 28, lineHeight: 32, marginRight: 8 },
   headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', marginBottom: 16 },
+  addTransactionButton: { alignSelf: 'flex-end', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, marginTop: 12 },
+  addTransactionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   summaryContainer: { flexDirection: 'row', gap: 12 },
   summaryCard: {
     flex: 1,
@@ -323,7 +325,7 @@ export default function FinanceScreen() {
       <Text style={[styles.emptySubtext, dynamicStyles.emptySubtext]}>
         Start recording your farm income and expenses
       </Text>
-      <Button title="Add Transaction" onPress={() => router.push('/finance/add')} />
+      <Button title="Add Transaction" onPress={() => router.push('/finance/transactions/new')} />
     </View>
   );
 
@@ -430,6 +432,14 @@ export default function FinanceScreen() {
             <Text style={styles.summaryValue}>{formatCurrencyFixed(netProfit)}</Text>
           </View>
         </View>
+        <TouchableOpacity
+          style={[styles.addTransactionButton, { backgroundColor: tc.primary }]}
+          onPress={() => router.push('/finance/transactions/new')}
+          accessibilityRole="button"
+          accessibilityLabel="Create a transaction"
+        >
+          <Text style={styles.addTransactionText}>+ New Transaction</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.filterArea}>

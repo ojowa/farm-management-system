@@ -7,6 +7,12 @@ import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const sections = [
   {
+    title: 'Build a Report',
+    description: 'Design a custom report with configurable widgets',
+    icon: '🧩',
+    route: '/reports/builder',
+  },
+  {
     title: 'Reports',
     description: 'Browse generated reports and farm analytics',
     icon: '📊',

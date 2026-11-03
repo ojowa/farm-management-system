@@ -306,7 +306,7 @@ export default function ContractsScreen() {
         {canWrite && (
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => setCreateOpen(true)}
+            onPress={() => router.push('/contracts/new')}
             accessibilityRole="button"
             accessibilityLabel="Create new contract"
           >
@@ -361,7 +361,7 @@ export default function ContractsScreen() {
             {!search && statusFilter === 'all' && canWrite && (
               <Button
                 title="New Contract"
-                onPress={() => setCreateOpen(true)}
+                onPress={() => router.push('/contracts/new')}
                 accessibilityLabel="Create your first contract"
               />
             )}
