@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CurrencyRepository } from '../../domain/repositories/currency.repository';
 import { Currency } from '../../domain/entities/currency.entity';
 
 @Injectable()
 export class CurrencyApplicationService {
   constructor(
-    private readonly currencyRepo: CurrencyRepository,
+    @Inject('CurrencyRepository') private readonly currencyRepo: CurrencyRepository,
   ) {}
 
   async listCurrencies(): Promise<Currency[]> {
