@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { useToast } from '@/lib/toasts';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { livestockFormSchema } from '@/lib/validation';
 import { usePermission } from '@/lib/usePermission';
@@ -102,7 +102,7 @@ export default function EditLivestockPage() {
       toast({
         type: 'error',
         title: 'Failed to update livestock',
-        message: err.response?.data?.message || 'An error occurred',
+        message: getErrorMessage(err),
       });
     } finally {
       setSaving(false);

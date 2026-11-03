@@ -32,7 +32,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Dialog } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { useToast } from '@/lib/toasts';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { livestockFormSchema } from '@/lib/validation';
@@ -162,7 +162,7 @@ export default function LivestockPage() {
       toast({
         type: 'error',
         title: 'Failed to create livestock',
-        message: err.response?.data?.message || 'An error occurred',
+        message: getErrorMessage(err),
       });
     } finally {
       setSaving(false);
@@ -180,7 +180,7 @@ export default function LivestockPage() {
       toast({
         type: 'error',
         title: 'Failed to delete livestock',
-        message: err.response?.data?.message || 'An error occurred',
+        message: getErrorMessage(err),
       });
     }
   };

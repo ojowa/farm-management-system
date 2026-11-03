@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { useToast } from '@/lib/toasts';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
@@ -92,7 +92,7 @@ export default function LivestockDetailPage() {
       toast({
         type: 'error',
         title: 'Failed to delete livestock',
-        message: err.response?.data?.message || 'An error occurred',
+        message: getErrorMessage(err),
       });
     }
   };

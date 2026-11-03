@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select } from '@/components/ui/select';
-import { useToast } from '@/lib/toasts';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { livestockFormSchema } from '@/lib/validation';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
@@ -76,7 +76,7 @@ export default function NewLivestockPage() {
       toast({
         type: 'error',
         title: 'Failed to create livestock',
-        message: err.response?.data?.message || 'An error occurred',
+        message: getErrorMessage(err),
       });
     } finally {
       setSaving(false);
