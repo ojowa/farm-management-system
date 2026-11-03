@@ -73,6 +73,7 @@ export interface BudgetCategory {
   budgetId: string;
   name: string;
   currency: string;
+  amountInBase: number;
   budgetAmount: number;
   spentAmount: number;
   createdAt: Date;

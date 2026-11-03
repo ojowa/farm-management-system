@@ -600,6 +600,7 @@ model BudgetCategory {
   budgetId     String
   name         String
   currency     String @default("USD")
+  amountInBase Float @default(0)
   budgetAmount Float
   spentAmount  Float  @default(0)
 
