@@ -118,6 +118,7 @@ export default function TransactionsPage() {
     (event: { entity: string; action: string; data: any }) => {
       if (['created', 'updated', 'deleted'].includes(event.action)) {
         clearFetchCache('finance');
+        clearFetchCache('budgets-list');
         refetch();
       }
     },
@@ -213,6 +214,7 @@ export default function TransactionsPage() {
       setShowAdd(false);
       setForm({ title: '', item: '', amount: '', quantity: '', price: '', total: '', date: '', farmId: '' });
       clearFetchCache('finance');
+      clearFetchCache('budgets-list');
       refetch();
     } catch (err: any) {
       toast({
@@ -235,6 +237,7 @@ export default function TransactionsPage() {
       }
       toast({ type: 'success', title: 'Transaction deleted' });
       clearFetchCache('finance');
+      clearFetchCache('budgets-list');
       refetch();
     } catch (err: any) {
       toast({

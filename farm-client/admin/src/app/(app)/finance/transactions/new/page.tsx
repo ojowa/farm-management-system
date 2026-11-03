@@ -244,6 +244,7 @@ export default function NewTransactionPage() {
         toast({ type: 'success', title: 'Sale recorded successfully' });
       }
       clearFetchCache('finance');
+      clearFetchCache('budgets-list');
       router.push('/finance/transactions');
     } catch (err: any) {
       toast({

@@ -32,6 +32,7 @@ import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
+import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
 import { NavTabs } from '@/components/NavTabs';
 import { FINANCE_TABS } from '@/lib/financeTabs';
@@ -77,6 +78,19 @@ export default function BudgetsPage() {
     () => budgetsAPI.list(),
     { cacheTime: 30_000 }
   );
+
+  // Backend recomputes `spentAmount` whenever an expense changes, so listen
+  // for finance events and re-pull the budgets to show the fresh numbers.
+  const handleRealtimeEvent = useCallback(
+    (event: { entity: string; action: string; data: any }) => {
+      if (['created', 'updated', 'deleted'].includes(event.action)) {
+        clearFetchCache('budgets-list');
+        refetch();
+      }
+    },
+    [refetch]
+  );
+  useRealtime('finance', handleRealtimeEvent);
 
   const budgets: Budget[] = budgetsData?.data || [];
 

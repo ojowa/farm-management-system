@@ -24,6 +24,26 @@ export class FinanceApplicationService {
     return typeof value === 'string' ? new Date(value) : value;
   }
 
+  /**
+   * Recompute `spentAmount` for every budget of the organization so budget
+   * accounting always matches the finance ledger. Runs after each expense
+   * change; best-effort so a budget hiccup never blocks the expense itself.
+   */
+  private async syncBudgetsWithExpenses(organizationId: string) {
+    try {
+      const { prisma } = await import('@farm/database');
+      const budgets = await prisma.budget.findMany({
+        where: { organizationId },
+        select: { id: true },
+      });
+      for (const budget of budgets) {
+        await this.refreshBudget(budget.id, organizationId);
+      }
+    } catch {
+      // Budget sync must not fail the expense mutation that triggered it.
+    }
+  }
+
   // ── Expense CRUD ──────────────────────────────────────
 
   async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string },  organizationId: string) {
@@ -36,6 +56,7 @@ export class FinanceApplicationService {
       date: this.toDate(data.date),
     });
     await this.eventService.emitExpenseCreatedEvent(expense);
+    await this.syncBudgetsWithExpenses(organizationId);
     return expense;
   }
 
@@ -62,6 +83,7 @@ export class FinanceApplicationService {
     if (data.date) updateData.date = this.toDate(data.date);
     const expense = await this.expenseRepo.update(id, updateData);
     await this.eventService.emitExpenseUpdatedEvent(expense);
+    await this.syncBudgetsWithExpenses(organizationId);
     return expense;
   }
 
@@ -69,6 +91,7 @@ export class FinanceApplicationService {
     await this.getExpenseById(id, organizationId);
     await this.expenseRepo.delete(id);
     await this.eventService.emitExpenseDeletedEvent(id);
+    await this.syncBudgetsWithExpenses(organizationId);
     return { deleted: true };
   }
 

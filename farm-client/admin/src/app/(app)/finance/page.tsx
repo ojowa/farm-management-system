@@ -132,6 +132,7 @@ export default function FinancePage() {
     (event: { entity: string; action: string; data: any }) => {
       if (['created', 'updated', 'deleted'].includes(event.action)) {
         clearFetchCache('finance');
+        clearFetchCache('budgets-list');
         refetch();
       }
     },

@@ -210,6 +210,7 @@ export default function SalaryPage() {
 
     if (succeeded) {
       clearFetchCache('finance');
+      clearFetchCache('budgets-list');
       refetchPayments();
     }
 
