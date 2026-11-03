@@ -53,6 +53,36 @@ interface Expense {
 const SALARY_TITLE_PREFIX = 'Salary payment';
 const PAGE_SIZE = 10;
 
+type PayPeriodType = 'MONTH' | 'WEEK';
+
+const currentMonthValue = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/** ISO-8601 week value (`2026-W45`) for an HTML `<input type="week">`. */
+const isoWeekValue = (date: Date) => {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+};
+
+/** Monday of an ISO week (`2026-W45` → 2026-11-02), or null if unparsable. */
+const weekStartDate = (weekValue: string): Date | null => {
+  const m = /^(\d{4})-W(\d{1,2})$/.exec(weekValue);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const week = Number(m[2]);
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const day = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - (day - 1) + (week - 1) * 7);
+  return monday;
+};
+
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -73,6 +103,8 @@ export default function SalaryPage() {
   const [payDate, setPayDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
+  const [payPeriodType, setPayPeriodType] = useState<PayPeriodType>('MONTH');
+  const [payPeriod, setPayPeriod] = useState(() => currentMonthValue());
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -165,7 +197,45 @@ export default function SalaryPage() {
 
   const allSelected = workers.length > 0 && workers.every((w) => selected[w.id]);
 
+  const payTypeLabel = payPeriodType === 'MONTH' ? 'Monthly' : 'Weekly';
+
+  const payPeriodLabel = () => {
+    if (payPeriodType === 'MONTH') {
+      const m = /^(\d{4})-(\d{2})$/.exec(payPeriod);
+      if (!m) return payPeriod;
+      return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)).toLocaleDateString(
+        'en-US',
+        { month: 'long', year: 'numeric', timeZone: 'UTC' }
+      );
+    }
+    const monday = weekStartDate(payPeriod);
+    if (!monday) return payPeriod;
+    return `week of ${monday.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    })}`;
+  };
+
+  // Switching Weekly <-> Monthly changes the period input format, so reset
+  // the period to a valid default for the new type.
+  const handlePayTypeChange = (value: string) => {
+    const type: PayPeriodType = value === 'WEEK' ? 'WEEK' : 'MONTH';
+    setPayPeriodType(type);
+    setPayPeriod(type === 'MONTH' ? currentMonthValue() : isoWeekValue(new Date()));
+  };
+
   const payWorkers = async (targets: Worker[], bulk: boolean) => {
+    if (!payPeriod) {
+      toast({
+        type: 'error',
+        title: 'Missing pay period',
+        message: 'Choose the month or week this salary covers.',
+      });
+      return;
+    }
+
     const payable = targets.filter((w) => {
       const amount = Number(amounts[w.id]);
       return Boolean(w.farmId) && Number.isFinite(amount) && amount > 0;
@@ -190,7 +260,7 @@ export default function SalaryPage() {
       try {
         await financeAPI.createExpense({
           farmId: worker.farmId,
-          title: `${SALARY_TITLE_PREFIX} - ${workerName(worker)}`,
+          title: `${SALARY_TITLE_PREFIX} - ${workerName(worker)} - ${payTypeLabel} (${payPeriodLabel()})`,
           amount: Number(amounts[worker.id]),
           date: payDate,
         });
@@ -289,6 +359,33 @@ export default function SalaryPage() {
                 className="w-auto"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground whitespace-nowrap">
+                Salary type
+              </label>
+              <Select
+                options={[
+                  { value: 'MONTH', label: 'Monthly' },
+                  { value: 'WEEK', label: 'Weekly' },
+                ]}
+                value={payPeriodType}
+                onChange={(e) => handlePayTypeChange(e.target.value)}
+                className="w-auto"
+                disabled={readOnly}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground whitespace-nowrap">
+                Period
+              </label>
+              <Input
+                type={payPeriodType === 'MONTH' ? 'month' : 'week'}
+                value={payPeriod}
+                onChange={(e) => setPayPeriod(e.target.value)}
+                className="w-auto"
+                disabled={readOnly}
+              />
+            </div>
             {(search || farmFilter) && (
               <Button
                 variant="ghost"
@@ -305,7 +402,7 @@ export default function SalaryPage() {
               <Button
                 className="ml-auto"
                 loading={payingBulk}
-                disabled={!selectedWorkers.length || !payDate}
+                disabled={!selectedWorkers.length || !payDate || !payPeriod}
                 onClick={() => payWorkers(selectedWorkers, true)}
               >
                 <Banknote className="mr-2 h-4 w-4" />
