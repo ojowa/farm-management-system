@@ -13,7 +13,10 @@ import {
   CheckCircle,
   Loader2,
   Building2,
+  Copy,
+  Phone,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -60,6 +63,13 @@ export default function SettingsPage() {
   // Organization (base currency) state — owner only
   const [orgCurrency, setOrgCurrency] = useState('');
   const [orgCurrencyErrors, setOrgCurrencyErrors] = useState<Record<string, string>>({});
+
+  // 2FA state
+  const [show2faSetup, setShow2faSetup] = useState(false);
+  const [setupCode, setSetupCode] = useState('');
+  const [disableCode, setDisableCode] = useState('');
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [setupSecret, setSetupSecret] = useState('');
 
   const {
     data: currenciesData,
@@ -260,32 +270,81 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       if (twoFactorEnabled) {
-        const code = window.prompt('Enter the current 6-digit authenticator code to disable 2FA');
-        if (!code) return;
-        await settingsAPI.disable2FA(code.trim());
-        setTwoFactorEnabled(false);
+        setShow2faSetup(false);
+        setQrCodeUrl(null);
+        setSetupSecret('');
+        // Show disable confirmation inline via state
+        setDisableCode('');
       } else {
         const setup = await settingsAPI.generate2FA();
         const secret = setup.data?.secret;
-        if (!secret) throw new Error('The server did not return a 2FA setup secret');
-        window.alert(`Add this secret to your authenticator app:\n\n${secret}`);
-        const code = window.prompt('Enter the 6-digit code from your authenticator app to enable 2FA');
-        if (!code) return;
-        await settingsAPI.enable2FA(code.trim());
-        setTwoFactorEnabled(true);
+        const otpauthUrl = setup.data?.otpauthUrl;
+        if (!secret || !otpauthUrl) {
+          throw new Error('The server did not return a 2FA setup secret');
+        }
+        setSetupSecret(secret);
+        const dataUrl = await QRCode.toDataURL(otpauthUrl);
+        setQrCodeUrl(dataUrl);
+        setSetupCode('');
+        setShow2faSetup(true);
       }
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to setup 2FA',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmEnable = async () => {
+    if (!setupCode || setupCode.length !== 6) {
+      setOrgCurrencyErrors({}); // reset
+      return;
+    }
+    setSaving(true);
+    try {
+      await settingsAPI.enable2FA(setupCode.trim());
+      setShow2faSetup(false);
+      setQrCodeUrl(null);
+      setSetupSecret('');
+      setSetupCode('');
+      setTwoFactorEnabled(true);
       toast({
         type: 'success',
-        title: twoFactorEnabled ? '2FA disabled' : '2FA enabled',
-        message: twoFactorEnabled
-          ? 'Two-factor authentication has been disabled'
-          : 'Two-factor authentication has been enabled',
+        title: '2FA enabled',
+        message: 'Two-factor authentication has been enabled with Google Authenticator',
       });
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to update 2FA',
-        message: err.response?.data?.message || 'An error occurred',
+        title: 'Failed to enable 2FA',
+        message: err.response?.data?.message || 'Invalid code — try again',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleConfirmDisable = async () => {
+    if (!disableCode || disableCode.length !== 6) return;
+    setSaving(true);
+    try {
+      await settingsAPI.disable2FA(disableCode.trim());
+      setDisableCode('');
+      setTwoFactorEnabled(false);
+      toast({
+        type: 'success',
+        title: '2FA disabled',
+        message: 'Two-factor authentication has been disabled',
+      });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to disable 2FA',
+        message: err.response?.data?.message || 'Invalid code — try again',
       });
     } finally {
       setSaving(false);
@@ -633,46 +692,189 @@ export default function SettingsPage() {
                 Two-Factor Authentication
               </CardTitle>
               <CardDescription>
-                Add an extra layer of security to your account
+                Add an extra layer of security to your account using Google Authenticator
+                or any TOTP app
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${twoFactorEnabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
-                    <Shield className={`h-5 w-5 ${twoFactorEnabled ? 'text-green-600' : 'text-muted-foreground'}`} />
+              {!show2faSetup && twoFactorEnabled ? (
+                // 2FA is enabled — show disable form
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                        <Shield className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Two-Factor is Enabled</p>
+                        <p className="text-sm text-muted-foreground">
+                          Your account is secured with 2FA
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => setDisableCode('')}
+                    >
+                      Disable 2FA
+                    </Button>
                   </div>
-                  <div>
-                    <p className="font-medium">
-                      {twoFactorEnabled ? 'Two-Factor is Enabled' : 'Two-Factor is Disabled'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {twoFactorEnabled
-                        ? 'Your account is secured with 2FA'
-                        : 'Enable 2FA for additional security'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {twoFactorEnabled && (
-                    <Badge variant="success">
-                      <CheckCircle className="mr-1 h-3 w-3" />
-                      Enabled
-                    </Badge>
+                  {disableCode && (
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium mb-1 block">
+                        Verification Code
+                      </label>
+                      <Input
+                        type="text"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={disableCode}
+                        onChange={(e) => setDisableCode(e.target.value)}
+                        className="w-48"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDisableCode('')}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          disabled={disableCode.length !== 6 || saving}
+                          onClick={handleConfirmDisable}
+                        >
+                          Confirm Disable
+                        </Button>
+                      </div>
+                    </div>
                   )}
-                  <Button
-                    variant={twoFactorEnabled ? 'outline' : 'default'}
-                    size="sm"
-                    disabled={saving}
-                    onClick={handleTwoFactorToggle}
-                  >
-                    {saving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    {twoFactorEnabled ? 'Disable' : 'Enable'}
-                  </Button>
                 </div>
-              </div>
+              ) : (
+                // 2FA is disabled OR setup in progress
+                <div className="space-y-4">
+                  {!show2faSetup ? (
+                    <>
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-muted">
+                            <Shield className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium">
+                              Two-Factor is Disabled
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Enable 2FA for additional security
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          disabled={saving}
+                          onClick={handleTwoFactorToggle}
+                        >
+                          Enable 2FA
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    // Setup in progress — show QR code + code input
+                    <div className="space-y-4">
+                      <div className="flex flex-col items-center gap-4">
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Scan this QR code with Google Authenticator
+                        </p>
+                        {qrCodeUrl ? (
+                          <div className="flex justify-center">
+                            <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center py-16">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            Or enter this setup key manually:
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="text"
+                              value={setupSecret}
+                              readOnly
+                              className="w-64 text-center font-mono text-sm bg-muted"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                navigator.clipboard.writeText(setupSecret);
+                                toast({
+                                  type: 'success',
+                                  title: 'Setup key copied',
+                                });
+                              }}
+                            >
+                              <Copy className="mr-1 h-3 w-3" />
+                              Copy
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-1 block">
+                          Verification Code <span className="text-destructive">*</span>
+                        </label>
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          placeholder="000000"
+                          value={setupCode}
+                          onChange={(e) => setSetupCode(e.target.value)}
+                          className="w-48 text-center font-mono text-lg"
+                        />
+                        {setupCode.length > 0 && setupCode.length !== 6 && (
+                          <p className="text-xs text-red-500 mt-1">
+                            Enter all 6 digits
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShow2faSetup(false);
+                            setQrCodeUrl(null);
+                            setSetupSecret('');
+                            setSetupCode('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          disabled={setupCode.length !== 6 || saving}
+                          onClick={handleConfirmEnable}
+                        >
+                          Enable 2FA
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
