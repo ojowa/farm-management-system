@@ -38,6 +38,7 @@ export class OrganizationApplicationService {
       email: createDto.adminEmail,
       subscriptionPlan: planName,
       subscriptionStatus: 'TRIAL',
+      currency: 'USD',
       settings: { currency: 'USD', timezone: 'UTC', language: 'en', measurementUnit: 'METRIC', dateFormat: 'YYYY-MM-DD' },
     });
   }
@@ -62,7 +63,7 @@ export class OrganizationApplicationService {
     return org;
   }
 
-  async update(id: string, organizationId: string, updateDto: Partial<{ name: string; slug: string; email: string; subscriptionPlan: string; subscriptionStatus: string; settings: Record<string, any> }>) {
+  async update(id: string, organizationId: string, updateDto: Partial<{ name: string; slug: string; email: string; currency: string; subscriptionPlan: string; subscriptionStatus: string; settings: Record<string, any> }>) {
     await this.findOne(id, organizationId);
 
     if (updateDto.subscriptionPlan) {

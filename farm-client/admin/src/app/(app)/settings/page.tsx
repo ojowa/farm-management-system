@@ -12,27 +12,40 @@ import {
   Key,
   CheckCircle,
   Loader2,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
 import { useToast } from '@/lib/toasts';
-import { settingsAPI } from '@/lib/api';
+import { settingsAPI, currencyAPI } from '@/lib/api';
+import { apiClient } from '@/lib/api';
+import { usePermission } from '@/lib/usePermission';
+import { useAuth } from '@/lib/auth';
+import { useFetch } from '@/hooks/useFetch';
 
-type Tab = 'profile' | 'notifications' | 'security';
+type Tab = 'profile' | 'notifications' | 'security' | 'organization';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; description: string }[] = [
   { id: 'profile', label: 'Profile', icon: User, description: 'Personal information' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Alert preferences' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password & 2FA' },
+  { id: 'organization', label: 'Organization', icon: Building2, description: 'Organization settings' },
 ];
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const { canCreate } = usePermission();
+  const { user } = useAuth();
+  const organizationId = user?.organizationId || '';
+  const canManageOrganization = canCreate('organization');
   // Profile, password, notification and 2FA settings only affect the signed-in
   // user's own account, so they stay editable for everyone.
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    canManageOrganization ? 'profile' : 'profile'
+  );
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +56,23 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState('');
   const [avatar, setAvatar] = useState('');
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+
+  // Organization (base currency) state — owner only
+  const [orgCurrency, setOrgCurrency] = useState('');
+  const [orgCurrencyErrors, setOrgCurrencyErrors] = useState<Record<string, string>>({});
+
+  const {
+    data: currenciesData,
+    loading: loadingCurrencies,
+  } = useFetch<{ data: any[] }>(
+    'currencies-list',
+    () => currencyAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
+  const currencyOptions = ((currenciesData?.data || []) as any[])
+    .map((c) => ({ value: c.code, label: `${c.code} ${c.symbol || ''}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // Notifications state
   const [notifications, setNotifications] = useState({
@@ -101,14 +131,30 @@ export default function SettingsPage() {
     }
   }, [toast]);
 
+  const loadOrganization = useCallback(async () => {
+    if (!canManageOrganization || !organizationId) return;
+    try {
+      const res = await apiClient.get(`/organizations/${organizationId}`);
+      const org = res.data;
+      setOrgCurrency(org.currency || 'USD');
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to load organization settings',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    }
+  }, [toast, canManageOrganization, organizationId]);
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       await Promise.all([loadProfile(), loadPreferences()]);
+      if (canManageOrganization) await loadOrganization();
       setLoading(false);
     };
     init();
-  }, [loadProfile, loadPreferences]);
+  }, [loadProfile, loadPreferences, loadOrganization, canManageOrganization]);
 
   const handleProfileSave = async () => {
     const errors: Record<string, string> = {};
@@ -130,6 +176,30 @@ export default function SettingsPage() {
       toast({
         type: 'error',
         title: 'Failed to update profile',
+        message: err.response?.data?.message || 'An error occurred',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOrganizationSave = async () => {
+    const errors: Record<string, string> = {};
+    if (!orgCurrency) errors.currency = 'Base currency is required';
+    else if (!/^[A-Z]{3}$/.test(orgCurrency)) errors.currency = 'Use a valid 3-letter currency code';
+    if (Object.keys(errors).length > 0) {
+      setOrgCurrencyErrors(errors);
+      return;
+    }
+    setOrgCurrencyErrors({});
+    setSaving(true);
+    try {
+      await apiClient.put(`/organizations/${organizationId}`, { currency: orgCurrency });
+      toast({ type: 'success', title: 'Base currency updated' });
+    } catch (err: any) {
+      toast({
+        type: 'error',
+        title: 'Failed to update base currency',
         message: err.response?.data?.message || 'An error occurred',
       });
     } finally {
@@ -270,7 +340,7 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b overflow-x-auto">
-        {tabs.map((tab) => {
+        {(canManageOrganization ? tabs : tabs.filter((t) => t.id !== 'organization')).map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -606,6 +676,52 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Organization Tab (owner only) */}
+      {activeTab === 'organization' && canManageOrganization && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Organization Settings
+            </CardTitle>
+            <CardDescription>
+              Set the organization’s base currency. Finance ledger amounts are
+              stored and totaled in this currency.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Base currency <span className="text-destructive">*</span>
+              </label>
+              <Select
+                placeholder="Select base currency"
+                options={currencyOptions}
+                value={orgCurrency}
+                onChange={(e) => setOrgCurrency(e.target.value)}
+                disabled={!currencyOptions.length || saving}
+              />
+              {orgCurrencyErrors.currency && (
+                <p className="text-sm text-destructive mt-1">
+                  {orgCurrencyErrors.currency}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Changing the base currency only affects amounts recorded from
+                now on; existing ledger entries keep their originally recorded
+                currency.
+              </p>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleOrganizationSave} loading={saving}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Base Currency
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
