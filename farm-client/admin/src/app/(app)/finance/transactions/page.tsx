@@ -17,7 +17,7 @@ import {
   Download,
   Link2,
 } from 'lucide-react';
-import { financeAPI, budgetsAPI } from '@/lib/api';
+import { financeAPI, budgetsAPI, currencyAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,6 +86,7 @@ export default function TransactionsPage() {
     date: '',
     farmId: '',
     budgetCategoryId: '',
+    currency: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -104,6 +105,19 @@ export default function TransactionsPage() {
       label: `${b.name} · ${c.name}`,
     }))
   );
+
+  const {
+    data: currenciesData,
+    loading: loadingCurrencies,
+  } = useFetch<{ data: any[] }>(
+    'currencies-list',
+    () => currencyAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
+  const currencyOptions = ((currenciesData?.data || []) as any[])
+    .map((c) => ({ value: c.code, label: `${c.code} ${c.symbol || ''}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const {
     data: expensesData,
@@ -170,10 +184,10 @@ export default function TransactionsPage() {
     page * PAGE_SIZE
   );
 
-  const formatCurrency = (amount: number) =>
+  const formatCurrency = (amount: number, currency: string = 'USD') =>
     new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency,
     }).format(amount);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -203,6 +217,7 @@ export default function TransactionsPage() {
           date: form.date,
           farmId: form.farmId || undefined,
           budgetCategoryId: form.budgetCategoryId || undefined,
+          currency: form.currency || 'USD',
         });
         toast({ type: 'success', title: 'Expense added successfully' });
       } else {
@@ -231,11 +246,12 @@ export default function TransactionsPage() {
           total: Number(form.total),
           date: form.date,
           farmId: form.farmId || undefined,
+          currency: form.currency || 'USD',
         });
         toast({ type: 'success', title: 'Sale recorded successfully' });
       }
       setShowAdd(false);
-      setForm({ title: '', item: '', amount: '', quantity: '', price: '', total: '', date: '', farmId: '', budgetCategoryId: '' });
+      setForm({ title: '', item: '', amount: '', quantity: '', price: '', total: '', date: '', farmId: '', budgetCategoryId: '', currency: '' });
       clearFetchCache('finance');
       clearFetchCache('budgets-list');
       refetch();
@@ -401,6 +417,7 @@ export default function TransactionsPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Title / Item</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead className="w-[72px]">Currency</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Farm</TableHead>
                     <TableHead className="w-[140px]">Actions</TableHead>
@@ -435,8 +452,11 @@ export default function TransactionsPage() {
                           }
                         >
                           {tx.type === 'sale' ? '+' : '-'}
-                          {formatCurrency(tx.amount)}
+                          {formatCurrency(tx.amount, tx.currency)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono text-muted-foreground">
+                        {tx.currency || 'USD'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 text-muted-foreground text-sm">
@@ -589,6 +609,21 @@ export default function TransactionsPage() {
                   </p>
                 )}
               </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Currency</label>
+                <Select
+                  placeholder={currencyOptions.length ? 'Currency' : 'No currencies yet'}
+                  options={currencyOptions}
+                  value={form.currency}
+                  onChange={(e) =>
+                    setForm({ ...form, currency: e.target.value })
+                  }
+                  disabled={!currencyOptions.length || saving}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Converts to base currency (USD) using the latest rate.
+                </p>
+              </div>
             </>
           ) : (
             <>
@@ -659,6 +694,21 @@ export default function TransactionsPage() {
                     {formErrors.total}
                   </p>
                 )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Currency</label>
+                <Select
+                  placeholder={currencyOptions.length ? 'Currency' : 'No currencies yet'}
+                  options={currencyOptions}
+                  value={form.currency}
+                  onChange={(e) =>
+                    setForm({ ...form, currency: e.target.value })
+                  }
+                  disabled={!currencyOptions.length || saving}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Converts to base currency (USD) using the latest rate.
+                </p>
               </div>
             </>
           )}

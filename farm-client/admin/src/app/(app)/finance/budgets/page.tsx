@@ -14,7 +14,7 @@ import {
   Pencil,
   RefreshCw,
 } from 'lucide-react';
-import { budgetsAPI } from '@/lib/api';
+import { budgetsAPI, currencyAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,13 +71,26 @@ export default function BudgetsPage() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({ name: '', description: '', farmId: '', startDate: '', endDate: '' });
-  const [catForm, setCatForm] = useState({ name: '', budgetAmount: '' });
+  const [catForm, setCatForm] = useState({ name: '', budgetAmount: '', currency: '' });
 
   const { data: budgetsData, loading, refetch } = useFetch<{ data: Budget[] }>(
     'budgets-list',
     () => budgetsAPI.list(),
     { cacheTime: 30_000 }
   );
+
+  const {
+    data: currenciesData,
+    loading: loadingCurrencies,
+  } = useFetch<{ data: any[] }>(
+    'currencies-list',
+    () => currencyAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
+  const currencyOptions = ((currenciesData?.data || []) as any[])
+    .map((c) => ({ value: c.code, label: `${c.code} ${c.symbol || ''}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   // Backend recomputes `spentAmount` whenever an expense changes, so listen
   // for finance events and re-pull the budgets to show the fresh numbers.
@@ -147,10 +160,14 @@ export default function BudgetsPage() {
   const handleAddCategory = async (budgetId: string) => {
     if (!catForm.name || !catForm.budgetAmount) return;
     try {
-      await budgetsAPI.addCategory(budgetId, { name: catForm.name, budgetAmount: parseFloat(catForm.budgetAmount) });
+      await budgetsAPI.addCategory(budgetId, {
+        name: catForm.name,
+        budgetAmount: parseFloat(catForm.budgetAmount),
+        currency: catForm.currency || 'USD',
+      });
       toast({ type: 'success', title: 'Category added' });
       setShowAddCategory(null);
-      setCatForm({ name: '', budgetAmount: '' });
+      setCatForm({ name: '', budgetAmount: '', currency: '' });
       clearFetchCache('budgets-list');
       refetch();
     } catch (err: any) {
@@ -367,8 +384,16 @@ export default function BudgetsPage() {
                       <div className="flex items-center gap-2">
                         <Input placeholder="Category name" value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} className="w-48" />
                         <Input placeholder="Budget amount" type="number" value={catForm.budgetAmount} onChange={(e) => setCatForm({ ...catForm, budgetAmount: e.target.value })} className="w-32" />
+                        <Select
+                          placeholder="Currency"
+                          options={currencyOptions}
+                          value={catForm.currency}
+                          onChange={(e) => setCatForm({ ...catForm, currency: e.target.value })}
+                          className="w-32"
+                          disabled={!currencyOptions.length}
+                        />
                         <Button size="sm" onClick={() => handleAddCategory(budget.id)}>Add</Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setShowAddCategory(null); setCatForm({ name: '', budgetAmount: '' }); }}>Cancel</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setShowAddCategory(null); setCatForm({ name: '', budgetAmount: '', currency: '' }); }}>Cancel</Button>
                       </div>
                     ) : (
                       <Button size="sm" variant="outline" onClick={() => setShowAddCategory(budget.id)}>
