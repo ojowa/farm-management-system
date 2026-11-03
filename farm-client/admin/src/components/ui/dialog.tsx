@@ -28,8 +28,12 @@ const Dialog = ({ open, onOpenChange, children, title, description }: DialogProp
     document.addEventListener('keydown', handleEscape);
     document.body.style.overflow = 'hidden';
     // Initial focus lands on the panel so screen readers announce the dialog
-    // and Tab starts from within it.
-    panelRef.current?.focus();
+    // and Tab starts from within it — but never steal focus from an input
+    // the user is already typing into.
+    const panel = panelRef.current;
+    if (panel && !panel.contains(document.activeElement)) {
+      panel.focus();
+    }
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
