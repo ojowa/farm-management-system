@@ -8,11 +8,19 @@ import {
   FarmLookupRepository,
 } from '../../domain/repositories/finance.repository';
 import { FinanceEventService } from '../../infrastructure/messaging/finance.event.service';
+import { CurrencyApplicationService } from '../../currency/application/services/currency.service';
 
 @Injectable()
 export class FinanceApplicationService {
-  constructor(@Inject('ExpenseRepository') private readonly expenseRepo: ExpenseRepository, @Inject('SaleRepository') private readonly saleRepo: SaleRepository, @Inject('ContractRepository') private readonly contractRepo: ContractRepository, @Inject('BuyerRepository') private readonly buyerRepo: BuyerRepository, @Inject('MarketListingRepository') private readonly marketListingRepo: MarketListingRepository, @Inject('FarmLookupRepository') private readonly farmLookupRepo: FarmLookupRepository, 
-    private readonly eventService: FinanceEventService, 
+  constructor(
+    @Inject('ExpenseRepository') private readonly expenseRepo: ExpenseRepository,
+    @Inject('SaleRepository') private readonly saleRepo: SaleRepository,
+    @Inject('ContractRepository') private readonly contractRepo: ContractRepository,
+    @Inject('BuyerRepository') private readonly buyerRepo: BuyerRepository,
+    @Inject('MarketListingRepository') private readonly marketListingRepo: MarketListingRepository,
+    @Inject('FarmLookupRepository') private readonly farmLookupRepo: FarmLookupRepository,
+    private readonly currencyService: CurrencyApplicationService,
+    private readonly eventService: FinanceEventService,
   ) {}
 
   private async assertFarmExists(farmId: string, organizationId: string) {
@@ -60,14 +68,21 @@ export class FinanceApplicationService {
 
   // ── Expense CRUD ──────────────────────────────────────
 
-  async createExpense(data: { farmId: string; title: string; amount: number; date: Date | string; budgetCategoryId?: string | null },  organizationId: string) {
+  async createExpense(data: { farmId: string; title: string; amount: number; currency?: string; date: Date | string; budgetCategoryId?: string | null },  organizationId: string) {
     await this.assertFarmExists(data.farmId, organizationId);
     if (data.budgetCategoryId) await this.assertBudgetCategoryExists(data.budgetCategoryId, organizationId);
+    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+      data.amount,
+      data.currency ?? 'USD',
+      organizationId,
+    );
     const expense = await this.expenseRepo.create({
       farmId: data.farmId,
       organizationId,
       title: data.title,
       amount: data.amount,
+      currency,
+      amountInBase,
       date: this.toDate(data.date),
       budgetCategoryId: data.budgetCategoryId || null,
     });
@@ -116,8 +131,13 @@ export class FinanceApplicationService {
 
   // ── Sale CRUD ─────────────────────────────────────────
 
-  async createSale(data: { farmId: string; item: string; quantity: number; price: number; total: number; date: Date | string }, organizationId: string) {
+  async createSale(data: { farmId: string; item: string; quantity: number; price: number; total: number; currency?: string; date: Date | string }, organizationId: string) {
     await this.assertFarmExists(data.farmId, organizationId);
+    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+      data.total,
+      data.currency ?? 'USD',
+      organizationId,
+    );
     const sale = await this.saleRepo.create({
       farmId: data.farmId,
       organizationId,
@@ -125,6 +145,8 @@ export class FinanceApplicationService {
       quantity: data.quantity,
       price: data.price,
       total: data.total,
+      currency,
+      amountInBase,
       date: this.toDate(data.date),
     });
     await this.eventService.emitSaleCreatedEvent(sale);
@@ -168,7 +190,12 @@ export class FinanceApplicationService {
 
   // ── Contract CRUD ─────────────────────────────────────
 
-  async createContract(data: { type: string; buyerSellerName: string; entityId?: string; entityType?: string; startDate: Date | string; endDate?: Date | string | null; value: number; terms?: string }, organizationId: string) {
+  async createContract(data: { type: string; buyerSellerName: string; entityId?: string; entityType?: string; startDate: Date | string; endDate?: Date | string | null; value: number; currency?: string; terms?: string }, organizationId: string) {
+    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+      data.value,
+      data.currency ?? 'USD',
+      organizationId,
+    );
     const contract = await this.contractRepo.create({
       organizationId,
       type: data.type,
@@ -178,6 +205,8 @@ export class FinanceApplicationService {
       startDate: this.toDate(data.startDate),
       endDate: data.endDate ? this.toDate(data.endDate) : null,
       value: Number(data.value),
+      currency,
+      amountInBase,
       status: 'DRAFT',
       terms: data.terms?.trim() || null,
       createdById: null,
@@ -272,8 +301,13 @@ export class FinanceApplicationService {
 
   // ── Market Listing CRUD ───────────────────────────────
 
-  async createMarketListing(data: { buyerId?: string; entityType: string; entityId?: string; title: string; price: number; unit?: string; quantity: number }, organizationId: string) {
+  async createMarketListing(data: { buyerId?: string; entityType: string; entityId?: string; title: string; price: number; currency?: string; unit?: string; quantity: number }, organizationId: string) {
     if (data.buyerId) await this.assertBuyerExists(data.buyerId, organizationId);
+    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+      data.price,
+      data.currency ?? 'USD',
+      organizationId,
+    );
     const listing = await this.marketListingRepo.create({
       organizationId,
       buyerId: data.buyerId || null,
@@ -281,6 +315,8 @@ export class FinanceApplicationService {
       entityId: data.entityId || null,
       title: data.title,
       price: Number(data.price),
+      currency,
+      amountInBase,
       unit: data.unit || 'kg',
       quantity: Number(data.quantity),
       status: 'ACTIVE',
@@ -482,7 +518,7 @@ export class FinanceApplicationService {
     const spentById = new Map<string, number>(categories.map((c) => [c.id, 0]));
 
     for (const expense of expenses) {
-      const amount = Number(expense.amount) || 0;
+      const amount = Number(expense.amountInBase) || 0;
       const linkedId = expense.budgetCategoryId;
       if (linkedId) {
         if (spentById.has(linkedId)) {

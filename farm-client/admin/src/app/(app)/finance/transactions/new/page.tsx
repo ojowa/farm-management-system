@@ -10,7 +10,7 @@ import {
   TrendingDown,
   Wallet,
 } from 'lucide-react';
-import { financeAPI, farmsAPI, budgetsAPI } from '@/lib/api';
+import { financeAPI, farmsAPI, budgetsAPI, currencyAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,7 @@ interface FormState {
   date: string;
   farmId: string;
   budgetCategoryId: string;
+  currency: string;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -52,6 +53,7 @@ const initialForm = (): FormState => ({
   date: today(),
   farmId: '',
   budgetCategoryId: '',
+  currency: 'USD',
 });
 
 const recalcTotal = (quantity: string, price: string) => {
@@ -112,7 +114,17 @@ export default function NewTransactionPage() {
     }))
   );
 
+  const { data: currenciesData } = useFetch<{ data: any[] }>(
+    'currencies-list',
+    () => currencyAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
   const farms = farmsData?.data || [];
+  const currencyOptions = ((currenciesData?.data || []) as any[])
+    .map((c) => ({ value: c.code, label: `${c.code} ${c.symbol || ''}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   const selectedFarm = farms.find((farm) => farm.id === form.farmId);
   const summaryAmount =
     type === 'expense' ? Number(form.amount) || 0 : Number(form.total) || 0;
@@ -246,6 +258,7 @@ export default function NewTransactionPage() {
           date: form.date,
           farmId: form.farmId,
           budgetCategoryId: form.budgetCategoryId || undefined,
+          currency: form.currency || 'USD',
         });
         toast({ type: 'success', title: 'Expense added successfully' });
       } else {
@@ -256,6 +269,7 @@ export default function NewTransactionPage() {
           total: Number(form.total),
           date: form.date,
           farmId: form.farmId,
+          currency: form.currency || 'USD',
         });
         toast({ type: 'success', title: 'Sale recorded successfully' });
       }
@@ -406,6 +420,24 @@ export default function NewTransactionPage() {
                     </div>
 
                     <div>
+                      <Label htmlFor="currency" className="mb-1 block">
+                        Currency
+                      </Label>
+                      <Select
+                        id="currency"
+                        placeholder={currencyOptions.length ? 'Currency' : 'No currencies yet'}
+                        options={currencyOptions}
+                        value={form.currency}
+                        onChange={(e) => update('currency', e.target.value)}
+                        disabled={!currencyOptions.length || saving}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The ledger converts this amount to the base currency
+                        (USD) using the latest exchange rate.
+                      </p>
+                    </div>
+
+                    <div>
                       <Label htmlFor="title" className="mb-1 block">
                         Title <span className="text-destructive">*</span>
                       </Label>
@@ -523,6 +555,24 @@ export default function NewTransactionPage() {
                         override.
                       </p>
                       {fieldError('total')}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="currency" className="mb-1 block">
+                        Currency
+                      </Label>
+                      <Select
+                        id="currency"
+                        placeholder={currencyOptions.length ? 'Currency' : 'No currencies yet'}
+                        options={currencyOptions}
+                        value={form.currency}
+                        onChange={(e) => update('currency', e.target.value)}
+                        disabled={!currencyOptions.length || saving}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The ledger converts this amount to the base currency
+                        (USD) using the latest exchange rate.
+                      </p>
                     </div>
                   </>
                 )}

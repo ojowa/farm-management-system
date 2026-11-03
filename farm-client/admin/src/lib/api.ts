@@ -96,6 +96,7 @@ export const subscriptionAPI = client.subscription;
 export const equipmentAPI = client.equipment;
 export const contractsAPI = client.contracts;
 export const marketplaceAPI = client.marketplace;
+export const currencyAPI = client.currency;
 export const profitabilityAPI = client.profitability;
 export const poultryHousesAPI = client.poultryHouses;
 export const feedingRecordsAPI = client.feedingRecords;

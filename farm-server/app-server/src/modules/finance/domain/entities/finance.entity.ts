@@ -4,6 +4,8 @@ export interface Expense {
   farmId: string;
   title: string;
   amount: number;
+  currency: string;
+  amountInBase: number;
   date: Date;
   createdAt: Date;
   budgetCategoryId?: string | null;
@@ -26,6 +28,8 @@ export interface Sale {
   quantity: number;
   price: number;
   total: number;
+  currency: string;
+  amountInBase: number;
   date: Date;
   createdAt: Date;
 }
@@ -46,6 +50,8 @@ export interface Contract {
   createdByName: string | null;
   createdAt: Date;
   updatedAt: Date;
+  currency: string;
+  amountInBase: number;
 }
 
 export interface Budget {
@@ -66,6 +72,7 @@ export interface BudgetCategory {
   id: string;
   budgetId: string;
   name: string;
+  currency: string;
   budgetAmount: number;
   spentAmount: number;
   createdAt: Date;
@@ -94,6 +101,8 @@ export interface MarketListing {
   entityId: string | null;
   title: string;
   price: number;
+  currency: string;
+  amountInBase: number;
   unit: string;
   quantity: number;
   status: string;

@@ -9,6 +9,7 @@ import type { NavTab } from '@/components/NavTabs';
 export const FINANCE_TABS: NavTab[] = [
   { label: 'Overview', href: '/finance' },
   { label: 'All Transactions', href: '/finance/transactions' },
+  { label: 'Currencies', href: '/finance/currencies' },
   { label: 'All Sales', href: '/finance/sales' },
   { label: 'Salary', href: '/finance/salary' },
   { label: 'Budgets', href: '/finance/budgets' },

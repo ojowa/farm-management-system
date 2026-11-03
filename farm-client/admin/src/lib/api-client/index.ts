@@ -21,6 +21,7 @@ import { createPoultryAPI, createPoultryHousesAPI, createFeedingRecordsAPI, crea
 
 // ── Finance Context ──────────────────────────────────────────────
 import { createFinanceAPI, createProfitabilityAPI, createContractsAPI, createMarketplaceAPI, FinanceAPI, ProfitabilityAPI, ContractsAPI, MarketplaceAPI } from './contexts/finance';
+import { createCurrencyAPI, CurrencyAPI } from './contexts/currency';
 
 // ── HR & Workforce Context ───────────────────────────────────────
 import { createWorkersAPI, createDepartmentsAPI, createTasksAPI, createAttendanceAPI, createRosterAPI, createMessagesAPI, createCorrespondenceAPI, createLeaveAPI, WorkersAPI, DepartmentsAPI, TasksAPI, AttendanceAPI, RosterAPI, MessagesAPI, CorrespondenceAPI, LeaveAPI } from './contexts/hr';
@@ -46,6 +47,7 @@ export type {
   InventoryAPI, LowStockAPI, EquipmentAPI,
   ReportsAPI, ScheduledReportsAPI,
   WeatherAPI, DocumentsAPI, SubscriptionAPI,
+  CurrencyAPI,
   APIClientConfig,
 };
 
@@ -77,6 +79,7 @@ export interface FarmManagementClient {
   poultrySales: PoultrySalesAPI;
   finance: FinanceAPI;
   profitability: ProfitabilityAPI;
+  currency: CurrencyAPI;
   contracts: ContractsAPI;
   marketplace: MarketplaceAPI;
   workers: WorkersAPI;
@@ -128,6 +131,7 @@ export function createFarmManagementClient(config: APIClientConfig = {}): FarmMa
     poultrySales: createPoultrySalesAPI(client),
     finance: createFinanceAPI(client),
     profitability: createProfitabilityAPI(client),
+    currency: createCurrencyAPI(client),
     contracts: createContractsAPI(client),
     marketplace: createMarketplaceAPI(client),
     workers: createWorkersAPI(client),

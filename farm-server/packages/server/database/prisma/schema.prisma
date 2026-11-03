@@ -58,6 +58,7 @@ model Organization {
   logo     String?
   website  String?
   industry String?
+  currency String @default("USD")
 
   subscriptionPlan          String    @default("FREE")
   subscriptionStatus        String    @default("TRIAL")
@@ -88,6 +89,27 @@ model Organization {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Currency {
+  code      String @id
+  name      String
+  symbol    String?
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+}
+
+model ExchangeRate {
+  id             String   @id @default(uuid())
+  fromCurrency   String
+  toCurrency     String
+  rate           Float
+  effectiveAt    DateTime @default(now())
+  source         String?  // e.g. manual, ecb, openexchangerates
+
+  @@index([fromCurrency, toCurrency])
+  @@index([effectiveAt])
 }
 
 model User {
@@ -506,6 +528,8 @@ model Expense {
 
   title  String
   amount Float
+  currency String @default("USD")
+  amountInBase Float @default(0)
   date   DateTime
 
   // Optional manual link to a budget category; when set it wins over
@@ -533,7 +557,8 @@ model Sale {
   quantity Float
   price    Float
   total    Float
-
+  currency String @default("USD")
+  amountInBase Float @default(0)
   date DateTime
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -574,6 +599,7 @@ model BudgetCategory {
   id           String @id @default(uuid())
   budgetId     String
   name         String
+  currency     String @default("USD")
   budgetAmount Float
   spentAmount  Float  @default(0)
 
@@ -1683,6 +1709,8 @@ model Contract {
   startDate       DateTime
   endDate         DateTime?
   value           Float
+  currency        String @default("USD")
+  amountInBase    Float @default(0)
   status          String    @default("DRAFT") // DRAFT, ACTIVE, COMPLETED, CANCELLED
   terms           String?
   createdById     String?
@@ -1755,6 +1783,8 @@ model MarketListing {
   entityId       String?
   title          String
   price          Float
+  currency       String @default("USD")
+  amountInBase   Float @default(0)
   unit           String    @default("kg")
   quantity       Float
   status         String    @default("ACTIVE") // ACTIVE, SOLD, CANCELLED

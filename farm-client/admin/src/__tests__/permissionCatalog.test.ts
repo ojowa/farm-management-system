@@ -77,8 +77,8 @@ function literalsByFile(dir: string): Array<{ file: string; keys: string[] }> {
 }
 
 describe('permission catalog', () => {
-  it('parses to the 51 keys the seed declares', () => {
-    expect(catalog.size).toBe(51);
+  it('parses to the 54 keys the seed declares', () => {
+    expect(catalog.size).toBe(54);
   });
 
   it('covers every permission routePermissions demands', () => {

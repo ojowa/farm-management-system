@@ -19,9 +19,10 @@ import {
 } from './infrastructure/persistence/prisma-finance.repository';
 import { FinanceEventService } from './infrastructure/messaging/finance.event.service';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { CurrencyModule } from './currency/currency.module';
 
 @Module({
-  imports: [RealtimeModule],
+  imports: [RealtimeModule, CurrencyModule],
   controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, BudgetsController, ProfitabilityController],
   providers: [
     FinanceApplicationService,

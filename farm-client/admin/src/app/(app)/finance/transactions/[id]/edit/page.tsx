@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save, TrendingUp, TrendingDown } from 'lucide-react';
-import { financeAPI, farmsAPI, budgetsAPI } from '@/lib/api';
+import { financeAPI, farmsAPI, budgetsAPI, currencyAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +33,7 @@ interface FormState {
   date: string;
   farmId: string;
   budgetCategoryId: string;
+  currency: string;
 }
 
 const recalcTotal = (quantity: string, price: string) => {
@@ -71,6 +72,7 @@ export default function EditTransactionPage() {
     date: '',
     farmId: '',
     budgetCategoryId: '',
+    currency: 'USD',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -117,6 +119,7 @@ export default function EditTransactionPage() {
       date: tx.date ? String(tx.date).slice(0, 10) : '',
       farmId: tx.farmId || '',
       budgetCategoryId: tx.budgetCategoryId || '',
+      currency: asFormValue(tx.currency) || 'USD',
     });
     setErrors({});
   }, [tx]);
@@ -131,6 +134,12 @@ export default function EditTransactionPage() {
     { cacheTime: 60_000 }
   );
 
+  const { data: currenciesData } = useFetch<{ data: any[] }>(
+    'currencies-list',
+    () => currencyAPI.list(),
+    { cacheTime: 60_000 }
+  );
+
   const farms = farmsData?.data || [];
   const budgetCategoryOptions = (budgetsData?.data || []).flatMap((b: any) =>
     (b.categories || []).map((c: any) => ({
@@ -138,6 +147,10 @@ export default function EditTransactionPage() {
       label: `${b.name} · ${c.name}`,
     }))
   );
+
+  const currencyOptions = ((currenciesData?.data || []) as any[])
+    .map((c) => ({ value: c.code, label: `${c.code} ${c.symbol || ''}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const update = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -208,6 +221,7 @@ export default function EditTransactionPage() {
           date: form.date,
           farmId: form.farmId,
           budgetCategoryId: form.budgetCategoryId || null,
+          currency: form.currency || 'USD',
         });
         toast({ type: 'success', title: 'Expense updated' });
       } else {
@@ -218,6 +232,7 @@ export default function EditTransactionPage() {
           total: Number(form.total),
           date: form.date,
           farmId: form.farmId,
+          currency: form.currency || 'USD',
         });
         toast({ type: 'success', title: 'Sale updated' });
       }
@@ -343,6 +358,24 @@ export default function EditTransactionPage() {
                     </div>
 
                     <div>
+                      <Label htmlFor="currency" className="mb-1 block">
+                        Currency
+                      </Label>
+                      <Select
+                        id="currency"
+                        placeholder={currencyOptions.length ? 'Currency' : 'No currencies yet'}
+                        options={currencyOptions}
+                        value={form.currency}
+                        onChange={(e) => update('currency', e.target.value)}
+                        disabled={!currencyOptions.length || saving}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The ledger converts this amount to the base currency
+                        (USD) using the latest exchange rate.
+                      </p>
+                    </div>
+
+                    <div>
                       <Label htmlFor="budgetCategoryId" className="mb-1 block">
                         Budget category
                       </Label>
@@ -441,6 +474,24 @@ export default function EditTransactionPage() {
                         override.
                       </p>
                       {fieldError('total')}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="currency" className="mb-1 block">
+                        Currency
+                      </Label>
+                      <Select
+                        id="currency"
+                        placeholder={currencyOptions.length ? 'Currency' : 'No currencies yet'}
+                        options={currencyOptions}
+                        value={form.currency}
+                        onChange={(e) => update('currency', e.target.value)}
+                        disabled={!currencyOptions.length || saving}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        The ledger converts this amount to the base currency
+                        (USD) using the latest exchange rate.
+                      </p>
                     </div>
                   </>
                 )}
