@@ -40,14 +40,16 @@ const tabs: { id: Tab; label: string; icon: React.ElementType; description: stri
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { canCreate } = usePermission();
+  const { canCreate, hasPermission } = usePermission();
   const { user } = useAuth();
   const organizationId = user?.organizationId || '';
-  const canManageOrganization = canCreate('organization');
+  // View org settings requires organization.read; editing requires organization.write
+  const canViewOrganization = hasPermission('organization.read');
+  const canEditOrganization = canCreate('organization');
   // Profile, password, notification and 2FA settings only affect the signed-in
   // user's own account, so they stay editable for everyone.
   const [activeTab, setActiveTab] = useState<Tab>(
-    canManageOrganization ? 'profile' : 'profile'
+    canViewOrganization ? 'profile' : 'profile'
   );
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -142,7 +144,7 @@ export default function SettingsPage() {
   }, [toast]);
 
   const loadOrganization = useCallback(async () => {
-    if (!canManageOrganization || !organizationId) return;
+    if (!canViewOrganization || !organizationId) return;
     try {
       const res = await apiClient.get(`/organizations/${organizationId}`);
       const org = res.data;
@@ -154,17 +156,17 @@ export default function SettingsPage() {
         message: err.response?.data?.message || 'An error occurred',
       });
     }
-  }, [toast, canManageOrganization, organizationId]);
+  }, [toast, canViewOrganization, organizationId]);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       await Promise.all([loadProfile(), loadPreferences()]);
-      if (canManageOrganization) await loadOrganization();
+      if (canViewOrganization) await loadOrganization();
       setLoading(false);
     };
     init();
-  }, [loadProfile, loadPreferences, loadOrganization, canManageOrganization]);
+  }, [loadProfile, loadPreferences, loadOrganization, canViewOrganization]);
 
   const handleProfileSave = async () => {
     const errors: Record<string, string> = {};
@@ -399,7 +401,7 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b overflow-x-auto">
-        {(canManageOrganization ? tabs : tabs.filter((t) => t.id !== 'organization')).map((tab) => {
+        {(canViewOrganization ? tabs : tabs.filter((t) => t.id !== 'organization')).map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -881,7 +883,7 @@ export default function SettingsPage() {
       )}
 
       {/* Organization Tab (owner only) */}
-      {activeTab === 'organization' && canManageOrganization && (
+      {activeTab === 'organization' && canViewOrganization && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -917,7 +919,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="flex justify-end pt-2">
-              <Button onClick={handleOrganizationSave} loading={saving}>
+              <Button onClick={handleOrganizationSave} loading={saving} disabled={!canEditOrganization}>
                 <Save className="mr-2 h-4 w-4" />
                 Save Base Currency
               </Button>
