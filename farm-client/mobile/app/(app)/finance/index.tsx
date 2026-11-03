@@ -7,10 +7,22 @@ import { useAppTheme } from '@/core/theme/ThemeContext';
 
 const sections = [
   {
-    title: 'Finance',
+    title: 'Transactions',
     description: 'Review income, expenses, and transactions',
     icon: '💰',
     route: '/finance/list',
+  },
+  {
+    title: 'Currencies',
+    description: 'Manage currency codes and exchange rates',
+    icon: '💱',
+    route: '/finance/currencies',
+  },
+  {
+    title: 'Salary',
+    description: 'Record and track salary payments',
+    icon: '💵',
+    route: '/finance/salary',
   },
   {
     title: 'Profitability',

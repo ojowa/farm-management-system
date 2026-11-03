@@ -654,6 +654,22 @@ export const profitabilityAPI = {
     http.get<ProfitabilitySummary>('/profitability/summary', { params }),
 };
 
+// ─── Currency ─────────────────────────────────────────────────────────────────
+
+export const currencyAPI = {
+  list: (params?: any) => http.get<any[]>('/currencies', { params }),
+  get: (code: string) => http.get<any>(`/currencies/${code}`),
+  create: (data: any) => http.post<any>('/currencies', data),
+  update: (code: string, data: any) => http.put<any>(`/currencies/${code}`, data),
+  delete: (code: string) => http.delete(`/currencies/${code}`),
+  listRates: (params?: { fromCurrency?: string; toCurrency?: string }) =>
+    http.get<any[]>('/currencies/rates', { params }),
+  setRate: (data: any) => http.post<any>('/currencies/rates', data),
+  convert: (data: { amount: number; fromCurrency: string; toCurrency: string }) =>
+    http.post<any>('/currencies/convert', data),
+  convertToOrgBase: (data: { amount: number; fromCurrency: string; organizationId: string }) =>
+    http.post<any>('/currencies/convert/organization-base', data),
+};
 // ─── Departments ──────────────────────────────────────────────────────────────
 
 export const departmentsAPI = {

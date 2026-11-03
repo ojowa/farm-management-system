@@ -160,13 +160,20 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
     label: 'Insights',
     items: [
-      {
-        label: 'Reports',
-        icon: '📊',
-        route: '/reports',
-        permissions: ['reporting.read'],
-        module: 'reporting',
-      },
+  {
+    label: 'Reports',
+    icon: '📊',
+    route: '/reports',
+    permissions: ['reporting.read'],
+    module: 'reporting',
+  },
+  {
+    label: 'Analytics',
+    icon: '📈',
+    route: '/analytics',
+    permissions: ['reporting.read', 'finance.read'],
+    module: 'reporting',
+  },
       { label: 'Weather', icon: '⛅', route: '/weather', permissions: [], module: null },
     ],
   },

@@ -613,6 +613,7 @@ export interface CreateExpenseRequest {
   farmId: string;
   title: string;
   amount: number;
+  currency: string;
   date: string;
   category?: string;
 }
