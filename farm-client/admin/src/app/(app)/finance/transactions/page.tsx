@@ -475,7 +475,9 @@ export default function TransactionsPage() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() =>
-                                router.push(`/finance/transactions/${tx.id}/edit`)
+                                router.push(
+                                  `/finance/transactions/${tx.id}/edit?type=${tx.type}`
+                                )
                               }
                             >
                               <Pencil className="h-4 w-4" />
