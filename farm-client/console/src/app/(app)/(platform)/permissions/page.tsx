@@ -272,4 +272,4 @@ export default function PermissionsPage() {
   );
 }
 
-export default PermissionsPage;
+
