@@ -57,7 +57,7 @@ export class GatewayProxyService {
     {
       name: 'finance',
       baseUrl: process.env.FINANCE_SERVICE_URL || 'http://localhost:4014',
-      routes: ['finance', 'expenses', 'sales', 'contracts', 'marketplace', 'profitability', 'budgets'],
+      routes: ['finance', 'expenses', 'sales', 'contracts', 'marketplace', 'profitability', 'budgets', 'currencies'],
     },
     {
       name: 'hr',

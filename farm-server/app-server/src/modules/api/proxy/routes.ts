@@ -66,6 +66,7 @@ function buildRoutes(): ServiceRoute[] {
     { path: '/contracts', service: 'finance-service', port: resolvePort('finance-service', 4014), baseUrl: resolveBaseUrl('finance-service', 4014) },
     { path: '/marketplace', service: 'finance-service', port: resolvePort('finance-service', 4014), baseUrl: resolveBaseUrl('finance-service', 4014) },
     { path: '/profitability', service: 'finance-service', port: resolvePort('finance-service', 4014), baseUrl: resolveBaseUrl('finance-service', 4014) },
+    { path: '/currencies', service: 'finance-service', port: resolvePort('finance-service', 4014), baseUrl: resolveBaseUrl('finance-service', 4014) },
 
     // HR Context
     { path: '/workers', service: 'hr-service', port: resolvePort('hr-service', 4015), baseUrl: resolveBaseUrl('hr-service', 4015) },
