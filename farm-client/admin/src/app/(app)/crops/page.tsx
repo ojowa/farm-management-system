@@ -33,7 +33,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Dialog } from '@/components/ui/dialog';
 import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { useToast } from '@/lib/toasts';
+import { useToast, getErrorMessage } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { cropFormSchema, fieldFormSchema } from '@/lib/validation';
@@ -231,8 +231,7 @@ export default function CropsPage() {
       clearFetchCache('crop-new-crops');
       clearFetchCache('crop-new-fields');
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'An error occurred';
-      toast({ type: 'error', title: 'Failed to add crop', message: msg });
+      toast({ type: 'error', title: 'Failed to add crop', message: getErrorMessage(err) });
     } finally {
       setCreateCropSaving(false);
     }
