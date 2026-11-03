@@ -1,37 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import {
-  Plus,
-  Trash2,
-  Save,
-  Check,
-  PlusCircle,
-  Search,
-  Settings,
-} from 'lucide-react';
-import {
-  platformPermissionsAPI,
-  platformRolesAPI,
-} from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/core/ui/components';
-import { Select } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/lib/toast';
-import { getErrorMessage } from '@/lib/toast';
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-}
+import React, { useCallback, useEffect, useState } from 'react';
+import { PlusCircle, X } from 'lucide-react';
+import { platformPermissionsAPI } from '@/lib/api';
+import type { PlatformPermission } from '@/lib/types';
+import { toastError, toastSuccess, getErrorMessage } from '@/lib/toast';
 
 export default function PermissionsPage() {
-  const [permissions, setPermissions] = useState<PlatformPermission[]>([]);
   const [categories, setCategories] = useState<Record<string, PlatformPermission[]>>({});
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -39,15 +16,12 @@ export default function PermissionsPage() {
     description: '',
   });
   const [saving, setSaving] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadPermissions = useCallback(async () => {
     try {
       const res = await platformPermissionsAPI.list();
-      const perms: PlatformPermission[] = Array.isArray(res.data) ? res.data : [];
-      setPermissions(perms);
-
-      const grouped = perms.reduce((acc, p) => {
+      const permissions: PlatformPermission[] = Array.isArray(res.data) ? res.data : [];
+      const grouped = permissions.reduce((acc, p) => {
         const cat = p.category || 'general';
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(p);
@@ -56,12 +30,14 @@ export default function PermissionsPage() {
       setCategories(grouped);
     } catch (err: any) {
       toastError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadPermissions();
+  }, [loadPermissions]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +52,7 @@ export default function PermissionsPage() {
       toastSuccess('Permission created');
       setForm({ name: '', category: '', description: '' });
       setShowForm(false);
-      loadData();
+      void loadPermissions();
     } catch (err: any) {
       toastError(getErrorMessage(err));
     } finally {
@@ -89,7 +65,7 @@ export default function PermissionsPage() {
     try {
       await platformPermissionsAPI.delete(id);
       toastSuccess('Permission deleted');
-      loadData();
+      void loadPermissions();
     } catch (err: any) {
       toastError(getErrorMessage(err));
     }
@@ -117,7 +93,11 @@ export default function PermissionsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {Object.entries(categories).map(([category, perms]) => (
+        {loading ? (
+          <p className="py-8 text-center text-sm text-gray-500">Loading permissions...</p>
+        ) : Object.keys(categories).length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-500">No permissions found</p>
+        ) : Object.entries(categories).map(([category, perms]) => (
           <div key={category} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -130,16 +110,6 @@ export default function PermissionsPage() {
                     {perms.length} permission{perms.length !== 1 ? 's' : ''}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {perms.length > 0 && (
-                  <button
-                    onClick={() => setEditingId(null)}
-                    className="px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 rounded-md hover:text-gray-900"
-                  >
-                    Edit All
-                  </button>
-                )}
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -171,12 +141,13 @@ export default function PermissionsPage() {
                         {perm.id}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <TouchableOpacity
+                        <button
+                          type="button"
                           onClick={() => handleDelete(perm.id)}
                           className="text-xs text-red-600 hover:bg-red-50 rounded-md px-3 py-1.5 hover:text-red-700"
                         >
                           Delete
-                        </TouchableOpacity>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -187,14 +158,14 @@ export default function PermissionsPage() {
         ))}
       </div>
 
-      {/* Add/Edit Permission Modal */}
+      {/* Add Permission Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowForm(false)} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-xl border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">
-                {editingId ? 'Edit Permission' : 'Add Permission'}
+                Add Permission
               </h2>
               <button
                 onClick={() => setShowForm(false)}
@@ -206,25 +177,26 @@ export default function PermissionsPage() {
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Name</Label>
-                  <Input
+                  <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+                  <input
                     id="name"
                     placeholder="e.g. read:contracts"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select
+                  <label htmlFor="category" className="mb-1 block text-sm font-medium text-gray-700">Category</label>
+                  <select
                     id="category"
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    required
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
+                    <option value="">Select category</option>
                       {[
                         'finance',
                         'contracts',
@@ -239,30 +211,30 @@ export default function PermissionsPage() {
                         'system',
                         'general',
                       ].map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {category.charAt(0).toUpperCase() + category.slice(1)}
-                        </SelectItem>
+                        <option key={c} value={c}>
+                          {c.charAt(0).toUpperCase() + c.slice(1)}
+                        </option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                  </select>
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Input
+                  <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                  <input
                     id="description"
                     placeholder="Describe what this permission allows"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/20"
                   />
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <Button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">
+                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg hover:bg-gray-50">
                   Cancel
-                </Button>
-                <Button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium bg-[#16a34a] text-white rounded-lg hover:bg-[#15803d] disabled:opacity-50">
+                </button>
+                <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium bg-[#16a34a] text-white rounded-lg hover:bg-[#15803d] disabled:opacity-50">
                   {saving ? 'Saving…' : 'Create Permission'}
-                </Button>
+                </button>
               </div>
             </form>
           </div>
@@ -271,5 +243,3 @@ export default function PermissionsPage() {
     </div>
   );
 }
-
-
