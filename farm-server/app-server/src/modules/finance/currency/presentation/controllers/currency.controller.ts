@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard, AuthorizationGuard, Permission } from '@farm/auth-server/nestjs';
+import { PermissionAny, PermissionAnyGuard } from '../../../../../shared/auth/permission-any.guard';
 import { CurrencyApplicationService } from '../../application/services/currency.service';
 import { ZodValidationPipe } from '@farm/utils';
 import { z } from 'zod';
@@ -57,7 +58,8 @@ export class CurrencyController {
     private readonly currencyService: CurrencyApplicationService,
   ) {}
 
-  @Permission('currency.read')
+  @PermissionAny('currency.read', 'finance.read')
+  @UseGuards(PermissionAnyGuard)
   @Get()
   async listCurrencies() {
     return this.currencyService.listCurrencies();
@@ -71,7 +73,8 @@ export class CurrencyController {
     return this.currencyService.createCurrency(data);
   }
 
-  @Permission('currency.read')
+  @PermissionAny('currency.read', 'finance.read')
+  @UseGuards(PermissionAnyGuard)
   @Get(':code')
   async getCurrency(@Param('code') code: string) {
     return this.currencyService.getCurrency(code);
@@ -103,7 +106,8 @@ export class CurrencyController {
     return this.currencyService.setRate(data);
   }
 
-  @Permission('currency.read')
+  @PermissionAny('currency.read', 'finance.read')
+  @UseGuards(PermissionAnyGuard)
   @Get('rates')
   async listRates(
     @Query('fromCurrency') fromCurrency?: string,
@@ -112,7 +116,8 @@ export class CurrencyController {
     return this.currencyService.listRates(fromCurrency, toCurrency);
   }
 
-  @Permission('currency.read')
+  @PermissionAny('currency.read', 'finance.read')
+  @UseGuards(PermissionAnyGuard)
   @Post('convert')
   @UsePipes(new ZodValidationPipe(convertSchema))
   async convert(@Body() data: z.infer<typeof convertSchema>) {
@@ -123,7 +128,8 @@ export class CurrencyController {
     );
   }
 
-  @Permission('currency.read')
+  @PermissionAny('currency.read', 'finance.read')
+  @UseGuards(PermissionAnyGuard)
   @Post('convert/organization-base')
   @UsePipes(new ZodValidationPipe(convertOrgBaseSchema))
   async convertToOrganizationBase(@Body() data: z.infer<typeof convertOrgBaseSchema>) {
