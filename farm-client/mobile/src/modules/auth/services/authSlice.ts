@@ -53,6 +53,19 @@ function transformUser(raw: any): User {
   };
 }
 
+function unwrapAuthResponse(value: unknown): Record<string, unknown> {
+  let current = value;
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (!current || typeof current !== 'object' || Array.isArray(current)) break;
+    const response = current as Record<string, unknown>;
+    if (response.success !== true || !('data' in response)) break;
+    current = response.data;
+  }
+  return current && typeof current === 'object' && !Array.isArray(current)
+    ? (current as Record<string, unknown>)
+    : {};
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -63,6 +76,9 @@ interface AuthState {
   lastLoginAt: string | null;
   bootstrapped: boolean;
   socketAccessToken: string | null;
+  organizations: { id: string; name: string }[];
+  organizationSelectionRequired: boolean;
+  organizationsLoading: boolean;
 }
 
 const initialState: AuthState = {
@@ -75,34 +91,52 @@ const initialState: AuthState = {
   lastLoginAt: null,
   bootstrapped: false,
   socketAccessToken: null,
+  organizations: [],
+  organizationSelectionRequired: false,
+  organizationsLoading: false,
 };
 
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     let stage: 'login-request' | 'profile-request' | 'currency-load' = 'login-request';
+    let responseSummary = '';
     try {
       const res = await authAPI.login({ email, password });
-      const data = res.data as any;
-      if (data.mfaRequired) {
-        return { requiresMFA: true, mfaToken: data.mfaSessionToken, user: data.user };
+      const data = unwrapAuthResponse(res.data);
+      const mfaToken = data.mfaToken ?? data.mfaSessionToken;
+      responseSummary = [
+        `fields=${Object.keys(data).sort().join(',') || 'none'}`,
+        `requiresMFA=${String(data.requiresMFA)}`,
+        `mfaRequired=${String(data.mfaRequired)}`,
+        `mfaTokenPresent=${Boolean(data.mfaToken)}`,
+        `mfaSessionTokenPresent=${Boolean(data.mfaSessionToken)}`,
+      ].join(' ');
+      if (data.requiresMFA === true || data.mfaRequired === true || Boolean(mfaToken)) {
+        return {
+          requiresMFA: true,
+          mfaToken: mfaToken as string | undefined,
+          user: data.user,
+        };
       }
       stage = 'profile-request';
-      const profileRes = await authAPI.getProfile();
+      const profileRes = await authAPI.getProfile(data.accessToken as string | undefined);
       stage = 'currency-load';
       await loadCurrencySymbol();
       await loadOrganizationCurrency();
       return {
         requiresMFA: false,
         user: profileRes.data,
-        socketAccessToken: data.accessToken || null,
+        socketAccessToken: (data.accessToken as string | undefined) || null,
       };
     } catch (err: unknown) {
       if (__DEV__) {
         const details = isAxiosError(err)
           ? `code=${err.code ?? 'unknown'} status=${err.response?.status ?? 'none'}`
           : `error=${err instanceof Error ? err.name : 'UnknownError'}`;
-        console.warn(`[THUNK] login failed at ${stage}: ${details}`);
+        console.warn(
+          `[THUNK] login failed at ${stage}: ${details}${responseSummary ? `; ${responseSummary}` : ''}`,
+        );
       }
       return rejectWithValue('Login failed. Please check your credentials and try again.');
     }
@@ -115,7 +149,7 @@ export const verifyMFA = createAsyncThunk(
     try {
       const res = await authAPI.verifyMFA({ mfaToken, code });
       const data = res.data as any;
-      const profileRes = await authAPI.getProfile();
+      const profileRes = await authAPI.getProfile(data.accessToken);
       return { user: profileRes.data, socketAccessToken: data.accessToken || null };
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] MFA failed');
@@ -149,6 +183,30 @@ export const refreshSocketToken = createAsyncThunk(
       return res.data.accessToken as string;
     } catch {
       return null;
+    }
+  }
+);
+
+export const fetchOrganizations = createAsyncThunk(
+  'auth/fetchOrganizations',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await authAPI.myOrganizations();
+      return res.data as { id: string; name: string }[];
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to load organizations');
+    }
+  }
+);
+
+export const switchOrganization = createAsyncThunk(
+  'auth/switchOrganization',
+  async (organizationId: string, { rejectWithValue }) => {
+    try {
+      const res = await authAPI.switchOrganization(organizationId);
+      return res.data as any;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to switch organization');
     }
   }
 );
@@ -194,6 +252,9 @@ const authSlice = createSlice({
     },
     setBootstrapped(state) {
       state.bootstrapped = true;
+    },
+    setOrganizationSelectionRequired(state, action: PayloadAction<boolean>) {
+      state.organizationSelectionRequired = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -261,9 +322,32 @@ const authSlice = createSlice({
         if (action.payload) {
           state.socketAccessToken = action.payload;
         }
+      })
+      .addCase(fetchOrganizations.pending, (state) => {
+        state.organizationsLoading = true;
+      })
+      .addCase(fetchOrganizations.fulfilled, (state, action) => {
+        state.organizations = action.payload || [];
+        state.organizationsLoading = false;
+      })
+      .addCase(fetchOrganizations.rejected, (state) => {
+        state.organizationsLoading = false;
+      })
+      .addCase(switchOrganization.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(switchOrganization.fulfilled, (state, action) => {
+        state.user = action.payload ? { ...state.user, ...action.payload } : state.user;
+        state.organizationSelectionRequired = false;
+        state.bootstrapped = true;
+        state.loading = false;
+      })
+      .addCase(switchOrganization.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { clearError, resetMFA, setUser, setBootstrapped } = authSlice.actions;
+export const { clearError, resetMFA, setUser, setBootstrapped, setOrganizationSelectionRequired } = authSlice.actions;
 export default authSlice.reducer;

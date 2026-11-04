@@ -229,8 +229,16 @@ export const authAPI = {
     http.post('/auth/refresh'),
   logout: () =>
     http.post('/auth/logout').catch(() => {}),
-  getProfile: () =>
-    http.get<User>('/auth/me'),
+  getProfile: (accessToken?: string) =>
+    http.get<User>(
+      '/auth/me',
+      accessToken
+        ? {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            withCredentials: false,
+          }
+        : undefined,
+    ),
   updateProfile: (data: UpdateProfileRequest) =>
     http.put<User>('/auth/profile', data),
   changePassword: (data: ChangePasswordRequest) =>
@@ -251,6 +259,10 @@ export const authAPI = {
     http.delete(`/auth/sessions/${tokenId}`),
   deleteAllSessions: () =>
     http.delete('/auth/sessions'),
+  myOrganizations: () =>
+    http.get<Organization[]>('/auth/my-organizations'),
+  switchOrganization: (organizationId: string) =>
+    http.post<Organization>(`/auth/switch-organization`, { organizationId }),
 };
 
 // ─── Farm ──────────────────────────────────────────────────────────────────────

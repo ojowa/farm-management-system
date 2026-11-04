@@ -5,9 +5,12 @@ import {
   login as loginThunk,
   verifyMFA as verifyMFAThunk,
   fetchProfile as fetchProfileThunk,
+  fetchOrganizations as fetchOrganizationsThunk,
+  switchOrganization as switchOrganizationThunk,
   logout as logoutThunk,
   clearError,
   resetMFA,
+  setOrganizationSelectionRequired as setOrgSelectionRequiredAction,
 } from '../services/authSlice';
 
 export const useAuth = () => {
@@ -21,6 +24,9 @@ export const useAuth = () => {
     mfaSessionToken,
     bootstrapped,
     lastLoginAt,
+    organizations,
+    organizationSelectionRequired,
+    organizationsLoading,
   } = useSelector((state: RootState) => state.auth);
 
   const login = useCallback(
@@ -44,6 +50,19 @@ export const useAuth = () => {
     return result;
   }, [dispatch]);
 
+  const fetchOrganizations = useCallback(async () => {
+    const result = await dispatch(fetchOrganizationsThunk()).unwrap();
+    return result;
+  }, [dispatch]);
+
+  const switchOrganization = useCallback(
+    async (organizationId: string) => {
+      const result = await dispatch(switchOrganizationThunk(organizationId)).unwrap();
+      return result;
+    },
+    [dispatch]
+  );
+
   const logout = useCallback(async () => {
     await dispatch(logoutThunk());
   }, [dispatch]);
@@ -56,6 +75,10 @@ export const useAuth = () => {
     dispatch(resetMFA());
   }, [dispatch]);
 
+  const setOrganizationSelectionRequired = useCallback((required: boolean) => {
+    dispatch(setOrgSelectionRequiredAction(required));
+  }, [dispatch]);
+
   return {
     user,
     isAuthenticated,
@@ -65,10 +88,16 @@ export const useAuth = () => {
     mfaSessionToken,
     bootstrapped,
     lastLoginAt,
+    organizations,
+    organizationSelectionRequired,
+    organizationsLoading,
     login,
     verifyMFA,
     fetchProfile,
+    fetchOrganizations,
+    switchOrganization,
     logout,
+    setOrganizationSelectionRequired,
     clearError: handleClearError,
     resetMFA: handleResetMFA,
   };

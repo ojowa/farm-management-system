@@ -14,7 +14,14 @@ import { colors } from '../src/core/ui/UIComponents';
 import { ThemeProvider, useAppTheme } from '../src/core/theme/ThemeContext';
 import { ensurePushRegistration, setupNotificationListeners } from '../src/modules/notification';
 import { useAppSelector, useAppDispatch } from '../src/modules/auth/hooks/useAuth';
-import { fetchProfile, setBootstrapped, logout, refreshSocketToken } from '../src/modules/auth/services/authSlice';
+import {
+  fetchProfile,
+  setBootstrapped,
+  logout,
+  refreshSocketToken,
+  fetchOrganizations,
+  setOrganizationSelectionRequired,
+} from '../src/modules/auth/services/authSlice';
 import { startInactivityTracker } from '../src/core/utils/inactivity';
 import { loadCurrencySymbol } from '../src/core/utils/currency';
 
@@ -50,6 +57,12 @@ function RootLayoutNav() {
   const dispatch = useAppDispatch();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const bootstrapped = useAppSelector((state) => state.auth.bootstrapped);
+  const user = useAppSelector((state) => state.auth.user);
+  const organizationSelectionRequired = useAppSelector(
+    (state) => state.auth.organizationSelectionRequired
+  );
+  const organizations = useAppSelector((state) => state.auth.organizations);
+  const organizationsLoading = useAppSelector((state) => state.auth.organizationsLoading);
   const { colors: themeColors } = useAppTheme();
 
   useEffect(() => {
@@ -57,13 +70,26 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !bootstrapped && !organizationSelectionRequired) {
       dispatch(refreshSocketToken());
-      dispatch(fetchProfile()).unwrap().catch(() => {});
-    } else {
+      if ((user as any)?.isPlatformAdmin) {
+        dispatch(fetchOrganizations()).then((result: any) => {
+          const orgList = result?.payload as { id: string; name: string }[];
+          if (orgList && orgList.length > 1) {
+            dispatch(setOrganizationSelectionRequired(true));
+          } else {
+            dispatch(fetchProfile()).unwrap().catch(() => {});
+          }
+        }).catch(() => {
+          dispatch(fetchProfile()).unwrap().catch(() => {});
+        });
+      } else {
+        dispatch(fetchProfile()).unwrap().catch(() => {});
+      }
+    } else if (!isAuthenticated) {
       dispatch(setBootstrapped());
     }
-  }, []);
+  }, [isAuthenticated, user, bootstrapped, organizationSelectionRequired, dispatch]);
 
   useEffect(() => {
     if (bootstrapped) {
@@ -72,22 +98,28 @@ function RootLayoutNav() {
   }, [bootstrapped]);
 
   useEffect(() => {
-    if (!bootstrapped) return;
+    if (!bootstrapped && !organizationSelectionRequired) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const isOnOrgSelect = (segments as string[]).length > 1 && (segments as string[])[1] === 'select-organization';
+
+    if (organizationSelectionRequired) {
+      if (!inAuthGroup || !isOnOrgSelect) {
+        router.replace('/(auth)/select-organization');
+      }
+      return;
+    }
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(app)');
     }
-  }, [isAuthenticated, bootstrapped, segments]);
+  }, [isAuthenticated, bootstrapped, organizationSelectionRequired, segments, router]);
 
   const inactivityTimerRef = useRef<(() => void) | null>(null);
 
   const resetInactivityTimer = useCallback(() => {
-    // The inactivity tracker resets internally when we call the cleanup + re-arm.
-    // For touch events, we simply restart the timer.
     if (inactivityTimerRef.current) {
       inactivityTimerRef.current();
     }
@@ -107,7 +139,11 @@ function RootLayoutNav() {
     };
   }, [isAuthenticated, resetInactivityTimer]);
 
-  if (!bootstrapped) {
+  if (organizationSelectionRequired && !organizationsLoading) {
+    return null;
+  }
+
+  if (!bootstrapped && !organizationSelectionRequired) {
     return (
       <View style={[styles.bootGate, { backgroundColor: themeColors.background }]}>
         <ActivityIndicator size="large" color={themeColors.primary} />
@@ -131,7 +167,7 @@ function RootLayoutNav() {
           options={{ animation: 'none' }}
         />
       </Stack>
-      {isAuthenticated && <ConnectionBanner />}
+      {isAuthenticated && !organizationSelectionRequired && <ConnectionBanner />}
       <ToastHost />
     </View>
   );

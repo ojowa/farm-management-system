@@ -31,6 +31,9 @@ const initialState = {
   lastLoginAt: null,
   bootstrapped: false,
   socketAccessToken: null,
+  organizations: [],
+  organizationSelectionRequired: false,
+  organizationsLoading: false,
 };
 
 describe('authSlice — synchronous reducers', () => {
