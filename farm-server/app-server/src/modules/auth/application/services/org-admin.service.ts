@@ -56,7 +56,7 @@ export class OrgAdminService {
     return prisma.organization.findUnique({ where: { id: organizationId } });
   }
 
-  async updateOrganization(organizationId: string, data: { name?: string; phone?: string; website?: string; logo?: string }) {
+  async updateOrganization(organizationId: string, data: { name?: string; phone?: string; website?: string; logo?: string; settings?: Record<string, any> }) {
     if (!organizationId) throw new NotFoundException('No organization found');
     return prisma.organization.update({
       where: { id: organizationId },
@@ -65,6 +65,7 @@ export class OrgAdminService {
         phone: data.phone !== undefined ? data.phone?.trim() || null : undefined,
         website: data.website !== undefined ? data.website?.trim() || null : undefined,
         logo: data.logo !== undefined ? data.logo : undefined,
+        ...(data.settings !== undefined ? { settings: data.settings } : {}),
       },
     });
   }

@@ -14,7 +14,7 @@ export class OrgAdminController {
 
   @Put('me')
   @Permission('organization.manage')
-  updateOrganization(@Req() req: any, @Body() body: { name?: string; phone?: string; website?: string; logo?: string }) {
+  updateOrganization(@Req() req: any, @Body() body: { name?: string; phone?: string; website?: string; logo?: string; settings?: Record<string, any> }) {
     return this.orgAdminService.updateOrganization(req.user?.organizationId, body);
   }
 
