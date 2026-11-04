@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { isAxiosError } from 'axios';
-import { authAPI, apiClient, orgAdminAPI } from '../../../services/api';
+import { authAPI, apiClient, orgAdminAPI, organizationsAPI } from '../../../services/api';
 import { loadCurrencySymbol, setCurrencySymbol, getCurrencySymbolFromCode } from '../../../core/utils/currency';
 import { clearQueue } from '../../../store/slices/syncSlice';
 
@@ -26,10 +26,11 @@ export interface User {
   twoFactorEnabled?: boolean;
 }
 
-async function loadOrganizationCurrency(): Promise<void> {
+async function loadOrganizationCurrency(organizationId?: string): Promise<void> {
+  if (!organizationId) return;
   try {
-    const orgRes = await orgAdminAPI.getOrganization();
-    const org = orgRes?.data ?? orgRes;
+    const orgRes = await organizationsAPI.get(organizationId);
+    const org = (orgRes as any)?.data ?? orgRes;
     const currency = org?.currency;
     if (currency && typeof currency === 'string') {
       const symbol = getCurrencySymbolFromCode(currency);
@@ -123,7 +124,7 @@ export const login = createAsyncThunk(
       const profileRes = await authAPI.getProfile(data.accessToken as string | undefined);
       stage = 'currency-load';
       await loadCurrencySymbol();
-      await loadOrganizationCurrency();
+      await loadOrganizationCurrency((profileRes.data as any)?.organizationId);
       return {
         requiresMFA: false,
         user: profileRes.data,
@@ -163,7 +164,7 @@ export const fetchProfile = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await authAPI.getProfile();
-      await loadOrganizationCurrency();
+      await loadOrganizationCurrency((res.data as any)?.organizationId);
       return res.data;
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] fetchProfile failed');

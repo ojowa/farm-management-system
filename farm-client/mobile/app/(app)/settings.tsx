@@ -30,7 +30,7 @@ import {
   isPushOptedOut,
 } from '@/modules/notification';
 import { authAPI } from '@/modules/auth';
-import { orgAdminAPI } from '@/modules/settings';
+import { orgAdminAPI, organizationsAPI } from '@/modules/settings';
 import { currencyAPI } from '@/modules/finance';
 import { setCurrencySymbol, getCurrencySymbolFromCode } from '@/core/utils/currency';
 import { describeApiError } from '@/core/utils/apiError';
@@ -236,8 +236,9 @@ export default function SettingsScreen() {
   };
 
   const loadOrganizationCurrency = async () => {
+    if (!user?.organizationId) return;
     try {
-      const res = await orgAdminAPI.getOrganization();
+      const res = await organizationsAPI.get(user.organizationId);
       const org = (res as any)?.data ?? res;
       if (org?.currency) {
         setOrgCurrencyState(org.currency);
@@ -257,9 +258,13 @@ export default function SettingsScreen() {
 
   const handleSaveCurrency = async () => {
     if (!orgCurrency) return;
+    if (!user?.organizationId) {
+      Alert.alert('Error', 'No organization found');
+      return;
+    }
     setCurrencySaving(true);
     try {
-      await orgAdminAPI.updateOrganization({ currency: orgCurrency });
+      await organizationsAPI.update(user.organizationId, { currency: orgCurrency });
       await setCurrencySymbol(getCurrencySymbolFromCode(orgCurrency));
       Alert.alert('Success', 'Organization currency updated');
     } catch (err: any) {
