@@ -88,7 +88,7 @@ export const login = createAsyncThunk(
         return { requiresMFA: true, mfaToken: data.mfaSessionToken, user: data.user };
       }
       stage = 'profile-request';
-      const profileRes = await authAPI.getProfile(data.accessToken);
+      const profileRes = await authAPI.getProfile();
       stage = 'currency-load';
       await loadCurrencySymbol();
       await loadOrganizationCurrency();
@@ -115,7 +115,7 @@ export const verifyMFA = createAsyncThunk(
     try {
       const res = await authAPI.verifyMFA({ mfaToken, code });
       const data = res.data as any;
-      const profileRes = await authAPI.getProfile(data.accessToken);
+      const profileRes = await authAPI.getProfile();
       return { user: profileRes.data, socketAccessToken: data.accessToken || null };
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] MFA failed');

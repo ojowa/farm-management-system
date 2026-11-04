@@ -31,6 +31,8 @@ import {
 } from '@/modules/notification';
 import { authAPI } from '@/modules/auth';
 import { orgAdminAPI } from '@/modules/settings';
+import { currencyAPI } from '@/modules/finance';
+import { setCurrencySymbol, getCurrencySymbolFromCode } from '@/core/utils/currency';
 import { describeApiError } from '@/core/utils/apiError';
 
 /**
@@ -158,13 +160,22 @@ export default function SettingsScreen() {
   const { hasPermission } = usePermission();
   const canManageRoles = hasPermission('organization.manage');
   const canManageBilling = hasPermission('billing.manage');
+  const canManageOrganization = hasPermission('organization.manage');
+
+  // Currency
+  const [currencies, setCurrencies] = useState<{ code: string; symbol?: string | null }[]>([]);
+  const [orgCurrency, setOrgCurrencyState] = useState<string>('');
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [currencySaving, setCurrencySaving] = useState(false);
 
   useEffect(() => {
     checkNotificationStatus();
     const cleanup = setupNotificationListeners();
     if (canManageRoles) loadRoles();
+    loadOrganizationCurrency();
+    loadAvailableCurrencies();
     return cleanup;
-  }, []);
+  }, [canManageRoles]);
 
   const loadRoles = async () => {
     setRolesLoading(true);
@@ -173,6 +184,38 @@ export default function SettingsScreen() {
       setRoles(res.data);
     } catch { /* ignore */ }
     finally { setRolesLoading(false); }
+  };
+
+  const loadOrganizationCurrency = async () => {
+    try {
+      const res = await orgAdminAPI.getOrganization();
+      const org = (res as any)?.data ?? res;
+      if (org?.currency) {
+        setOrgCurrencyState(org.currency);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const loadAvailableCurrencies = async () => {
+    setCurrenciesLoading(true);
+    try {
+      const res: any = await currencyAPI.list();
+      const rows = Array.isArray(res?.data) ? res.data : res?.data?.data ?? [];
+      setCurrencies(rows);
+    } catch { /* ignore */ }
+    finally { setCurrenciesLoading(false); }
+  };
+
+  const handleSaveCurrency = async () => {
+    if (!orgCurrency) return;
+    setCurrencySaving(true);
+    try {
+      await orgAdminAPI.updateOrganization({ currency: orgCurrency });
+      await setCurrencySymbol(getCurrencySymbolFromCode(orgCurrency));
+      Alert.alert('Success', 'Organization currency updated');
+    } catch (err: any) {
+      Alert.alert('Error', describeApiError(err, 'Failed to update currency.'));
+    } finally { setCurrencySaving(false); }
   };
 
   const openRoleModal = (role?: any) => {
@@ -528,6 +571,62 @@ export default function SettingsScreen() {
             })}
           </View>
         </Card>
+
+        {canManageOrganization && (
+          <>
+            <View style={[styles.divider, themed.divider]} />
+            <Text style={[styles.sectionTitle, themed.text]}>Organization</Text>
+
+            <Card style={styles.settingItem}>
+              <View style={styles.settingItemRow}>
+                <View style={styles.settingItemText}>
+                  <Text style={[styles.settingItemTitle, themed.text]}>Base Currency</Text>
+                  <Text style={[styles.settingItemDescription, themed.textSecondary]}>
+                    Finance amounts display in this currency
+                  </Text>
+                </View>
+                <View style={styles.settingItemRight}>
+                  {currenciesLoading ? (
+                    <ActivityIndicator size="small" color={themeColors.primary} />
+                  ) : currencies.length === 0 ? (
+                    <Text style={[styles.settingItemValue, themed.textSecondary]}>{orgCurrency || '—'}</Text>
+                  ) : (
+                    <TouchableOpacity
+                      style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+                      onPress={() => {
+                        const buttons = currencies.map((c) => ({
+                          text: `${c.code}${c.symbol ? ` (${c.symbol})` : ''}`,
+                          onPress: () => setOrgCurrencyState(c.code),
+                        }));
+                        buttons.push({ text: 'Cancel', onPress: () => {} });
+                        Alert.alert(
+                          'Select Base Currency',
+                          'Choose the currency for financial amounts.',
+                          buttons
+                        );
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Select base currency"
+                    >
+                      <Text style={[styles.settingItemValue, themed.text]}>
+                        {orgCurrency || '—'}
+                      </Text>
+                      <Text style={{ fontSize: 18, color: themeColors.textSecondary }}>›</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </Card>
+
+            <Button
+              title={currencySaving ? 'Saving...' : 'Save Currency'}
+              onPress={handleSaveCurrency}
+              disabled={currencySaving || !orgCurrency}
+              variant="primary"
+              style={{ marginHorizontal: 16, marginTop: 8, marginBottom: 16 }}
+            />
+          </>
+        )}
 
         {offlineQueueCount > 0 && (
           <Card style={styles.settingItem}>
