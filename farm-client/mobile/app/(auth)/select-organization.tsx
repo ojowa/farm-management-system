@@ -13,19 +13,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '../../src/core/ui/UIComponents';
-import { useAuth } from '../../src/modules/auth/hooks/useAuth';
+import { useAuth, useAppDispatch } from '../../src/modules/auth/hooks/useAuth';
+import { setBootstrapped } from '../../src/modules/auth/services/authSlice';
 import { useAppTheme } from '../../src/core/theme/ThemeContext';
 
 export default function SelectOrganizationScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const {
     organizations,
     organizationsLoading,
     switchOrganization,
     fetchOrganizations,
+    fetchProfile,
   } = useAuth();
   const { colors: themeColors } = useAppTheme();
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     fetchOrganizations();
@@ -36,11 +40,19 @@ export default function SelectOrganizationScreen() {
       Alert.alert('Error', 'Please select an organization');
       return;
     }
+    setSwitching(true);
     try {
       await switchOrganization(selectedOrgId);
+      // Re-fetch profile so the session boots inside the chosen organization
+      // context (currency, permissions, org-scoped data), mirroring the
+      // admin portal's refreshUser() after switchOrganization.
+      await fetchProfile();
+      dispatch(setBootstrapped());
       router.replace('/(app)');
     } catch {
       // Error handled by slice
+    } finally {
+      setSwitching(false);
     }
   };
 
@@ -93,10 +105,10 @@ export default function SelectOrganizationScreen() {
           </View>
 
           <Button
-            title="Continue"
+            title={switching ? 'Switching...' : 'Continue'}
             onPress={handleSelectOrg}
-            loading={false}
-            disabled={!selectedOrgId}
+            loading={switching}
+            disabled={switching || !selectedOrgId}
             style={styles.continueButton}
           />
 

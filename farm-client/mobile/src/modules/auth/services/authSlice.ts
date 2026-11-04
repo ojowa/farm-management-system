@@ -339,7 +339,6 @@ const authSlice = createSlice({
       .addCase(switchOrganization.fulfilled, (state, action) => {
         state.user = action.payload ? { ...state.user, ...action.payload } : state.user;
         state.organizationSelectionRequired = false;
-        state.bootstrapped = true;
         state.loading = false;
       })
       .addCase(switchOrganization.rejected, (state, action) => {
