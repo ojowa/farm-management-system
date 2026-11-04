@@ -31,6 +31,7 @@ export function useDashboardConfig() {
 
   const rawSettings = orgData?.settings ?? {};
   const dbConfig = rawSettings.dashboard_config ?? null;
+  const orgCurrency = orgData?.currency ?? 'USD';
 
   // ── Derived config (defaults merged with DB overrides) ──────────────
   const config: Record<string, DashboardCardConfig> = useMemo(
@@ -98,6 +99,7 @@ export function useDashboardConfig() {
     workingConfig,
     loading,
     error,
+    orgCurrency,
     toggleCard,
     reorderCard,
     setCardRoles,

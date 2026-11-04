@@ -7,7 +7,6 @@ import { usePermission } from '@/lib/usePermission';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select } from '@/components/ui/select';
 import { Plus, RefreshCw, Save, Gauge, BarChart3, Clock, List, AlertTriangle, ShieldCheck, DollarSign, Monitor } from 'lucide-react';
 
 const ROLE_OPTIONS = ['owner', 'manager', 'accountant', 'supervisor', 'worker'];
@@ -135,17 +134,39 @@ export default function DashboardConfigPage() {
                         className="w-16"
                       />
                     </div>
-                    <Select
-                      options={[
-                        { value: '', label: 'All roles' },
-                        ...ROLE_OPTIONS.map((r) => ({ value: r, label: r })),
-                      ]}
-                      value={isAllRoles ? '' : card.roles[0] || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCardRoles(card.id, val ? [val] : []);
-                      }}
-                    />
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-muted-foreground">Roles</span>
+                      <div className="flex flex-wrap gap-2">
+                        {ROLE_OPTIONS.map((role) => {
+                          const hasRole = card.roles.includes(role);
+                          return (
+                            <label key={role} className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={hasRole}
+                                onChange={() => {
+                                  const next = hasRole
+                                    ? card.roles.filter((r) => r !== role)
+                                    : [...card.roles, role];
+                                  setCardRoles(card.id, next);
+                                }}
+                                className="rounded bg-background border-input text-primary focus:ring-0"
+                              />
+                              {role}
+                            </label>
+                          );
+                        })}
+                        <label className="flex items-center gap-1 cursor-pointer text-xs text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            checked={card.roles.length === 0}
+                            onChange={() => setCardRoles(card.id, [])}
+                            className="rounded bg-background border-input text-primary focus:ring-0"
+                          />
+                          All
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">

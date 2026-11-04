@@ -37,7 +37,7 @@ async function fetchAllTransactions(list: (params?: any) => Promise<any>): Promi
 }
 
 export default function DashboardPage() {
-  const { visibleCards } = useDashboardConfig();
+  const { visibleCards, orgCurrency } = useDashboardConfig();
   const { hasPermission, canCreate, canRead } = usePermission();
   const canAddFarm = canCreate('farm');
 
@@ -160,7 +160,7 @@ export default function DashboardPage() {
     pendingTasks,
     pendingTasksTotal,
     attendanceSummary,
-    orgCurrency: 'USD',
+    orgCurrency,
     canAddFarm,
     hasPermission,
   };

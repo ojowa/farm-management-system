@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth, useAppSelector } from '../../modules/auth/hooks/useAuth';
 import { usePermission } from '../../core/hooks/usePermission';
 import { organizationsAPI } from '../../services/api';
@@ -46,20 +46,24 @@ export function useDashboardConfig() {
   const [workingConfig, setWorkingConfig] = useState<Record<string, DashboardCardConfig>>(() => config);
 
   // ── Ensure org data is loaded ───────────────────────────────────────
-  useCallback(async () => {
-    if (!organizationId) return;
-    if (fetchedOrg) return;
-    setLoading(true);
-    try {
-      const res = await organizationsAPI.get(organizationId);
-      const org = (res as any)?.data ?? res;
-      setFetchedOrg(org);
-    } catch {
-      // Best-effort; config falls back to defaults
-    } finally {
-      setLoading(false);
-    }
-  }, [organizationId, fetchedOrg])();
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!organizationId) return;
+      if (fetchedOrg) return;
+      setLoading(true);
+      try {
+        const res = await organizationsAPI.get(organizationId);
+        const org = (res as any)?.data ?? res;
+        if (!cancelled) setFetchedOrg(org);
+      } catch {
+        // Best-effort; config falls back to defaults
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [organizationId, fetchedOrg]);
 
   const toggleCard = useCallback((cardId: string) => {
     setWorkingConfig((prev) => {
