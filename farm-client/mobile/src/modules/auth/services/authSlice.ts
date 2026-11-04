@@ -26,8 +26,8 @@ export interface User {
   twoFactorEnabled?: boolean;
 }
 
-async function loadOrganizationCurrency(organizationId?: string): Promise<void> {
-  if (!organizationId) return;
+async function loadOrganizationCurrency(organizationId?: string): Promise<string | null> {
+  if (!organizationId) return null;
   try {
     const orgRes = await organizationsAPI.get(organizationId);
     const org = (orgRes as any)?.data ?? orgRes;
@@ -35,10 +35,12 @@ async function loadOrganizationCurrency(organizationId?: string): Promise<void> 
     if (currency && typeof currency === 'string') {
       const symbol = getCurrencySymbolFromCode(currency);
       await setCurrencySymbol(symbol);
+      return currency;
     }
   } catch {
     // Best-effort: fall back to whatever is already stored (or '$').
   }
+  return null;
 }
 
 function transformUser(raw: any): User {
@@ -80,6 +82,7 @@ interface AuthState {
   organizations: { id: string; name: string }[];
   organizationSelectionRequired: boolean;
   organizationsLoading: boolean;
+  currency: string;
 }
 
 const initialState: AuthState = {
@@ -95,11 +98,12 @@ const initialState: AuthState = {
   organizations: [],
   organizationSelectionRequired: false,
   organizationsLoading: false,
+  currency: '',
 };
 
 export const login = createAsyncThunk(
   'auth/login',
-  async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+  async ({ email, password }: { email: string; password: string }, { rejectWithValue, dispatch }) => {
     let stage: 'login-request' | 'profile-request' | 'currency-load' = 'login-request';
     let responseSummary = '';
     try {
@@ -124,7 +128,8 @@ export const login = createAsyncThunk(
       const profileRes = await authAPI.getProfile(data.accessToken as string | undefined);
       stage = 'currency-load';
       await loadCurrencySymbol();
-      await loadOrganizationCurrency((profileRes.data as any)?.organizationId);
+      const loginCurrency = await loadOrganizationCurrency((profileRes.data as any)?.organizationId);
+      if (loginCurrency) dispatch(setCurrency(loginCurrency));
       return {
         requiresMFA: false,
         user: profileRes.data,
@@ -161,10 +166,11 @@ export const verifyMFA = createAsyncThunk(
 
 export const fetchProfile = createAsyncThunk(
   'auth/fetchProfile',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => {
     try {
       const res = await authAPI.getProfile();
-      await loadOrganizationCurrency((res.data as any)?.organizationId);
+      const currency = await loadOrganizationCurrency((res.data as any)?.organizationId);
+      if (currency) dispatch(setCurrency(currency));
       return res.data;
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] fetchProfile failed');
@@ -256,6 +262,9 @@ const authSlice = createSlice({
     },
     setOrganizationSelectionRequired(state, action: PayloadAction<boolean>) {
       state.organizationSelectionRequired = action.payload;
+    },
+    setCurrency(state, action: PayloadAction<string>) {
+      state.currency = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -349,5 +358,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, resetMFA, setUser, setBootstrapped, setOrganizationSelectionRequired } = authSlice.actions;
+export const { clearError, resetMFA, setUser, setBootstrapped, setOrganizationSelectionRequired, setCurrency } = authSlice.actions;
 export default authSlice.reducer;

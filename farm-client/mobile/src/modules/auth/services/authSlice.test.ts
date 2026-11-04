@@ -34,6 +34,7 @@ const initialState = {
   organizations: [],
   organizationSelectionRequired: false,
   organizationsLoading: false,
+  currency: '',
 };
 
 describe('authSlice — synchronous reducers', () => {

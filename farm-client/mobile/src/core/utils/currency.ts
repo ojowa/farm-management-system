@@ -59,6 +59,23 @@ export async function setCurrencySymbol(symbol: string): Promise<void> {
   cachedSymbol = symbol;
 }
 
+export function formatCurrencyWithCode(amount: number, code: string): string {
+  const symbol = CURRENCY_SYMBOLS[code.toUpperCase()] ?? '$';
+  if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
+  if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
+  return `${symbol}${amount.toLocaleString()}`;
+}
+
+export function formatCurrencyValueWithCode(amount: number, code: string): string {
+  const symbol = CURRENCY_SYMBOLS[code.toUpperCase()] ?? '$';
+  return `${symbol}${amount.toLocaleString()}`;
+}
+
+export function formatCurrencyFixedWithCode(amount: number, code: string, decimals = 0): string {
+  const symbol = CURRENCY_SYMBOLS[code.toUpperCase()] ?? '$';
+  return `${symbol}${Math.abs(amount).toFixed(decimals)}`;
+}
+
 export function formatCurrency(amount: number): string {
   const symbol = getCurrencySymbol();
   if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;

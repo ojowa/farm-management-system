@@ -7,12 +7,14 @@ import { profitabilityAPI } from '@/modules/finance';
 import { Card } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
-import { formatCurrencyFixed } from '@/core/utils/currency';
+import { formatCurrencyFixedWithCode } from '@/core/utils/currency';
 import { useAppTheme } from '@/core/theme/ThemeContext';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 
 export default function AnalyticsScreen() {
   const router = useRouter();
   const { colors: themeColors } = useAppTheme();
+  const baseCurrency = useAppSelector((state) => state.auth.currency || '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<any>(null);
@@ -91,15 +93,15 @@ export default function AnalyticsScreen() {
           <View style={styles.summaryGrid}>
             <View style={[styles.summaryCard, { backgroundColor: themeColors.card }]}>
               <Text style={[styles.summaryLabel, { color: themeColors.textSecondary }]}>Total Revenue</Text>
-              <Text style={[styles.summaryValue, { color: themeColors.text }]}>{formatCurrencyFixed(summary?.totalRevenue || 0)}</Text>
+              <Text style={[styles.summaryValue, { color: themeColors.text }]}>{formatCurrencyFixedWithCode(summary?.totalRevenue || 0, baseCurrency)}</Text>
             </View>
             <View style={[styles.summaryCard, { backgroundColor: themeColors.card }]}>
               <Text style={[styles.summaryLabel, { color: themeColors.textSecondary }]}>Total Expenses</Text>
-              <Text style={[styles.summaryValue, { color: themeColors.text }]}>{formatCurrencyFixed(summary?.totalExpenses || 0)}</Text>
+              <Text style={[styles.summaryValue, { color: themeColors.text }]}>{formatCurrencyFixedWithCode(summary?.totalExpenses || 0, baseCurrency)}</Text>
             </View>
             <View style={[styles.summaryCard, { backgroundColor: themeColors.card }]}>
               <Text style={[styles.summaryLabel, { color: themeColors.textSecondary }]}>Net Profit</Text>
-              <Text style={[styles.summaryValue, { color: summary?.netProfit && summary.netProfit >= 0 ? themeColors.success : themeColors.error }]}>{formatCurrencyFixed(summary?.netProfit || 0)}</Text>
+              <Text style={[styles.summaryValue, { color: summary?.netProfit && summary.netProfit >= 0 ? themeColors.success : themeColors.error }]}>{formatCurrencyFixedWithCode(summary?.netProfit || 0, baseCurrency)}</Text>
             </View>
           </View>
         </View>
@@ -118,7 +120,7 @@ export default function AnalyticsScreen() {
                   <Text style={[styles.farmValue, { color: themeColors.textSecondary }]}>{farm.cropCount || 0} crops • {farm.animalCount || 0} animals</Text>
                 </View>
                 <View style={styles.farmAmount}>
-                  <Text style={[styles.farmAmountText, { color: themeColors.text }]}>{formatCurrencyFixed(farm.netProfit || 0)}</Text>
+                  <Text style={[styles.farmAmountText, { color: themeColors.text }]}>{formatCurrencyFixedWithCode(farm.netProfit || 0, baseCurrency)}</Text>
                   <Text style={[styles.farmAmountSub, { color: themeColors.textSecondary }]}>Net Profit</Text>
                 </View>
               </TouchableOpacity>

@@ -11,6 +11,7 @@ import {
   clearError,
   resetMFA,
   setOrganizationSelectionRequired as setOrgSelectionRequiredAction,
+  setCurrency as setCurrencyAction,
 } from '../services/authSlice';
 
 export const useAuth = () => {
@@ -27,6 +28,7 @@ export const useAuth = () => {
     organizations,
     organizationSelectionRequired,
     organizationsLoading,
+    currency,
   } = useSelector((state: RootState) => state.auth);
 
   const login = useCallback(
@@ -79,6 +81,10 @@ export const useAuth = () => {
     dispatch(setOrgSelectionRequiredAction(required));
   }, [dispatch]);
 
+  const setCurrency = useCallback((currency: string) => {
+    dispatch(setCurrencyAction(currency));
+  }, [dispatch]);
+
   return {
     user,
     isAuthenticated,
@@ -98,6 +104,7 @@ export const useAuth = () => {
     switchOrganization,
     logout,
     setOrganizationSelectionRequired,
+    setCurrency,
     clearError: handleClearError,
     resetMFA: handleResetMFA,
   };

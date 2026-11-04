@@ -27,7 +27,7 @@ import { settingsAPI, currencyAPI } from '@/lib/api';
 import { apiClient } from '@/lib/api';
 import { usePermission } from '@/lib/usePermission';
 import { useAuth } from '@/lib/auth';
-import { useFetch } from '@/hooks/useFetch';
+import { clearFetchCache, useFetch } from '@/hooks/useFetch';
 
 type Tab = 'profile' | 'notifications' | 'security' | 'organization';
 
@@ -212,6 +212,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await apiClient.put(`/organizations/${organizationId}`, { currency: orgCurrency });
+      clearFetchCache('dashboard-organization');
       toast({ type: 'success', title: 'Base currency updated' });
     } catch (err: any) {
       toast({

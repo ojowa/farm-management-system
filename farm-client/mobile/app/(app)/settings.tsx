@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, setCurrency } = useAuth();
   const { mode, setMode, colors: themeColors } = useAppTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
@@ -266,6 +266,7 @@ export default function SettingsScreen() {
     try {
       await organizationsAPI.update(user.organizationId, { currency: orgCurrency });
       await setCurrencySymbol(getCurrencySymbolFromCode(orgCurrency));
+      setCurrency(orgCurrency);
       Alert.alert('Success', 'Organization currency updated');
     } catch (err: any) {
       Alert.alert('Error', describeApiError(err, 'Failed to update currency.'));

@@ -30,7 +30,7 @@ import { describeApiError } from '@/core/utils/apiError';
 // for why each endpoint answers a different shape.
 import { unwrapList, totalOf } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
-import { formatCurrency } from '@/core/utils/currency';
+import { formatCurrencyWithCode } from '@/core/utils/currency';
 
 // Per-section load failures. These are kept separate from the full-screen
 // `loadError` (which only triggers when every core list fails) so a dropped
@@ -74,6 +74,7 @@ const QUICK_ACTIONS = [
 export default function DashboardScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
+  const baseCurrency = useAppSelector((state) => state.auth.currency || '');
   const isOnline = useAppSelector((state) => state.sync.isOnline);
   const { logout } = useAuth();
   const { hasPermission } = usePermission();
@@ -607,9 +608,9 @@ export default function DashboardScreen() {
                 <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>Total Income</Text>
                 <Text
                   style={[styles.financeValue, { color: '#16A34A' }]}
-                  accessibilityLabel={finance ? `Total Income: ${formatCurrency(finance.income)}` : 'Total Income: unavailable'}
+                  accessibilityLabel={finance ? `Total Income: ${formatCurrencyWithCode(finance.income, baseCurrency)}` : 'Total Income: unavailable'}
                 >
-                  {finance ? formatCurrency(finance.income) : '—'}
+                  {finance ? formatCurrencyWithCode(finance.income, baseCurrency) : '—'}
                 </Text>
               </View>
               <View style={styles.financeDivider} />
@@ -617,9 +618,9 @@ export default function DashboardScreen() {
                 <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>Total Expenses</Text>
                 <Text
                   style={[styles.financeValue, { color: '#DC2626' }]}
-                  accessibilityLabel={finance ? `Total Expenses: ${formatCurrency(finance.expenses)}` : 'Total Expenses: unavailable'}
+                  accessibilityLabel={finance ? `Total Expenses: ${formatCurrencyWithCode(finance.expenses, baseCurrency)}` : 'Total Expenses: unavailable'}
                 >
-                  {finance ? formatCurrency(finance.expenses) : '—'}
+                  {finance ? formatCurrencyWithCode(finance.expenses, baseCurrency) : '—'}
                 </Text>
               </View>
               <View style={styles.financeDivider} />
@@ -630,9 +631,9 @@ export default function DashboardScreen() {
                     styles.financeValue,
                     { color: (finance?.net ?? 0) >= 0 ? '#16A34A' : '#DC2626' },
                   ]}
-                  accessibilityLabel={finance ? `Net Profit: ${formatCurrency(finance.net)}` : 'Net Profit: unavailable'}
+                  accessibilityLabel={finance ? `Net Profit: ${formatCurrencyWithCode(finance.net, baseCurrency)}` : 'Net Profit: unavailable'}
                 >
-                  {finance ? formatCurrency(finance.net) : '—'}
+                  {finance ? formatCurrencyWithCode(finance.net, baseCurrency) : '—'}
                 </Text>
               </View>
             </Card>
