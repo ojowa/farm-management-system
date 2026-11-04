@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import QRCode from 'react-native-qrcode-svg';
 import { authAPI } from '../../../src/modules/auth';
 import { Button, Card, TextInputField } from '../../../src/core/ui/UIComponents';
 import { useAppTheme } from '../../../src/core/theme/ThemeContext';
@@ -14,6 +15,7 @@ export default function TwoFactorSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [secret, setSecret] = useState('');
+  const [otpauthUrl, setOtpauthUrl] = useState('');
   const [code, setCode] = useState('');
 
   useEffect(() => {
@@ -28,8 +30,10 @@ export default function TwoFactorSettingsScreen() {
     try {
       const response = await authAPI.generate2FA();
       const generatedSecret = response.data?.secret;
+      const generatedUrl = response.data?.otpauthUrl;
       if (!generatedSecret) throw new Error('The server did not return a 2FA setup secret.');
       setSecret(generatedSecret);
+      setOtpauthUrl(generatedUrl || '');
       setCode('');
     } catch (error) {
       Alert.alert('Unable to set up 2FA', describeApiError(error));
@@ -48,6 +52,7 @@ export default function TwoFactorSettingsScreen() {
       await authAPI.enable2FA(code);
       setEnabled(true);
       setSecret('');
+      setOtpauthUrl('');
       setCode('');
       Alert.alert('Two-factor authentication enabled', 'Your account is now protected with an authenticator app.');
     } catch (error) {
@@ -100,8 +105,11 @@ export default function TwoFactorSettingsScreen() {
             {!!secret && (
               <View style={styles.setup}>
                 <Text style={[styles.help, { color: themeColors.text }]}>
-                  Add this key to your authenticator app, then enter its current code:
+                  Scan this QR code with Google Authenticator, or enter the key below:
                 </Text>
+                <View style={styles.qrCode}>
+                  <QRCode value={otpauthUrl || secret} size={180} />
+                </View>
                 <Text selectable style={[styles.secret, { color: themeColors.text }]}>{secret}</Text>
                 <TextInputField
                   label="6-digit code"
@@ -144,4 +152,5 @@ const styles = StyleSheet.create({
   help: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
   setup: { gap: 12, marginTop: 16 },
   secret: { fontSize: 16, fontWeight: '700', padding: 12, backgroundColor: '#eeeeee', letterSpacing: 1 },
+  qrCode: { alignSelf: 'center', marginVertical: 8 },
 });
