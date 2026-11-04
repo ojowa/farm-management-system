@@ -88,10 +88,10 @@ import type {
 
 // ─── Config ────────────────────────────────────────────────────────────────────
 
-declare const process: { env?: Record<string, string | undefined> } | undefined;
+declare const process: { env: Record<string, string | undefined> } | undefined;
 
 const API_BASE_URL: string =
-  (typeof process !== 'undefined' && process?.env?.EXPO_PUBLIC_API_URL) || '';
+  (typeof process !== 'undefined' && process.env.EXPO_PUBLIC_API_URL) || '';
 
 if (!API_BASE_URL && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'test') {
   throw new Error('[API] EXPO_PUBLIC_API_URL is not set. Create a .env file with your API URL.');
