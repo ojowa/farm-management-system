@@ -167,6 +167,55 @@ export default function SettingsScreen() {
   const [orgCurrency, setOrgCurrencyState] = useState<string>('');
   const [currenciesLoading, setCurrenciesLoading] = useState(false);
   const [currencySaving, setCurrencySaving] = useState(false);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
+  const [selectedCurrencyInModal, setSelectedCurrencyInModal] = useState<string>('');
+
+  const CURRENCY_COUNTRIES: Record<string, string> = {
+    USD: 'United States',
+    EUR: 'European Union',
+    GBP: 'United Kingdom',
+    JPY: 'Japan',
+    CAD: 'Canada',
+    AUD: 'Australia',
+    CHF: 'Switzerland',
+    CNY: 'China',
+    INR: 'India',
+    KRW: 'South Korea',
+    BRL: 'Brazil',
+    MXN: 'Mexico',
+    ZAR: 'South Africa',
+    NGN: 'Nigeria',
+    KES: 'Kenya',
+    GHS: 'Ghana',
+    AED: 'United Arab Emirates',
+    ARS: 'Argentina',
+    CLP: 'Chile',
+    COP: 'Colombia',
+    EGP: 'Egypt',
+    ETB: 'Ethiopia',
+    HKD: 'Hong Kong',
+    IDR: 'Indonesia',
+    ILS: 'Israel',
+    MYR: 'Malaysia',
+    PHP: 'Philippines',
+    PLN: 'Poland',
+    QAR: 'Qatar',
+    SAR: 'Saudi Arabia',
+    SGD: 'Singapore',
+    THB: 'Thailand',
+    TRY: 'Turkey',
+    TWD: 'Taiwan',
+    VND: 'Vietnam',
+    XAF: 'Central African CFA',
+    XOF: 'West African CFA',
+  };
+
+  const filteredCurrencies = currencies.filter((c) => {
+    const search = currencySearch.toUpperCase();
+    const country = CURRENCY_COUNTRIES[c.code] || '';
+    return c.code.includes(search) || country.toUpperCase().includes(search);
+  });
 
   useEffect(() => {
     checkNotificationStatus();
@@ -594,16 +643,9 @@ export default function SettingsScreen() {
                     <TouchableOpacity
                       style={{ paddingHorizontal: 8, paddingVertical: 4 }}
                       onPress={() => {
-                        const buttons = currencies.map((c) => ({
-                          text: `${c.code}${c.symbol ? ` (${c.symbol})` : ''}`,
-                          onPress: () => setOrgCurrencyState(c.code),
-                        }));
-                        buttons.push({ text: 'Cancel', onPress: () => {} });
-                        Alert.alert(
-                          'Select Base Currency',
-                          'Choose the currency for financial amounts.',
-                          buttons
-                        );
+                        setSelectedCurrencyInModal(orgCurrency || '');
+                        setCurrencySearch('');
+                        setShowCurrencyModal(true);
                       }}
                       accessibilityRole="button"
                       accessibilityLabel="Select base currency"
@@ -743,6 +785,85 @@ export default function SettingsScreen() {
                 title={roleSaving ? 'Saving...' : editingRole ? 'Update' : 'Create'}
                 onPress={handleSaveRole}
                 disabled={roleSaving}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCurrencyModal} animationType="slide" transparent onRequestClose={() => setShowCurrencyModal(false)}>
+        <View style={{ flex: 1, justifyContent: 'center', backgroundColor: themeColors.overlay }}>
+          <View style={{ backgroundColor: themeColors.surface, marginHorizontal: 24, marginVertical: 40, borderRadius: 16, maxHeight: '80%' }}>
+            <View style={{ padding: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16, color: themeColors.text }}>Select Base Currency</Text>
+
+              <View style={{ marginBottom: 12 }}>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: themeColors.inputBorder,
+                    backgroundColor: themeColors.inputBg,
+                    color: themeColors.inputText,
+                    borderRadius: 8,
+                    padding: 12,
+                    fontSize: 14,
+                  }}
+                  placeholder="Search currency..."
+                  placeholderTextColor={themeColors.placeholder}
+                  value={currencySearch}
+                  onChangeText={setCurrencySearch}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <ScrollView style={{ maxHeight: '60%' }}>
+                {filteredCurrencies.map((c) => (
+                  <TouchableOpacity
+                    key={c.code}
+                    style={{
+                      flexDirection: 'row',
+                      padding: 14,
+                      borderBottomWidth: 1,
+                      borderBottomColor: themeColors.borderLight,
+                    }}
+                    onPress={() => setSelectedCurrencyInModal(c.code)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: themeColors.text }}>
+                        {c.code}
+                      </Text>
+                      <Text style={{ fontSize: 13, color: themeColors.textSecondary }}>
+                        {CURRENCY_COUNTRIES[c.code] || c.symbol || ''}
+                      </Text>
+                    </View>
+                    {selectedCurrencyInModal === c.code && (
+                      <Text style={{ color: themeColors.primary, fontWeight: '700' }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+                {filteredCurrencies.length === 0 && (
+                  <View style={{ padding: 20 }}>
+                    <Text style={{ color: themeColors.textSecondary, fontSize: 14 }}>No currencies found</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+            <View style={{ flexDirection: 'row', padding: 16, borderTopWidth: 1, borderTopColor: themeColors.borderLight, justifyContent: 'flex-end', gap: 10 }}>
+              <Button
+                title="Cancel"
+                onPress={() => setShowCurrencyModal(false)}
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Select"
+                onPress={() => {
+                  setOrgCurrencyState(selectedCurrencyInModal || '');
+                  setShowCurrencyModal(false);
+                }}
+                disabled={!selectedCurrencyInModal}
+                variant="primary"
                 style={{ flex: 1 }}
               />
             </View>
