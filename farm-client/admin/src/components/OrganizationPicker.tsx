@@ -4,6 +4,7 @@ import React from 'react';
 import { useAuth } from '@/lib/auth';
 import { settingsAPI } from '@/lib/api';
 import { Building2, Loader2, ShieldCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface PlatformOrganization {
   id: string;
@@ -22,6 +23,7 @@ export function OrganizationPicker({ onChosen }: { onChosen: () => void }) {
   const [orgs, setOrgs] = React.useState<PlatformOrganization[] | null>(null);
   const [error, setError] = React.useState('');
   const [selecting, setSelecting] = React.useState<string | null>(null);
+  const [orgSearch, setOrgSearch] = React.useState('');
 
   const load = React.useCallback(async () => {
     setError('');
@@ -38,6 +40,11 @@ export function OrganizationPicker({ onChosen }: { onChosen: () => void }) {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  const filteredOrgs = (orgs ?? []).filter((org) => {
+    const search = orgSearch.toLowerCase();
+    return org.name.toLowerCase().includes(search);
+  });
 
   const choose = async (organizationId: string) => {
     setSelecting(organizationId);
@@ -70,6 +77,15 @@ export function OrganizationPicker({ onChosen }: { onChosen: () => void }) {
             {user?.firstName ? `, ${user.firstName}` : ''}. Select the
             organization you want to work in — your access stays scoped to it.
           </p>
+
+          <div className="mt-4">
+            <Input
+              placeholder="Search organizations..."
+              value={orgSearch}
+              onChange={(e) => setOrgSearch(e.target.value)}
+              className="w-full text-sm"
+            />
+          </div>
         </div>
 
         <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
@@ -80,13 +96,19 @@ export function OrganizationPicker({ onChosen }: { onChosen: () => void }) {
             </div>
           )}
 
-          {orgs?.length === 0 && (
+          {orgs !== null && orgs.length === 0 && (
             <div className="p-6 text-center text-sm text-gray-500">
               No organizations exist yet.
             </div>
           )}
 
-          {orgs?.map((org) => {
+          {orgs !== null && orgs.length > 0 && filteredOrgs.length === 0 && (
+            <div className="p-6 text-center text-sm text-gray-500">
+              No organizations match your search.
+            </div>
+          )}
+
+          {filteredOrgs.map((org) => {
             const isCurrent = org.id === user?.organizationId;
             const busy = selecting !== null;
             return (

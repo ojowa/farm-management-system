@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -30,6 +31,12 @@ export default function SelectOrganizationScreen() {
   const { colors: themeColors } = useAppTheme();
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [switching, setSwitching] = useState(false);
+  const [orgSearch, setOrgSearch] = useState('');
+
+  const filteredOrganizations = organizations.filter((org) => {
+    const search = orgSearch.toLowerCase();
+    return org.name.toLowerCase().includes(search);
+  });
 
   useEffect(() => {
     fetchOrganizations();
@@ -84,6 +91,25 @@ export default function SelectOrganizationScreen() {
             <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
               Choose the organization you want to work in
             </Text>
+
+            <View style={{ marginTop: 12 }}>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: themeColors.borderLight,
+                  backgroundColor: themeColors.inputBg,
+                  color: themeColors.inputText,
+                  borderRadius: 8,
+                  padding: 12,
+                  fontSize: 14,
+                }}
+                placeholder="Search organizations..."
+                placeholderTextColor={themeColors.placeholder}
+                value={orgSearch}
+                onChangeText={setOrgSearch}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
 
           {organizations.length === 0 && (
@@ -92,8 +118,14 @@ export default function SelectOrganizationScreen() {
             </Text>
           )}
 
+          {organizations.length > 0 && filteredOrganizations.length === 0 && (
+            <Text style={[styles.errorText, { color: themeColors.textSecondary }]} accessibilityRole="alert">
+              No organizations match your search.
+            </Text>
+          )}
+
           <View style={styles.form}>
-            {organizations.map((org) => (
+            {filteredOrganizations.map((org) => (
               <TouchableOrgCard
                 key={org.id}
                 org={org}
