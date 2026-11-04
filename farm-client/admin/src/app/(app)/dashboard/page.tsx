@@ -19,9 +19,10 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ChartCard, FarmAreaChart, FarmBarChart, FarmPieChart } from '@/components/charts';
-import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, aquacultureAPI, financeAPI, tasksAPI, attendanceAPI, profitabilityAPI } from '@/lib/api';
+import { farmsAPI, cropsAPI, livestockAPI, poultryAPI, aquacultureAPI, financeAPI, tasksAPI, attendanceAPI, profitabilityAPI, orgAdminAPI } from '@/lib/api';
 import { useFetch } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { formatCurrency } from '@/lib/formatters';
 
 /**
  * The server's `total` for a list call, as a display string.
@@ -176,6 +177,8 @@ function DashboardContent() {
   const { data: tasksData } = useFetch<any>('dashboard-tasks', () => tasksAPI.list({ status: 'PENDING' }));
   const { data: attendanceData } = useFetch<any>('dashboard-attendance', () => attendanceAPI.getToday());
   const { data: profitabilityData } = useFetch<any>('dashboard-profitability', () => profitabilityAPI.summary(), { cacheTime: 60_000 });
+  const { data: orgData } = useFetch<any>('dashboard-organization', () => orgAdminAPI.getOrganization(), { cacheTime: 60_000 });
+  const orgCurrency = orgData?.currency || 'USD';
 
   // Labels and queries are shared with the mobile dashboard's Overview cards
   // so both apps show the same five numbers for the same server calls.
@@ -434,16 +437,16 @@ function DashboardContent() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
                   <span className="text-sm font-medium">Total Income</span>
-                  <span className="text-lg font-bold text-green-600">${displayIncome.toLocaleString()}</span>
+                  <span className="text-lg font-bold text-green-600">{formatCurrency(displayIncome, orgCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                   <span className="text-sm font-medium">Total Expenses</span>
-                  <span className="text-lg font-bold text-red-600">${displayExpenses.toLocaleString()}</span>
+                  <span className="text-lg font-bold text-red-600">{formatCurrency(displayExpenses, orgCurrency)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
                   <span className="text-sm font-medium">Net Profit</span>
                   <span className={`text-lg font-bold ${displayProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${displayProfit.toLocaleString()}
+                    {formatCurrency(displayProfit, orgCurrency)}
                   </span>
                 </div>
                 <Link href="/finance" className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full">

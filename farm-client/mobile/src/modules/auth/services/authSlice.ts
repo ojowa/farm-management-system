@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { authAPI, apiClient } from '../../../services/api';
-import { loadCurrencySymbol } from '../../../core/utils/currency';
+import { isAxiosError } from 'axios';
+import { authAPI, apiClient, orgAdminAPI } from '../../../services/api';
+import { loadCurrencySymbol, setCurrencySymbol, getCurrencySymbolFromCode } from '../../../core/utils/currency';
 import { clearQueue } from '../../../store/slices/syncSlice';
 
 export interface User {
@@ -23,6 +24,20 @@ export interface User {
   subscriptionStatus?: string;
   planFeatures?: { modules: string[]; farmTypes: string[] };
   twoFactorEnabled?: boolean;
+}
+
+async function loadOrganizationCurrency(): Promise<void> {
+  try {
+    const orgRes = await orgAdminAPI.getOrganization();
+    const org = orgRes?.data ?? orgRes;
+    const currency = org?.currency;
+    if (currency && typeof currency === 'string') {
+      const symbol = getCurrencySymbolFromCode(currency);
+      await setCurrencySymbol(symbol);
+    }
+  } catch {
+    // Best-effort: fall back to whatever is already stored (or '$').
+  }
 }
 
 function transformUser(raw: any): User {
@@ -65,21 +80,30 @@ const initialState: AuthState = {
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
+    let stage: 'login-request' | 'profile-request' | 'currency-load' = 'login-request';
     try {
       const res = await authAPI.login({ email, password });
       const data = res.data as any;
       if (data.mfaRequired) {
         return { requiresMFA: true, mfaToken: data.mfaSessionToken, user: data.user };
       }
-      const profileRes = await authAPI.getProfile();
+      stage = 'profile-request';
+      const profileRes = await authAPI.getProfile(data.accessToken);
+      stage = 'currency-load';
       await loadCurrencySymbol();
+      await loadOrganizationCurrency();
       return {
         requiresMFA: false,
         user: profileRes.data,
         socketAccessToken: data.accessToken || null,
       };
-    } catch (err: any) {
-      if (__DEV__) console.warn('[THUNK] login failed');
+    } catch (err: unknown) {
+      if (__DEV__) {
+        const details = isAxiosError(err)
+          ? `code=${err.code ?? 'unknown'} status=${err.response?.status ?? 'none'}`
+          : `error=${err instanceof Error ? err.name : 'UnknownError'}`;
+        console.warn(`[THUNK] login failed at ${stage}: ${details}`);
+      }
       return rejectWithValue('Login failed. Please check your credentials and try again.');
     }
   }
@@ -91,7 +115,7 @@ export const verifyMFA = createAsyncThunk(
     try {
       const res = await authAPI.verifyMFA({ mfaToken, code });
       const data = res.data as any;
-      const profileRes = await authAPI.getProfile();
+      const profileRes = await authAPI.getProfile(data.accessToken);
       return { user: profileRes.data, socketAccessToken: data.accessToken || null };
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] MFA failed');
@@ -105,6 +129,7 @@ export const fetchProfile = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await authAPI.getProfile();
+      await loadOrganizationCurrency();
       return res.data;
     } catch (err: any) {
       if (__DEV__) console.warn('[THUNK] fetchProfile failed');

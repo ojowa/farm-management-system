@@ -2,6 +2,25 @@ import { Platform } from 'react-native';
 
 const CURRENCY_KEY = 'currency_symbol';
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  CAD: 'C$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  CNY: '¥',
+  INR: '₹',
+  KRW: '₩',
+  BRL: 'R$',
+  MXN: 'MX$',
+  ZAR: 'R',
+  NGN: '₦',
+  KES: 'KSh',
+  GHS: 'GH₵',
+};
+
 let cachedSymbol: string | null = null;
 
 async function getItem(key: string): Promise<string | null> {
@@ -23,6 +42,10 @@ async function setItem(key: string, value: string): Promise<void> {
 
 export function getCurrencySymbol(): string {
   return cachedSymbol ?? '$';
+}
+
+export function getCurrencySymbolFromCode(code: string): string {
+  return CURRENCY_SYMBOLS[code.toUpperCase()] ?? '$';
 }
 
 export async function loadCurrencySymbol(): Promise<string> {

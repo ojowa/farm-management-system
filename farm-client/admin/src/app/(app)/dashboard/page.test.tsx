@@ -162,9 +162,9 @@ describe('DashboardPage', () => {
     );
 
     // The summary card beside it reads from the same server answer.
-    expect(await screen.findByText('$800')).toBeInTheDocument();
-    expect(screen.getByText('$300')).toBeInTheDocument();
-    expect(screen.getByText('$500')).toBeInTheDocument();
+    expect(await screen.findByText('$800.00')).toBeInTheDocument();
+    expect(screen.getByText('$300.00')).toBeInTheDocument();
+    expect(screen.getByText('$500.00')).toBeInTheDocument();
   });
 
   it('keeps paging the ledger until the server says it is covered', async () => {
