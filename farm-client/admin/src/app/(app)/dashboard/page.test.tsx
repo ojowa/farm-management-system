@@ -35,6 +35,10 @@ vi.mock('@/lib/api', () => ({
   tasksAPI: { list: mocks.tasksList },
   attendanceAPI: { getToday: mocks.attendanceToday },
   profitabilityAPI: { summary: mocks.profitSummary },
+  orgAdminAPI: {
+    getOrganization: vi.fn(() => Promise.resolve({ data: { id: 'org1', settings: {} } })),
+    updateOrganization: vi.fn(() => Promise.resolve({})),
+  },
 }));
 
 vi.mock('@/lib/usePermission', () => ({

@@ -75,6 +75,27 @@ jest.mock('@/modules/notification', () => ({
   },
 }));
 
+jest.mock('@/core/hooks/useDashboardConfig', () => ({
+  useDashboardConfig: () => ({
+    visibleCards: [
+      { id: 'overview', enabled: true, order: 0, roles: [], title: 'Overview', category: 'overview', icon: '📊', defaultEnabled: true, defaultRoles: [] },
+      { id: 'financial-summary', enabled: true, order: 1, roles: [], title: 'Financial Summary', category: 'finance', icon: '💰', defaultEnabled: true, defaultRoles: [], requiredPermission: 'finance.read' },
+      { id: 'alerts', enabled: true, order: 2, roles: [], title: 'Alerts', category: 'operations', icon: '⚠️', defaultEnabled: true, defaultRoles: [] },
+      { id: 'todays-attendance', enabled: true, order: 3, roles: [], title: "Today's Attendance", category: 'hr', icon: '👥', defaultEnabled: true, defaultRoles: [], requiredPermission: 'hr.read' },
+      { id: 'pending-tasks', enabled: true, order: 4, roles: [], title: 'Pending Tasks', category: 'operations', icon: '📋', defaultEnabled: true, defaultRoles: [], requiredPermission: 'hr.read' },
+      { id: 'quick-actions', enabled: true, order: 5, roles: [], title: 'Quick Actions', category: 'operations', icon: '⚡', defaultEnabled: true, defaultRoles: [] },
+      { id: 'recent-activity', enabled: true, order: 6, roles: [], title: 'Recent Activity', category: 'operations', icon: '📬', defaultEnabled: true, defaultRoles: [] },
+    ],
+    workingConfig: {},
+    toggleCard: jest.fn(),
+    reorderCard: jest.fn(),
+    setCardRoles: jest.fn(),
+    resetToDefaults: jest.fn(),
+    saveConfig: jest.fn(),
+    loading: false,
+  }),
+}));
+
 jest.mock('@/modules/auth/hooks/useAuth', () => ({
   useAppSelector: (selector: any) => selector(mockRootState),
   useAuth: () => ({ logout: jest.fn(), user: mockAuthUser }),

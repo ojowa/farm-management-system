@@ -13,6 +13,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
 import { useAppSelector, useAuth } from '@/modules/auth/hooks/useAuth';
 import { usePermission } from '@/core/hooks/usePermission';
+import { useDashboardConfig } from '@/core/hooks/useDashboardConfig';
+import { MobileDashboardRenderer } from '@/core/dashboard/MobileDashboardRenderer';
 import { farmsAPI } from '@/modules/farm';
 import { cropsAPI } from '@/modules/crop';
 import { livestockAPI } from '@/modules/livestock';
@@ -22,20 +24,13 @@ import { financeAPI, profitabilityAPI } from '@/modules/finance';
 import { tasksAPI } from '@/modules/worker';
 import { attendanceAPI } from '@/modules/hr';
 import { notificationsAPI } from '@/modules/notification';
-import { Card } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
-// Shared across every screen that reads a list payload — see the module doc
-// for why each endpoint answers a different shape.
 import { unwrapList, totalOf } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { formatCurrencyWithCode } from '@/core/utils/currency';
 
-// Per-section load failures. These are kept separate from the full-screen
-// `loadError` (which only triggers when every core list fails) so a dropped
-// connection shows a retryable error in the affected section instead of
-// masquerading as "No pending tasks" / "No attendance data".
 type DashboardSectionErrors = {
   finance: string | null;
   tasks: string | null;
@@ -49,28 +44,6 @@ type FinanceSummary = {
   net: number;
 };
 
-type DashboardAlert = {
-  key: string;
-  severity: 'warning' | 'destructive';
-  title: string;
-  description: string;
-  action: string;
-  route: string;
-};
-
-// Create shortcuts mirroring the admin dashboard's quick actions, pointed at
-// the mobile `add.tsx` routes and gated by the same permission strings the
-// sidebar config / admin routePermissions use.
-const QUICK_ACTIONS = [
-  { key: 'farm', label: 'Add Farm', icon: '🌾', route: '/farms/add', permission: 'farm.write' },
-  { key: 'crop', label: 'New Crop', icon: '🌱', route: '/crops/add', permission: 'crop.write' },
-  { key: 'livestock', label: 'Add Livestock', icon: '🐄', route: '/livestock/add', permission: 'livestock.write' },
-  { key: 'poultry', label: 'Add Poultry', icon: '🥚', route: '/poultry/add', permission: 'poultry.write' },
-  { key: 'aquaculture', label: 'Stock Pond', icon: '🐟', route: '/aquaculture/add', permission: 'aquaculture.write' },
-  { key: 'finance', label: 'Record Transaction', icon: '💰', route: '/finance/add', permission: 'finance.write' },
-  { key: 'worker', label: 'Add Worker', icon: '👷', route: '/workers/add', permission: 'worker.write' },
-];
-
 export default function DashboardScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
@@ -80,6 +53,9 @@ export default function DashboardScreen() {
   const { hasPermission } = usePermission();
   const { colors: themeColors, isDark } = useAppTheme();
   const { error: showError } = useToasts();
+  const { visibleCards, workingConfig, toggleCard, reorderCard, setCardRoles, resetToDefaults, saveConfig } =
+    useDashboardConfig();
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -121,22 +97,11 @@ export default function DashboardScreen() {
         notifsRes,
         unreadRes,
       ] = await Promise.allSettled([
-        // `limit: 1` on the count-only queries: the card reads the server's
-        // `total`, so there is no reason to pull a page of rows the screen
-        // never renders (and never did — it only counted them).
         farmsAPI.list({ limit: 1 }),
         cropsAPI.list({ limit: 1 }),
         livestockAPI.list({ limit: 1 }),
         poultryAPI.list({ limit: 1 }),
-        // Ponds were the one farm module the landing page never asked about,
-        // so Aquaculture had no Overview presence at all. It rides the same
-        // allSettled batch as the rest: an unentitled caller (no
-        // aquaculture.read) just rejects and falls back to 0.
         aquacultureAPI.listPonds({ page: 1, limit: 1 }),
-        // The profitability summary is the primary financial source; these two
-        // only matter as its fallback, and the fallback used to sum just the
-        // server's default page (20 rows). Ask for the full ledger so the
-        // fallback can't disagree with the summary it stands in for.
         financeAPI.listSales({ limit: 1000 }),
         financeAPI.listExpenses({ limit: 1000 }),
         profitabilityAPI.summary(),
@@ -163,13 +128,6 @@ export default function DashboardScreen() {
       const crops = cropsRes.status === 'fulfilled' ? unwrapList(cropsRes.value?.data) : [];
       const livestock = livestockRes.status === 'fulfilled' ? unwrapList(livestockRes.value?.data) : [];
       const poultry = poultryRes.status === 'fulfilled' ? unwrapList(poultryRes.value?.data) : [];
-
-      // Every Overview number is the server's own `total` for a `limit: 1`
-      // list call — the same figure the section's list page shows. These cards
-      // used to count the rows the client received: filtering farms on
-      // `status`, summing livestock/poultry `quantity`. The server paginates
-      // by default (10 farms, 20 livestock/poultry rows), so from the 11th
-      // farm on, the cards silently under-reported what the server had.
       const pondsRows = pondsRes.status === 'fulfilled' ? unwrapList(pondsRes.value?.data) : [];
 
       setStats({
@@ -177,18 +135,9 @@ export default function DashboardScreen() {
         totalCrops: totalOf(cropsRes, crops),
         totalLivestock: totalOf(livestockRes, livestock),
         totalPoultry: totalOf(poultryRes, poultry),
-        // listPonds answers `{ data: Pond[], total }`; unwrapList already picks
-        // the rows out, so only the count needs the raw body.
         totalPonds: totalOf(pondsRes, pondsRows),
       });
 
-      // ── Financial summary ──────────────────────────────────────────────
-      // Primary source is GET /profitability/summary (same as the admin
-      // dashboard). When that endpoint is unavailable (older server, or the
-      // caller lacks finance scope), fall back to summing the raw sales and
-      // expenses lists client-side. Sales store their value in `total` (or
-      // quantity × price) — not `amount` — so a naive `amount` filter drops
-      // every row and revenue always renders $0.
       const sales = salesRes.status === 'fulfilled' ? unwrapList(salesRes.value?.data) : [];
       const expenseRows = expensesRes.status === 'fulfilled' ? unwrapList(expensesRes.value?.data) : [];
       const salesSum = sales.reduce((sum: number, sale: any) => {
@@ -215,9 +164,6 @@ export default function DashboardScreen() {
       const tasks = tasksRes.status === 'fulfilled' ? unwrapList(tasksRes.value?.data) : [];
       const notifs = notifsRes.status === 'fulfilled' ? unwrapList(notifsRes.value?.data) : [];
 
-      // GET /attendance/today answers `{ records, summary }`; older callers (and
-      // this screen's tests) still hand back a bare array — accept both so a
-      // shape change can never masquerade as "No attendance data".
       const todayPayload: any =
         attendanceRes.status === 'fulfilled' ? attendanceRes.value?.data : null;
       const attendanceList: any[] = Array.isArray(todayPayload)
@@ -244,8 +190,6 @@ export default function DashboardScreen() {
           }
         : null;
 
-      // Record per-section failures so each section can render its own
-      // retryable error instead of pretending the data is simply empty.
       const firstFinanceFailure = [salesRes, expensesRes, profitabilityRes].find(
         (r) => r.status === 'rejected'
       ) as PromiseRejectedResult | undefined;
@@ -270,9 +214,6 @@ export default function DashboardScreen() {
       setRecentActivity(notifs.slice(0, 5));
       setUnreadNotifs(unreadRes.status === 'fulfilled' ? (unreadRes.value?.data?.count ?? 0) : 0);
 
-      // Any successful load clears the full-screen error even when silent, so
-      // a background retry (reconnect / refocus) can recover the dashboard
-      // without the user tapping Retry.
       setLoadError(null);
     } catch (error) {
       const message = describeApiError(error, 'Couldn’t load your dashboard. Please try again.');
@@ -289,18 +230,12 @@ export default function DashboardScreen() {
     await loadDashboardData(true);
   }, [loadDashboardData]);
 
-  // Single trigger: useFocusEffect runs on mount and whenever the screen
-  // regains focus, so a separate useEffect here would double-fetch on mount.
   useFocusEffect(
     useCallback(() => {
       loadDashboardData(true);
     }, [loadDashboardData])
   );
 
-  // Reconnect self-heal: when NetInfo flips `isOnline` back to true, quietly
-  // reload if the last load left any section (or the whole screen) in an
-  // error state — otherwise the user would sit on "No connection…" cards
-  // until they noticed the pull-to-refresh.
   const wasOnlineRef = useRef(isOnline);
   useEffect(() => {
     const cameOnline = isOnline && !wasOnlineRef.current;
@@ -310,15 +245,12 @@ export default function DashboardScreen() {
     }
   }, [isOnline, loadError, sectionErrors, loadDashboardData]);
 
-  // Shared retry for the per-section error cards — reloads everything
-  // quietly (the load is one batched request anyway).
   const retryLoad = useCallback(() => {
     loadDashboardData(true);
   }, [loadDashboardData]);
 
   const firstName = user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
 
-  // Same confirm-then-sign-out flow as the sidebar footer and settings screen.
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -362,83 +294,41 @@ export default function DashboardScreen() {
     }
   };
 
-  // Operational alerts, mirroring the admin dashboard: absent workers,
-  // tasks still pending, and spending more than the farm earns.
-  const alerts: DashboardAlert[] = [];
-  if (attendanceSummary && attendanceSummary.absent > 0) {
-    alerts.push({
-      key: 'absent',
-      severity: 'warning',
-      title: 'Workers absent today',
-      description: `${attendanceSummary.absent} worker(s) marked absent`,
-      action: 'Attendance',
-      route: '/attendance',
-    });
-  }
-  if (pendingTasksTotal > 0) {
-    alerts.push({
-      key: 'tasks',
-      severity: 'warning',
-      title: 'Tasks awaiting completion',
-      description: `${pendingTasksTotal} pending task(s) assigned`,
-      action: 'Tasks',
-      route: '/tasks',
-    });
-  }
-  if (finance && finance.net < 0 && finance.income > 0) {
-    alerts.push({
-      key: 'spend',
-      severity: 'destructive',
-      title: 'Expenses exceed income',
-      description: 'Running costs are currently higher than revenue',
-      action: 'Finance',
-      route: '/finance',
-    });
-  }
+  const financeFailed =
+    finance === null && sectionErrors.finance !== null;
 
-  const permittedActions = QUICK_ACTIONS.filter((action) => hasPermission(action.permission));
-
-  const dynamicStyles = {
-    container: {
-      backgroundColor: themeColors.background,
-    },
-    header: {
-      backgroundColor: themeColors.headerBg || themeColors.primary,
-    },
-    sectionTitle: {
-      color: themeColors.text,
-    },
-    cardBackground: {
-      backgroundColor: themeColors.card,
-      borderColor: isDark ? themeColors.border : 'transparent',
-      borderWidth: isDark ? 1 : 0,
-    },
-    statLabel: {
-      color: themeColors.textSecondary,
-    },
-    statValue: {
-      color: themeColors.primary,
-    },
-    actionTitle: {
-      color: themeColors.text,
-    },
-    actionDesc: {
-      color: themeColors.textSecondary,
-    },
-    alertWarning: {
-      backgroundColor: isDark ? '#3A2E07' : '#FFFBEB',
-      borderColor: isDark ? '#92400E' : '#FDE68A',
-    },
-    alertDestructive: {
-      backgroundColor: isDark ? '#450A0A' : '#FEF2F2',
-      borderColor: isDark ? '#991B1B' : '#FECACA',
-    },
+  const data = {
+    stats,
+    statsLoading: loading,
+    finance,
+    financeFailed,
+    firstFinanceFailure: null,
+    pendingTasks,
+    pendingTasksTotal,
+    tasksFailed: sectionErrors.tasks !== null,
+    attendanceSummary,
+    attendanceFailed: sectionErrors.attendance !== null,
+    unreadNotifs,
+    recentActivity,
+    activityFailed: sectionErrors.activity !== null,
+    sectionErrors,
+    baseCurrency,
+    hasPermission,
+    router,
+    themeColors,
+    isDark,
+    onRetryFinance: retryLoad,
+    onRetryTasks: retryLoad,
+    onRetryAttendance: retryLoad,
+    onRetryActivity: retryLoad,
+    formatDueDate,
+    formatActivityTime,
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }, styles.headerRow]}>
           <MenuButton />
           <View style={styles.headerTexts}>
             <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
@@ -452,8 +342,8 @@ export default function DashboardScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={[styles.container, dynamicStyles.container]}>
-        <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }, styles.headerRow]}>
           <MenuButton />
           <View style={styles.headerTexts}>
             <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
@@ -475,7 +365,7 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, dynamicStyles.container]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -487,7 +377,7 @@ export default function DashboardScreen() {
           />
         }
       >
-        <View style={[styles.header, dynamicStyles.header, styles.headerRow]}>
+        <View style={[styles.header, { backgroundColor: themeColors.headerBg || themeColors.primary }, styles.headerRow]}>
           <MenuButton />
           <View style={styles.headerTexts}>
           <Text style={styles.greeting}>Welcome back, {firstName}! 👋</Text>
@@ -533,389 +423,7 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.content}>
-          {/* Overview — five cards whose labels and queries mirror the admin
-              dashboard's stat row, each value the server's own `total`. */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Overview</Text>
-            <View style={styles.statsRow}>
-              <Card
-                style={[styles.statCard, dynamicStyles.cardBackground]}
-                onPress={() => router.push('/farms')}
-                accessibilityLabel={`Total Farms: ${stats.totalFarms}`}
-              >
-                <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🌾 Total Farms</Text>
-                <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalFarms}</Text>
-              </Card>
-              <Card
-                style={[styles.statCard, dynamicStyles.cardBackground]}
-                onPress={() => router.push('/crops')}
-                accessibilityLabel={`Total Crops: ${stats.totalCrops}`}
-              >
-                <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🌱 Total Crops</Text>
-                <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalCrops}</Text>
-              </Card>
-            </View>
-            <View style={styles.statsRow}>
-              <Card
-                style={[styles.statCard, dynamicStyles.cardBackground]}
-                onPress={() => router.push('/livestock')}
-                accessibilityLabel={`Livestock: ${stats.totalLivestock}`}
-              >
-                <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🐄 Livestock</Text>
-                <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalLivestock}</Text>
-              </Card>
-              <Card
-                style={[styles.statCard, dynamicStyles.cardBackground]}
-                onPress={() => router.push('/poultry')}
-                accessibilityLabel={`Poultry: ${stats.totalPoultry}`}
-              >
-                <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🥚 Poultry</Text>
-                <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalPoultry}</Text>
-              </Card>
-            </View>
-            {/* Aquaculture was missing from Overview entirely — the other four
-                farm types each had a card, ponds had none. Permission-gated on
-                aquaculture.read, same as the sidebar entry. */}
-            {hasPermission('aquaculture.read') && (
-              <View style={styles.statsRow}>
-                <Card
-                  style={[styles.statCard, dynamicStyles.cardBackground]}
-                  onPress={() => router.push('/aquaculture')}
-                  accessibilityLabel={`Ponds: ${stats.totalPonds}`}
-                >
-                  <Text style={[styles.statLabel, dynamicStyles.statLabel]}>🐟 Ponds</Text>
-                  <Text style={[styles.statValue, dynamicStyles.statValue]}>{stats.totalPonds}</Text>
-                </Card>
-              </View>
-            )}
-          </View>
-
-          {/* Financial Summary */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Financial Summary</Text>
-              <TouchableOpacity
-                onPress={() => router.push('/finance/profitability')}
-                accessibilityRole="button"
-                accessibilityLabel="View profitability report"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>Profitability</Text>
-              </TouchableOpacity>
-            </View>
-            <Card style={[styles.financeCard, dynamicStyles.cardBackground]}>
-              <View style={styles.financeRow}>
-                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>Total Income</Text>
-                <Text
-                  style={[styles.financeValue, { color: '#16A34A' }]}
-                  accessibilityLabel={finance ? `Total Income: ${formatCurrencyWithCode(finance.income, baseCurrency)}` : 'Total Income: unavailable'}
-                >
-                  {finance ? formatCurrencyWithCode(finance.income, baseCurrency) : '—'}
-                </Text>
-              </View>
-              <View style={styles.financeDivider} />
-              <View style={styles.financeRow}>
-                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>Total Expenses</Text>
-                <Text
-                  style={[styles.financeValue, { color: '#DC2626' }]}
-                  accessibilityLabel={finance ? `Total Expenses: ${formatCurrencyWithCode(finance.expenses, baseCurrency)}` : 'Total Expenses: unavailable'}
-                >
-                  {finance ? formatCurrencyWithCode(finance.expenses, baseCurrency) : '—'}
-                </Text>
-              </View>
-              <View style={styles.financeDivider} />
-              <View style={styles.financeRow}>
-                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>Net Profit</Text>
-                <Text
-                  style={[
-                    styles.financeValue,
-                    { color: (finance?.net ?? 0) >= 0 ? '#16A34A' : '#DC2626' },
-                  ]}
-                  accessibilityLabel={finance ? `Net Profit: ${formatCurrencyWithCode(finance.net, baseCurrency)}` : 'Net Profit: unavailable'}
-                >
-                  {finance ? formatCurrencyWithCode(finance.net, baseCurrency) : '—'}
-                </Text>
-              </View>
-            </Card>
-            {sectionErrors.finance && (
-              <>
-                <Text
-                  style={[
-                    styles.quickActionDescription,
-                    dynamicStyles.actionDesc,
-                    { marginTop: 8 },
-                  ]}
-                >
-                  {sectionErrors.finance}
-                </Text>
-                <TouchableOpacity
-                  onPress={retryLoad}
-                  accessibilityRole="button"
-                  accessibilityLabel="Retry loading financial summary"
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600', marginTop: 6 }}>
-                    Retry
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-            <TouchableOpacity
-              onPress={() => router.push('/finance')}
-              style={[styles.viewAllButton, { borderColor: themeColors.border }]}
-              accessibilityRole="button"
-              accessibilityLabel="View finance"
-            >
-              <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View Finance →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Alerts */}
-          {alerts.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Alerts</Text>
-              {alerts.map((alert) => (
-                <Card
-                  key={alert.key}
-                  style={[
-                    styles.alertCard,
-                    alert.severity === 'destructive'
-                      ? dynamicStyles.alertDestructive
-                      : dynamicStyles.alertWarning,
-                  ]}
-                  onPress={() => router.push(alert.route)}
-                  accessibilityLabel={`${alert.title}. ${alert.description}`}
-                >
-                  <View style={styles.alertRow}>
-                    <Text style={styles.alertIcon}>⚠️</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: '600',
-                          color: alert.severity === 'destructive' ? '#DC2626' : '#B45309',
-                        }}
-                      >
-                        {alert.title}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: alert.severity === 'destructive' ? '#B91C1C' : '#92400E',
-                          marginTop: 2,
-                        }}
-                      >
-                        {alert.description}
-                      </Text>
-                    </View>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: '600',
-                        color: alert.severity === 'destructive' ? '#DC2626' : '#B45309',
-                        marginLeft: 8,
-                      }}
-                    >
-                      {alert.action} →
-                    </Text>
-                  </View>
-                </Card>
-              ))}
-            </View>
-          )}
-
-          {/* Today's Attendance */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Today's Attendance</Text>
-              <TouchableOpacity
-                onPress={() => router.push('/attendance')}
-                accessibilityRole="button"
-                accessibilityLabel="View all attendance records"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View all</Text>
-              </TouchableOpacity>
-            </View>
-            {sectionErrors.attendance ? (
-              <StateView
-                variant="error"
-                title="Couldn’t load attendance"
-                message={sectionErrors.attendance}
-                onRetry={retryLoad}
-                retryLabel="Retry"
-                style={styles.sectionState}
-              />
-            ) : attendanceSummary ? (
-              <>
-                <View style={styles.statsRow}>
-                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Present: ${attendanceSummary.present}`}>
-                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Present</Text>
-                    <Text style={[styles.statValue, { color: '#16A34A' }]}>{attendanceSummary.present}</Text>
-                  </Card>
-                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Absent: ${attendanceSummary.absent}`}>
-                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Absent</Text>
-                    <Text style={[styles.statValue, { color: '#DC2626' }]}>{attendanceSummary.absent}</Text>
-                  </Card>
-                </View>
-                <View style={styles.statsRow}>
-                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Late: ${attendanceSummary.late}`}>
-                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Late</Text>
-                    <Text style={[styles.statValue, { color: '#D97706' }]}>{attendanceSummary.late}</Text>
-                  </Card>
-                  <Card style={[styles.statCard, dynamicStyles.cardBackground]} accessibilityLabel={`Total records today: ${attendanceSummary.total}`}>
-                    <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Total</Text>
-                    <Text style={[styles.statValue, dynamicStyles.statValue]}>{attendanceSummary.total}</Text>
-                  </Card>
-                </View>
-              </>
-            ) : (
-              <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
-                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>No attendance data</Text>
-              </Card>
-            )}
-          </View>
-
-          {/* Pending Tasks */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Pending Tasks</Text>
-              <TouchableOpacity
-                onPress={() => router.push('/tasks')}
-                accessibilityRole="button"
-                accessibilityLabel="View all pending tasks"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View all</Text>
-              </TouchableOpacity>
-            </View>
-            {sectionErrors.tasks ? (
-              <StateView
-                variant="error"
-                title="Couldn’t load tasks"
-                message={sectionErrors.tasks}
-                onRetry={retryLoad}
-                retryLabel="Retry"
-                style={styles.sectionState}
-              />
-            ) : pendingTasks.length === 0 ? (
-              <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
-                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>No pending tasks</Text>
-              </Card>
-            ) : (
-              pendingTasks.map((task: any) => (
-                <Card
-                  key={task.id}
-                  style={[styles.quickActionCard, dynamicStyles.cardBackground]}
-                  onPress={() => router.push(`/tasks/${task.id}`)}
-                  accessibilityLabel={`Task: ${task.title}, Priority: ${task.priority}`}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={[styles.quickActionTitle, dynamicStyles.actionTitle]} numberOfLines={1}>{task.title}</Text>
-                      <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>
-                        {task.assignedToName || 'Unassigned'}{formatDueDate(task.dueDate)}
-                      </Text>
-                    </View>
-                    <View
-                      style={{
-                        backgroundColor: task.priority === 'URGENT'
-                          ? (isDark ? '#7F1D1D' : '#FEE2E2')
-                          : task.priority === 'HIGH'
-                          ? (isDark ? '#7C2D12' : '#FFEDD5')
-                          : (isDark ? '#374151' : '#F3F4F6'),
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderRadius: 12,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: '600',
-                          color: task.priority === 'URGENT'
-                            ? (isDark ? '#FCA5A5' : '#DC2626')
-                            : task.priority === 'HIGH'
-                            ? (isDark ? '#FDBA74' : '#EA580C')
-                            : (isDark ? '#D1D5DB' : '#6B7280'),
-                        }}
-                      >
-                        {task.priority}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              ))
-            )}
-          </View>
-
-          {/* Quick Actions — create shortcuts, permission-gated like admin */}
-          {permittedActions.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Quick Actions</Text>
-              <View style={styles.quickGrid}>
-                {permittedActions.map((action) => (
-                  <Card
-                    key={action.key}
-                    style={[styles.quickGridItem, dynamicStyles.cardBackground]}
-                    onPress={() => router.push(action.route)}
-                    accessibilityLabel={action.label}
-                  >
-                    <Text style={styles.quickGridIcon}>{action.icon}</Text>
-                    <Text
-                      style={[styles.quickGridLabel, dynamicStyles.actionTitle]}
-                      numberOfLines={1}
-                    >
-                      {action.label}
-                    </Text>
-                  </Card>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Recent Activity */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Recent Activity</Text>
-              <TouchableOpacity
-                onPress={() => router.push('/notifications')}
-                accessibilityRole="button"
-                accessibilityLabel="View all notifications"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ color: themeColors.primary, fontSize: 14, fontWeight: '600' }}>View all</Text>
-              </TouchableOpacity>
-            </View>
-            {sectionErrors.activity ? (
-              <StateView
-                variant="error"
-                title="Couldn’t load activity"
-                message={sectionErrors.activity}
-                onRetry={retryLoad}
-                retryLabel="Retry"
-                style={styles.sectionState}
-              />
-            ) : recentActivity.length === 0 ? (
-              <Card style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
-                <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]}>No recent activity</Text>
-              </Card>
-            ) : (
-              recentActivity.map((item) => (
-                <Card key={item.id} style={[styles.quickActionCard, dynamicStyles.cardBackground]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.quickActionTitle, dynamicStyles.actionTitle]}>{item.title}</Text>
-                      <Text style={[styles.quickActionDescription, dynamicStyles.actionDesc]} numberOfLines={2}>{item.message}</Text>
-                    </View>
-                    <Text style={{ fontSize: 11, color: themeColors.textSecondary, marginLeft: 8 }}>
-                      {formatActivityTime(item.createdAt)}
-                    </Text>
-                  </View>
-                </Card>
-              ))
-            )}
-          </View>
+          <MobileDashboardRenderer data={data} visibleCards={visibleCards} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -985,124 +493,5 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingVertical: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  // Inline override for StateView inside a ScrollView section: neutralize
-  // its flex:1 full-screen sizing so it renders as a compact section card.
-  sectionState: {
-    flex: 0,
-    paddingVertical: 24,
-  },
-  quickActionCard: {
-    padding: 16,
-    marginBottom: 12,
-  },
-  quickActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  quickActionText: {
-    flex: 1,
-  },
-  quickActionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  quickActionDescription: {
-    fontSize: 13,
-  },
-  quickActionIcon: {
-    fontSize: 24,
-    marginLeft: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  statCard: {
-    flex: 1,
-    padding: 12,
-  },
-  statLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  financeCard: {
-    padding: 16,
-  },
-  financeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  financeValue: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  financeDivider: {
-    height: 1,
-    opacity: 0.15,
-    backgroundColor: '#9CA3AF',
-    marginVertical: 2,
-  },
-  viewAllButton: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  alertCard: {
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-  },
-  alertRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  alertIcon: {
-    fontSize: 16,
-    marginRight: 10,
-    marginTop: 1,
-  },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  quickGridItem: {
-    width: '47%',
-    padding: 14,
-    alignItems: 'flex-start',
-  },
-  quickGridIcon: {
-    fontSize: 22,
-    marginBottom: 6,
-  },
-  quickGridLabel: {
-    fontSize: 13,
-    fontWeight: '600',
   },
 });
