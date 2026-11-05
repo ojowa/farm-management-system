@@ -53,6 +53,7 @@ function transformUser(raw: any): User {
     ...raw,
     role: roleName,
     permissions,
+    twoFactorEnabled: Boolean(raw.twoFactorEnabled),
   };
 }
 
@@ -83,6 +84,7 @@ interface AuthState {
   organizationSelectionRequired: boolean;
   organizationsLoading: boolean;
   currency: string;
+  twoFactorEnabled: boolean;
 }
 
 const initialState: AuthState = {
@@ -99,6 +101,7 @@ const initialState: AuthState = {
   organizationSelectionRequired: false,
   organizationsLoading: false,
   currency: '',
+  twoFactorEnabled: false,
 };
 
 export const login = createAsyncThunk(
@@ -266,6 +269,12 @@ const authSlice = createSlice({
     setCurrency(state, action: PayloadAction<string>) {
       state.currency = action.payload;
     },
+    setTwoFactorEnabled(state, action: PayloadAction<boolean>) {
+      state.twoFactorEnabled = action.payload;
+      if (state.user) {
+        state.user.twoFactorEnabled = action.payload;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -358,5 +367,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, resetMFA, setUser, setBootstrapped, setOrganizationSelectionRequired, setCurrency } = authSlice.actions;
+export const { clearError, resetMFA, setUser, setBootstrapped, setOrganizationSelectionRequired, setCurrency, setTwoFactorEnabled } = authSlice.actions;
 export default authSlice.reducer;

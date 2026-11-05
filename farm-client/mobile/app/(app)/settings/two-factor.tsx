@@ -6,11 +6,14 @@ import QRCode from 'react-native-qrcode-svg';
 import { authAPI } from '../../../src/modules/auth';
 import { Button, Card, TextInputField } from '../../../src/core/ui/UIComponents';
 import { useAppTheme } from '../../../src/core/theme/ThemeContext';
+import { useAppDispatch } from '../../../src/modules/auth/hooks/useAuth';
+import { setTwoFactorEnabled } from '../../../src/modules/auth/services/authSlice';
 import { describeApiError } from '../../../src/core/utils/apiError';
 
 export default function TwoFactorSettingsScreen() {
   const router = useRouter();
   const { colors: themeColors } = useAppTheme();
+  const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -54,6 +57,7 @@ export default function TwoFactorSettingsScreen() {
       setSecret('');
       setOtpauthUrl('');
       setCode('');
+      dispatch(setTwoFactorEnabled(true));
       Alert.alert('Two-factor authentication enabled', 'Your account is now protected with an authenticator app.');
     } catch (error) {
       Alert.alert('Unable to enable 2FA', describeApiError(error));
@@ -71,7 +75,10 @@ export default function TwoFactorSettingsScreen() {
     try {
       await authAPI.disable2FA(code);
       setEnabled(false);
+      setSecret('');
+      setOtpauthUrl('');
       setCode('');
+      dispatch(setTwoFactorEnabled(false));
       Alert.alert('Two-factor authentication disabled');
     } catch (error) {
       Alert.alert('Unable to disable 2FA', describeApiError(error));

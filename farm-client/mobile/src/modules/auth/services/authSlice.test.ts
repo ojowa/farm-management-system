@@ -6,6 +6,7 @@ import authReducer, {
   verifyMFA,
   fetchProfile,
   setBootstrapped,
+  setTwoFactorEnabled,
   User,
 } from './authSlice';
 
@@ -19,6 +20,7 @@ const mockUser: User = {
   roleId: 'role1',
   organizationId: 'org1',
   permissions: ['farms.read'],
+  twoFactorEnabled: false,
 };
 
 const initialState = {
@@ -35,6 +37,7 @@ const initialState = {
   organizationSelectionRequired: false,
   organizationsLoading: false,
   currency: '',
+  twoFactorEnabled: false,
 };
 
 describe('authSlice — synchronous reducers', () => {
@@ -59,6 +62,20 @@ describe('authSlice — synchronous reducers', () => {
   it('setBootstrapped sets bootstrapped to true', () => {
     const state = authReducer(initialState, setBootstrapped());
     expect(state.bootstrapped).toBe(true);
+  });
+
+  it('setTwoFactorEnabled sets twoFactorEnabled and syncs user', () => {
+    const stateWithUser = {
+      ...initialState,
+      user: { ...mockUser, twoFactorEnabled: false },
+    };
+    const state = authReducer(stateWithUser, setTwoFactorEnabled(true));
+    expect(state.twoFactorEnabled).toBe(true);
+    expect(state.user?.twoFactorEnabled).toBe(true);
+
+    const state2 = authReducer(state, setTwoFactorEnabled(false));
+    expect(state2.twoFactorEnabled).toBe(false);
+    expect(state2.user?.twoFactorEnabled).toBe(false);
   });
 });
 
