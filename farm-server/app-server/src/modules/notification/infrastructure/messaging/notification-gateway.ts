@@ -187,6 +187,8 @@ export class NotificationGateway implements OnGatewayConnection, OnGatewayDiscon
       role: 'SERVICE',
       permissions: [],
       organizationId: null,
+      twoFactorEnabled: false,
+      mfaVerified: true,
     });
 
     const response = await fetch(`${base}/v1/realtime/emit-internal`, {
