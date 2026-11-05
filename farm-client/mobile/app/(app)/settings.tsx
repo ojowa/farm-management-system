@@ -32,7 +32,7 @@ import {
 import { authAPI } from '@/modules/auth';
 import { orgAdminAPI, organizationsAPI } from '@/modules/settings';
 import { currencyAPI } from '@/modules/finance';
-import { setCurrencySymbol, getCurrencySymbolFromCode } from '@/core/utils/currency';
+import { setCurrencySymbol, getCurrencySymbolFromCode, loadCurrencies } from '@/core/utils/currency';
 import { describeApiError } from '@/core/utils/apiError';
 
 /**
@@ -223,6 +223,7 @@ export default function SettingsScreen() {
     if (canManageRoles) loadRoles();
     loadOrganizationCurrency();
     loadAvailableCurrencies();
+    void loadCurrencies();
     return cleanup;
   }, [canManageRoles]);
 
@@ -265,6 +266,9 @@ export default function SettingsScreen() {
     setCurrencySaving(true);
     try {
       await organizationsAPI.update(user.organizationId, { currency: orgCurrency });
+      // Refresh currency symbols from DB so getCurrencySymbolFromCode returns
+      // the actual symbol (e.g. € for EUR) instead of the ISO code.
+      await loadCurrencies();
       await setCurrencySymbol(getCurrencySymbolFromCode(orgCurrency));
       setCurrency(orgCurrency);
       Alert.alert('Success', 'Organization currency updated');

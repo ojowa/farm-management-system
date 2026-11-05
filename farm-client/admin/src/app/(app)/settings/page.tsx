@@ -82,7 +82,7 @@ export default function SettingsPage() {
   );
 
   const currencyOptions = ((currenciesData?.data || []) as any[])
-    .map((c) => ({ value: c.code, label: `${c.code} ${c.symbol || ''}` }))
+    .map((c) => ({ value: c.code, label: `${c.code} — ${c.name || ''} ${c.symbol || ''}`.trim() }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
   // Notifications state
@@ -212,7 +212,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await apiClient.put(`/organizations/${organizationId}`, { currency: orgCurrency });
-      clearFetchCache('dashboard-organization');
+      clearFetchCache('dashboard-config');
       toast({ type: 'success', title: 'Currency updated' });
     } catch (err: any) {
       toast({
