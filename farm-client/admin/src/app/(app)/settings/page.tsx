@@ -383,7 +383,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">Manage your account and application preferences</p>
@@ -740,7 +740,7 @@ export default function SettingsPage() {
                         placeholder="000000"
                         value={disableCode}
                         onChange={(e) => setDisableCode(e.target.value)}
-                        className="w-48"
+                        className="max-w-[192px] w-full"
                       />
                       <div className="flex gap-2">
                         <Button
@@ -818,7 +818,7 @@ export default function SettingsPage() {
                               type="text"
                               value={setupSecret}
                               readOnly
-                              className="w-64 text-center font-mono text-sm bg-muted"
+                              className="max-w-[256px] w-full text-center font-mono text-sm bg-muted"
                             />
                             <Button
                               variant="outline"
