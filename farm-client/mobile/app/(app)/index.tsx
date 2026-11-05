@@ -47,7 +47,7 @@ type FinanceSummary = {
 export default function DashboardScreen() {
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
-  const baseCurrency = useAppSelector((state) => state.auth.currency || '');
+  const currency = useAppSelector((state) => state.auth.currency || '');
   const isOnline = useAppSelector((state) => state.sync.isOnline);
   const { logout } = useAuth();
   const { hasPermission } = usePermission();
@@ -312,7 +312,7 @@ export default function DashboardScreen() {
     recentActivity,
     activityFailed: sectionErrors.activity !== null,
     sectionErrors,
-    baseCurrency,
+    currency,
     hasPermission,
     router,
     themeColors,

@@ -294,7 +294,7 @@ export default function CurrenciesPage() {
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Rates define how 1 unit of a foreign currency converts into the
-            organization base currency (USD). Used when amounts are posted to
+            organization currency (USD). Used when amounts are posted to
             the ledger.
           </p>
         </CardHeader>

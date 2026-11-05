@@ -51,7 +51,7 @@ type MobileDashboardData = {
     attendance: string | null;
     activity: string | null;
   };
-  baseCurrency: string;
+  currency: string;
   hasPermission: (permission: string) => boolean;
   router: any;
   themeColors: any;
@@ -73,7 +73,7 @@ const hasCard = (cardIds: string[], id: string) => cardIds.includes(id);
 
 export function MobileDashboardRenderer({ data, visibleCards }: DashboardRendererProps) {
   const cardIds = visibleCards.map((c) => c.id);
-  const { themeColors, isDark, router, baseCurrency, hasPermission, formatDueDate, formatActivityTime } = data;
+    const { themeColors, isDark, router, currency, hasPermission, formatDueDate, formatActivityTime } = data;
   const { finance, pendingTasks, attendanceSummary, recentActivity, sectionErrors, stats, unreadNotifs } = data;
 
   // Build alerts from data
@@ -222,11 +222,11 @@ export function MobileDashboardRenderer({ data, visibleCards }: DashboardRendere
                 style={[styles.financeValue, { color: '#16A34A' }]}
                 accessibilityLabel={
                   finance
-                    ? `Total Income: ${formatCurrencyWithCode(finance.income, baseCurrency)}`
+                    ? `Total Income: ${formatCurrencyWithCode(finance.income, currency)}`
                     : 'Total Income: unavailable'
                 }
               >
-                {finance ? formatCurrencyWithCode(finance.income, baseCurrency) : '—'}
+                {finance ? formatCurrencyWithCode(finance.income, currency) : '—'}
               </Text>
             </View>
             <View style={styles.financeDivider} />
@@ -236,11 +236,11 @@ export function MobileDashboardRenderer({ data, visibleCards }: DashboardRendere
                 style={[styles.financeValue, { color: '#DC2626' }]}
                 accessibilityLabel={
                   finance
-                    ? `Total Expenses: ${formatCurrencyWithCode(finance.expenses, baseCurrency)}`
+                    ? `Total Expenses: ${formatCurrencyWithCode(finance.expenses, currency)}`
                     : 'Total Expenses: unavailable'
                 }
               >
-                {finance ? formatCurrencyWithCode(finance.expenses, baseCurrency) : '—'}
+                {finance ? formatCurrencyWithCode(finance.expenses, currency) : '—'}
               </Text>
             </View>
             <View style={styles.financeDivider} />
@@ -253,11 +253,11 @@ export function MobileDashboardRenderer({ data, visibleCards }: DashboardRendere
                 ]}
                 accessibilityLabel={
                   finance
-                    ? `Net Profit: ${formatCurrencyWithCode(finance.net, baseCurrency)}`
+                    ? `Net Profit: ${formatCurrencyWithCode(finance.net, currency)}`
                     : 'Net Profit: unavailable'
                 }
               >
-                {finance ? formatCurrencyWithCode(finance.net, baseCurrency) : '—'}
+                {finance ? formatCurrencyWithCode(finance.net, currency) : '—'}
               </Text>
             </View>
           </Card>

@@ -370,7 +370,7 @@ export default function EditTransactionPage() {
                         disabled={!currencyOptions.length || saving}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        The ledger converts this amount to the base currency
+                        The ledger converts this amount to the currency
                         (USD) using the latest exchange rate.
                       </p>
                     </div>
@@ -489,7 +489,7 @@ export default function EditTransactionPage() {
                         disabled={!currencyOptions.length || saving}
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        The ledger converts this amount to the base currency
+                        The ledger converts this amount to the currency
                         (USD) using the latest exchange rate.
                       </p>
                     </div>

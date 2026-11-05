@@ -635,7 +635,7 @@ export default function SettingsScreen() {
             <Card style={styles.settingItem}>
               <View style={styles.settingItemRow}>
                 <View style={styles.settingItemText}>
-                  <Text style={[styles.settingItemTitle, themed.text]}>Base Currency</Text>
+                  <Text style={[styles.settingItemTitle, themed.text]}>Currency</Text>
                   <Text style={[styles.settingItemDescription, themed.textSecondary]}>
                     Finance amounts display in this currency
                   </Text>
@@ -654,7 +654,7 @@ export default function SettingsScreen() {
                         setShowCurrencyModal(true);
                       }}
                       accessibilityRole="button"
-                      accessibilityLabel="Select base currency"
+                      accessibilityLabel="Select currency"
                     >
                       <Text style={[styles.settingItemValue, themed.text]}>
                         {orgCurrency || '—'}
@@ -802,7 +802,7 @@ export default function SettingsScreen() {
         <View style={{ flex: 1, justifyContent: 'center', backgroundColor: themeColors.overlay }}>
           <View style={{ backgroundColor: themeColors.surface, marginHorizontal: 24, marginVertical: 40, borderRadius: 16, maxHeight: '80%' }}>
             <View style={{ padding: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16, color: themeColors.text }}>Select Base Currency</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16, color: themeColors.text }}>Select Currency</Text>
 
               <View style={{ marginBottom: 12 }}>
                 <TextInput

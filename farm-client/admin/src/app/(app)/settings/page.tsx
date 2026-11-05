@@ -61,7 +61,7 @@ export default function SettingsPage() {
   const [avatar, setAvatar] = useState('');
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
 
-  // Organization (base currency) state — owner only
+  // Organization currency state — owner only
   const [orgCurrency, setOrgCurrency] = useState('');
   const [orgCurrencyErrors, setOrgCurrencyErrors] = useState<Record<string, string>>({});
 
@@ -213,11 +213,11 @@ export default function SettingsPage() {
     try {
       await apiClient.put(`/organizations/${organizationId}`, { currency: orgCurrency });
       clearFetchCache('dashboard-organization');
-      toast({ type: 'success', title: 'Base currency updated' });
+      toast({ type: 'success', title: 'Currency updated' });
     } catch (err: any) {
       toast({
         type: 'error',
-        title: 'Failed to update base currency',
+        title: 'Failed to update currency',
         message: err.response?.data?.message || 'An error occurred',
       });
     } finally {
@@ -897,17 +897,17 @@ export default function SettingsPage() {
               Organization Settings
             </CardTitle>
             <CardDescription>
-              Set the organization’s base currency. Finance ledger amounts are
+              Set the organization’s currency. Finance ledger amounts are
               stored and totaled in this currency.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
             <div>
               <label className="text-sm font-medium mb-1 block">
-                Base currency <span className="text-destructive">*</span>
+                Currency <span className="text-destructive">*</span>
               </label>
               <Select
-                placeholder="Select base currency"
+                placeholder="Select currency"
                 options={currencyOptions}
                 value={orgCurrency}
                 onChange={(e) => setOrgCurrency(e.target.value)}
@@ -919,7 +919,7 @@ export default function SettingsPage() {
                 </p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                Changing the base currency only affects amounts recorded from
+                Changing the currency only affects amounts recorded from
                 now on; existing ledger entries keep their originally recorded
                 currency.
               </p>
@@ -927,7 +927,7 @@ export default function SettingsPage() {
             <div className="flex justify-end pt-2">
               <Button onClick={handleOrganizationSave} loading={saving} disabled={!canEditOrganization}>
                 <Save className="mr-2 h-4 w-4" />
-                Save Base Currency
+                Save Currency
               </Button>
             </div>
           </CardContent>

@@ -621,7 +621,7 @@ export default function TransactionsPage() {
                   disabled={!currencyOptions.length || saving}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Converts to base currency (USD) using the latest rate.
+                  Converts to currency (USD) using the latest rate.
                 </p>
               </div>
             </>
@@ -707,7 +707,7 @@ export default function TransactionsPage() {
                   disabled={!currencyOptions.length || saving}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Converts to base currency (USD) using the latest rate.
+                  Converts to currency (USD) using the latest rate.
                 </p>
               </div>
             </>
