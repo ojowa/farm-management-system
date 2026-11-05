@@ -172,7 +172,7 @@ describe('mobile parity', () => {
   const MOBILE_ONLY_ROUTES = new Set(['/', '/leave', '/attendance']);
 
   it('has parsed every sidebar row', () => {
-    expect(mobileItems.length).toBe(24);
+    expect(mobileItems.length).toBe(25);
   });
 
   it('only uses catalog-valid permission keys', () => {

@@ -32,7 +32,7 @@ describe('Finance hub', () => {
   it('links to transactions and profitability', () => {
     render(<FinanceHubScreen />);
 
-    fireEvent.press(screen.getByLabelText('Finance'));
+    fireEvent.press(screen.getByLabelText('Transactions'));
     fireEvent.press(screen.getByLabelText('Profitability'));
 
     expect(mockPush.mock.calls).toEqual([
