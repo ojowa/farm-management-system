@@ -36,9 +36,10 @@ import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
 import { NavTabs } from '@/components/NavTabs';
 import { FINANCE_TABS } from '@/lib/financeTabs';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+const formatCurrency = (amount: number, currency: string) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
 
 interface BudgetCategory {
   id: string;
@@ -62,6 +63,7 @@ interface Budget {
 export default function BudgetsPage() {
   const { canCreate, canDelete } = usePermission();
   const readOnly = !canCreate('finance');
+  const { orgCurrency } = useDashboardConfig();
   // Deleting budgets/categories is finance.delete on the API, not finance.write.
   const canRemove = canDelete('finance');
   const { toast } = useToast();
@@ -246,7 +248,7 @@ export default function BudgetsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Budget</p>
-                <p className="text-2xl font-bold">{formatCurrency(totals.totalBudget)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(totals.totalBudget, orgCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -259,7 +261,7 @@ export default function BudgetsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Spent</p>
-                <p className="text-2xl font-bold">{formatCurrency(totals.totalSpent)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(totals.totalSpent, orgCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -272,7 +274,7 @@ export default function BudgetsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Remaining</p>
-                <p className="text-2xl font-bold">{formatCurrency(totals.remaining)}</p>
+                <p className="text-2xl font-bold">{formatCurrency(totals.remaining, orgCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -353,11 +355,11 @@ export default function BudgetsPage() {
                         return (
                           <TableRow key={cat.id}>
                             <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell>{formatCurrency(cat.budgetAmount)}</TableCell>
-                            <TableCell>{formatCurrency(cat.spentAmount)}</TableCell>
+                            <TableCell>{formatCurrency(cat.budgetAmount, cat.currency || orgCurrency)}</TableCell>
+                            <TableCell>{formatCurrency(cat.spentAmount, cat.currency || orgCurrency)}</TableCell>
                             <TableCell>
                               <span className={remaining >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                {formatCurrency(remaining)}
+                                {formatCurrency(remaining, cat.currency || orgCurrency)}
                               </span>
                             </TableCell>
                             <TableCell>

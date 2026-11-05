@@ -22,6 +22,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 import { clearFetchCache, useFetch } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { NavTabs } from '@/components/NavTabs';
 import { FINANCE_TABS } from '@/lib/financeTabs';
 import { cn } from '@/lib/utils';
@@ -53,7 +54,7 @@ const initialForm = (): FormState => ({
   date: today(),
   farmId: '',
   budgetCategoryId: '',
-  currency: 'USD',
+  currency: orgCurrency,
 });
 
 const recalcTotal = (quantity: string, price: string) => {
@@ -69,6 +70,7 @@ export default function NewTransactionPage() {
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
+  const { orgCurrency } = useDashboardConfig();
   const searchParams = useSearchParams();
 
   React.useEffect(() => {
@@ -651,7 +653,7 @@ export default function NewTransactionPage() {
                     type === 'sale' ? 'text-green-600' : 'text-red-600'
                   )}
                 >
-                  {formatCurrency(summaryAmount)}
+                  {formatCurrency(summaryAmount, form.currency || orgCurrency)}
                 </span>
               </div>
 

@@ -184,7 +184,7 @@ export default function TransactionsPage() {
     page * PAGE_SIZE
   );
 
-  const formatCurrency = (amount: number, currency: string = 'USD') =>
+  const formatCurrency = (amount: number, currency: string) =>
     new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,

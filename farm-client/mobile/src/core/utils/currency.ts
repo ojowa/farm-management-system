@@ -59,7 +59,7 @@ export function getCurrencySymbolFromCode(code: string): string {
 
 export function getCurrencySymbol(): string {
   // Per-org base-currency symbol from the DB (set via loadOrganizationCurrency
-  // in authSlice). Falls back to the ISO code 'USD' when nothing is loaded yet.
+  // in authSlice). Falls back to the ISO code 'USD' only when nothing is loaded yet.
   return cachedUserSymbol ?? 'USD';
 }
 
@@ -74,6 +74,8 @@ export async function setCurrencySymbol(symbol: string): Promise<void> {
   cachedUserSymbol = symbol;
 }
 
+// All currency formatting functions require an explicit currency code. No
+// currency is ever hardcoded on the client.
 export function formatCurrencyWithCode(amount: number, code: string): string {
   const symbol = getCurrencySymbolFromCode(code);
   if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
@@ -91,17 +93,14 @@ export function formatCurrencyFixedWithCode(amount: number, code: string, decima
   return `${symbol}${Math.abs(amount).toFixed(decimals)}`;
 }
 
-export function formatCurrency(amount: number): string {
-  const symbol = getCurrencySymbolFromCode('USD');
-  if (amount >= 1000000) return `${symbol}${(amount / 1000000).toFixed(1)}M`;
-  if (amount >= 1000) return `${symbol}${(amount / 1000).toFixed(1)}K`;
-  return `${symbol}${amount.toLocaleString()}`;
+export function formatCurrency(amount: number, code: string): string {
+  return formatCurrencyWithCode(amount, code);
 }
 
-export function formatCurrencyValue(amount: number): string {
-  return `${getCurrencySymbolFromCode('USD')}${amount.toLocaleString()}`;
+export function formatCurrencyValue(amount: number, code: string): string {
+  return formatCurrencyValueWithCode(amount, code);
 }
 
-export function formatCurrencyFixed(amount: number, decimals = 0): string {
-  return `${getCurrencySymbolFromCode('USD')}${Math.abs(amount).toFixed(decimals)}`;
+export function formatCurrencyFixed(amount: number, code: string, decimals = 0): string {
+  return formatCurrencyFixedWithCode(amount, code, decimals);
 }

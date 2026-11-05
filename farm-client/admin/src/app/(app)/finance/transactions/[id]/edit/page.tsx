@@ -17,6 +17,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { expenseFormSchema, saleFormSchema } from '@/lib/validation';
 import { clearFetchCache, useFetch } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { NavTabs } from '@/components/NavTabs';
 import { FINANCE_TABS } from '@/lib/financeTabs';
 import { cn } from '@/lib/utils';
@@ -54,6 +55,7 @@ export default function EditTransactionPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { canCreate } = usePermission();
+  const { orgCurrency } = useDashboardConfig();
   const readOnly = !canCreate('finance');
 
   // The transactions list passes ?type=expense|sale; without it we probe
@@ -539,10 +541,10 @@ export default function EditTransactionPage() {
           </Card>
 
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              {type === 'expense'
-                ? `Amount: ${formatCurrency(Number(form.amount) || 0)}`
-                : `Total: ${formatCurrency(Number(form.total) || 0)}`}
+              <p className="text-xs text-muted-foreground">
+                {type === 'expense'
+                  ? `Amount: ${formatCurrency(Number(form.amount) || 0, form.currency || orgCurrency)}`
+                  : `Total: ${formatCurrency(Number(form.total) || 0, form.currency || orgCurrency)}`}
             </p>
             <div className="flex gap-3">
               <Button

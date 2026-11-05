@@ -25,6 +25,7 @@ import { ChartCard, FarmBarChart, FarmPieChart } from '@/components/charts';
 import { useToast } from '@/lib/toasts';
 import { NavTabs } from '@/components/NavTabs';
 import { FINANCE_TABS } from '@/lib/financeTabs';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 
 interface ProfitSummary {
   totalRevenue: number;
@@ -55,6 +56,7 @@ const formatCurrency = (amount: number) =>
 
 export default function ProfitabilityPage() {
   const { toast } = useToast();
+  const { orgCurrency } = useDashboardConfig();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<ProfitSummary | null>(null);
   const [farmData, setFarmData] = useState<FarmProfitability[]>([]);

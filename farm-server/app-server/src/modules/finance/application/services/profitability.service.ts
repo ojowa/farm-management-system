@@ -54,8 +54,8 @@ export class ProfitabilityService {
         this.saleRepo.findMany({ where: saleWhere }),
       ]);
 
-      const totalExpenses = expenses.reduce((sum: number, e: Expense) => sum + ((e as any).amount || 0), 0);
-      const totalRevenue = sales.reduce((sum: number, s: Sale) => sum + ((s as any).total || 0), 0);
+      const totalExpenses = expenses.reduce((sum: number, e: Expense) => sum + ((e as any).amountInBase || 0), 0);
+      const totalRevenue = sales.reduce((sum: number, s: Sale) => sum + ((s as any).amountInBase || 0), 0);
       const netProfit = totalRevenue - totalExpenses;
 
       const categories: Record<string, number> = {};
@@ -94,13 +94,13 @@ export class ProfitabilityService {
       this.saleRepo.findMany({ where: whereBase }),
     ]);
 
-    const totalExpenses = expenses.reduce((sum: number, e: Expense) => sum + ((e as any).amount || 0), 0);
-    const totalRevenue = sales.reduce((sum: number, s: Sale) => sum + ((s as any).total || 0), 0);
+    const totalExpenses = expenses.reduce((sum: number, e: Expense) => sum + ((e as any).amountInBase || 0), 0);
+    const totalRevenue = sales.reduce((sum: number, s: Sale) => sum + ((s as any).amountInBase || 0), 0);
 
     const categories: Record<string, number> = {};
     expenses.forEach((e: Expense) => {
       const cat = categorizeExpense((e as any).title);
-      categories[cat] = (categories[cat] || 0) + ((e as any).amount || 0);
+      categories[cat] = (categories[cat] || 0) + ((e as any).amountInBase || 0);
     });
 
     return {

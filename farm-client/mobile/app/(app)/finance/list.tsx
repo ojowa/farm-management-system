@@ -14,12 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
-import { offlineFinanceAPI } from '@/modules/finance';
-import { Card, Button, colors } from '@/core/ui/UIComponents';
+import { financeAPI } from '@/modules/finance';
+import { Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
-import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
-import { useToasts } from '@/core/hooks/useToasts';
 import { describeApiError } from '@/core/utils/apiError';
+import { formatCurrencyFixedWithCode } from '@/core/utils/currency';
+import { useAppTheme } from '@/core/theme/ThemeContext';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { unwrapList } from '@/core/utils/listPayload';
 import { transformExpense, transformSale, RawExpense, RawSale } from '@/core/utils/entityTransformers';
 import { setFinanceFilter } from '@/store/slices/uiSlice';
@@ -175,6 +176,7 @@ export default function FinanceScreen() {
   const financeFilter = useAppSelector((s) => s.ui.filters.finance);
   const { error: showError } = useToasts();
   const { colors: tc, isDark } = useAppTheme();
+  const currency = useAppSelector((state) => state.auth.currency || '');
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -331,7 +333,7 @@ export default function FinanceScreen() {
 
   const renderItem = useCallback(({ item: transaction }: { item: Transaction }) => (
     <Card style={[styles.transactionCard, dynamicStyles.cardBackground]}>
-      <TouchableOpacity onPress={() => router.push(`/finance/${transaction.id}`)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${transaction.title}, ${transaction.type === 'income' ? 'income' : 'expense'} of ${formatCurrencyFixed(transaction.amount)}`}>
+      <TouchableOpacity onPress={() => router.push(`/finance/${transaction.id}`)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${transaction.title}, ${transaction.type === 'income' ? 'income' : 'expense'} of ${formatCurrencyFixedWithCode(transaction.amount, currency)}`}>
         <View style={styles.transactionRow}>
           <Text style={styles.transactionIcon}>{transaction.icon}</Text>
           <View style={styles.transactionInfo}>
@@ -347,14 +349,14 @@ export default function FinanceScreen() {
                   : styles.transactionAmountNegative,
               ]}
             >
-              {transaction.type === 'income' ? '+' : '-'}{formatCurrencyFixed(transaction.amount)}
+              {transaction.type === 'income' ? '+' : '-'}{formatCurrencyFixedWithCode(transaction.amount, currency)}
             </Text>
             <Text style={[styles.transactionDate, dynamicStyles.transactionDate]}>{transaction.date}</Text>
           </View>
         </View>
       </TouchableOpacity>
     </Card>
-  ), [router, dynamicStyles]);
+  ), [router, dynamicStyles, currency]);
 
   if (loading) {
     return (

@@ -12,12 +12,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { inventoryAPI } from '@/modules/inventory';
-import { formatCurrencyFixed } from '../../../src/core/utils/currency';
+import { formatCurrencyFixedWithCode } from '../../../src/core/utils/currency';
 import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { MenuButton } from '@/core/ui/MenuButton';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 
 export default function LowStockScreen() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function LowStockScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { colors: tc, isDark } = useAppTheme();
+  const currency = useAppSelector((state) => state.auth.currency || '');
 
   const loadItems = useCallback(async () => {
     try {
@@ -118,12 +120,12 @@ export default function LowStockScreen() {
                   <Text style={[styles.itemValue, { color: tc.text }]}>{item.farm?.name || item.farmName}</Text>
                 </View>
               )}
-              {item.costPerUnit !== undefined && (
-                <View style={styles.itemRow}>
-                  <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Cost/Unit</Text>
-                  <Text style={[styles.itemValue, { color: tc.text }]}>{formatCurrencyFixed(item.costPerUnit, 2)}</Text>
-                </View>
-              )}
+                  {item.costPerUnit !== undefined && (
+                    <View style={styles.itemRow}>
+                      <Text style={[styles.itemLabel, { color: tc.textSecondary }]}>Cost/Unit</Text>
+                      <Text style={[styles.itemValue, { color: tc.text }]}>{formatCurrencyFixedWithCode(item.costPerUnit, currency, 2)}</Text>
+                    </View>
+                  )}
             </Card>
           ))
         )}

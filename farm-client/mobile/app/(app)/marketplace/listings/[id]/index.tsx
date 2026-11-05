@@ -14,6 +14,8 @@ import { Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
 import { useAppTheme } from '@/core/theme/ThemeContext';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { formatCurrencyWithCode } from '@/core/utils/currency';
 
 type MarketListing = {
   id: string;
@@ -33,6 +35,7 @@ export default function MarketListingDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { colors: themeColors } = useAppTheme();
+  const currency = useAppSelector((state) => state.auth.currency || '');
   const [listing, setListing] = useState<MarketListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,7 +93,7 @@ export default function MarketListingDetailScreen() {
             </View>
             <View style={styles.row}>
               <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Price</Text>
-              <Text style={[styles.fieldValue, { color: themeColors.text, fontWeight: '700' }]}>{formatCurrency(listing.price)}</Text>
+              <Text style={[styles.fieldValue, { color: themeColors.text, fontWeight: '700' }]}>{formatCurrencyWithCode(listing.price, currency)}</Text>
             </View>
             <View style={styles.row}>
               <Text style={[styles.fieldLabel, { color: themeColors.textSecondary }]}>Quantity</Text>
@@ -133,7 +136,3 @@ const styles = StyleSheet.create({
   editBtn: { paddingHorizontal: 20, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
   editBtnText: { fontSize: 15, fontWeight: '700' },
 });
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
-}

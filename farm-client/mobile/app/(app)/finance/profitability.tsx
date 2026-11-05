@@ -13,13 +13,15 @@ import { useRouter } from 'expo-router';
 import { Card, colors } from '../../../src/core/ui/UIComponents';
 import { financeAPI } from '@/modules/finance';
 import { farmsAPI } from '@/modules/farm';
-import { formatCurrencyValue } from '../../../src/core/utils/currency';
+import { formatCurrencyValueWithCode } from '../../../src/core/utils/currency';
 import { unwrapList } from '@/core/utils/listPayload';
 import { useAppTheme } from '@/core/theme/ThemeContext';
+import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 
 export default function ProfitabilityScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useAppTheme();
+  const currency = useAppSelector((state) => state.auth.currency || '');
   const [farms, setFarms] = useState<any[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
@@ -137,16 +139,16 @@ export default function ProfitabilityScreen() {
         <View style={styles.statsRow}>
           <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Revenue</Text>
-            <Text style={[styles.statValue, { color: '#4CAF50' }]}>{formatCurrency(totalRevenue)}</Text>
+            <Text style={[styles.statValue, { color: '#4CAF50' }]}>{formatCurrencyValueWithCode(totalRevenue, currency)}</Text>
           </Card>
           <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Expenses</Text>
-            <Text style={[styles.statValue, { color: '#F44336' }]}>{formatCurrency(totalExpenses)}</Text>
+            <Text style={[styles.statValue, { color: '#F44336' }]}>{formatCurrencyValueWithCode(totalExpenses, currency)}</Text>
           </Card>
           <Card style={[styles.statCard, dynamicStyles.cardBackground]}>
             <Text style={[styles.statLabel, dynamicStyles.statLabel]}>Profit</Text>
             <Text style={[styles.statValue, { color: totalProfit >= 0 ? '#4CAF50' : '#F44336' }]}>
-              {formatCurrency(totalProfit)}
+              {formatCurrencyValueWithCode(totalProfit, currency)}
             </Text>
           </Card>
         </View>
@@ -165,16 +167,16 @@ export default function ProfitabilityScreen() {
               <View style={styles.farmHeader}>
                 <Text style={[styles.farmName, dynamicStyles.farmName]}>{farm.farmName}</Text>
                 <View style={[styles.profitBadge, { backgroundColor: farm.profit >= 0 ? '#4CAF50' : '#F44336' }]}>
-                  <Text style={styles.profitText}>{formatCurrency(farm.profit)}</Text>
+                  <Text style={styles.profitText}>{formatCurrencyValueWithCode(farm.profit, currency)}</Text>
                 </View>
               </View>
               <View style={styles.farmRow}>
                 <Text style={[styles.farmLabel, dynamicStyles.farmLabel]}>Revenue</Text>
-                <Text style={[styles.farmValue, { color: '#4CAF50' }]}>{formatCurrency(farm.revenue)}</Text>
+                <Text style={[styles.farmValue, { color: '#4CAF50' }]}>{formatCurrencyValueWithCode(farm.revenue, currency)}</Text>
               </View>
               <View style={styles.farmRow}>
                 <Text style={[styles.farmLabel, dynamicStyles.farmLabel]}>Expenses</Text>
-                <Text style={[styles.farmValue, { color: '#F44336' }]}>{formatCurrency(farm.expenses)}</Text>
+                <Text style={[styles.farmValue, { color: '#F44336' }]}>{formatCurrencyValueWithCode(farm.expenses, currency)}</Text>
               </View>
             </Card>
           ))

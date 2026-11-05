@@ -29,6 +29,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 
 interface Worker {
   id: string;
@@ -84,10 +85,10 @@ const weekStartDate = (weekValue: string): Date | null => {
 };
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: orgCurrency,
+    }).format(amount);
 
 const workerName = (worker: Worker) =>
   `${worker.firstName} ${worker.middleName ? `${worker.middleName} ` : ''}${worker.lastName}`;
@@ -96,7 +97,7 @@ export default function SalaryPage() {
   const { toast } = useToast();
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
-
+  const { orgCurrency } = useDashboardConfig();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [farmFilter, setFarmFilter] = useState('');

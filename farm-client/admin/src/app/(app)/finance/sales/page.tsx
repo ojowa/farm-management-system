@@ -29,6 +29,7 @@ import { Select } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useFetch } from '@/hooks/useFetch';
 import { usePermission } from '@/lib/usePermission';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 
 interface Sale {
   id: string;
@@ -44,14 +45,15 @@ interface Sale {
 const PAGE_SIZE = 10;
 
 const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: orgCurrency,
+    }).format(amount);
 
 export default function AllSalesPage() {
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
+  const { orgCurrency } = useDashboardConfig();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [farmFilter, setFarmFilter] = useState('');

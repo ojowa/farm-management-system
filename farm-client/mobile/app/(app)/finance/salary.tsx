@@ -17,7 +17,7 @@ import { financeAPI } from '@/modules/finance';
 import { Button } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
-import { formatCurrencyFixed } from '@/core/utils/currency';
+import { formatCurrencyWithCode } from '@/core/utils/currency';
 import { useAppTheme } from '@/core/theme/ThemeContext';
 import { useAppSelector } from '@/modules/auth/hooks/useAuth';
 
@@ -39,12 +39,13 @@ export default function SalaryScreen() {
   const router = useRouter();
   const { colors: themeColors } = useAppTheme();
   const selectedFarmId = useAppSelector((state) => state.ui.selectedFarmId);
+  const currency = useAppSelector((state) => state.auth.currency || '');
   const [salaries, setSalaries] = useState<Salary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ workerName: '', amount: '', currency: 'USD', payType: 'Monthly', period: '' });
+  const [formData, setFormData] = useState({ workerName: '', amount: '', currency, payType: 'Monthly', period: '' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -57,7 +58,7 @@ export default function SalaryScreen() {
         id: r.id,
         workerName: r.title,
         amount: r.amount,
-        currency: r.currency || 'USD',
+        currency: r.currency || currency,
         amountInBase: r.amountInBase || r.amount,
         date: r.date,
         payType: r.payType || 'Monthly',
@@ -89,11 +90,11 @@ export default function SalaryScreen() {
         farmId: selectedFarmId,
         title: formData.workerName,
         amount: Number(formData.amount),
-        currency: formData.currency || 'USD',
+        currency: formData.currency || currency,
         date: new Date().toISOString().slice(0, 10),
       });
       setShowForm(false);
-      setFormData({ workerName: '', amount: '', currency: 'USD', payType: 'Monthly', period: '' });
+      setFormData({ workerName: '', amount: '', currency, payType: 'Monthly', period: '' });
       load();
     } catch (e: any) {
       setError(describeApiError(e, 'Failed to record salary.'));
@@ -158,7 +159,7 @@ export default function SalaryScreen() {
                     <Text style={[styles.rowSubtitle, { color: themeColors.textSecondary }]}>{item.period || 'No period'} • {item.payType || 'Monthly'}</Text>
                   </View>
                   <View style={styles.rowAmount}>
-                    <Text style={[styles.rowAmountText, { color: themeColors.success }]}>+{formatCurrencyFixed(item.amount)} {item.currency}</Text>
+                    <Text style={[styles.rowAmountText, { color: themeColors.success }]}>{formatCurrencyWithCode(item.amount, item.currency)}</Text>
                     <Text style={[styles.rowDate, { color: themeColors.textSecondary }]}>{item.date ? new Date(item.date).toLocaleDateString() : ''}</Text>
                   </View>
                 </View>

@@ -41,9 +41,9 @@ describe('currency utilities (DB-backed)', () => {
   });
 
   it('formatCurrency uses USD symbol from DB', () => {
-    expect(formatCurrency(1500000)).toBe('$1.5M');
-    expect(formatCurrency(2500)).toBe('$2.5K');
-    expect(formatCurrency(500)).toBe('$500');
+    expect(formatCurrency(1500000, 'USD')).toBe('$1.5M');
+    expect(formatCurrency(2500, 'USD')).toBe('$2.5K');
+    expect(formatCurrency(500, 'USD')).toBe('$500');
   });
 
   it('setCurrencySymbol updates the per-user override', async () => {

@@ -225,6 +225,38 @@ async function main() {
 
   console.log(`  Seeded ${currencyData.length} currencies`)
 
+  // 2c. Seed exchange rates (relative to USD as base)
+  const exchangeRateData = [
+    { fromCurrency: 'USD', toCurrency: 'EUR', rate: 0.85, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'GBP', rate: 0.78, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'JPY', rate: 110.0, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'CAD', rate: 1.25, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'AUD', rate: 1.35, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'CHF', rate: 0.92, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'CNY', rate: 6.50, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'INR', rate: 75.0, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'KRW', rate: 1150.0, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'BRL', rate: 5.20, source: 'seed' },
+    { fromCurrency: 'USD', toCurrency: 'MXN', rate: 20.0, source: 'seed' },
+    { fromCurrency: 'EUR', toCurrency: 'USD', rate: 1.18, source: 'seed' },
+    { fromCurrency: 'EUR', toCurrency: 'GBP', rate: 0.92, source: 'seed' },
+    { fromCurrency: 'EUR', toCurrency: 'JPY', rate: 130.0, source: 'seed' },
+  ]
+
+  for (const rate of exchangeRateData) {
+    await prisma.exchangeRate.create({
+      data: {
+        fromCurrency: rate.fromCurrency,
+        toCurrency: rate.toCurrency,
+        rate: rate.rate,
+        effectiveAt: new Date(),
+        source: rate.source,
+      },
+    })
+  }
+
+  console.log(`  Seeded ${exchangeRateData.length} exchange rates`)
+
   // 3. Assign permissions to roles
   const rolePermissions: Record<string, string[]> = {
     SUPER_ADMIN: ['*'],

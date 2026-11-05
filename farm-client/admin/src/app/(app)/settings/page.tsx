@@ -147,7 +147,7 @@ export default function SettingsPage() {
     try {
       const res = await apiClient.get(`/organizations/${organizationId}`);
       const org = res.data;
-      setOrgCurrency(org.currency || 'USD');
+      setOrgCurrency(org.currency || '');
     } catch (err: any) {
       toast({
         type: 'error',

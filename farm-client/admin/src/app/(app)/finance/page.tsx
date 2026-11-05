@@ -40,6 +40,7 @@ import { useToast } from '@/lib/toasts';
 import { useFetch, clearFetchCache } from '@/hooks/useFetch';
 import { useRealtime } from '@/hooks/useRealtime';
 import { usePermission } from '@/lib/usePermission';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 
 interface Transaction {
   id: string;
@@ -77,6 +78,7 @@ export default function FinancePage() {
   const router = useRouter();
   const { toast } = useToast();
   const { canCreate } = usePermission();
+  const { orgCurrency } = useDashboardConfig();
   const readOnly = !canCreate('finance');
 
   const {
@@ -203,7 +205,7 @@ export default function FinancePage() {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: orgCurrency,
     }).format(amount);
 
   return (
