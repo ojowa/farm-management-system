@@ -1,6 +1,7 @@
 import React from 'react';
 import { configure, render, screen, waitFor } from '@testing-library/react-native';
 import DashboardScreen from '../../app/(app)/index';
+import { loadCurrencies } from '../../src/core/utils/currency';
 
 // The first render of this screen in a cold test environment takes a few
 // seconds to commit its (heavy) tree; give async queries headroom so they
@@ -24,9 +25,17 @@ const mockNotifList = jest.fn();
 const mockUnreadCount = jest.fn();
 const mockShowError = jest.fn();
 
+// Mock the DB-backed currency API so loadCurrencies() populates the symbol cache.
+const mockCurrenciesList = jest.fn();
+jest.mock('@/services/api', () => ({
+  currencyAPI: {
+    list: (...args: any[]) => mockCurrenciesList(...args),
+  },
+}));
+
 // Mutable redux stand-in: the screen selects `auth.user` and `sync.isOnline`.
 const mockRootState: any = {
-  auth: { user: { id: 'u1', fullName: 'Jane Farmer' } },
+  auth: { user: { id: 'u1', fullName: 'Jane Farmer' }, currency: 'USD' },
   sync: { isOnline: true },
 };
 
@@ -148,9 +157,15 @@ const NETWORK_ERROR = new Error('Network Error');
 const CONNECTION_COPY = 'No connection. Check your network and try again.';
 
 describe('DashboardScreen', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockRootState.sync.isOnline = true;
     mockAuthUser.permissions = [];
+    mockCurrenciesList.mockResolvedValue({ data: [
+      { code: 'USD', name: 'US Dollar', symbol: '$' },
+      { code: 'EUR', name: 'Euro', symbol: '€' },
+      { code: 'GBP', name: 'British Pound', symbol: '£' },
+    ] });
+    await loadCurrencies();
     // Count-only queries ask for one row and read the server's `total`, so the
     // mocks answer the way the real endpoints do: a paginated body carrying
     // `total` alongside the rows.

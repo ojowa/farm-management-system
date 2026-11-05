@@ -23,7 +23,7 @@ import {
   setOrganizationSelectionRequired,
 } from '../src/modules/auth/services/authSlice';
 import { startInactivityTracker } from '../src/core/utils/inactivity';
-import { loadCurrencySymbol } from '../src/core/utils/currency';
+import { loadCurrencySymbol, loadCurrencies } from '../src/core/utils/currency';
 
 interface SplashShim {
   preventAutoHideAsync: () => Promise<void>;
@@ -67,6 +67,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     loadCurrencySymbol();
+    void loadCurrencies();
   }, []);
 
   useEffect(() => {
