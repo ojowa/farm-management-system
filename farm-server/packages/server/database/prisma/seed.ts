@@ -36,6 +36,7 @@ async function main() {
   await prisma.subscriptionPlan.deleteMany()
   await prisma.permission.deleteMany()
   await prisma.role.deleteMany()
+  await prisma.currency.deleteMany()
   console.log('  Cleared all data')
 
   // 1. Create System Roles
@@ -136,6 +137,93 @@ async function main() {
   )
 
   const permissionByName = Object.fromEntries(createdPermissions.map((p) => [p.name, p]))
+
+  // 2b. Create Currency registry (ISO 4217 codes with names and symbols)
+  const currencyData = [
+    { code: 'USD', name: 'US Dollar', symbol: '$' },
+    { code: 'EUR', name: 'Euro', symbol: '€' },
+    { code: 'GBP', name: 'British Pound', symbol: '£' },
+    { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+    { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+    { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+    { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+    { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+    { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+    { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
+    { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
+    { code: 'MXN', name: 'Mexican Peso', symbol: 'MX$' },
+    { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+    { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+    { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
+    { code: 'GHS', name: 'Ghanaian Cedi', symbol: 'GH₵' },
+    { code: 'EGP', name: 'Egyptian Pound', symbol: 'E£' },
+    { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+    { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$' },
+    { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$' },
+    { code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
+    { code: 'NOK', name: 'Norwegian Krone', symbol: 'kr' },
+    { code: 'DKK', name: 'Danish Krone', symbol: 'kr' },
+    { code: 'PLN', name: 'Polish Złoty', symbol: 'zł' },
+    { code: 'CZK', name: 'Czech Koruna', symbol: 'Kč' },
+    { code: 'HUF', name: 'Hungarian Forint', symbol: 'Ft' },
+    { code: 'RON', name: 'Romanian Leu', symbol: 'lei' },
+    { code: 'BGN', name: 'Bulgarian Lev', symbol: 'лв' },
+    { code: 'HRK', name: 'Croatian Kuna', symbol: 'kn' },
+    { code: 'RSD', name: 'Serbian Dinar', symbol: 'din' },
+    { code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
+    { code: 'ILS', name: 'Israeli New Shekel', symbol: '₪' },
+    { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+    { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
+    { code: 'QAR', name: 'Qatari Riyal', symbol: '﷼' },
+    { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك' },
+    { code: 'BHD', name: 'Bahraini Dinar', symbol: 'د.ب' },
+    { code: 'OMR', name: 'Omani Rial', symbol: '﷼' },
+    { code: 'JOD', name: 'Jordanian Dinar', symbol: 'JD' },
+    { code: 'LBP', name: 'Lebanese Pound', symbol: 'ل.ل' },
+    { code: 'PKR', name: 'Pakistani Rupee', symbol: '₨' },
+    { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳' },
+    { code: 'LKR', name: 'Sri Lankan Rupee', symbol: 'Rs' },
+    { code: 'NPR', name: 'Nepalese Rupee', symbol: 'Rs' },
+    { code: 'MMK', name: 'Myanmar Kyat', symbol: 'Ks' },
+    { code: 'THB', name: 'Thai Baht', symbol: '฿' },
+    { code: 'VND', name: 'Vietnamese Dong', symbol: '₫' },
+    { code: 'IDR', name: 'Indonesian Rupiah', symbol: 'Rp' },
+    { code: 'PHP', name: 'Philippine Peso', symbol: '₱' },
+    { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM' },
+    { code: 'TWD', name: 'New Taiwan Dollar', symbol: 'NT$' },
+    { code: 'ARS', name: 'Argentine Peso', symbol: '$' },
+    { code: 'CLP', name: 'Chilean Peso', symbol: '$' },
+    { code: 'COP', name: 'Colombian Peso', symbol: '$' },
+    { code: 'PEN', name: 'Peruvian Sol', symbol: 'S/' },
+    { code: 'UYU', name: 'Uruguayan Peso', symbol: '$U' },
+    { code: 'BOB', name: 'Bolivian Boliviano', symbol: 'Bs' },
+    { code: 'PYG', name: 'Paraguayan Guarani', symbol: '₲' },
+    { code: 'DOP', name: 'Dominican Peso', symbol: 'RD$' },
+    { code: 'HTG', name: 'Haitian Gourde', symbol: 'G' },
+    { code: 'JMD', name: 'Jamaican Dollar', symbol: 'J$' },
+    { code: 'TTD', name: 'Trinidad and Tobago Dollar', symbol: 'TT$' },
+    { code: 'BSD', name: 'Bahamian Dollar', symbol: 'B$' },
+    { code: 'BBD', name: 'Barbadian Dollar', symbol: 'Bds$' },
+    { code: 'XCD', name: 'East Caribbean Dollar', symbol: 'EC$' },
+    { code: 'FJD', name: 'Fijian Dollar', symbol: 'FJ$' },
+    { code: 'PGK', name: 'Papua New Guinean Kina', symbol: 'K' },
+    { code: 'SBD', name: 'Solomon Islands Dollar', symbol: 'SI$' },
+    { code: 'VUV', name: 'Vanuatu Vatu', symbol: 'Vt' },
+    { code: 'WST', name: 'Samoan Tala', symbol: 'T' },
+    { code: 'TOP', name: 'Tongan Paʻanga', symbol: 'T$' },
+    { code: 'KYD', name: 'Cayman Islands Dollar', symbol: 'CI$' },
+    { code: 'BMD', name: 'Bermudian Dollar', symbol: 'BD$' },
+  ]
+
+  for (const currency of currencyData) {
+    await prisma.currency.upsert({
+      where: { code: currency.code },
+      update: { name: currency.name, symbol: currency.symbol, updatedAt: new Date() },
+      create: { ...currency, updatedAt: new Date() },
+    })
+  }
+
+  console.log(`  Seeded ${currencyData.length} currencies`)
 
   // 3. Assign permissions to roles
   const rolePermissions: Record<string, string[]> = {
