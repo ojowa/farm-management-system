@@ -151,6 +151,8 @@ export class AuthService {
     const isValid = authenticator.verify({ token: code, secret: user.twoFactorSecret! });
     if (!isValid) throw new UnauthorizedException('Invalid MFA code');
     const sessionId = await this.recordSession(user, ctx);
+    // Mark the session as MFA-verified so the JWT carries mfaVerified=true.
+    user.mfaVerified = true;
     const accessToken = await this.generateAccessToken(user, undefined, sessionId);
     const refreshToken = await this.generateRefreshToken(user.id, ctx, undefined, sessionId);
     // Best-effort: record sign-in time for the admin "Last Login" column.
@@ -299,7 +301,7 @@ export class AuthService {
       permissions = await this.roleRepo.getPermissionsForRole(user.roleId);
     }
     const secret = getJwtSecret();
-    const claims: { sub: string; email: any; role: any; permissions: string[]; organizationId: any; sid?: string } = {
+    const claims: { sub: string; email: any; role: any; permissions: string[]; organizationId: any; sid?: string; twoFactorEnabled?: boolean; mfaVerified?: boolean } = {
       sub: user.id,
       email: user.email,
       role: user.role?.name || user.roleName,
@@ -308,6 +310,12 @@ export class AuthService {
       // organization popup) overrides their organization-less membership;
       // for everyone else this is simply their membership column.
       organizationId: organizationIdOverride !== undefined ? organizationIdOverride : user.organizationId,
+      twoFactorEnabled: user.twoFactorEnabled === true,
+      // mfaVerified is true when the user has no 2FA (nothing to verify) or
+      // has completed /auth/verify-mfa in this session. login() returns
+      // requiresMFA for 2FA users without issuing an access token, so
+      // mfaVerified stays false until verifyMFA completes.
+      mfaVerified: user.twoFactorEnabled !== true || user.mfaVerified === true,
     };
     // Session id: lets logout close the matching UserSession row.
     if (sessionId) claims.sid = sessionId;

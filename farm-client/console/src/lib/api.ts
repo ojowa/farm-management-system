@@ -264,3 +264,11 @@ export const platformApiKeysAPI = {
 // ── Legacy aliases for backward compatibility ───────────────
 export const authClient = apiClient;
 export const platformClient = apiClient;
+
+// ── 2FA / MFA APIs ─────────────────────────────────────────
+export const mfaAPI = {
+  generate: () => apiClient.post('/auth/2fa/generate'),
+  enable: (code: string) => apiClient.post('/auth/2fa/enable', { code }),
+  disable: (code: string) => apiClient.post('/auth/2fa/disable', { code }),
+  getPreferences: () => apiClient.get('/auth/preferences'),
+};

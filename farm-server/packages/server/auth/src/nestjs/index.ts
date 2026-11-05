@@ -90,7 +90,19 @@ export class JwtAuthGuard implements CanActivate {
       this.logger.debug(`[JwtAuthGuard] Verifying token (length: ${token.length})`);
       req.user = verifyAccessToken(token);
       this.logger.debug(`[JwtAuthGuard] Token verified for user ${req.user?.id} (${req.user?.email})`);
+
+      // MFA enforcement: if the user's account has 2FA enabled, the current
+      // session must have completed MFA verification (mfaVerified === true).
+      // Otherwise the user must complete /auth/verify-mfa before accessing
+      // protected endpoints.
+      if (req.user.twoFactorEnabled && req.user.mfaVerified !== true) {
+        this.logger.debug(`[JwtAuthGuard] User ${req.user.id} has 2FA enabled but session is not MFA-verified`);
+        throw new ForbiddenException('MFA_REQUIRED');
+      }
     } catch (err) {
+      if ((err as ForbiddenException)?.getStatus?.() === 403) {
+        throw err;
+      }
       this.logger.debug(`JWT verification failed: ${(err as Error).message}`);
       throw new UnauthorizedException('Invalid or expired token');
     }

@@ -19,6 +19,10 @@ export interface VerifiedUser {
   role: string;
   permissions: string[];
   organizationId: string | null;
+  /** Whether the user's account has two-factor authentication enabled. */
+  twoFactorEnabled: boolean;
+  /** Whether the current session has completed MFA verification. */
+  mfaVerified: boolean;
 }
 
 export interface ServiceTokenPayload {
@@ -32,6 +36,10 @@ export interface ServiceTokenPayload {
   permissions: string[];
   /** The user's organization ID */
   organizationId: string | null;
+  /** Whether the user's account has two-factor authentication enabled. */
+  twoFactorEnabled: boolean;
+  /** Whether the current session has completed MFA verification. */
+  mfaVerified: boolean;
   /** Token type marker */
   type: 'service';
 }
@@ -70,6 +78,8 @@ export const verifyAccessToken = (token: string): VerifiedUser => {
       role: decoded.role,
       permissions: decoded.permissions ?? [],
       organizationId: decoded.organizationId ?? null,
+      twoFactorEnabled: decoded.twoFactorEnabled === true,
+      mfaVerified: decoded.mfaVerified === true,
     };
   } catch (err) {
     throw err;
@@ -90,6 +100,8 @@ export const signServiceToken = (user: VerifiedUser): string => {
     role: user.role,
     permissions: user.permissions,
     organizationId: user.organizationId,
+    twoFactorEnabled: user.twoFactorEnabled,
+    mfaVerified: user.mfaVerified,
     type: 'service',
   };
   return sign(payload, resolveServiceSecret(), { expiresIn: process.env.SERVICE_TOKEN_EXPIRY || '30s' });
@@ -115,6 +127,8 @@ export const verifyServiceToken = (token: string): ServiceTokenPayload => {
     role: decoded.role,
     permissions: decoded.permissions ?? [],
     organizationId: decoded.organizationId ?? null,
+    twoFactorEnabled: decoded.twoFactorEnabled === true,
+    mfaVerified: decoded.mfaVerified === true,
     type: 'service',
   };
 };
