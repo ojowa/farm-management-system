@@ -44,7 +44,7 @@ interface FormState {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const initialForm = (): FormState => ({
+const initialForm = (orgCurrency: string): FormState => ({
   title: '',
   item: '',
   amount: '',
@@ -81,7 +81,7 @@ export default function NewTransactionPage() {
     searchParams.get('type') === 'sale' ? 'sale' : 'expense'
   );
   const [form, setForm] = useState<FormState>(() => {
-    const base = initialForm();
+    const base = initialForm(orgCurrency);
     const quantity = searchParams.get('quantity') || base.quantity;
     const price = searchParams.get('price') || base.price;
     return {

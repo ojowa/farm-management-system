@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { useFetch } from '@/hooks/useFetch';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { usePermission } from '@/lib/usePermission';
 import { formatCurrency } from '@/lib/formatters';
 
@@ -36,6 +37,7 @@ export default function ListingDetailPage() {
   const { canDelete, canCreate } = usePermission();
   const readOnly = !canCreate('finance');
   const canRemove = canDelete('finance');
+  const { orgCurrency } = useDashboardConfig();
 
   const { data: listingsData, loading } = useFetch<{ data: Listing[] }>(
     `marketplace-listing-${id}`,
@@ -121,7 +123,7 @@ export default function ListingDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Price</p>
                 <p className="text-lg font-semibold">
-                  {listing.price != null ? formatCurrency(listing.price) : '—'}
+                  {listing.price != null ? formatCurrency(listing.price, orgCurrency) : '—'}
                 </p>
               </div>
             </div>

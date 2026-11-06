@@ -44,6 +44,7 @@ const formatCurrency = (amount: number, currency: string) =>
 interface BudgetCategory {
   id: string;
   name: string;
+  currency: string;
   budgetAmount: number;
   spentAmount: number;
 }

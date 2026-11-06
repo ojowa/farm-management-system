@@ -84,12 +84,6 @@ const weekStartDate = (weekValue: string): Date | null => {
   return monday;
 };
 
-const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: orgCurrency,
-    }).format(amount);
-
 const workerName = (worker: Worker) =>
   `${worker.firstName} ${worker.middleName ? `${worker.middleName} ` : ''}${worker.lastName}`;
 
@@ -98,6 +92,12 @@ export default function SalaryPage() {
   const { canCreate } = usePermission();
   const readOnly = !canCreate('finance');
   const { orgCurrency } = useDashboardConfig();
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: orgCurrency,
+    }).format(amount);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [farmFilter, setFarmFilter] = useState('');
