@@ -7,6 +7,8 @@ export const createExpenseSchema = z.object({
   farmId: z.string().uuid(),
   title: z.string().min(2),
   amount: z.number().positive(),
+  taxRate: z.number().nonnegative().optional(),
+  taxAmount: z.number().nonnegative().optional(),
   currency: currencyCodeSchema.optional(),
   date: dateSchema,
   budgetCategoryId: z.string().uuid().nullish(),
@@ -27,6 +29,8 @@ export const createSaleSchema = z.object({
   quantity: z.number().positive(),
   price: z.number().nonnegative(),
   total: z.number().nonnegative(),
+  taxRate: z.number().nonnegative().optional(),
+  taxAmount: z.number().nonnegative().optional(),
   currency: currencyCodeSchema.optional(),
   date: dateSchema,
 });

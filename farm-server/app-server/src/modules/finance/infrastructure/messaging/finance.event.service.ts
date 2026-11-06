@@ -77,4 +77,14 @@ export class FinanceEventService {
   emitBudgetDeletedEvent(budgetId: string, organizationId: string) {
     this.events.emitDomainEvent('finance', 'deleted', { id: budgetId, organizationId });
   }
+
+  emitLedgerStatusChangedEvent(entityType: string, entityId: string, fromStatus: string, toStatus: string, organizationId: string) {
+    this.events.emit('finance.ledger.status.changed', {
+      entityType,
+      entityId,
+      fromStatus,
+      toStatus,
+      organizationId,
+    });
+  }
 }

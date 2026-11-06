@@ -202,6 +202,22 @@ export const platformConfigAPI = {
     apiClient.patch('/api/platform-config', { configs }),
 };
 
+// ── Currency / Exchange Rates ───────────────────────────────
+
+export const platformCurrencyAPI = {
+  listCurrencies: () => apiClient.get('/currencies'),
+  getCurrency: (code: string) => apiClient.get(`/currencies/${code}`),
+  listRates: (params?: { fromCurrency?: string; toCurrency?: string }) =>
+    apiClient.get('/currencies/rates', { params }),
+  setRate: (data: {
+    fromCurrency: string;
+    toCurrency: string;
+    rate: number;
+    effectiveAt?: string;
+    source?: string | null;
+  }) => apiClient.post('/currencies/rates', data),
+};
+
 export interface StorageSettingsInput {
   driver?: 's3' | 'local';
   bucket?: string;

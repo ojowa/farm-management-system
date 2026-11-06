@@ -6,9 +6,12 @@ import {
   MarketplaceController,
   BudgetsController,
 } from './presentation/controllers/finance.controller';
+import { LedgerController } from './presentation/controllers/ledger.controller';
+import { RecurringController } from './presentation/controllers/recurring.controller';
 import { ProfitabilityController } from './presentation/controllers/profitability.controller';
 import { FinanceApplicationService } from './application/services/finance.service';
 import { ProfitabilityService } from './application/services/profitability.service';
+import { RecurringTransactionService } from './application/services/recurring-transaction.service';
 import {
   PrismaExpenseRepository,
   PrismaSaleRepository,
@@ -23,10 +26,11 @@ import { CurrencyModule } from './currency/currency.module';
 
 @Module({
   imports: [RealtimeModule, CurrencyModule],
-  controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, BudgetsController, ProfitabilityController],
+  controllers: [ExpenseController, SaleController, ContractController, MarketplaceController, BudgetsController, ProfitabilityController, LedgerController, RecurringController],
   providers: [
     FinanceApplicationService,
     ProfitabilityService,
+    RecurringTransactionService,
     FinanceEventService,
     { provide: 'ExpenseRepository', useClass: PrismaExpenseRepository },
     { provide: 'SaleRepository', useClass: PrismaSaleRepository },

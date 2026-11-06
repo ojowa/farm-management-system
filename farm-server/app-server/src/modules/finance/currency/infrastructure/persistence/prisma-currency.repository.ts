@@ -89,10 +89,37 @@ export class PrismaCurrencyRepository
     return { rate: rate.rate, effectiveAt: rate.effectiveAt };
   }
 
+  async getRateAt(
+    fromCurrency: string,
+    toCurrency: string,
+    effectiveAt: Date | string,
+  ): Promise<{ rate: number; effectiveAt: Date } | null> {
+    const at = typeof effectiveAt === 'string' ? new Date(effectiveAt) : effectiveAt;
+    const rate = await scopedPrisma.exchangeRate.findFirst({
+      where: {
+        fromCurrency,
+        toCurrency,
+        effectiveAt: { lte: at },
+      },
+      orderBy: { effectiveAt: 'desc' },
+    });
+    if (!rate) return null;
+    return { rate: rate.rate, effectiveAt: rate.effectiveAt };
+  }
+
   async convert(
     amount: number,
     fromCurrency: string,
     toCurrency: string,
+  ): Promise<ConvertedAmount> {
+    return this.convertAt(amount, fromCurrency, toCurrency, new Date());
+  }
+
+  async convertAt(
+    amount: number,
+    fromCurrency: string,
+    toCurrency: string,
+    effectiveAt: Date | string,
   ): Promise<ConvertedAmount> {
     if (fromCurrency === toCurrency) {
       return {
@@ -103,18 +130,18 @@ export class PrismaCurrencyRepository
         convertedAmount: amount,
       };
     }
-    const latest = await this.getLatestRate(fromCurrency, toCurrency);
-    if (!latest) {
+    const rate = await this.getRateAt(fromCurrency, toCurrency, effectiveAt);
+    if (!rate) {
       throw new Error(
-        `No exchange rate set for ${fromCurrency} → ${toCurrency}`,
+        `No exchange rate set for ${fromCurrency} → ${toCurrency} on or before ${typeof effectiveAt === 'string' ? effectiveAt : effectiveAt.toISOString()}`,
       );
     }
-    const convertedAmount = Number((amount * latest.rate).toFixed(4));
+    const convertedAmount = Number((amount * rate.rate).toFixed(4));
     return {
       amount,
       fromCurrency,
       toCurrency,
-      rate: latest.rate,
+      rate: rate.rate,
       convertedAmount,
     };
   }
@@ -124,12 +151,21 @@ export class PrismaCurrencyRepository
     fromCurrency: string,
     organizationId: string,
   ): Promise<ConvertedAmount> {
+    return this.convertToOrganizationBaseAt(amount, fromCurrency, organizationId, new Date());
+  }
+
+  async convertToOrganizationBaseAt(
+    amount: number,
+    fromCurrency: string,
+    organizationId: string,
+    effectiveAt: Date | string,
+  ): Promise<ConvertedAmount> {
     const { prisma } = await import('@farm/database');
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
       select: { currency: true },
     });
     const toCurrency = organization?.currency ?? 'USD';
-    return this.convert(amount, fromCurrency, toCurrency);
+    return this.convertAt(amount, fromCurrency, toCurrency, effectiveAt);
   }
 }

@@ -528,14 +528,24 @@ model Expense {
 
   title  String
   amount Float
+  taxRate Float   @default(0)
+  taxAmount Float @default(0)
   currency String @default("USD")
   amountInBase Float @default(0)
-  date   DateTime
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate         Float   @default(1)
+  convertedAt  DateTime @default(now())
+  date         DateTime
 
   // Optional manual link to a budget category; when set it wins over
   // title-based matching in refreshBudget.
   budgetCategoryId String?
   budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+
+  // Transaction lifecycle: DRAFT → PENDING → POSTED; VOIDED cancels a posted row.
+  status String @default("POSTED")
+  // Source contract this row was recurrently generated from (null if manual).
+  sourceContractId String?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
@@ -546,6 +556,7 @@ model Expense {
   @@index([organizationId])
   @@index([farmId])
   @@index([budgetCategoryId])
+  @@index([sourceContractId])
 }
 
 model Sale {
@@ -557,9 +568,19 @@ model Sale {
   quantity Float
   price    Float
   total    Float
+  taxRate Float   @default(0)
+  taxAmount Float @default(0)
   currency String @default("USD")
   amountInBase Float @default(0)
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate         Float   @default(1)
+  convertedAt  DateTime @default(now())
   date DateTime
+
+  // Transaction lifecycle: DRAFT → PENDING → POSTED; VOIDED cancels a posted row.
+  status String @default("POSTED")
+  // Source contract this row was recurrently generated from (null if manual).
+  sourceContractId String?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   farm         Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
@@ -569,6 +590,7 @@ model Sale {
 
   @@index([organizationId])
   @@index([farmId])
+  @@index([sourceContractId])
 }
 
 model Budget {
@@ -1710,8 +1732,13 @@ model Contract {
   startDate       DateTime
   endDate         DateTime?
   value           Float
+  taxRate Float   @default(0)
+  taxAmount Float @default(0)
   currency        String @default("USD")
   amountInBase    Float @default(0)
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate            Float   @default(1)
+  convertedAt     DateTime @default(now())
   status          String    @default("DRAFT") // DRAFT, ACTIVE, COMPLETED, CANCELLED
   terms           String?
   createdById     String?
@@ -1784,8 +1811,13 @@ model MarketListing {
   entityId       String?
   title          String
   price          Float
+  taxRate Float   @default(0)
+  taxAmount Float @default(0)
   currency       String @default("USD")
   amountInBase   Float @default(0)
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate           Float   @default(1)
+  convertedAt    DateTime @default(now())
   unit           String    @default("kg")
   quantity       Float
   status         String    @default("ACTIVE") // ACTIVE, SOLD, CANCELLED

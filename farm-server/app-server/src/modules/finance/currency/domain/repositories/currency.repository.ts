@@ -16,11 +16,16 @@ export interface CurrencyRepository {
   }): Promise<ExchangeRate>;
   listRates(fromCurrency?: string, toCurrency?: string): Promise<ExchangeRate[]>;
   getLatestRate(fromCurrency: string, toCurrency: string): Promise<{ rate: number; effectiveAt: Date } | null>;
+  getRateAt(fromCurrency: string, toCurrency: string, effectiveAt: Date | string): Promise<{ rate: number; effectiveAt: Date } | null>;
   convert(amount: number, fromCurrency: string, toCurrency: string): Promise<ConvertedAmount>;
+  convertAt(amount: number, fromCurrency: string, toCurrency: string, effectiveAt: Date | string): Promise<ConvertedAmount>;
   convertToOrganizationBase(amount: number, fromCurrency: string, organizationId: string): Promise<ConvertedAmount>;
+  convertToOrganizationBaseAt(amount: number, fromCurrency: string, organizationId: string, effectiveAt: Date | string): Promise<ConvertedAmount>;
 }
 
 export interface ConversionService {
   convert(amount: number, fromCurrency: string, toCurrency: string): Promise<ConvertedAmount>;
+  convertAt(amount: number, fromCurrency: string, toCurrency: string, effectiveAt: Date | string): Promise<ConvertedAmount>;
   convertToOrganizationBase(amount: number, fromCurrency: string, organizationId: string): Promise<ConvertedAmount>;
+  convertToOrganizationBaseAt(amount: number, fromCurrency: string, organizationId: string, effectiveAt: Date | string): Promise<ConvertedAmount>;
 }

@@ -63,8 +63,12 @@ export interface MarketListingRepository {
     entityId: string | null;
     title: string;
     price: number;
+    taxRate: number;
+    taxAmount: number;
     currency: string;
     amountInBase: number;
+    rate: number;
+    convertedAt: Date;
     unit: string;
     quantity: number;
     status: string;

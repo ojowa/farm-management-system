@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   DollarSign,
   TrendingUp,
-  Plus,
   Calculator,
   Trash2,
 } from 'lucide-react';
@@ -13,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableHeader,
@@ -51,10 +49,8 @@ export default function CurrenciesPage() {
   const readOnly = !canWrite;
 
   const [showCurrencyDialog, setShowCurrencyDialog] = useState(false);
-  const [showRateDialog, setShowRateDialog] = useState(false);
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [currencyForm, setCurrencyForm] = useState({ code: '', name: '', symbol: '' });
-  const [rateForm, setRateForm] = useState({ fromCurrency: '', toCurrency: '', rate: '', source: '' });
   const [convertForm, setConvertForm] = useState({ amount: '', fromCurrency: '', toCurrency: '' });
   const [convertResult, setConvertResult] = useState<{ amount: number; rate: number; convertedAmount: number } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -129,31 +125,6 @@ export default function CurrenciesPage() {
     }
   };
 
-  const handleRateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await currencyAPI.setRate({
-        fromCurrency: rateForm.fromCurrency,
-        toCurrency: rateForm.toCurrency,
-        rate: Number(rateForm.rate),
-        source: rateForm.source || null,
-      });
-      toast({ type: 'success', title: 'Exchange rate saved' });
-      setShowRateDialog(false);
-      setRateForm({ fromCurrency: '', toCurrency: '', rate: '', source: '' });
-      clearFetchCache('currency-rates');
-    } catch (err: any) {
-      toast({
-        type: 'error',
-        title: 'Failed to save rate',
-        message: err.response?.data?.message || 'An error occurred',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -203,14 +174,9 @@ export default function CurrenciesPage() {
           </p>
         </div>
         {!readOnly && (
-          <div className="flex gap-3">
-            <Button onClick={() => setShowCurrencyDialog(true)} className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" /> Add Currency
-            </Button>
-            <Button variant="outline" onClick={() => setShowRateDialog(true)} className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" /> Add Rate
-            </Button>
-          </div>
+          <Button onClick={() => setShowCurrencyDialog(true)} className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" /> Add Currency
+          </Button>
         )}
       </div>
 
@@ -341,11 +307,6 @@ export default function CurrenciesPage() {
                   })}
                 </TableBody>
               </Table>
-            )}
-            {!readOnly && (
-              <Button variant="outline" onClick={() => setShowRateDialog(true)} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" /> Add Exchange Rate
-              </Button>
             )}
           </div>
         </CardContent>
@@ -486,79 +447,6 @@ export default function CurrenciesPage() {
               <Button type="submit" disabled={saving} className="w-auto">
                 {editingCode ? 'Save Currency' : 'Add Currency'}
               </Button>
-            </div>
-          </form>
-        </Dialog>
-      )}
-
-      {/* Add Exchange Rate Dialog */}
-      {!readOnly && (
-        <Dialog
-          open={showRateDialog}
-          onOpenChange={setShowRateDialog}
-          title="Add Exchange Rate"
-        >
-          <form onSubmit={handleRateSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="rateFromCurrency">From Currency <span className="text-destructive">*</span></Label>
-              <Select
-                id="rateFromCurrency"
-                placeholder="Source currency"
-                options={currencyOptions}
-                value={rateForm.fromCurrency}
-                onChange={(e) => setRateForm({ ...rateForm, fromCurrency: e.target.value })}
-                disabled={saving}
-              />
-            </div>
-            <div>
-              <Label htmlFor="rateToCurrency">To Currency <span className="text-destructive">*</span></Label>
-              <Select
-                id="rateToCurrency"
-                placeholder="Target currency"
-                options={currencyOptions}
-                value={rateForm.toCurrency}
-                onChange={(e) => setRateForm({ ...rateForm, toCurrency: e.target.value })}
-                disabled={saving}
-              />
-            </div>
-            <div>
-              <Label htmlFor="rateValue">Rate <span className="text-destructive">*</span></Label>
-              <p className="text-xs text-muted-foreground">
-                1 {rateForm.fromCurrency || 'From'} = X {rateForm.toCurrency || 'To'}
-              </p>
-              <Input
-                id="rateValue"
-                type="number"
-                step="0.0001"
-                min="0"
-                placeholder="0.0000"
-                value={rateForm.rate}
-                onChange={(e) => setRateForm({ ...rateForm, rate: e.target.value })}
-                disabled={saving}
-              />
-            </div>
-            <div>
-              <Label htmlFor="rateSource">Source</Label>
-              <Input
-                id="rateSource"
-                placeholder="e.g. manual / ECB"
-                value={rateForm.source}
-                onChange={(e) => setRateForm({ ...rateForm, source: e.target.value })}
-                disabled={saving}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowRateDialog(false);
-                  setRateForm({ fromCurrency: '', toCurrency: '', rate: '', source: '' });
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving} className="w-auto">Save Rate</Button>
             </div>
           </form>
         </Dialog>

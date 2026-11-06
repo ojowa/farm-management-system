@@ -1,13 +1,15 @@
-import { Inject,  Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { OrganizationRepository } from '../../domain/repositories/organization.repository';
 import type { CreateOrganizationRequest } from '@farm/types-server';
 import { PaymentsApplicationService } from '../../../payments';
+import { FinanceApplicationService } from '../../../finance/application/services/finance.service';
 
 @Injectable()
 export class OrganizationApplicationService {
   constructor(
     @Inject('OrganizationRepository') private readonly orgRepo: OrganizationRepository,
-    private readonly payments: PaymentsApplicationService
+    private readonly payments: PaymentsApplicationService,
+    private readonly finance: FinanceApplicationService,
   ) {}
 
   async create(createDto: CreateOrganizationRequest) {
@@ -70,6 +72,21 @@ export class OrganizationApplicationService {
       const plan = await this.orgRepo.findSubscriptionPlanByName(updateDto.subscriptionPlan);
       if (!plan) {
         throw new BadRequestException(`Subscription plan '${updateDto.subscriptionPlan}' does not exist`);
+      }
+    }
+
+    // Changing the org base currency re-denominates every existing ledger
+    // row (expense, sale, contract, market listing, budget category) into the
+    // new base currency immediately, so the change takes effect across the
+    // whole org — not just for amounts recorded from now on.
+    if (updateDto.currency) {
+      const existing = await this.orgRepo.findById(id);
+      if (existing && existing.currency !== updateDto.currency) {
+        await this.audit(organizationId, 'organization.currency.changed', id, undefined, {
+          previousCurrency: existing.currency,
+          newCurrency: updateDto.currency,
+        });
+        await this.finance.reconvertOrganizationLedger(organizationId, updateDto.currency);
       }
     }
 
@@ -253,5 +270,29 @@ export class OrganizationApplicationService {
   async delete(id: string, organizationId?: string) {
     await this.findOne(id, organizationId);
     return this.orgRepo.delete(id);
+  }
+
+  private async audit(
+    organizationId: string,
+    action: string,
+    entityId: string,
+    userId?: string | null,
+    metadata?: Record<string, any>,
+  ) {
+    try {
+      const { prisma } = await import('@farm/database');
+      await prisma.auditLog.create({
+        data: {
+          organizationId,
+          userId: userId || null,
+          action,
+          entity: 'Organization',
+          entityId,
+          ...(metadata ? { metadata } : {}),
+        },
+      });
+    } catch (err: any) {
+      Logger.warn(`audit ${action} failed: ${err?.message}`);
+    }
   }
 }

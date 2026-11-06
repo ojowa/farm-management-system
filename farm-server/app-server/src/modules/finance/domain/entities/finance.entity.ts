@@ -4,10 +4,20 @@ export interface Expense {
   farmId: string;
   title: string;
   amount: number;
+  // Tax rate (%) and computed tax amount; amount is tax-exclusive.
+  taxRate: number;
+  taxAmount: number;
   currency: string;
   amountInBase: number;
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate: number;
+  convertedAt: Date;
   date: Date;
   createdAt: Date;
+  // Transaction lifecycle: DRAFT | PENDING | POSTED | VOIDED.
+  status: string;
+  // Source contract this row was recurrently generated from (null if manual).
+  sourceContractId: string | null;
   budgetCategoryId?: string | null;
 }
 
@@ -28,10 +38,20 @@ export interface Sale {
   quantity: number;
   price: number;
   total: number;
+  // Tax rate (%) and computed tax amount; total is tax-exclusive.
+  taxRate: number;
+  taxAmount: number;
   currency: string;
   amountInBase: number;
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate: number;
+  convertedAt: Date;
   date: Date;
   createdAt: Date;
+  // Transaction lifecycle: DRAFT | PENDING | POSTED | VOIDED.
+  status: string;
+  // Source contract this row was recurrently generated from (null if manual).
+  sourceContractId: string | null;
 }
 
 export interface Contract {
@@ -44,6 +64,9 @@ export interface Contract {
   startDate: Date;
   endDate: Date | null;
   value: number;
+  // Tax rate (%) and computed tax amount; value is tax-exclusive.
+  taxRate: number;
+  taxAmount: number;
   status: string;
   terms: string | null;
   createdById: string | null;
@@ -52,6 +75,9 @@ export interface Contract {
   updatedAt: Date;
   currency: string;
   amountInBase: number;
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate: number;
+  convertedAt: Date;
 }
 
 export interface Budget {
@@ -102,8 +128,14 @@ export interface MarketListing {
   entityId: string | null;
   title: string;
   price: number;
+  // Tax rate (%) and computed tax amount; price is tax-exclusive.
+  taxRate: number;
+  taxAmount: number;
   currency: string;
   amountInBase: number;
+  // Conversion rate used at write time: 1 unit of `currency` = `rate` units of org base.
+  rate: number;
+  convertedAt: Date;
   unit: string;
   quantity: number;
   status: string;

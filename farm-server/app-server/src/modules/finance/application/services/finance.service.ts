@@ -1,4 +1,4 @@
-import { Inject,  Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import {
   ExpenseRepository,
   SaleRepository,
@@ -68,22 +68,32 @@ export class FinanceApplicationService {
 
   // ── Expense CRUD ──────────────────────────────────────
 
-  async createExpense(data: { farmId: string; title: string; amount: number; currency?: string; date: Date | string; budgetCategoryId?: string | null },  organizationId: string) {
+  async createExpense(data: { farmId: string; title: string; amount: number; taxRate?: number; taxAmount?: number; currency?: string; date: Date | string; budgetCategoryId?: string | null },  organizationId: string) {
     await this.assertFarmExists(data.farmId, organizationId);
     if (data.budgetCategoryId) await this.assertBudgetCategoryExists(data.budgetCategoryId, organizationId);
-    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+    const transactionDate = this.toDate(data.date);
+    const taxRate = data.taxRate ?? 0;
+    const taxAmount = data.taxAmount ?? Number((data.amount * taxRate / 100).toFixed(2));
+    const { convertedAmount: amountInBase, rate } = await this.currencyService.convertToOrganizationBaseAt(
       data.amount,
       data.currency ?? 'USD',
       organizationId,
+      transactionDate,
     );
     const expense = await this.expenseRepo.create({
       farmId: data.farmId,
       organizationId,
       title: data.title,
       amount: data.amount,
-      currency,
+      taxRate,
+      taxAmount,
+      currency: data.currency ?? 'USD',
       amountInBase,
-      date: this.toDate(data.date),
+      rate,
+      convertedAt: transactionDate,
+      date: transactionDate,
+      status: 'POSTED',
+      sourceContractId: null,
       budgetCategoryId: data.budgetCategoryId || null,
     });
     await this.eventService.emitExpenseCreatedEvent(expense);
@@ -111,9 +121,12 @@ export class FinanceApplicationService {
     await this.getExpenseById(id, organizationId);
     if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
     if (data.budgetCategoryId) await this.assertBudgetCategoryExists(data.budgetCategoryId, organizationId);
+    // Currency is immutable after creation: existing ledger rows keep their
+    // originally recorded currency. Never allow it to be changed on update.
     const updateData: any = { ...data };
     delete updateData.id;
     delete updateData.organizationId;
+    delete updateData.currency;
     if (data.date) updateData.date = this.toDate(data.date);
     const expense = await this.expenseRepo.update(id, updateData);
     await this.eventService.emitExpenseUpdatedEvent(expense);
@@ -131,12 +144,16 @@ export class FinanceApplicationService {
 
   // ── Sale CRUD ─────────────────────────────────────────
 
-  async createSale(data: { farmId: string; item: string; quantity: number; price: number; total: number; currency?: string; date: Date | string }, organizationId: string) {
+  async createSale(data: { farmId: string; item: string; quantity: number; price: number; total: number; taxRate?: number; taxAmount?: number; currency?: string; date: Date | string }, organizationId: string) {
     await this.assertFarmExists(data.farmId, organizationId);
-    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+    const transactionDate = this.toDate(data.date);
+    const taxRate = data.taxRate ?? 0;
+    const taxAmount = data.taxAmount ?? Number((data.total * taxRate / 100).toFixed(2));
+    const { convertedAmount: amountInBase, rate } = await this.currencyService.convertToOrganizationBaseAt(
       data.total,
       data.currency ?? 'USD',
       organizationId,
+      transactionDate,
     );
     const sale = await this.saleRepo.create({
       farmId: data.farmId,
@@ -145,9 +162,15 @@ export class FinanceApplicationService {
       quantity: data.quantity,
       price: data.price,
       total: data.total,
-      currency,
+      taxRate,
+      taxAmount,
+      currency: data.currency ?? 'USD',
       amountInBase,
-      date: this.toDate(data.date),
+      rate,
+      convertedAt: transactionDate,
+      date: transactionDate,
+      status: 'POSTED',
+      sourceContractId: null,
     });
     await this.eventService.emitSaleCreatedEvent(sale);
     return sale;
@@ -172,9 +195,12 @@ export class FinanceApplicationService {
   async updateSale(id: string, organizationId: string, data: { farmId?: string; item?: string; quantity?: number; price?: number; total?: number; date?: Date | string }) {
     await this.getSaleById(id, organizationId);
     if (data.farmId) await this.assertFarmExists(data.farmId, organizationId);
+    // Currency is immutable after creation: existing ledger rows keep their
+    // originally recorded currency. Never allow it to be changed on update.
     const updateData: any = { ...data };
     delete updateData.id;
     delete updateData.organizationId;
+    delete updateData.currency;
     if (data.date) updateData.date = this.toDate(data.date);
     const sale = await this.saleRepo.update(id, updateData);
     await this.eventService.emitSaleUpdatedEvent(sale);
@@ -190,11 +216,15 @@ export class FinanceApplicationService {
 
   // ── Contract CRUD ─────────────────────────────────────
 
-  async createContract(data: { type: string; buyerSellerName: string; entityId?: string; entityType?: string; startDate: Date | string; endDate?: Date | string | null; value: number; currency?: string; terms?: string }, organizationId: string) {
-    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+  async createContract(data: { type: string; buyerSellerName: string; entityId?: string; entityType?: string; startDate: Date | string; endDate?: Date | string | null; value: number; taxRate?: number; taxAmount?: number; currency?: string; terms?: string }, organizationId: string) {
+    const transactionDate = this.toDate(data.startDate);
+    const taxRate = data.taxRate ?? 0;
+    const taxAmount = data.taxAmount ?? Number((data.value * taxRate / 100).toFixed(2));
+    const { convertedAmount: amountInBase, rate } = await this.currencyService.convertToOrganizationBaseAt(
       data.value,
       data.currency ?? 'USD',
       organizationId,
+      transactionDate,
     );
     const contract = await this.contractRepo.create({
       organizationId,
@@ -202,11 +232,15 @@ export class FinanceApplicationService {
       buyerSellerName: data.buyerSellerName,
       entityId: data.entityId || null,
       entityType: data.entityType || null,
-      startDate: this.toDate(data.startDate),
+      startDate: transactionDate,
       endDate: data.endDate ? this.toDate(data.endDate) : null,
       value: Number(data.value),
-      currency,
+      taxRate,
+      taxAmount,
+      currency: data.currency ?? 'USD',
       amountInBase,
+      rate,
+      convertedAt: transactionDate,
       status: 'DRAFT',
       terms: data.terms?.trim() || null,
       createdById: null,
@@ -230,6 +264,8 @@ export class FinanceApplicationService {
     await this.getContractById(id, organizationId);
     // Allowlist: the body is unvalidated beyond auth, so never spread it
     // straight into the update (it could carry organizationId / id).
+    // Currency is immutable after creation: existing ledger rows keep their
+    // originally recorded currency. Never allow it to be changed on update.
     const updateData: any = {};
     if (data.type !== undefined) updateData.type = data.type;
     if (data.buyerSellerName !== undefined) updateData.buyerSellerName = data.buyerSellerName;
@@ -238,6 +274,7 @@ export class FinanceApplicationService {
     if (data.value !== undefined) updateData.value = Number(data.value);
     if (data.status !== undefined) updateData.status = data.status;
     if (data.terms !== undefined) updateData.terms = data.terms?.trim() || null;
+    // currency / amountInBase / rate / convertedAt are write-once: never update.
     const contract = await this.contractRepo.update(id, updateData);
     await this.eventService.emitContractUpdatedEvent(contract);
     return contract;
@@ -301,12 +338,16 @@ export class FinanceApplicationService {
 
   // ── Market Listing CRUD ───────────────────────────────
 
-  async createMarketListing(data: { buyerId?: string; entityType: string; entityId?: string; title: string; price: number; currency?: string; unit?: string; quantity: number }, organizationId: string) {
+  async createMarketListing(data: { buyerId?: string; entityType: string; entityId?: string; title: string; price: number; taxRate?: number; taxAmount?: number; currency?: string; unit?: string; quantity: number }, organizationId: string) {
     if (data.buyerId) await this.assertBuyerExists(data.buyerId, organizationId);
-    const { convertedAmount: amountInBase, toCurrency: currency } = await this.currencyService.convertToOrganizationBase(
+    const listedDate = new Date();
+    const taxRate = data.taxRate ?? 0;
+    const taxAmount = data.taxAmount ?? Number((data.price * taxRate / 100).toFixed(2));
+    const { convertedAmount: amountInBase, rate } = await this.currencyService.convertToOrganizationBaseAt(
       data.price,
       data.currency ?? 'USD',
       organizationId,
+      listedDate,
     );
     const listing = await this.marketListingRepo.create({
       organizationId,
@@ -315,12 +356,16 @@ export class FinanceApplicationService {
       entityId: data.entityId || null,
       title: data.title,
       price: Number(data.price),
-      currency,
+      taxRate,
+      taxAmount,
+      currency: data.currency ?? 'USD',
       amountInBase,
+      rate,
+      convertedAt: listedDate,
       unit: data.unit || 'kg',
       quantity: Number(data.quantity),
       status: 'ACTIVE',
-      listedDate: new Date(),
+      listedDate,
       soldDate: null,
     });
     await this.eventService.emitMarketListingCreatedEvent(listing);
@@ -341,6 +386,8 @@ export class FinanceApplicationService {
     await this.getMarketListingById(id, organizationId);
     if (data.buyerId) await this.assertBuyerExists(data.buyerId, organizationId);
     // Allowlist — never spread the raw body (organizationId / id must not pass through).
+    // Currency / amountInBase / rate / convertedAt are write-once: existing ledger
+    // rows keep their originally recorded currency; never update them.
     const updateData: any = {};
     if (data.entityType !== undefined) updateData.entityType = data.entityType;
     if (data.title !== undefined) updateData.title = data.title;
@@ -515,6 +562,13 @@ export class FinanceApplicationService {
     const expenses = await prisma.expense.findMany({ where: expenseWhere });
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
+    // Expenses store `amountInBase` in the organization's base currency.
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { currency: true },
+    });
+    const orgCurrency = org?.currency ?? 'USD';
+
     const spentById = new Map<string, number>(categories.map((c) => [c.id, 0]));
 
     for (const expense of expenses) {
@@ -552,15 +606,286 @@ export class FinanceApplicationService {
       }
     }
 
+    // Convert each category's spent (org base) into the category's own
+    // currency so `spentAmount` and `budgetAmount` share a currency. Best
+    // effort: if no rate exists, keep the base-currency amount.
+    const spentInCategoryCurrency = new Map<string, number>();
+    for (const c of categories) {
+      const spentBase = spentById.get(c.id) || 0;
+      if (!c.currency || c.currency === orgCurrency || spentBase === 0) {
+        spentInCategoryCurrency.set(c.id, round2(spentBase));
+        continue;
+      }
+      try {
+        const { convertedAmount } = await this.currencyService.convert(
+          spentBase,
+          orgCurrency,
+          c.currency,
+        );
+        spentInCategoryCurrency.set(c.id, round2(convertedAmount));
+      } catch {
+        spentInCategoryCurrency.set(c.id, round2(spentBase));
+      }
+    }
+
     await Promise.all(
       categories.map((c) =>
         prisma.budgetCategory.update({
           where: { id: c.id },
-          data: { spentAmount: spentById.get(c.id) || 0 },
+          data: { spentAmount: spentInCategoryCurrency.get(c.id) || 0 },
         }),
       ),
     );
 
     return this.getBudgetById(budgetId, organizationId);
+  }
+
+  // ── Read-time ledger conversion ───────────────────────────
+
+  /**
+   * Convert a historical ledger row's originally recorded amount to a target
+   * currency using the exchange rate effective at the row's conversion time.
+   * Does not mutate the row; purely a read-time presentation helper.
+   */
+  async convertLedger(data: {
+    entityType: 'expense' | 'sale' | 'contract' | 'marketListing';
+    entityId: string;
+    toCurrency: string;
+    organizationId: string;
+  }) {
+    const { entityType, entityId, toCurrency, organizationId } = data;
+    let row: { amount: number; currency: string; convertedAt: Date } | null;
+
+    switch (entityType) {
+      case 'expense': {
+        const e = await this.expenseRepo.findById(entityId, organizationId);
+        if (!e) throw new NotFoundException(`Expense with ID ${entityId} not found`);
+        row = { amount: e.amount, currency: e.currency, convertedAt: e.convertedAt };
+        break;
+      }
+      case 'sale': {
+        const s = await this.saleRepo.findById(entityId, organizationId);
+        if (!s) throw new NotFoundException(`Sale with ID ${entityId} not found`);
+        row = { amount: s.total, currency: s.currency, convertedAt: s.convertedAt };
+        break;
+      }
+      case 'contract': {
+        const c = await this.contractRepo.findById(entityId, organizationId);
+        if (!c) throw new NotFoundException(`Contract with ID ${entityId} not found`);
+        row = { amount: c.value, currency: c.currency, convertedAt: c.convertedAt };
+        break;
+      }
+      case 'marketListing': {
+        const l = await this.marketListingRepo.findById(entityId, organizationId);
+        if (!l) throw new NotFoundException(`Market listing with ID ${entityId} not found`);
+        row = { amount: l.price, currency: l.currency, convertedAt: l.convertedAt };
+        break;
+      }
+    }
+
+    const { convertedAmount, rate } = await this.currencyService.convertAt(
+      row!.amount,
+      row!.currency,
+      toCurrency,
+      row!.convertedAt,
+    );
+
+    return {
+      entityType,
+      entityId,
+      fromCurrency: row!.currency,
+      toCurrency,
+      amount: row!.amount,
+      rate,
+      convertedAmount,
+      convertedAt: row!.convertedAt,
+    };
+  }
+
+  // ── Status lifecycle ──────────────────────────────────────
+
+  private readonly validStatusTransitions: Record<string, string[]> = {
+    DRAFT: ['PENDING', 'POSTED'],
+    PENDING: ['DRAFT', 'POSTED'],
+    POSTED: ['VOIDED'],
+    VOIDED: [],
+  };
+
+  async setLedgerStatus(data: {
+    entityType: 'expense' | 'sale';
+    entityId: string;
+    status: string;
+    organizationId: string;
+  }) {
+    const { entityType, entityId, status: newStatus, organizationId } = data;
+    const upper = String(newStatus).toUpperCase();
+    if (!['DRAFT', 'PENDING', 'POSTED', 'VOIDED'].includes(upper)) {
+      throw new BadRequestException(`Invalid status ${newStatus}`);
+    }
+
+    let current: string | null;
+    let update: () => Promise<any>;
+
+    switch (entityType) {
+      case 'expense': {
+        const e = await this.expenseRepo.findById(entityId, organizationId);
+        if (!e) throw new NotFoundException(`Expense with ID ${entityId} not found`);
+        current = e.status;
+        const allowed = this.validStatusTransitions[current] || [];
+        if (!allowed.includes(upper)) {
+          throw new BadRequestException(`Cannot transition expense ${current} → ${upper}`);
+        }
+        update = () => this.expenseRepo.update(entityId, { status: upper });
+        break;
+      }
+      case 'sale': {
+        const s = await this.saleRepo.findById(entityId, organizationId);
+        if (!s) throw new NotFoundException(`Sale with ID ${entityId} not found`);
+        current = s.status;
+        const allowed = this.validStatusTransitions[current] || [];
+        if (!allowed.includes(upper)) {
+          throw new BadRequestException(`Cannot transition sale ${current} → ${upper}`);
+        }
+        update = () => this.saleRepo.update(entityId, { status: upper });
+        break;
+      }
+    }
+
+    const result = await update();
+    await this.eventService.emitLedgerStatusChangedEvent(entityType, entityId, current, upper, organizationId);
+    return result;
+  }
+
+  // ── Organization base-currency change: re-denominate entire ledger ──────
+
+  /**
+   * When an organization changes its base currency, every existing ledger row
+   * is re-denominated into the new base currency so the change takes effect
+   * immediately across the whole org. Historical rows do NOT keep their
+   * originally recorded currency — they are re-valued at the latest rate and
+   * stamped with the new currency, amountInBase, rate and convertedAt.
+   */
+  async reconvertOrganizationLedger(organizationId: string, toCurrency: string) {
+    toCurrency = toCurrency.toUpperCase();
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const convertedAt = new Date();
+
+    const [expenses, sales, contracts, listings] = await Promise.all([
+      this.expenseRepo.findMany({ where: { organizationId } }),
+      this.saleRepo.findMany({ where: { organizationId } }),
+      this.contractRepo.findAll({ filter: { organizationId } }),
+      this.marketListingRepo.findAll({ filter: { organizationId } }),
+    ]);
+
+    // ── Expenses ──
+    for (const e of expenses) {
+      if (e.currency === toCurrency) continue;
+      const { convertedAmount, rate } = await this.currencyService.convert(
+        e.amount,
+        e.currency,
+        toCurrency,
+      );
+      await this.expenseRepo.update(e.id, {
+        currency: toCurrency,
+        amount: round2(convertedAmount),
+        amountInBase: round2(convertedAmount),
+        rate,
+        convertedAt,
+      });
+    }
+
+    // ── Sales ──
+    for (const s of sales) {
+      if (s.currency === toCurrency) continue;
+      const { convertedAmount, rate } = await this.currencyService.convert(
+        s.total,
+        s.currency,
+        toCurrency,
+      );
+      await this.saleRepo.update(s.id, {
+        currency: toCurrency,
+        total: round2(convertedAmount),
+        amountInBase: round2(convertedAmount),
+        rate,
+        convertedAt,
+      });
+    }
+
+    // ── Contracts ──
+    for (const c of contracts) {
+      if (c.currency === toCurrency) continue;
+      const { convertedAmount, rate } = await this.currencyService.convert(
+        c.value,
+        c.currency,
+        toCurrency,
+      );
+      await this.contractRepo.update(c.id, {
+        currency: toCurrency,
+        value: round2(convertedAmount),
+        amountInBase: round2(convertedAmount),
+        rate,
+        convertedAt,
+      });
+    }
+
+    // ── Market listings ──
+    for (const l of listings) {
+      if (l.currency === toCurrency) continue;
+      const { convertedAmount, rate } = await this.currencyService.convert(
+        l.price,
+        l.currency,
+        toCurrency,
+      );
+      await this.marketListingRepo.update(l.id, {
+        currency: toCurrency,
+        price: round2(convertedAmount),
+        amountInBase: round2(convertedAmount),
+        rate,
+        convertedAt,
+      });
+    }
+
+    // ── Budget categories ──
+    const { prisma } = await import('@farm/database');
+    const budgets = await prisma.budget.findMany({
+      where: { organizationId },
+      select: { id: true },
+    });
+    for (const budget of budgets) {
+      const categories = await prisma.budgetCategory.findMany({
+        where: { budgetId: budget.id },
+      });
+      for (const cat of categories) {
+        if (cat.currency === toCurrency) continue;
+        const { convertedAmount, rate } = await this.currencyService.convert(
+          cat.budgetAmount,
+          cat.currency,
+          toCurrency,
+        );
+        const spentBase = Number(cat.spentAmount || 0);
+        let spentConverted = 0;
+        let spentRate = 1;
+        if (spentBase > 0) {
+          const { convertedAmount: sc, rate: sr } = await this.currencyService.convert(
+            spentBase,
+            cat.currency,
+            toCurrency,
+          );
+          spentConverted = sc;
+          spentRate = sr;
+        }
+        await prisma.budgetCategory.update({
+          where: { id: cat.id },
+          data: {
+            currency: toCurrency,
+            budgetAmount: round2(convertedAmount),
+            spentAmount: round2(spentConverted),
+            amountInBase: round2(spentConverted),
+          },
+        });
+      }
+    }
+
+    return { organizationId, toCurrency, convertedAt };
   }
 }

@@ -70,6 +70,15 @@ export class CurrencyApplicationService {
     return this.currencyRepo.convert(amount, fromCurrency, toCurrency);
   }
 
+  async convertAt(
+    amount: number,
+    fromCurrency: string,
+    toCurrency: string,
+    effectiveAt: Date | string,
+  ) {
+    return this.currencyRepo.convertAt(amount, fromCurrency, toCurrency, effectiveAt);
+  }
+
   async convertToOrganizationBase(
     amount: number,
     fromCurrency: string,
@@ -79,6 +88,20 @@ export class CurrencyApplicationService {
       amount,
       fromCurrency,
       organizationId,
+    );
+  }
+
+  async convertToOrganizationBaseAt(
+    amount: number,
+    fromCurrency: string,
+    organizationId: string,
+    effectiveAt: Date | string,
+  ) {
+    return this.currencyRepo.convertToOrganizationBaseAt(
+      amount,
+      fromCurrency,
+      organizationId,
+      effectiveAt,
     );
   }
 }

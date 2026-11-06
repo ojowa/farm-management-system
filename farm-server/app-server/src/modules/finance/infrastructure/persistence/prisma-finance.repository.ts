@@ -186,15 +186,19 @@ export class PrismaMarketListingRepository implements MarketListingRepository {
     });
   }
 
-  async create(data: {
+  async   create(data: {
     organizationId: string;
     buyerId: string | null;
     entityType: string;
     entityId: string | null;
     title: string;
     price: number;
+    taxRate: number;
+    taxAmount: number;
     currency: string;
     amountInBase: number;
+    rate: number;
+    convertedAt: Date;
     unit: string;
     quantity: number;
     status: string;

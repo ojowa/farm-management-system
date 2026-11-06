@@ -179,3 +179,27 @@ export interface SelectOption {
   label: string;
   id?: string;
 }
+
+export interface Currency {
+  code: string;
+  name: string;
+  symbol: string | null;
+  updatedAt: string;
+}
+
+export interface ExchangeRate {
+  id: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  effectiveAt: string;
+  source: string | null;
+}
+
+export interface SetExchangeRateInput {
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  effectiveAt?: string;
+  source?: string | null;
+}
