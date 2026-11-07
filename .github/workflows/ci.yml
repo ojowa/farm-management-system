@@ -1,0 +1,295 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '22'
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  install:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      admin-changed: ${{ steps.filter.outputs.admin }}
+      console-changed: ${{ steps.filter.outputs.console }}
+      mobile-changed: ${{ steps.filter.outputs.mobile }}
+      server-changed: ${{ steps.filter.outputs.server }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install server dependencies
+        working-directory: farm-server
+        run: npm install
+
+      - name: Install admin dependencies
+        working-directory: farm-client/admin
+        run: npm install
+
+      - name: Install console dependencies
+        working-directory: farm-client/console
+        run: npm install
+
+      - name: Install mobile dependencies
+        working-directory: farm-client/mobile
+        run: npm install
+
+      - name: Detect changed packages
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            admin:
+              - 'farm-client/admin/**'
+            console:
+              - 'farm-client/console/**'
+            mobile:
+              - 'farm-client/mobile/**'
+            server:
+              - 'farm-server/**'
+
+  typecheck-server:
+    name: Typecheck server
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.server-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        working-directory: farm-server
+        run: npm install
+
+      - name: Typecheck server packages
+        working-directory: farm-server/app-server
+        run: npx tsc --noEmit -p tsconfig.json
+
+  typecheck-admin:
+    name: Typecheck admin
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.admin-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install admin dependencies
+        working-directory: farm-client/admin
+        run: npm install
+
+      - name: Typecheck admin
+        working-directory: farm-client/admin
+        run: npx tsc --noEmit
+
+  typecheck-console:
+    name: Typecheck console
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.console-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install console dependencies
+        working-directory: farm-client/console
+        run: npm install
+
+      - name: Typecheck console
+        working-directory: farm-client/console
+        run: npx tsc --noEmit
+
+  typecheck-mobile:
+    name: Typecheck mobile
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.mobile-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install mobile dependencies
+        working-directory: farm-client/mobile
+        run: npm install
+
+      - name: Typecheck mobile
+        working-directory: farm-client/mobile
+        run: npm run typecheck
+
+  test-server:
+    name: Test server
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.server-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install server dependencies
+        working-directory: farm-server
+        run: npm install
+
+      - name: Run server tests
+        working-directory: farm-server
+        run: npm run test
+
+  test-admin:
+    name: Test admin
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.admin-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install admin dependencies
+        working-directory: farm-client/admin
+        run: npm install
+
+      - name: Run admin tests
+        working-directory: farm-client/admin
+        run: npm run test
+
+  test-mobile:
+    name: Test mobile
+    needs: install
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.mobile-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install mobile dependencies
+        working-directory: farm-client/mobile
+        run: npm install
+
+      - name: Run mobile tests
+        working-directory: farm-client/mobile
+        run: npm run test
+
+  build-server:
+    name: Build server
+    needs: [install, typecheck-server, test-server]
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.server-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install server dependencies
+        working-directory: farm-server
+        run: npm install
+
+      - name: Build server
+        working-directory: farm-server/app-server
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+  build-admin:
+    name: Build admin
+    needs: [install, typecheck-admin, test-admin]
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.admin-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install admin dependencies
+        working-directory: farm-client/admin
+        run: npm install
+
+      - name: Build admin
+        working-directory: farm-client/admin
+        run: npm run build
+
+  build-console:
+    name: Build console
+    needs: [install, typecheck-console]
+    runs-on: ubuntu-latest
+    if: needs.install.outputs.console-changed == 'true' || github.event_name == 'push'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install console dependencies
+        working-directory: farm-client/console
+        run: npm install
+
+      - name: Build console
+        working-directory: farm-client/console
+        run: npm run build

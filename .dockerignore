@@ -1,0 +1,19 @@
+node_modules
+npm-debug.log
+README.md
+.env
+.env.local
+.env.*.local
+dist
+build
+.next
+turbo
+*.log
+*.md
+
+# Prisma
+prisma/migrations
+
+# OS
+.DS_Store
+Thumbs.db
