@@ -14,18 +14,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MenuButton } from '@/core/ui/MenuButton';
-import { financeAPI } from '@/modules/finance';
-import { Button } from '@/core/ui/UIComponents';
+import { financeAPI, offlineFinanceAPI } from '@/modules/finance';
+import { Button, Card, colors } from '@/core/ui/UIComponents';
 import { ScreenLoading, StateView } from '@/core/ui/feedback';
 import { describeApiError } from '@/core/utils/apiError';
 import { formatCurrencyFixedWithCode } from '@/core/utils/currency';
 import { useAppTheme } from '@/core/theme/ThemeContext';
-import { useAppSelector } from '@/modules/auth/hooks/useAuth';
+import { useAppDispatch, useAppSelector } from '@/modules/auth/hooks/useAuth';
 import { unwrapList } from '@/core/utils/listPayload';
 import { transformExpense, transformSale, RawExpense, RawSale } from '@/core/utils/entityTransformers';
 import { setFinanceFilter } from '@/store/slices/uiSlice';
 import { formatCurrencyFixed } from '@/core/utils/currency';
-import { useAppTheme } from '@/core/theme/ThemeContext';
+import { useToasts } from '@/core/hooks/useToasts';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
@@ -423,15 +423,15 @@ export default function FinanceScreen() {
         <View style={styles.summaryContainer}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Income</Text>
-            <Text style={styles.summaryValue}>+{formatCurrencyFixed(totalIncome)}</Text>
+            <Text style={styles.summaryValue}>+{formatCurrencyFixed(totalIncome, currency)}</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Expense</Text>
-            <Text style={styles.summaryValue}>-{formatCurrencyFixed(totalExpense)}</Text>
+            <Text style={styles.summaryValue}>-{formatCurrencyFixed(totalExpense, currency)}</Text>
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Net Profit</Text>
-            <Text style={styles.summaryValue}>{formatCurrencyFixed(netProfit)}</Text>
+            <Text style={styles.summaryValue}>{formatCurrencyFixed(netProfit, currency)}</Text>
           </View>
         </View>
         <TouchableOpacity

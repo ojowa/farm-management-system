@@ -104,7 +104,7 @@ export default function ProfitabilityScreen() {
     emptySubtext: { color: tc.textSecondary },
   };
 
-  const formatCurrency = (amount: number) => formatCurrencyValue(amount);
+  const formatCurrency = (amount: number) => formatCurrencyValueWithCode(amount, currency);
 
   if (loading) {
     return (
